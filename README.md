@@ -136,4 +136,3 @@ Use this script to generate wallets for the Dakota Network:
 
 - [Hyperledger Besu Documentation](https://besu.hyperledger.org/)
 - [Tessera Documentation](https://docs.consensys.net/tessera/)
-- [Dakota Network Support](#) (Add appropriate link)
