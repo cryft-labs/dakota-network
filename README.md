@@ -111,10 +111,12 @@ Before proceeding, ensure that the following packages are installed on your syst
      curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
      ```
 
-  2. Restart your shell or source your profile:
+  2. Follow the instructions displayed in the terminal to enable `nvm`. This typically involves running a command like:
      ```bash
      source ~/.bashrc
-     # Or for zsh
+     ```
+     or
+     ```bash
      source ~/.zshrc
      ```
 
