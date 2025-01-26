@@ -1,228 +1,134 @@
 
 # Dakota Network
 
-This repository provides everything you need to get connected with the Dakota Network, optionally using Tessera for private transactions. It includes:
-
-- **Tessera 24.4.2** (prebuilt distribution)
-- **Besu 24.10.0** (prebuilt binaries can be downloaded from [Besu Releases](https://github.com/hyperledger/besu/releases/tag/24.10.0))
-- **Node.zip** (contains `genesis.json`, keys, and a minimal node folder structure)
-- **makewallet.js** (a small script to generate Ethereum-compatible wallets)
-
-## Table of Contents
-
-1. [Overview of Files](#overview-of-files)
-2. [Using makewallet.js](#using-makewalletjs)
-3. [Prerequisites](#prerequisites)
-   - [Required Packages and Dependencies](#required-packages-and-dependencies)
-4. [Installation and Setup](#installation-and-setup)
-   - [1. Unzip the Provided Files](#1-unzip-the-provided-files)
-   - [2. Installing Tessera (Prebuilt)](#2-installing-tessera-prebuilt)
-5. [Using the Node Folder](#using-the-node-folder)
-6. [Running the Network](#running-the-network)
-7. [Additional Notes](#additional-notes)
-8. [References](#references)
-
----
+This guide explains how to set up a Hyperledger Besu node and connect it to the **Dakota Network**, with optional Tessera configuration for privacy transactions.
 
 ## Overview of Files
 
 1. **`tessera-24.4.2.zip`**
 
-   - A **prebuilt** Tessera distribution (version 24.4.2).
-   - Required if you want to enable privacy transactions on your Besu network.
+   - Prebuilt Tessera distribution for enabling privacy transactions.
 
 2. **`besu-24.10.0.zip`**
 
-   - Prebuilt binaries are available from the [Besu Releases page](https://github.com/hyperledger/besu/releases/tag/24.10.0).
+   - Prebuilt binaries for Hyperledger Besu are available from the [Besu Releases page](https://github.com/hyperledger/besu/releases/tag/24.10.0).
 
 3. **`Node.zip`**
 
-   - Contains a minimal node setup, including:
-     - `genesis.json` (defines blockchain parameters)
-     - `data/` folder with a pair of keys (`key` and `key.pub`)
-     - `Tessera/` folder for private transaction configuration (keys, `tessera-config.json`, etc.)
+   - Contains configuration files for the Dakota Network:
+     - `genesis.json`: Defines blockchain parameters.
+     - `data/`: Node-specific key pair (`key` and `key.pub`).
+     - `Tessera/`: Optional files for Tessera configuration.
 
 4. **`makewallet.js`**
 
-   - A small script (Node.js) to generate Ethereum-compatible wallets.
-   - Useful for creating new keys for your node or additional test accounts.
-
----
-
-## Using `makewallet.js`
-
-`makewallet.js` is a Node.js script that generates a new Ethereum-compatible wallet, including a private key and a public address. This can be used to create the keys for your node or additional accounts for testing purposes.
-
-### Steps to Use `makewallet.js`
-
-1. Install Node.js if you haven’t already (see [Prerequisites](#prerequisites) for instructions).
-2. Navigate to the folder containing `makewallet.js`.
-3. Run the script:
-   ```bash
-   node makewallet.js
-   ```
-4. The script will generate a private key and corresponding public address. These can be used for your node or as additional accounts for testing.
+   - A Node.js script to generate Ethereum-compatible wallets for the network.
 
 ---
 
 ## Prerequisites
 
-### Required Packages and Dependencies
+### Required Packages
 
-Before proceeding, ensure that the following packages are installed on your system. Instructions below are applicable to **Ubuntu** and **Fedora** servers.
+Ensure the following are installed on your system:
 
-#### 1. **Java 21** (Required for Hyperledger Besu)
+1. **Java 21** (Required for Besu):
 
-- Install OpenJDK 21:
-
-  **Ubuntu**:
-
-  ```bash
-  sudo apt update
-  sudo apt install -y openjdk-21-jdk
-  ```
-
-  **Fedora**:
-
-  ```bash
-  sudo dnf install -y java-21-openjdk-devel
-  ```
-
-- Verify the installation:
-
-  ```bash
-  java -version
-  ```
-
-  You should see `openjdk version "21"` or similar.
-
-#### 2. **Java 11 or Higher** (Required for Tessera)
-
-- Tessera can use Java 11 or higher. If you already installed OpenJDK 21 for Besu, you're covered.
-
-#### 3. **Node.js and npm** (Optional for `makewallet.js`)
-
-- Install Node.js using `nvm` (Node Version Manager):
-
-  1. Download and install `nvm`:
-
-     **Ubuntu and Fedora**:
-     ```bash
-     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-     ```
-
-  2. Follow the instructions displayed in the terminal to enable `nvm`. This typically involves running a command like:
-     ```bash
-     source ~/.bashrc
-     ```
-     or
-     ```bash
-     source ~/.zshrc
-     ```
-
-  3. Install Node.js (version 18 or higher recommended):
-     ```bash
-     nvm install 18
-     ```
-
-  4. Set the default Node.js version:
-     ```bash
-     nvm alias default 18
-     ```
-
-- Verify the installation:
-  ```bash
-  node -v
-  npm -v
-  ```
-
-#### 4. **Unzip Tool**
-
-- Required to extract the provided `.zip` files:
-
-  **Ubuntu**:
-  ```bash
-  sudo apt install -y unzip
-  ```
-  **Fedora**:
-  ```bash
-  sudo dnf install -y unzip
-  ```
-
----
-
-## Installation and Setup
-
-### 1. Unzip the Provided Files
-
-Unzip the following files:
-
-- `tessera-24.4.2.zip` → Extract to a folder, e.g., `/opt/tessera-24.4.2`.
-- `Node.zip` → Extract to your desired working directory, e.g., `/home/user/dakota-node`.
-
-Example command to unzip files:
-```bash
-unzip <file-name>.zip -d <destination-folder>
-```
-
-### 2. Installing Tessera (Prebuilt)
-
-1. Extract the provided `tessera-24.4.2.zip`:
+   **Ubuntu**:
    ```bash
-   unzip tessera-24.4.2.zip -d /opt/tessera-24.4.2
+   sudo apt update && sudo apt install -y openjdk-21-jdk
    ```
-2. Add the Tessera binary directory to your PATH (optional):
+   **Fedora**:
    ```bash
-   export PATH=$PATH:/opt/tessera-24.4.2/bin
+   sudo dnf install -y java-21-openjdk-devel
    ```
-3. Verify Tessera is accessible:
+
+2. **Node.js**:
+   Install using `nvm` (Node Version Manager):
+
    ```bash
-   tessera --version
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+   source ~/.bashrc
+   nvm install 18
+   nvm alias default 18
+   ```
+
+3. **Unzip Tool**:
+
+   **Ubuntu**:
+   ```bash
+   sudo apt install -y unzip
+   ```
+   **Fedora**:
+   ```bash
+   sudo dnf install -y unzip
    ```
 
 ---
 
-## Using the Node Folder
+## Installation Steps
 
-Inside **`Node.zip`**:
+1. **Download and Extract Files**:
+   - Download Besu binaries from [Besu Releases](https://github.com/hyperledger/besu/releases/tag/24.10.0) and extract them to `/opt/besu`:
+     ```bash
+     tar -xvzf besu-24.10.0.tar.gz -C /opt/besu
+     ```
+   - Unzip the provided files:
+     ```bash
+     unzip tessera-24.4.2.zip -d /opt/tessera
+     unzip Node.zip -d /home/user/dakota-node
+     ```
 
-- **`genesis.json`**
-  Defines the blockchain parameters (chain ID, block gas limit, etc.).
-- **`data/`**
-  Contains a set of node keys:
-  - `key` (the private key)
-  - `key.pub` (the public key)
-- **`Tessera/`** (folder)
-  - `node1`, `node1.pub`: Key pair for the Tessera node.
-  - `tessera-config1.json`: Basic Tessera configuration file.
-
-You can use these files to spin up your own local Besu node.
+2. **Verify Installations**:
+   - Besu:
+     ```bash
+     /opt/besu/bin/besu --version
+     ```
+   - Tessera (optional):
+     ```bash
+     /opt/tessera/bin/tessera --version
+     ```
 
 ---
 
-## Running the Network
+## Using `makewallet.js`
 
-### Start Besu
+Use this script to generate wallets for the Dakota Network:
 
-Run the following command to start Besu with the provided configuration:
+1. Navigate to the directory containing `makewallet.js`.
+2. Run the script:
+   ```bash
+   node makewallet.js
+   ```
+3. Save the private key and public address for use with your node.
 
-```bash
-besu --data-path=data      --genesis-file=../genesis.json      --bootnodes=enode://ef2bd01fbaea3b6f255a6811e32e050efa51a93d0dde34593cd0c77d5344ea151f8cce2c1a3aca9baf9a2eb0daaf2abac856ed7d9ca7ad602246e887aa6d3021@100.111.5.6:30303      --p2p-port=30303      --rpc-http-enabled      --rpc-http-api=ETH,NET,QBFT      --host-allowlist="*"      --rpc-http-cors-origins="all"      --rpc-http-port=8545      --p2p-host=100.111.5.7      --sync-min-peers=3
-```
+---
 
-### Start Tessera (Optional for Privacy)
+## Connecting to Dakota Network
 
-```bash
-tessera -configfile /home/user/dakota-node/Tessera/tessera-config1.json
-```
+1. **Run Besu**:
+
+   Use the following command to start your Besu node and connect to the Dakota Network:
+
+   ```bash
+   /opt/besu/bin/besu      --data-path=/home/user/dakota-node/data      --genesis-file=/home/user/dakota-node/genesis.json      --bootnodes=enode://ef2bd01fbaea3b6f255a6811e32e050efa51a93d0dde34593cd0c77d5344ea151f8cce2c1a3aca9baf9a2eb0daaf2abac856ed7d9ca7ad602246e887aa6d3021@100.111.5.6:30303      --p2p-port=30303      --rpc-http-enabled      --rpc-http-api=ETH,NET,QBFT      --host-allowlist="*"      --rpc-http-cors-origins="all"      --rpc-http-port=8545      --p2p-host=100.111.5.7      --sync-min-peers=3
+   ```
+
+2. **(Optional) Run Tessera**:
+
+   If privacy is required, start Tessera with the provided configuration:
+
+   ```bash
+   /opt/tessera/bin/tessera -configfile /home/user/dakota-node/Tessera/tessera-config1.json
+   ```
 
 ---
 
 ## Additional Notes
 
-- Ensure Java is properly installed and accessible.
-- Modify `genesis.json` to customize your blockchain parameters (e.g., chain ID, block rewards).
-- For production, replace the provided keys and configurations with your own secure files.
+- Ensure your firewall allows necessary ports (e.g., `30303` for P2P, `8545` for HTTP-RPC).
+- Replace the provided keys in `Node.zip` for production setups.
+- Customize `genesis.json` if additional parameters are required.
 
 ---
 
@@ -230,8 +136,4 @@ tessera -configfile /home/user/dakota-node/Tessera/tessera-config1.json
 
 - [Hyperledger Besu Documentation](https://besu.hyperledger.org/)
 - [Tessera Documentation](https://docs.consensys.net/tessera/)
-- [Node.js Downloads](https://nodejs.org/)
-
----
-
-Feel free to open an issue or pull request if you have questions or improvements. Enjoy experimenting with your **Dakota Network**!
+- [Dakota Network Support](#) (Add appropriate link)
