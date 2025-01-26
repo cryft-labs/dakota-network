@@ -1,7 +1,7 @@
 
 # Dakota Network
 
-This repository provides everything you need to get started with a local/private Hyperledger Besu network, optionally using Tessera for private transactions. It includes:
+This repository provides everything you need to get connected with the Dakota Network, optionally using Tessera for private transactions. It includes:
 
 - **Tessera 24.4.2** (prebuilt distribution)
 - **Besu 24.10.0** (prebuilt binaries can be downloaded from [Besu Releases](https://github.com/hyperledger/besu/releases/tag/24.10.0))
