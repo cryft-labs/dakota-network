@@ -5,7 +5,7 @@ Smart contracts, tools, and node configuration for the **Dakota Network** — a 
 
 All project-owned contracts are licensed under **Apache 2.0**. This software is part of a patented system — see the [LICENSE](LICENSE) file and <https://cryftlabs.org/licenses> for details.
 
-Utilizing Software Related to Cryft Labs patent(s) or infriging upon our patents will result in legal action. Permission to use is required.
+Utilizing Software Related to Cryft Labs patent(s) or otherwise infriging upon our patent(s) will result in legal action. Permission to use is required.
 ---
 
 ## Repository Structure
