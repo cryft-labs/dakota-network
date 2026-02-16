@@ -1,0 +1,174 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "contract ITransparentUpgradeableProxy",
+        "name": "proxy",
+        "type": "address"
+      }
+    ],
+    "name": "getProxyAdmin",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ITransparentUpgradeableProxy",
+        "name": "proxy",
+        "type": "address"
+      }
+    ],
+    "name": "getProxyGovernanceStatus",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "currentAdmin",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "currentImplementation",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "rootRevoked",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "overlordCount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "guardianCount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "overlordThreshold",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "votingSessionActive",
+        "type": "bool"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "activeProposalId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "activeProposalStartBlock",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "activeProposalExpired",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "voteEpoch",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "voteExpiry",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ITransparentUpgradeableProxy",
+        "name": "proxy",
+        "type": "address"
+      }
+    ],
+    "name": "getProxyGuardians",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ITransparentUpgradeableProxy",
+        "name": "proxy",
+        "type": "address"
+      }
+    ],
+    "name": "getProxyImplementation",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ITransparentUpgradeableProxy",
+        "name": "proxy",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "implementation",
+        "type": "address"
+      }
+    ],
+    "name": "upgrade",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ITransparentUpgradeableProxy",
+        "name": "proxy",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "implementation",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "upgradeAndCall",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]
