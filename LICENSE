@@ -194,7 +194,19 @@
 PATENT NOTICE
 
 Portions of this software implement methods and systems that are the subject of
-one or more patents or patent applications held by Cryft Labs. This Apache 2.0
-License grants a patent license only as set forth in Section 3 above. Use of the
-patented system in production may require a separate patent license from Cryft
-Labs. For licensing inquiries, see https://cryftlabs.org/licenses.
+one or more patents or patent applications. The relevant patent application is:
+
+  U.S. Patent Application Serial No. 18/930,857
+  "Card System Utilizing On-Chain Managed Redeemable Gift Code"
+  Inventor: Chad G. Scully
+  Assignee: Wood Brothers Steel Stamping Company
+
+"Cryft Labs" is a trade name (DBA) of Wood Brothers Steel Stamping Company, the
+patent applicant and assignee identified above. All references to "Cryft Labs"
+in this repository, including in license terms and patent notices, refer to
+Wood Brothers Steel Stamping Company.
+
+This Apache 2.0 License grants a patent license only as set forth in Section 3
+above. Use of the patented system in production may require a separate patent
+license from Cryft Labs (Wood Brothers Steel Stamping Company). For licensing
+inquiries, see https://cryftlabs.org/licenses.
