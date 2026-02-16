@@ -176,12 +176,13 @@ The tool automatically normalizes `0x` prefixes (strips them for matching, prese
 
 ### `Tools/tx_simulator/tx_simulator.py`
 
-Block-paced ETH transfer loop across accounts derived from a BIP-39 mnemonic. Submits one transaction per new block in a round-robin ring (account 0 → 1 → 2 → 0 …). Designed for QBFT/PoA chains — automatically injects the PoA `extraData` middleware for web3.py compatibility.
+Configurable transaction simulator for QBFT/PoA chains. Four independent knobs control traffic shape — **sender selection**, **recipient selection**, **amount distribution**, and **timing/rate** — with defaults that reproduce the original round-robin ring behavior. Automatically injects the PoA `extraData` middleware for web3.py compatibility.
 
 **Features:**
-- **Per-block pacing** — sends exactly one tx per observed new block.
+- **Pluggable distribution modes** — mix and match sender, recipient, amount, and timing strategies independently.
+- **Flexible account sourcing** — BIP-39 mnemonic (with `--indices` or `--num-accounts`), inline private keys, or a key file. Sources are combinable.
 - **Async receipt polling** — never blocks waiting for mining; polls receipts in the background.
-- **Balance-safe** — maintains a configurable reserve in each account; skips a hop if balance is too low.
+- **Balance-safe** — maintains a configurable reserve in each account; skips a tx if balance is too low.
 - **Optional top-ups** — a designated funder account can automatically replenish underfunded accounts.
 - **EIP-1559 aware** — uses type-2 transactions when `baseFeePerGas` is present, falls back to legacy `gasPrice` otherwise.
 
@@ -192,19 +193,55 @@ pip install web3 eth-account
 
 **Usage:**
 ```bash
-# Interactive mnemonic prompt (recommended — avoids shell history)
+# Original 3-account ring (all defaults)
 python3 Tools/tx_simulator/tx_simulator.py \
   --rpc http://100.111.32.1:8545 \
-  --prompt-mnemonic \
-  --indices 0,1,2 \
-  --topup-enabled
+  --prompt-mnemonic
 
-# Non-interactive with mnemonic flag
+# 10 HD accounts, weighted senders, random recipients, Poisson timing
 python3 Tools/tx_simulator/tx_simulator.py \
   --rpc http://100.111.32.1:8545 \
-  --mnemonic "word1 word2 ... word12" \
-  --indices 0,1,2
+  --prompt-mnemonic --num-accounts 10 \
+  --sender-mode weighted --sender-weights 50,20,10,5,5,3,3,2,1,1 \
+  --recipient-mode random-uniform \
+  --amount-mode log-normal --amount-min-eth 0.00001 --amount-max-eth 0.1 \
+  --timing-mode poisson --target-tps 5
+
+# Private keys from file, burst timing, star fan-out
+python3 Tools/tx_simulator/tx_simulator.py \
+  --rpc http://100.111.32.1:8545 \
+  --private-keys-file keys.txt \
+  --recipient-mode star-fan-out \
+  --timing-mode bursts --burst-size 20 --burst-pause 5
 ```
+
+**Distribution modes:**
+
+| Knob | Mode | Description |
+|------|------|-------------|
+| **Sender** | `round-robin` | A0, A1, A2, … rotate each tx *(default)* |
+| | `single` | One account sends all txs (`--single-sender-pos`) |
+| | `weighted` | Probability weights per account (`--sender-weights`) |
+| | `multi-hot` | First K accounts send, rest are recipient-only (`--hot-senders`) |
+| | `random` | Sender picked uniformly at random |
+| **Recipient** | `ring` | A[i] → A[i+1 mod n] *(default)* |
+| | `star-fan-out` | Hub → random other (overrides sender to hub; `--hub-pos`) |
+| | `star-fan-in` | Any non-hub → hub (`--hub-pos`) |
+| | `random-uniform` | Random pair, no self-send |
+| | `random-no-repeat` | Like uniform but no immediate repeat of same pair |
+| | `partitioned` | Only send within same group (`--partition-size`) |
+| | `bursty` | Target a random subset for T seconds, then switch (`--campaign-duration`) |
+| **Amount** | `fixed` | Constant amount every tx *(default)* |
+| | `uniform-random` | Uniform random in [min, max] |
+| | `log-normal` | Many small, occasional large (`--log-sigma`; clamped to [min, max]) |
+| | `step-schedule` | Cycle through amounts on a timer (`--step-amounts`, `--step-duration`) |
+| | `balance-aware` | Half of (balance − reserve), clamped to [min, max] |
+| **Timing** | `per-block` | One tx per new block *(default)* |
+| | `fixed-tps` | Constant transactions per second (`--target-tps`) |
+| | `poisson` | Exponential inter-arrival, average = target TPS |
+| | `bursts` | Send N rapidly, pause, repeat (`--burst-size`, `--burst-pause`) |
+| | `ramp` | Linearly increase TPS (`--ramp-start-tps` → `--ramp-end-tps` over `--ramp-duration`) |
+| | `jittered` | Base interval ± random jitter (`--jitter-base`, `--jitter-range`) |
 
 **All flags:**
 
@@ -214,15 +251,41 @@ python3 Tools/tx_simulator/tx_simulator.py \
 | `--mnemonic` | — | BIP-39 seed phrase (visible in shell history) |
 | `--prompt-mnemonic` | off | Prompt for mnemonic via hidden input |
 | `--indices` | `0,1,2` | Comma-separated HD derivation indices |
-| `--amount-eth` | `0.0001` | ETH transferred per hop |
-| `--reserve-eth` | `0.001` | Minimum ETH reserve kept in each account |
-| `--pace` | `per-block` | Sending pace (`per-block`) |
-| `--poll-interval` | `0.2` | Loop sleep/poll interval in seconds |
+| `--num-accounts` | — | Derive N accounts (indices 0..N-1); overrides `--indices` |
+| `--private-keys` | — | Comma-separated hex private keys (with or without `0x`) |
+| `--private-keys-file` | — | File with one hex private key per line (`#` comments OK) |
+| `--sender-mode` | `round-robin` | Sender selection strategy |
+| `--single-sender-pos` | `0` | Account position for `single` mode |
+| `--sender-weights` | — | Comma-separated weights for `weighted` mode |
+| `--hot-senders` | `1` | Hot sender count for `multi-hot` mode |
+| `--recipient-mode` | `ring` | Recipient selection strategy |
+| `--hub-pos` | `0` | Hub position for `star-fan-out` / `star-fan-in` |
+| `--partition-size` | `2` | Group size for `partitioned` mode |
+| `--campaign-duration` | `30` | Seconds per subset for `bursty` recipient mode |
+| `--campaign-subset` | half | Target subset size for `bursty` mode |
+| `--amount-mode` | `fixed` | Amount distribution strategy |
+| `--amount-eth` | `0.0001` | Fixed ETH per tx |
+| `--amount-min-eth` | `0.00001` | Min ETH for random / log-normal / balance-aware |
+| `--amount-max-eth` | `0.01` | Max ETH for random / log-normal / balance-aware |
+| `--log-sigma` | `1.0` | Sigma for log-normal (higher = heavier tail) |
+| `--step-amounts` | — | Comma-separated ETH amounts for `step-schedule` |
+| `--step-duration` | `60` | Seconds per step for `step-schedule` |
+| `--timing-mode` | `per-block` | Timing / rate strategy |
+| `--target-tps` | `5` | Target TPS for `fixed-tps` / `poisson` |
+| `--burst-size` | `50` | Txs per burst for `bursts` timing |
+| `--burst-pause` | `10` | Pause seconds between bursts |
+| `--ramp-start-tps` | `1` | Starting TPS for `ramp` mode |
+| `--ramp-end-tps` | `50` | Target TPS for `ramp` mode |
+| `--ramp-duration` | `300` | Ramp duration in seconds |
+| `--jitter-base` | `1.0` | Base interval seconds for `jittered` mode |
+| `--jitter-range` | `0.5` | ± jitter range seconds |
+| `--poll-interval` | `0.2` | Loop sleep when idle |
 | `--tip-wei` | `1000` | Priority fee (tip) in wei |
 | `--max-fee-multiplier` | `2` | `maxFee = baseFee × multiplier + tip` |
-| `--topup-enabled` | off | Enable automatic top-ups for underfunded accounts |
-| `--topup-from-index` | `0` | Derivation index used as the funder |
+| `--topup-enabled` | off | Auto-replenish underfunded accounts |
+| `--topup-funder-pos` | `0` | Funder account position |
 | `--topup-target-eth` | `0.01` | Top-up accounts to this ETH balance |
+| `--reserve-eth` | `0.001` | Reserve ETH kept per account |
 | `--max-inflight` | `64` | Max pending txs before pausing sends |
 
 ### `Tools/solc_compiler/compile.py`
