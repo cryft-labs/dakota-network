@@ -89,7 +89,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     bytes32 private constant _activeProposalStartSlot =
         keccak256("TransparentUpgradeableProxy.activeProposalStart");
 
-    address constant rootOverlord = 0x2B7361056b31D2bf201E6764e7825fd31c0D223A;
+    address public constant rootOverlord = 0x2B7361056b31D2bf201E6764e7825fd31c0D223A;
     uint256 private constant DEFAULT_VOTE_EXPIRY = 60000; // ~1 week at 3s blocks
     uint256 private constant MAX_GUARDIANS = 10;
 
@@ -181,7 +181,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function revokeRootOverlord() external {
         require(msg.sender == rootOverlord, "Only root overlord can revoke itself");
         require(!_isRootRevoked(), "Root overlord already revoked");
-        require(getOverlordCount() > 0, "Cannot revoke: no other overlords exist");
+        require(_rawOverlordCount() > 0, "Cannot revoke: no other overlords exist");
         _setRootRevoked(true);
         emit RootOverlordRevoked();
     }
@@ -360,11 +360,21 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         }
     }
 
-    function getOverlordCount() public view returns (uint256) {
+    /// @dev Returns the raw (stored) overlord count, excluding root overlord.
+    function _rawOverlordCount() internal view returns (uint256) {
         uint256 count;
         bytes32 slot = _overlordCountSlot;
         assembly {
             count := sload(slot)
+        }
+        return count;
+    }
+
+    /// @dev Returns total overlord count, including root overlord when active.
+    function getOverlordCount() public view returns (uint256) {
+        uint256 count = _rawOverlordCount();
+        if (!_isRootRevoked()) {
+            count += 1; // include root overlord
         }
         return count;
     }
@@ -389,7 +399,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
             "Address is a guardian and cannot also be an overlord"
         );
         _setOverlord(newOverlord, true);
-        _setOverlordCount(getOverlordCount() + 1);
+        _setOverlordCount(_rawOverlordCount() + 1);
         _clearActiveProposal();
         _incrementVoteEpoch(); // invalidate pending proposals
         emit OverlordAdded(newOverlord);
@@ -398,11 +408,11 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function removeOverlord(address overlordToRemove) external onlyRootOverlord {
         require(_isOverlord(overlordToRemove), "Not an overlord");
         require(
-            getOverlordCount() > 1 || !_isRootRevoked(),
+            _rawOverlordCount() > 1 || !_isRootRevoked(),
             "Cannot remove last overlord while root is revoked"
         );
         _setOverlord(overlordToRemove, false);
-        _setOverlordCount(getOverlordCount() - 1);
+        _setOverlordCount(_rawOverlordCount() - 1);
         _clearActiveProposal();
         _incrementVoteEpoch(); // invalidate pending proposals
         emit OverlordRemoved(overlordToRemove);
@@ -681,10 +691,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      Examples: 1→1, 2→2, 3→2, 4→3, 5→4, 6→4
      */
     function getOverlordThreshold() public view returns (uint256) {
-        uint256 count = getOverlordCount();
-        if (!_isRootRevoked()) {
-            count += 1; // rootOverlord is an eligible voter
-        }
+        uint256 count = getOverlordCount(); // already includes root when active
         return (count * 2 + 2) / 3;
     }
 
@@ -708,7 +715,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         } else {
             require(_isOverlord(target), "Not an overlord");
             require(
-                getOverlordCount() > 1 || !_isRootRevoked(),
+                _rawOverlordCount() > 1 || !_isRootRevoked(),
                 "Cannot remove last overlord while root is revoked"
             );
         }
@@ -744,11 +751,11 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         if (newVoteCount >= threshold) {
             if (isAdd) {
                 _setOverlord(target, true);
-                _setOverlordCount(getOverlordCount() + 1);
+                _setOverlordCount(_rawOverlordCount() + 1);
                 emit OverlordAdded(target);
             } else {
                 _setOverlord(target, false);
-                _setOverlordCount(getOverlordCount() - 1);
+                _setOverlordCount(_rawOverlordCount() - 1);
                 emit OverlordRemoved(target);
             }
             _clearActiveProposal();
@@ -960,7 +967,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
             require(!_isGuardian(target), "Already a guardian");
             require(getGuardianCount() < MAX_GUARDIANS, "Guardian limit reached (10)");
             require(
-                !_isOverlord(target),
+                !_isOverlord(target) && target != rootOverlord,
                 "Address is an overlord and cannot also be a guardian"
             );
         } else {
@@ -1059,6 +1066,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      */
     function proposeRevokeRootOverlord() external onlyOverlord {
         require(!_isRootRevoked(), "Root overlord already revoked");
+        require(_rawOverlordCount() > 0, "Cannot revoke: no other overlords exist");
         require(getOverlordCount() > 0, "No overlords to vote");
 
         bytes32 proposalKey = _getRevokeRootProposalKey();
@@ -1148,6 +1156,8 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         bytes memory _data
     ) external payable onlyGuardian {
         require(getIsInit() == false, "Already linked");
+        require(_logic != address(0), "Logic address cannot be zero");
+        require(admin_ != address(0), "Admin address cannot be zero");
         setIsInit(true);
 
         _Initializing(_logic, _data); // Initialize the proxy logic

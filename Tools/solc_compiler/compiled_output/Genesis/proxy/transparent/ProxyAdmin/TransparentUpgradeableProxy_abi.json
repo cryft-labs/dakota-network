@@ -1011,6 +1011,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "rootOverlord",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "stateMutability": "payable",
     "type": "receive"
   }

@@ -66,7 +66,9 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         VOTE_TALLY_BLOCK_THRESHOLD,
         PERIOD,
         MAX_CONTRACT_BALANCE,
-        BURN_TOKENS
+        BURN_TOKENS,
+        FUND_GAS,
+        BURN_NATIVE_COIN
     }
 
     struct VoteTally {
@@ -84,9 +86,15 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     event ExcessBurned(uint256 amount);
     event WhitelistUpdated(address indexed target, bool added);
     event TokenBurnApproved(address indexed tokenAddress, uint256 amount, bytes32 burnKey);
+    event GasFundApproved(address indexed to, uint256 amount, bytes32 fundKey);
+    event CoinBurnApproved(uint256 amount, bytes32 coinBurnKey);
 
     // Approved token burns: keccak256(tokenAddress, amount) => true
     mapping(bytes32 => bool) public approvedBurns;
+    // Approved gas funds: keccak256(to, amount) => true
+    mapping(bytes32 => bool) public approvedFunds;
+    // Approved native coin burns: keccak256("nativeBurn", amount) => true
+    mapping(bytes32 => bool) public approvedCoinBurns;
 
     address constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
@@ -227,6 +235,12 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             if (voteType == VoteType.BURN_TOKENS) {
                 approvedBurns[bytes32(target)] = true;
             }
+            if (voteType == VoteType.FUND_GAS) {
+                approvedFunds[bytes32(target)] = true;
+            }
+            if (voteType == VoteType.BURN_NATIVE_COIN) {
+                approvedCoinBurns[bytes32(target)] = true;
+            }
 
             // clear votes
             for (uint256 i = 0; i < tally.voters.length; i++) {
@@ -238,18 +252,25 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         emit VoteCast(msg.sender, voteType, target);
     }
 
-    function fundGas(address payable _to, uint256 _amount) public nonReentrant {
-        require(address(this).balance >= _amount, "Insufficient balance");
-        require(whitelist[msg.sender], "Not whitelisted");
+    function voteToFundGas(address _to, uint256 _amount) public onlyVoters {
         require(_to != address(0), "Invalid recipient address");
+        require(_amount > 0, "Amount must be greater than zero");
+        bytes32 fundKey = keccak256(abi.encodePacked(_to, _amount));
+        uint256 target = uint256(fundKey);
+        _castVote(VoteType.FUND_GAS, target);
+        if (approvedFunds[bytes32(target)]) {
+            emit GasFundApproved(_to, _amount, fundKey);
+        }
+    }
 
-        updatePeriod(msg.sender);
+    /// @notice Execute a previously approved gas fund. Callable by anyone.
+    function executeFundGas(address payable _to, uint256 _amount) public nonReentrant {
+        bytes32 fundKey = keccak256(abi.encodePacked(_to, _amount));
+        require(approvedFunds[fundKey], "Fund not approved");
+        approvedFunds[fundKey] = false;
 
-        uint256 totalAmount = addressSpecificCurrentPeriodAmount[msg.sender] +
-            _amount;
-        require(totalAmount <= limit, "exceeds period limit");
-
-        addressSpecificCurrentPeriodAmount[msg.sender] += _amount;
+        require(address(this).balance >= _amount, "Insufficient balance");
+        require(_to != address(0), "Invalid recipient address");
 
         uint256 balanceBefore = address(this).balance;
 
@@ -334,13 +355,26 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         emit TokenBurned(_tokenAddress, _amount);
     }
 
-    function manualBurnExcessBalance() public onlyVoters {
-        if (address(this).balance > maxContractBalance) {
-            uint256 excess = address(this).balance - maxContractBalance;
-            (bool success, ) = payable(DEAD_ADDRESS).call{value: excess}("");
-            require(success, "Burn failed");
-            emit ExcessBurned(excess);
+    function voteToBurnNativeCoin(uint256 _amount) public onlyVoters {
+        require(_amount > 0, "Amount must be greater than zero");
+        bytes32 coinBurnKey = keccak256(abi.encodePacked("nativeBurn", _amount));
+        uint256 target = uint256(coinBurnKey);
+        _castVote(VoteType.BURN_NATIVE_COIN, target);
+        if (approvedCoinBurns[bytes32(target)]) {
+            emit CoinBurnApproved(_amount, coinBurnKey);
         }
+    }
+
+    /// @notice Execute a previously approved native coin burn. Callable by anyone.
+    function executeCoinBurn(uint256 _amount) public nonReentrant {
+        bytes32 coinBurnKey = keccak256(abi.encodePacked("nativeBurn", _amount));
+        require(approvedCoinBurns[coinBurnKey], "Coin burn not approved");
+        approvedCoinBurns[coinBurnKey] = false;
+
+        require(address(this).balance >= _amount, "Insufficient balance");
+        (bool success, ) = payable(DEAD_ADDRESS).call{value: _amount}("");
+        require(success, "Burn failed");
+        emit ExcessBurned(_amount);
     }
 
     receive() external payable {
