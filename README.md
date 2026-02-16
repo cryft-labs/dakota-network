@@ -3,8 +3,9 @@
 
 Smart contracts, tools, and node configuration for the **Dakota Network** — a public QBFT blockchain built on Hyperledger Besu with Tessera privacy.
 
-All project-owned contracts are licensed under **Apache 2.0**. This software is part of a patented system — see the [LICENSE](LICENSE) file and <https://cryft.net/licenses> for details.
+All project-owned contracts are licensed under **Apache 2.0**. This software is part of a patented system — see the [LICENSE](LICENSE) file and <https://cryftlabs.org/licenses> for details.
 
+Utilizing Software Related to Cryft Labs patent(s) or infriging upon our patents will result in legal Action. Permission to use is required.
 ---
 
 ## Repository Structure
