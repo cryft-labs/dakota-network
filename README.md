@@ -1,4 +1,3 @@
-
 # Dakota Network
 
 Smart contracts, tools, and node configuration for the **Dakota Network** — a public QBFT blockchain built on Hyperledger Besu with Tessera privacy.
@@ -15,58 +14,160 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ---
 
-## Repository Structure
+## Prerequisites
 
+### Java
+
+Two JDK versions are required:
+
+| Component | Version | Java |
+|-----------|---------|------|
+| **Besu** | 24.10.0 | Java 21 |
+| **Tessera** | 24.4.2 | Java 17 |
+
+---
+
+## Installation (Ubuntu)
+
+The following script installs both Besu and Tessera with pinned Java versions and adds them to your PATH via global wrappers:
+
+```bash
+(
+  set -e
+
+  # --- Packages (Besu uses Java 21; Tessera pinned to Java 17) ---
+  sudo apt update
+  sudo apt install -y curl unzip tar openjdk-21-jdk openjdk-17-jre-headless
+
+  # --- Install Besu 24.10.0 (official dist zip) ---
+  cd /tmp
+  curl -fL -o besu-24.10.0.zip \
+    https://github.com/hyperledger/besu/releases/download/24.10.0/besu-24.10.0.zip
+
+  sudo rm -rf /opt/besu-24.10.0
+  sudo unzip -q -o besu-24.10.0.zip -d /opt
+  sudo chmod +x /opt/besu-24.10.0/bin/besu /opt/besu-24.10.0/bin/evmtool
+
+  # --- Install Tessera 24.4.2 (dist tar) ---
+  cd /tmp
+  curl -fL -o tessera-dist-24.4.2.tar \
+    https://repo1.maven.org/maven2/net/consensys/quorum/tessera/tessera-dist/24.4.2/tessera-dist-24.4.2.tar
+
+  sudo rm -rf /opt/tessera-24.4.2
+  sudo mkdir -p /opt/tessera-24.4.2
+  sudo tar -xf tessera-dist-24.4.2.tar -C /opt/tessera-24.4.2
+
+  # Find the actual tessera launcher (handles nested directory in the tar)
+  TESS_BIN="$(sudo find /opt/tessera-24.4.2 -type f -path '*/bin/tessera' -print | head -n 1)"
+  if [ -z "$TESS_BIN" ]; then
+    echo "ERROR: Could not locate tessera under /opt/tessera-24.4.2"
+    exit 1
+  fi
+
+  # --- Global wrappers (pin JAVA_HOME per tool) ---
+  sudo tee /usr/local/bin/besu >/dev/null <<'EOF'
+#!/usr/bin/env bash
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+exec /opt/besu-24.10.0/bin/besu "$@"
+EOF
+
+  sudo tee /usr/local/bin/tessera >/dev/null <<EOF
+#!/usr/bin/env bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+exec "$TESS_BIN" "\$@"
+EOF
+
+  sudo chmod +x /usr/local/bin/besu /usr/local/bin/tessera
+
+  # --- Verify ---
+  hash -r
+  command -v besu
+  besu --version
+  command -v tessera
+  tessera version
+)
 ```
-dakota-network/
-├── LICENSE                            # Apache 2.0 + patent notice
-├── Contracts/
-│   ├── Code Management/
-│   │   ├── CodeManager2.sol          # Permissionless unique ID registry (fee-based)
-│   │   ├── ComboStorage.sol          # Redemption verification service
-│   │   └── interfaces/
-│   │       ├── ICodeManager.sol
-│   │       ├── IComboStorage.sol
-│   │       └── IRedeemable.sol
-│   ├── Genesis/
-│   │   ├── besuGenesis.json          # Besu genesis file with contract allocations
-│   │   ├── GasManager.sol            # Gas beneficiary — voter-governed funding & burns
-│   │   ├── validatorContracts/
-│   │   │   ├── ValidatorSmartContractAllowList.sol  # QBFT validator governance
-│   │   │   └── ValidatorSmartContractInterface.sol  # Shared interface
-│   │   ├── proxy/                    # OpenZeppelin transparent proxy (MIT)
-│   │   ├── interfaces/               # OpenZeppelin proxy interfaces (MIT)
-│   │   └── utils/                    # OpenZeppelin utilities (MIT)
-│   └── Tokens/
-│       ├── GreetingCards.sol          # ERC-721 greeting card NFT (CryftGreetingCards)
-│       └── interfaces/
-│           ├── ICodeManager.sol
-│           ├── IComboStorage.sol
-│           └── IRedeemable.sol
-├── Tools/
-│   ├── bytecode_replacer/
-│   │   ├── replace_bytecode.py        # Bulk bytecode replacer for genesis files
-│   │   ├── old.txt                    # Old bytecode to find (paste here)
-│   │   └── new.txt                    # New bytecode to replace with (paste here)
-│   ├── keywizard/
-│   │   └── dakota_keywizard.py       # EOA, Besu node key, and Tessera key generator
-│   ├── tx_simulator/
-│   │   └── tx_simulator.py            # Block-paced ETH transfer loop (QBFT/PoA)
-│   └── solc_compiler/
-│       ├── compile.py                # Local Solidity compiler (py-solc-x)
-│       └── compiled_output/          # ABI and artifact output
-├── Node/                             # Sample node directory structure
-│   ├── genesisPalceholder.json       # Placeholder genesis (production file too large for repo)
-│   └── Node/
-│       ├── data/
-│       │   ├── key                   # Besu node private key (P2P / validator signing)
-│       │   └── key.pub               # Besu node public key
-│       └── Tessera/
-│           ├── tessera-config1.json   # Tessera privacy manager configuration
-│           ├── node1.key             # Tessera private key
-│           └── node1.pub             # Tessera public key
-└── README.md
+
+### Copy Node Configuration
+
+The `Node/` directory contains a sample directory structure with node keys and Tessera config:
+
+```bash
+cp -r Node/Node /home/user/dakota-node
 ```
+
+### Node.js (optional)
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+source ~/.bashrc
+nvm install 18
+nvm alias default 18
+```
+
+---
+
+## Running a Node
+
+### Start Besu
+
+After installation, `besu` is on your PATH with Java 21 pinned automatically:
+
+```bash
+besu \
+  --data-path=/home/user/dakota-node/data \
+  --genesis-file=/home/user/dakota-node/genesis.json \
+  --bootnodes=enode://<BOOTNODE_ENODE>@<BOOTNODE_IP>:30303 \
+  --p2p-port=30303 \
+  --rpc-http-enabled \
+  --rpc-http-api=ETH,NET,QBFT \
+  --host-allowlist="*" \
+  --rpc-http-cors-origins="all" \
+  --rpc-http-port=8545 \
+  --p2p-host=<YOUR_IP> \
+  --sync-min-peers=3
+```
+
+### Start Tessera (optional)
+
+`tessera` is also on your PATH with Java 17 pinned automatically:
+
+```bash
+tessera -configfile /home/user/dakota-node/Tessera/tessera-config1.json
+```
+
+---
+
+## Security Notes
+
+- Replace the default keys in `Node/` before any production deployment.
+- Ensure your firewall allows port `30303` (P2P) and `8545` (HTTP-RPC).
+- Restrict `--rpc-http-api`, `--host-allowlist`, and `--rpc-http-cors-origins` for production.
+- Customize `genesis.json` if additional parameters are required.
+
+---
+
+## Documentation & References
+
+### Besu
+
+Besu documentation has moved to a self-hosted versioned model. The relevant version for Dakota Network is **24.8.0**.
+
+- **Versioned documentation index:** <https://lf-hyperledger.atlassian.net/wiki/spaces/BESU/pages/22156555/Versioned+documentation>
+- **Self-host the docs:** Clone the Besu docs repo at tag `24.8.0` and build locally:
+  ```bash
+  git clone --branch 24.8.0 https://github.com/hyperledger/besu-docs.git
+  cd besu-docs
+  # Follow the repo's README to serve the docs locally
+  ```
+- **Besu GitHub releases:** <https://github.com/hyperledger/besu/releases/tag/24.10.0>
+
+### Tessera
+
+Tessera documentation is still available online:
+
+- **Tessera docs:** <https://docs.tessera.consensys.io/>
+- **Tessera GitHub:** <https://github.com/ConsenSys/tessera>
 
 ---
 
@@ -304,160 +405,58 @@ Options:
 
 ---
 
-## Prerequisites
+## Repository Structure
 
-### Java
-
-Two JDK versions are required:
-
-| Component | Version | Java |
-|-----------|---------|------|
-| **Besu** | 24.10.0 | Java 21 |
-| **Tessera** | 24.4.2 | Java 17 |
-
----
-
-## Installation (Ubuntu)
-
-The following script installs both Besu and Tessera with pinned Java versions and adds them to your PATH via global wrappers:
-
-```bash
-(
-  set -e
-
-  # --- Packages (Besu uses Java 21; Tessera pinned to Java 17) ---
-  sudo apt update
-  sudo apt install -y curl unzip tar openjdk-21-jdk openjdk-17-jre-headless
-
-  # --- Install Besu 24.10.0 (official dist zip) ---
-  cd /tmp
-  curl -fL -o besu-24.10.0.zip \
-    https://github.com/hyperledger/besu/releases/download/24.10.0/besu-24.10.0.zip
-
-  sudo rm -rf /opt/besu-24.10.0
-  sudo unzip -q -o besu-24.10.0.zip -d /opt
-  sudo chmod +x /opt/besu-24.10.0/bin/besu /opt/besu-24.10.0/bin/evmtool
-
-  # --- Install Tessera 24.4.2 (dist tar) ---
-  cd /tmp
-  curl -fL -o tessera-dist-24.4.2.tar \
-    https://repo1.maven.org/maven2/net/consensys/quorum/tessera/tessera-dist/24.4.2/tessera-dist-24.4.2.tar
-
-  sudo rm -rf /opt/tessera-24.4.2
-  sudo mkdir -p /opt/tessera-24.4.2
-  sudo tar -xf tessera-dist-24.4.2.tar -C /opt/tessera-24.4.2
-
-  # Find the actual tessera launcher (handles nested directory in the tar)
-  TESS_BIN="$(sudo find /opt/tessera-24.4.2 -type f -path '*/bin/tessera' -print | head -n 1)"
-  if [ -z "$TESS_BIN" ]; then
-    echo "ERROR: Could not locate tessera under /opt/tessera-24.4.2"
-    exit 1
-  fi
-
-  # --- Global wrappers (pin JAVA_HOME per tool) ---
-  sudo tee /usr/local/bin/besu >/dev/null <<'EOF'
-#!/usr/bin/env bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-exec /opt/besu-24.10.0/bin/besu "$@"
-EOF
-
-  sudo tee /usr/local/bin/tessera >/dev/null <<EOF
-#!/usr/bin/env bash
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-exec "$TESS_BIN" "\$@"
-EOF
-
-  sudo chmod +x /usr/local/bin/besu /usr/local/bin/tessera
-
-  # --- Verify ---
-  hash -r
-  command -v besu
-  besu --version
-  command -v tessera
-  tessera version
-)
 ```
-
-### Copy Node Configuration
-
-The `Node/` directory contains a sample directory structure with node keys and Tessera config:
-
-```bash
-cp -r Node/Node /home/user/dakota-node
+dakota-network/
+├── LICENSE                            # Apache 2.0 + patent notice
+├── Contracts/
+│   ├── Code Management/
+│   │   ├── CodeManager2.sol          # Permissionless unique ID registry (fee-based)
+│   │   ├── ComboStorage.sol          # Redemption verification service
+│   │   └── interfaces/
+│   │       ├── ICodeManager.sol
+│   │       ├── IComboStorage.sol
+│   │       └── IRedeemable.sol
+│   ├── Genesis/
+│   │   ├── besuGenesis.json          # Besu genesis file with contract allocations
+│   │   ├── GasManager.sol            # Gas beneficiary — voter-governed funding & burns
+│   │   ├── validatorContracts/
+│   │   │   ├── ValidatorSmartContractAllowList.sol  # QBFT validator governance
+│   │   │   └── ValidatorSmartContractInterface.sol  # Shared interface
+│   │   ├── proxy/                    # OpenZeppelin transparent proxy (MIT)
+│   │   ├── interfaces/               # OpenZeppelin proxy interfaces (MIT)
+│   │   └── utils/                    # OpenZeppelin utilities (MIT)
+│   └── Tokens/
+│       ├── GreetingCards.sol          # ERC-721 greeting card NFT (CryftGreetingCards)
+│       └── interfaces/
+│           ├── ICodeManager.sol
+│           ├── IComboStorage.sol
+│           └── IRedeemable.sol
+├── Tools/
+│   ├── bytecode_replacer/
+│   │   ├── replace_bytecode.py        # Bulk bytecode replacer for genesis files
+│   │   ├── old.txt                    # Old bytecode to find (paste here)
+│   │   └── new.txt                    # New bytecode to replace with (paste here)
+│   ├── keywizard/
+│   │   └── dakota_keywizard.py       # EOA, Besu node key, and Tessera key generator
+│   ├── tx_simulator/
+│   │   └── tx_simulator.py            # Block-paced ETH transfer loop (QBFT/PoA)
+│   └── solc_compiler/
+│       ├── compile.py                # Local Solidity compiler (py-solc-x)
+│       └── compiled_output/          # ABI and artifact output
+├── Node/                             # Sample node directory structure
+│   ├── genesisPalceholder.json       # Placeholder genesis (production file too large for repo)
+│   └── Node/
+│       ├── data/
+│       │   ├── key                   # Besu node private key (P2P / validator signing)
+│       │   └── key.pub               # Besu node public key
+│       └── Tessera/
+│           ├── tessera-config1.json   # Tessera privacy manager configuration
+│           ├── node1.key             # Tessera private key
+│           └── node1.pub             # Tessera public key
+└── README.md
 ```
-
-### Node.js (optional)
-
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-source ~/.bashrc
-nvm install 18
-nvm alias default 18
-```
-
----
-
-## Running a Node
-
-### Start Besu
-
-After installation, `besu` is on your PATH with Java 21 pinned automatically:
-
-```bash
-besu \
-  --data-path=/home/user/dakota-node/data \
-  --genesis-file=/home/user/dakota-node/genesis.json \
-  --bootnodes=enode://<BOOTNODE_ENODE>@<BOOTNODE_IP>:30303 \
-  --p2p-port=30303 \
-  --rpc-http-enabled \
-  --rpc-http-api=ETH,NET,QBFT \
-  --host-allowlist="*" \
-  --rpc-http-cors-origins="all" \
-  --rpc-http-port=8545 \
-  --p2p-host=<YOUR_IP> \
-  --sync-min-peers=3
-```
-
-### Start Tessera (optional)
-
-`tessera` is also on your PATH with Java 17 pinned automatically:
-
-```bash
-tessera -configfile /home/user/dakota-node/Tessera/tessera-config1.json
-```
-
----
-
-## Security Notes
-
-- Replace the default keys in `Node/` before any production deployment.
-- Ensure your firewall allows port `30303` (P2P) and `8545` (HTTP-RPC).
-- Restrict `--rpc-http-api`, `--host-allowlist`, and `--rpc-http-cors-origins` for production.
-- Customize `genesis.json` if additional parameters are required.
-
----
-
-## Documentation & References
-
-### Besu
-
-Besu documentation has moved to a self-hosted versioned model. The relevant version for Dakota Network is **24.8.0**.
-
-- **Versioned documentation index:** <https://lf-hyperledger.atlassian.net/wiki/spaces/BESU/pages/22156555/Versioned+documentation>
-- **Self-host the docs:** Clone the Besu docs repo at tag `24.8.0` and build locally:
-  ```bash
-  git clone --branch 24.8.0 https://github.com/hyperledger/besu-docs.git
-  cd besu-docs
-  # Follow the repo's README to serve the docs locally
-  ```
-- **Besu GitHub releases:** <https://github.com/hyperledger/besu/releases/tag/24.10.0>
-
-### Tessera
-
-Tessera documentation is still available online:
-
-- **Tessera docs:** <https://docs.tessera.consensys.io/>
-- **Tessera GitHub:** <https://github.com/ConsenSys/tessera>
 
 ---
 
