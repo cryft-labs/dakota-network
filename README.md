@@ -50,6 +50,8 @@ dakota-network/
 │   │   └── new.txt                    # New bytecode to replace with (paste here)
 │   ├── keywizard/
 │   │   └── dakota_keywizard.py       # EOA, Besu node key, and Tessera key generator
+│   ├── tx_simulator/
+│   │   └── tx_simulator.py            # Block-paced ETH transfer loop (QBFT/PoA)
 │   └── solc_compiler/
 │       ├── compile.py                # Local Solidity compiler (py-solc-x)
 │       └── compiled_output/          # ABI and artifact output
@@ -171,6 +173,57 @@ python3 Tools/bytecode_replacer/replace_bytecode.py Contracts/Genesis/besuGenesi
 | `--no-backup` | Skip creating a `.bak` backup before replacing |
 
 The tool automatically normalizes `0x` prefixes (strips them for matching, preserves them in the output), creates a backup by default, and verifies the replacement count after writing.
+
+### `Tools/tx_simulator/tx_simulator.py`
+
+Block-paced ETH transfer loop across accounts derived from a BIP-39 mnemonic. Submits one transaction per new block in a round-robin ring (account 0 → 1 → 2 → 0 …). Designed for QBFT/PoA chains — automatically injects the PoA `extraData` middleware for web3.py compatibility.
+
+**Features:**
+- **Per-block pacing** — sends exactly one tx per observed new block.
+- **Async receipt polling** — never blocks waiting for mining; polls receipts in the background.
+- **Balance-safe** — maintains a configurable reserve in each account; skips a hop if balance is too low.
+- **Optional top-ups** — a designated funder account can automatically replenish underfunded accounts.
+- **EIP-1559 aware** — uses type-2 transactions when `baseFeePerGas` is present, falls back to legacy `gasPrice` otherwise.
+
+**Prerequisites:**
+```bash
+pip install web3 eth-account
+```
+
+**Usage:**
+```bash
+# Interactive mnemonic prompt (recommended — avoids shell history)
+python3 Tools/tx_simulator/tx_simulator.py \
+  --rpc http://100.111.32.1:8545 \
+  --prompt-mnemonic \
+  --indices 0,1,2 \
+  --topup-enabled
+
+# Non-interactive with mnemonic flag
+python3 Tools/tx_simulator/tx_simulator.py \
+  --rpc http://100.111.32.1:8545 \
+  --mnemonic "word1 word2 ... word12" \
+  --indices 0,1,2
+```
+
+**All flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--rpc` | *(required)* | RPC endpoint URL |
+| `--mnemonic` | — | BIP-39 seed phrase (visible in shell history) |
+| `--prompt-mnemonic` | off | Prompt for mnemonic via hidden input |
+| `--indices` | `0,1,2` | Comma-separated HD derivation indices |
+| `--amount-eth` | `0.0001` | ETH transferred per hop |
+| `--reserve-eth` | `0.001` | Minimum ETH reserve kept in each account |
+| `--pace` | `per-block` | Sending pace (`per-block`) |
+| `--poll-interval` | `0.2` | Loop sleep/poll interval in seconds |
+| `--tip-wei` | `1000` | Priority fee (tip) in wei |
+| `--max-fee-multiplier` | `2` | `maxFee = baseFee × multiplier + tip` |
+| `--topup-enabled` | off | Enable automatic top-ups for underfunded accounts |
+| `--topup-from-index` | `0` | Derivation index used as the funder |
+| `--topup-target-eth` | `0.01` | Top-up accounts to this ETH balance |
+| `--max-inflight` | `64` | Max pending txs before pausing sends |
 
 ### `Tools/solc_compiler/compile.py`
 
