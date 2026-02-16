@@ -48,7 +48,16 @@ dakota-network/
 │   └── solc_compiler/
 │       ├── compile.py                # Local Solidity compiler (py-solc-x)
 │       └── compiled_output/          # ABI and artifact output
-├── Node.zip                          # Pre-configured node files (genesis, keys, Tessera config)
+├── Node/                             # Sample node directory structure
+│   ├── genesisPalceholder.json       # Placeholder genesis (production file too large for repo)
+│   └── Node/
+│       ├── data/
+│       │   ├── key                   # Besu node private key (P2P / validator signing)
+│       │   └── key.pub               # Besu node public key
+│       └── Tessera/
+│           ├── tessera-config1.json   # Tessera privacy manager configuration
+│           ├── node1.key             # Tessera private key
+│           └── node1.pub             # Tessera public key
 └── README.md
 ```
 
@@ -224,12 +233,12 @@ EOF
 )
 ```
 
-### Extract Node Configuration
+### Copy Node Configuration
 
-`Node.zip` contains an example directory structure with genesis, node keys, and Tessera config:
+The `Node/` directory contains a sample directory structure with node keys and Tessera config:
 
 ```bash
-unzip Node.zip -d /home/user/dakota-node
+cp -r Node/Node /home/user/dakota-node
 ```
 
 ### Node.js (optional)
@@ -276,7 +285,7 @@ tessera -configfile /home/user/dakota-node/Tessera/tessera-config1.json
 
 ## Security Notes
 
-- Replace the default keys in `Node.zip` before any production deployment.
+- Replace the default keys in `Node/` before any production deployment.
 - Ensure your firewall allows port `30303` (P2P) and `8545` (HTTP-RPC).
 - Restrict `--rpc-http-api`, `--host-allowlist`, and `--rpc-http-cors-origins` for production.
 - Customize `genesis.json` if additional parameters are required.
