@@ -19,6 +19,7 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ```
 dakota-network/
+├── LICENSE                            # Apache 2.0 + patent notice
 ├── Contracts/
 │   ├── Code Management/
 │   │   ├── CodeManager2.sol          # Permissionless unique ID registry (fee-based)
@@ -43,6 +44,10 @@ dakota-network/
 │           ├── IComboStorage.sol
 │           └── IRedeemable.sol
 ├── Tools/
+│   ├── bytecode_replacer/
+│   │   ├── replace_bytecode.py        # Bulk bytecode replacer for genesis files
+│   │   ├── old.txt                    # Old bytecode to find (paste here)
+│   │   └── new.txt                    # New bytecode to replace with (paste here)
 │   ├── keywizard/
 │   │   └── dakota_keywizard.py       # EOA, Besu node key, and Tessera key generator
 │   └── solc_compiler/
@@ -142,6 +147,30 @@ python3 Tools/keywizard/dakota_keywizard.py \
 | `--name-prefix-besu` | `besu-node-` | Folder prefix for Besu node keys |
 | `--name-prefix-tessera` | `tessera-` | Folder prefix for Tessera keys |
 | `--scp` | off | Enable SCP distribution step |
+
+### `Tools/bytecode_replacer/replace_bytecode.py`
+
+Bulk bytecode replacer for genesis files. Finds all occurrences of one runtime bytecode string and replaces it with another — designed for large genesis files (hundreds of MB) with tens of thousands of identical pre-deployed contract entries.
+
+**Workflow:**
+1. Paste the **old** runtime bytecode (hex, with or without `0x`) into `old.txt`
+2. Paste the **new** runtime bytecode into `new.txt`
+3. Run against the target file:
+
+```bash
+python3 Tools/bytecode_replacer/replace_bytecode.py Contracts/Genesis/besuGenesis.json
+```
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `--old-file <path>` | Path to old bytecode file (default: `old.txt` in same directory) |
+| `--new-file <path>` | Path to new bytecode file (default: `new.txt` in same directory) |
+| `--dry-run` | Count matches without modifying the file |
+| `--no-backup` | Skip creating a `.bak` backup before replacing |
+
+The tool automatically normalizes `0x` prefixes (strips them for matching, preserves them in the output), creates a backup by default, and verifies the replacement count after writing.
 
 ### `Tools/solc_compiler/compile.py`
 
