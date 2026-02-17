@@ -45,12 +45,18 @@ contract ComboStorage is IComboStorage {
         bool exists;
     }
 
+    /// @dev Maximum number of hash/uniqueId entries allowed per PIN slot.
+    uint256 public constant MAX_PER_PIN = 32;
+
     mapping(address => bool) public isWhitelisted;
 
     /// @dev PIN → codeHash → redemption details. The PIN acts as a bucket
     ///      index for efficient O(1) lookup. The codeHash is keccak256(giftCode)
     ///      where giftCode = pin + code, computed off-chain.
     mapping(string => mapping(bytes32 => HashDetails)) public pinToHash;
+
+    /// @dev Tracks how many hashes are currently stored under each PIN.
+    mapping(string => uint256) public pinSlotCount;
 
     // Redemption records: ComboStorage records verified redemptions in its own state.
     // Gift contracts read these to safely finalize on their side.
@@ -112,6 +118,7 @@ contract ComboStorage is IComboStorage {
         require(codeHash != bytes32(0), "Hash cannot be zero");
         require(bytes(uniqueId).length > 0, "Unique ID cannot be empty");
         require(!pinToHash[pin][codeHash].exists, "Hash already stored");
+        require(pinSlotCount[pin] < MAX_PER_PIN, "PIN slot full (max 32)");
 
         // Fetch and validate unique ID details from CodeManager.
         // getUniqueIdDetails reverts if the uniqueId is invalid.
@@ -120,6 +127,7 @@ contract ComboStorage is IComboStorage {
 
         // Store PIN → hash → uniqueId
         pinToHash[pin][codeHash] = HashDetails(uniqueId, true);
+        pinSlotCount[pin]++;
 
         emit DataStoredStatus(
             uniqueId,
@@ -129,6 +137,65 @@ contract ComboStorage is IComboStorage {
             counter,
             true
         );
+    }
+
+    /// @notice Store multiple pre-computed hashes in one transaction.
+    ///         Codes that cannot be stored (PIN slot full, duplicate hash,
+    ///         invalid uniqueId, etc.) are skipped with a status=false event.
+    ///         The transaction always succeeds — partial storage is allowed.
+    /// @return stored Per-index boolean indicating which entries were stored.
+    function storeDataBatch(
+        string[] calldata uniqueIds,
+        string[] calldata pins,
+        bytes32[] calldata codeHashes
+    ) external onlyWhitelisted returns (bool[] memory stored) {
+        uint256 len = uniqueIds.length;
+        require(
+            len == pins.length && len == codeHashes.length,
+            "Array length mismatch"
+        );
+
+        stored = new bool[](len);
+
+        for (uint256 i = 0; i < len; ) {
+            // Local validation — skip on failure
+            if (
+                bytes(pins[i]).length == 0 ||
+                codeHashes[i] == bytes32(0) ||
+                bytes(uniqueIds[i]).length == 0 ||
+                pinToHash[pins[i]][codeHashes[i]].exists ||
+                pinSlotCount[pins[i]] >= MAX_PER_PIN
+            ) {
+                emit DataStoredStatus(
+                    uniqueIds[i], codeHashes[i],
+                    address(0), "", 0, false
+                );
+                unchecked { ++i; }
+                continue;
+            }
+
+            // External validation via CodeManager (try/catch so one bad
+            // uniqueId doesn't revert the entire batch).
+            try codeManager.getUniqueIdDetails(uniqueIds[i])
+                returns (address giftContract, string memory chainId, uint256 counter)
+            {
+                pinToHash[pins[i]][codeHashes[i]] = HashDetails(uniqueIds[i], true);
+                pinSlotCount[pins[i]]++;
+                stored[i] = true;
+
+                emit DataStoredStatus(
+                    uniqueIds[i], codeHashes[i],
+                    giftContract, chainId, counter, true
+                );
+            } catch {
+                emit DataStoredStatus(
+                    uniqueIds[i], codeHashes[i],
+                    address(0), "", 0, false
+                );
+            }
+
+            unchecked { ++i; }
+        }
     }
 
     /// @notice Redeem a code by submitting its PIN and hash.
@@ -159,8 +226,9 @@ contract ComboStorage is IComboStorage {
             "The provided uniqueId has already been redeemed."
         );
 
-        // Clear stored data
+        // Clear stored data and free the PIN slot
         delete pinToHash[pin][codeHash];
+        pinSlotCount[pin]--;
 
         // Record the verified redemption
         isRedemptionVerified[redeemedUniqueId] = true;
