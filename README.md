@@ -96,15 +96,6 @@ The `Node/` directory contains a sample directory structure with node keys and T
 cp -r Node/Node /home/user/dakota-node
 ```
 
-### Node.js (optional)
-
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-source ~/.bashrc
-nvm install 18
-nvm alias default 18
-```
-
 ---
 
 ## Running a Node
