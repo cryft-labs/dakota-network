@@ -464,10 +464,11 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         uint256 totalLength = validators.length;
 
         for (uint256 i = 0; i < otherValidatorContracts.length; i++) {
-            ValidatorSmartContractInterface otherContract = ValidatorSmartContractInterface(
+            try ValidatorSmartContractInterface(
                     otherValidatorContracts[i]
-                );
-            totalLength += otherContract.getValidators().length;
+                ).getValidators() returns (address[] memory ext) {
+                totalLength += ext.length;
+            } catch {}
         }
 
         address[] memory allValidators = new address[](totalLength);
@@ -480,15 +481,14 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         }
 
         for (uint256 i = 0; i < otherValidatorContracts.length; i++) {
-            ValidatorSmartContractInterface otherContract = ValidatorSmartContractInterface(
+            try ValidatorSmartContractInterface(
                     otherValidatorContracts[i]
-                );
-            address[] memory externalValidators = otherContract.getValidators();
-
-            for (uint256 j = 0; j < externalValidators.length; j++) {
-                allValidators[counter] = externalValidators[j];
-                counter++;
-            }
+                ).getValidators() returns (address[] memory externalValidators) {
+                for (uint256 j = 0; j < externalValidators.length; j++) {
+                    allValidators[counter] = externalValidators[j];
+                    counter++;
+                }
+            } catch {}
         }
 
         return allValidators;
@@ -498,10 +498,11 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         uint256 totalVoterCount = votersArray.length;
 
         for (uint256 i = 0; i < otherVotersArray.length; i++) {
-            ValidatorSmartContractInterface otherContract = ValidatorSmartContractInterface(
+            try ValidatorSmartContractInterface(
                     otherVotersArray[i]
-                );
-            totalVoterCount += otherContract.getAllVoters().length;
+                ).getAllVoters() returns (address[] memory ext) {
+                totalVoterCount += ext.length;
+            } catch {}
         }
 
         address[] memory allVoters = new address[](totalVoterCount);
@@ -513,14 +514,14 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         }
 
         for (uint256 i = 0; i < otherVotersArray.length; i++) {
-            ValidatorSmartContractInterface otherContract = ValidatorSmartContractInterface(
+            try ValidatorSmartContractInterface(
                     otherVotersArray[i]
-                );
-            address[] memory externalVoters = otherContract.getAllVoters();
-            for (uint256 j = 0; j < externalVoters.length; j++) {
-                allVoters[counter] = externalVoters[j];
-                counter++;
-            }
+                ).getAllVoters() returns (address[] memory externalVoters) {
+                for (uint256 j = 0; j < externalVoters.length; j++) {
+                    allVoters[counter] = externalVoters[j];
+                    counter++;
+                }
+            } catch {}
         }
 
         return allVoters;

@@ -35,6 +35,44 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "added",
+        "type": "bool"
+      }
+    ],
+    "name": "OtherValidatorContractUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "added",
+        "type": "bool"
+      }
+    ],
+    "name": "OtherVoterContractUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": false,
         "internalType": "enum ValidatorSmartContractAllowList.VoteType",
         "name": "voteType",
@@ -105,6 +143,25 @@
       }
     ],
     "name": "VoteTallyReset",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "added",
+        "type": "bool"
+      }
+    ],
+    "name": "VoterUpdated",
     "type": "event"
   },
   {
@@ -193,19 +250,6 @@
         "internalType": "address[]",
         "name": "votedAddresses",
         "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "guardian",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",

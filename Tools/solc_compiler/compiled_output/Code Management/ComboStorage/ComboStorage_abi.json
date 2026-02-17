@@ -10,9 +10,9 @@
       },
       {
         "indexed": false,
-        "internalType": "string",
-        "name": "chosenPin",
-        "type": "string"
+        "internalType": "bytes32",
+        "name": "codeHash",
+        "type": "bytes32"
       },
       {
         "indexed": false,
@@ -80,41 +80,31 @@
     "type": "event"
   },
   {
-    "inputs": [],
-    "name": "getCodeManagerAddress",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
+    "anonymous": false,
     "inputs": [
       {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      }
-    ],
-    "name": "getDetailsFromCodeManager",
-    "outputs": [
-      {
+        "indexed": true,
         "internalType": "address",
-        "name": "giftContract",
+        "name": "account",
         "type": "address"
       },
       {
-        "internalType": "string",
-        "name": "chainId",
-        "type": "string"
-      },
+        "indexed": false,
+        "internalType": "bool",
+        "name": "status",
+        "type": "bool"
+      }
+    ],
+    "name": "WhitelistUpdated",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_PER_PIN",
+    "outputs": [
       {
         "internalType": "uint256",
-        "name": "counter",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -124,41 +114,24 @@
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
       }
     ],
-    "name": "getPinForUniqueId",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "uniqueIdReturned",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "pin",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
+    "name": "addToWhitelist",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "name": "hashComboUsed",
+    "inputs": [],
+    "name": "codeManager",
     "outputs": [
       {
-        "internalType": "bool",
+        "internalType": "contract ICodeManager",
         "name": "",
-        "type": "bool"
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -184,13 +157,32 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "pinLength",
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "isWhitelisted",
     "outputs": [
       {
-        "internalType": "uint8",
+        "internalType": "bool",
         "name": "",
-        "type": "uint8"
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "overlord",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -202,29 +194,43 @@
         "internalType": "string",
         "name": "",
         "type": "string"
-      },
+      }
+    ],
+    "name": "pinSlotCount",
+    "outputs": [
       {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
       }
     ],
-    "name": "pinToHashSeeds",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "hash",
-        "type": "bytes32"
-      },
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
       {
         "internalType": "string",
-        "name": "seed",
+        "name": "",
         "type": "string"
       },
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "pinToHash",
+    "outputs": [
       {
         "internalType": "string",
         "name": "uniqueId",
         "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "exists",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -234,8 +240,13 @@
     "inputs": [
       {
         "internalType": "string",
-        "name": "giftCode",
+        "name": "pin",
         "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "codeHash",
+        "type": "bytes32"
       }
     ],
     "name": "redeemCode",
@@ -266,11 +277,11 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_codeManagerAddress",
+        "name": "account",
         "type": "address"
       }
     ],
-    "name": "setCodeManagerAddress",
+    "name": "removeFromWhitelist",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -283,95 +294,47 @@
         "type": "string"
       },
       {
-        "internalType": "address",
-        "name": "giftContractAddress",
-        "type": "address"
-      },
-      {
         "internalType": "string",
-        "name": "chainId",
+        "name": "pin",
         "type": "string"
       },
       {
         "internalType": "bytes32",
-        "name": "hash",
+        "name": "codeHash",
         "type": "bytes32"
-      },
-      {
-        "internalType": "string",
-        "name": "salt",
-        "type": "string"
       }
     ],
     "name": "storeData",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "name": "uniqueIdDetailsStorage",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "giftContract",
-        "type": "address"
+        "internalType": "string[]",
+        "name": "uniqueIds",
+        "type": "string[]"
       },
       {
-        "internalType": "string",
-        "name": "chainId",
-        "type": "string"
+        "internalType": "string[]",
+        "name": "pins",
+        "type": "string[]"
       },
       {
-        "internalType": "uint256",
-        "name": "counter",
-        "type": "uint256"
+        "internalType": "bytes32[]",
+        "name": "codeHashes",
+        "type": "bytes32[]"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "name": "uniqueIdToPin",
+    "name": "storeDataBatch",
     "outputs": [
       {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
+        "internalType": "bool[]",
+        "name": "stored",
+        "type": "bool[]"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "_newPinLength",
-        "type": "uint8"
-      }
-    ],
-    "name": "updatePinLength",
-    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   }

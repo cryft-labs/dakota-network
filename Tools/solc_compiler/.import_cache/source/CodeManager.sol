@@ -16,17 +16,17 @@ pragma solidity >=0.8.2 <0.8.20;
   Version 1.0 — Production Code Manager  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
-  │                                                       │
-  │  Minimal permissionless unique ID registry.            │
-  │  Fee-based registration, deterministic IDs via         │
-  │  keccak256(address(this), giftContract, chainId)       │
-  │  + incrementing counter.                               │
-  │                                                       │
-  │  Voter governance derived from                         │
-  │  ValidatorSmartContractAllowList at 0x...1111.         │
-  │                                                       │
-  │  No cross-contract state writes.                       │
-  └───────────────────────────────────────────────────────┘
+  │                                                      │
+  │  Minimal permissionless unique ID registry.          │
+  │  Fee-based registration, deterministic IDs via       │
+  │  keccak256(address(this), giftContract, chainId)     │
+  │  + incrementing counter.                             │
+  │                                                      │
+  │  Voter governance derived from                       │
+  │  ValidatorSmartContractAllowList at 0x...1111.       │
+  │                                                      │
+  │  No cross-contract state writes.                     │
+  └──────────────────────────────────────────────────────┘
 */
 
 import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/utils/StringsUpgradeable.sol";

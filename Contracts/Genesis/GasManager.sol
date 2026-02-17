@@ -57,9 +57,6 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     mapping(VoteType => mapping(uint256 => VoteTally)) private voteTallies;
     mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
 
-    mapping(address => uint256) private addressSpecificCurrentPeriodEnd;
-    mapping(address => uint256) private addressSpecificCurrentPeriodAmount;
-
     enum VoteType {
         ADD_GUARDIAN,
         REMOVE_GUARDIAN,
@@ -206,23 +203,6 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         return token.balanceOf(address(this));
     }
 
-    function updatePeriod(address _address) internal {
-        if (addressSpecificCurrentPeriodEnd[_address] < block.number) {
-            addressSpecificCurrentPeriodEnd[_address] = block.number + period;
-            addressSpecificCurrentPeriodAmount[_address] = 0;
-        }
-    }
-
-    function getFundingDetails(address _address)
-        public
-        view
-        returns (uint256 fundedAmount, uint256 periodEnd)
-    {
-        require(isGuardian[_address], "Not a guardian");
-        fundedAmount = addressSpecificCurrentPeriodAmount[_address];
-        periodEnd = addressSpecificCurrentPeriodEnd[_address];
-    }
-
     // ── Internal Vote Engine ──────────────────────────────
 
     function _castVote(VoteType voteType, uint256 target) internal {
@@ -358,6 +338,13 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     function voteToAddOtherVoterContract(address voterContract) external onlyVoters {
         require(voterContract != address(0), "Voter contract address should not be zero");
+        require(isContract(voterContract), "Provided address does not point to a valid contract");
+        try IVoterContract(voterContract).getAllVoters() {} catch {
+            revert("Contract does not implement required getAllVoters function");
+        }
+        try IVoterContract(voterContract).isVoter(msg.sender) {} catch {
+            revert("Contract does not implement required isVoter function");
+        }
         _castVote(VoteType.ADD_OTHER_VOTER_CONTRACT, uint256(uint160(voterContract)));
     }
 
@@ -465,7 +452,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     /// @notice Execute a previously approved token burn. Only callable by a guardian.
-    function executeTokenBurn(address _tokenAddress, uint256 _amount) public {
+    function executeTokenBurn(address _tokenAddress, uint256 _amount) public nonReentrant {
         require(isGuardian[msg.sender], "Only guardian");
         bytes32 burnKey = keccak256(abi.encodePacked(_tokenAddress, _amount));
         require(approvedBurns[burnKey], "Burn not approved");
@@ -510,6 +497,16 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                 emit ExcessBurned(excess);
             }
         }
+    }
+
+    // ── Utilities ─────────────────────────────────────
+
+    function isContract(address _addr) internal view returns (bool) {
+        uint32 size;
+        assembly {
+            size := extcodesize(_addr)
+        }
+        return (size > 0);
     }
 
     /**

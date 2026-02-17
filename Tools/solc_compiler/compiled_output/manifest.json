@@ -41,33 +41,9 @@
   },
   {
     "source": "Code Management\\ComboStorage.sol",
-    "contract": "StringsUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\ComboStorage\\StringsUpgradeable",
-    "over_limit": false
-  },
-  {
-    "source": "Code Management\\ComboStorage.sol",
-    "contract": "MathUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\ComboStorage\\MathUpgradeable",
-    "over_limit": false
-  },
-  {
-    "source": "Code Management\\ComboStorage.sol",
-    "contract": "SignedMathUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\ComboStorage\\SignedMathUpgradeable",
-    "over_limit": false
-  },
-  {
-    "source": "Code Management\\ComboStorage.sol",
     "contract": "ComboStorage",
-    "runtime_bytes": 9844,
-    "creation_bytes": 9876,
+    "runtime_bytes": 7077,
+    "creation_bytes": 7109,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\ComboStorage\\ComboStorage",
     "over_limit": false
   },
@@ -82,8 +58,8 @@
   {
     "source": "Genesis\\GasManager.sol",
     "contract": "GasManager",
-    "runtime_bytes": 10257,
-    "creation_bytes": 10500,
+    "runtime_bytes": 13666,
+    "creation_bytes": 13909,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\GasManager\\GasManager",
     "over_limit": false
   },
@@ -98,8 +74,8 @@
   {
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "ProxyAdmin",
-    "runtime_bytes": 3070,
-    "creation_bytes": 3102,
+    "runtime_bytes": 3296,
+    "creation_bytes": 3328,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\ProxyAdmin",
     "over_limit": false
   },
@@ -130,8 +106,8 @@
   {
     "source": "Genesis\\validatorContracts\\ValidatorSmartContractAllowList.sol",
     "contract": "ValidatorSmartContractAllowList",
-    "runtime_bytes": 12289,
-    "creation_bytes": 12321,
+    "runtime_bytes": 12495,
+    "creation_bytes": 12527,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\validatorContracts\\ValidatorSmartContractAllowList\\ValidatorSmartContractAllowList",
     "over_limit": false
   },

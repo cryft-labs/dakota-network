@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.9.0) (proxy/transparent/TransparentUpgradeableProxy.sol)
+//
+// Based on OpenZeppelin Contracts v4.9.0 (proxy/transparent/TransparentUpgradeableProxy.sol).
+// Extended by Cryft Labs — overlord/guardian governance with threshold voting.
+// Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
 
 pragma solidity ^0.8.0;
 
@@ -129,7 +132,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     modifier onlyGuardian() {
         require(
             (msg.sender == rootOverlord && !_isRootRevoked()) || _isGuardian(msg.sender),
-            "Only Guardian can call this function"
+            "Only guardian can call this function"
         );
         _;
     }

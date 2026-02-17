@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: MIT
+//
+// Based on OpenZeppelin Contracts v4.9.0 (proxy/transparent/ProxyAdmin.sol).
+// Modified by Cryft Labs — guardian/overlord governance replaces single-owner pattern.
+// Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
 
 pragma solidity ^0.8.0;
 
@@ -41,7 +45,7 @@ contract ProxyAdmin {
         (bool success, bytes memory returndata) = address(proxy).staticcall(
             hex"5c60da1b"
         );
-        require(success);
+        require(success, "ProxyAdmin: implementation() call failed");
         return abi.decode(returndata, (address));
     }
 
@@ -60,7 +64,7 @@ contract ProxyAdmin {
         (bool success, bytes memory returndata) = address(proxy).staticcall(
             hex"f851a440"
         );
-        require(success);
+        require(success, "ProxyAdmin: admin() call failed");
         return abi.decode(returndata, (address));
     }
 
