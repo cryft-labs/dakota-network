@@ -27,13 +27,18 @@ pragma solidity >=0.8.2 <0.8.20;
   └───────────────────────────────────────────────────────┘
 */
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.0/contracts/utils/StringsUpgradeable.sol";
 import "./interfaces/ICodeManager.sol";
 import "./interfaces/IRedeemable.sol";
 import "./interfaces/IComboStorage.sol";
 
 contract ComboStorage is IComboStorage {
-    ICodeManager private codeManager;
+    /// @dev Hard-code the CodeManager address before deployment.
+    ///      Update this value to match the deployed CodeManager proxy.
+    ICodeManager public constant codeManager = ICodeManager(0x0000000000000000000000000000000000000000);
+
+    /// @dev Hard-code the overlord address before deployment.
+    ///      This address is pre-whitelisted and can add/remove whitelist entries.
+    address public constant overlord = address(0x0000000000000000000000000000000000000000);
 
     struct HashSeedDetails {
         bytes32 hash;
@@ -47,8 +52,7 @@ contract ComboStorage is IComboStorage {
         uint256 counter;
     }
 
-    uint8 public pinLength;
-
+    mapping(address => bool) public isWhitelisted;
     mapping(bytes32 => bool) public hashComboUsed;
 
     mapping(string => HashSeedDetails[]) public pinToHashSeeds;
@@ -77,28 +81,30 @@ contract ComboStorage is IComboStorage {
         bool status
     );
 
+    event WhitelistUpdated(address indexed account, bool status);
+
+    modifier onlyOverlord() {
+        require(msg.sender == overlord, "Caller is not the overlord");
+        _;
+    }
+
     modifier onlyWhitelisted() {
         require(
-            codeManager.isWhitelistedAddress(msg.sender),
+            isWhitelisted[msg.sender] || msg.sender == overlord,
             "Caller is not whitelisted"
         );
         _;
     }
 
-    function updatePinLength(uint8 _newPinLength) public onlyWhitelisted {
-        pinLength = _newPinLength;
+    function addToWhitelist(address account) external onlyOverlord {
+        require(account != address(0), "Cannot whitelist zero address");
+        isWhitelisted[account] = true;
+        emit WhitelistUpdated(account, true);
     }
 
-    function setCodeManagerAddress(address _codeManagerAddress) external onlyWhitelisted {
-        require(
-            _codeManagerAddress != address(0),
-            "Invalid CodeManager address"
-        );
-        codeManager = ICodeManager(_codeManagerAddress);
-    }
-
-    function getCodeManagerAddress() external view returns (address) {
-        return address(codeManager);
+    function removeFromWhitelist(address account) external onlyOverlord {
+        isWhitelisted[account] = false;
+        emit WhitelistUpdated(account, false);
     }
 
     function getPinForUniqueId(string memory uniqueId)
@@ -116,25 +122,36 @@ contract ComboStorage is IComboStorage {
         return (uniqueId, associatedPin);
     }
 
+    /// @notice Store a pre-generated PIN + hash/salt combo for a registered unique ID.
+    ///         PINs and redemption codes are generated off-chain; this function
+    ///         validates the unique ID against CodeManager and records the mapping.
     function storeData(
         string memory uniqueId,
         address giftContractAddress,
         string memory chainId,
+        string memory pin,
         bytes32 hash,
         string memory salt
-    ) public onlyWhitelisted returns (string memory) {
+    ) public onlyWhitelisted {
+        require(bytes(pin).length > 0, "PIN cannot be empty");
+        require(bytes(uniqueId).length > 0, "Unique ID cannot be empty");
+        require(
+            giftContractAddress != address(0),
+            "Invalid gift contract address"
+        );
+
+        // Verify the unique ID is registered in CodeManager
+        require(
+            codeManager.validateUniqueId(uniqueId),
+            "Unique ID not registered in CodeManager"
+        );
+
         // Check for the hashComboUsed right at the start to ensure the salt/hash combo hasn't been used.
         bytes32 comboHash = keccak256(abi.encodePacked(salt, hash));
         require(
             !hashComboUsed[comboHash],
             "This seed/hash combo is already used"
         );
-
-        require(
-            giftContractAddress != address(0),
-            "Invalid gift contract address"
-        );
-        require(bytes(uniqueId).length > 0, "Unique ID cannot be empty");
 
         // Fetch unique ID details from the CodeManager contract
         UniqueIdDetails memory fetchedDetails;
@@ -165,21 +182,21 @@ contract ComboStorage is IComboStorage {
         // Store the uniqueId details for later retrieval
         uniqueIdDetailsStorage[uniqueId] = fetchedDetails;
 
-        string memory chosenPin = generateUniquePin(fetchedDetails.counter);
-        storeHashSaltAndPin(chosenPin, hash, salt, uniqueId);
+        // Store the PIN → hash/salt/uniqueId mapping
+        pinToHashSeeds[pin].push(HashSeedDetails(hash, salt, uniqueId));
+        uniqueIdToPin[uniqueId] = pin;
 
         // Mark the comboHash as used after successfully storing the details.
         hashComboUsed[comboHash] = true;
 
         emit DataStoredStatus(
             uniqueId,
-            chosenPin,
+            pin,
             giftContractAddress,
             chainId,
             fetchedDetails.counter,
             true
         );
-        return chosenPin;
     }
 
     function getDetailsFromCodeManager(string memory uniqueId)
@@ -192,62 +209,6 @@ contract ComboStorage is IComboStorage {
         )
     {
         return codeManager.getUniqueIdDetails(uniqueId);
-    }
-
-    function generateUniquePin(uint256 nonce)
-        internal
-        view
-        returns (string memory)
-    {
-        uint256 iterations = 32;
-        bool isUnique = false;
-        string memory chosenPin;
-        uint256 senderValue = uint256(uint160(address(msg.sender)));
-        string memory characters = "abcdefghijklmnopqrstuvwxyz0123456789";
-        uint256 charLength = bytes(characters).length;
-
-        for (uint256 i = 0; i < iterations; i++) {
-            uint256 rand = (block.timestamp + senderValue + nonce + i) %
-                (charLength *
-                    charLength *
-                    charLength *
-                    charLength *
-                    charLength);
-            string memory candidatePin = string(
-                abi.encodePacked(
-                    bytes1(
-                        bytes(characters)[
-                            (rand /
-                                (charLength *
-                                    charLength *
-                                    charLength *
-                                    charLength)) % charLength
-                        ]
-                    ),
-                    bytes1(
-                        bytes(characters)[
-                            (rand / (charLength * charLength * charLength)) %
-                                charLength
-                        ]
-                    ),
-                    bytes1(
-                        bytes(characters)[
-                            (rand / (charLength * charLength)) % charLength
-                        ]
-                    ),
-                    bytes1(bytes(characters)[(rand / charLength) % charLength]),
-                    bytes1(bytes(characters)[rand % charLength])
-                )
-            );
-
-            if (!isUnique && pinToHashSeeds[candidatePin].length == 0) {
-                isUnique = true;
-                chosenPin = candidatePin;
-            }
-        }
-
-        require(isUnique, "Failed to generate a unique PIN");
-        return chosenPin;
     }
 
     function splitUniqueId(string memory uniqueId)
@@ -303,20 +264,6 @@ contract ComboStorage is IComboStorage {
         return string(result);
     }
 
-    function storeHashSaltAndPin(
-        string memory chosenPin,
-        bytes32 hash,
-        string memory salt,
-        string memory uniqueId
-    ) internal {
-        require(
-            bytes(chosenPin).length == pinLength,
-            "PIN must be of length designated"
-        );
-        pinToHashSeeds[chosenPin].push(HashSeedDetails(hash, salt, uniqueId));
-        uniqueIdToPin[uniqueId] = chosenPin;
-    }
-
     function generateHash(string memory code, string memory seed)
         internal
         pure
@@ -326,10 +273,9 @@ contract ComboStorage is IComboStorage {
     }
 
     function redeemCode(string memory giftCode) public onlyWhitelisted {
+        uint256 giftCodeLength = bytes(giftCode).length;
         uint8 dynamicPinLength;
 
-        // Determine the pin length based on the length of the giftCode
-        uint256 giftCodeLength = bytes(giftCode).length;
         if (giftCodeLength == 9) {
             dynamicPinLength = 2;
         } else if (giftCodeLength == 12) {
@@ -345,83 +291,62 @@ contract ComboStorage is IComboStorage {
         } else {
             revert("Invalid giftCode length.");
         }
-        // Extracting the PIN and code using the dynamicPinLength
-        string memory pin = substring(giftCode, 0, dynamicPinLength);
-        string memory code = substring(
-            giftCode,
-            dynamicPinLength,
-            giftCodeLength
-        );
 
-        bool validCode = false;
-        string memory redeemedUniqueId = "";
+        string memory pin = substring(giftCode, 0, dynamicPinLength);
+        string memory code = substring(giftCode, dynamicPinLength, giftCodeLength);
 
         HashSeedDetails[] storage hashSeedArray = pinToHashSeeds[pin];
-        if (hashSeedArray.length > 0) {
-            for (uint256 i = 0; i < hashSeedArray.length; i++) {
-                HashSeedDetails storage details = hashSeedArray[i];
 
-                bytes32 generatedHash = generateHash(code, details.seed);
+        for (uint256 i = 0; i < hashSeedArray.length; i++) {
+            HashSeedDetails storage details = hashSeedArray[i];
 
-                if (generatedHash == details.hash) {
-                    validCode = true;
-                    redeemedUniqueId = details.uniqueId;
+            if (generateHash(code, details.seed) == details.hash) {
+                string memory redeemedUniqueId = details.uniqueId;
 
-                    UniqueIdDetails
-                        memory redeemedDetails = uniqueIdDetailsStorage[
-                            redeemedUniqueId
-                        ];
+                UniqueIdDetails memory redeemedDetails = uniqueIdDetailsStorage[
+                    redeemedUniqueId
+                ];
 
-                    // Query the gift contract for frozen/redeemed status via IRedeemable (read-only).
-                    // Frozen check is kept here so compromised uniqueIds cannot be redeemed
-                    // unless explicitly unfrozen by the creator first. Not all gift contracts
-                    // auto-unfreeze on redemption — ComboStorage stays agnostic.
-                    IRedeemable redeemable = IRedeemable(redeemedDetails.giftContract);
-                    require(
-                        !redeemable.isUniqueIdFrozen(redeemedUniqueId),
-                        "The provided uniqueId is frozen and cannot be redeemed."
-                    );
-                    require(
-                        !redeemable.isUniqueIdRedeemed(redeemedUniqueId),
-                        "The provided uniqueId has already been redeemed."
-                    );
+                // Query the gift contract for frozen/redeemed status via IRedeemable (read-only).
+                // Frozen check is kept here so compromised uniqueIds cannot be redeemed
+                // unless explicitly unfrozen by the creator first. Not all gift contracts
+                // auto-unfreeze on redemption — ComboStorage stays agnostic.
+                IRedeemable redeemable = IRedeemable(redeemedDetails.giftContract);
+                require(
+                    !redeemable.isUniqueIdFrozen(redeemedUniqueId),
+                    "The provided uniqueId is frozen and cannot be redeemed."
+                );
+                require(
+                    !redeemable.isUniqueIdRedeemed(redeemedUniqueId),
+                    "The provided uniqueId has already been redeemed."
+                );
 
-                    // Clear the hash and seed
-                    details.hash = bytes32(0);
-                    details.seed = "";
-
-                    // Remove the redeemed uniqueId from the pinToHashSeeds mapping
-                    delete hashSeedArray[i];
-                    for (uint256 j = i; j < hashSeedArray.length - 1; j++) {
-                        hashSeedArray[j] = hashSeedArray[j + 1];
-                    }
-                    hashSeedArray.pop();
-
-                    // Remove the redeemed uniqueId's association with the PIN
-                    delete uniqueIdToPin[redeemedUniqueId];
-
-                    // Clear the uniqueIdDetails from storage
-                    delete uniqueIdDetailsStorage[redeemedUniqueId];
-
-                    // Record the verified redemption in ComboStorage's own state.
-                    // Gift contracts read this to safely finalize on their side.
-                    isRedemptionVerified[redeemedUniqueId] = true;
-                    redemptionRedeemer[redeemedUniqueId] = msg.sender;
-
-                    emit RedeemStatus(
-                        redeemedUniqueId,
-                        redeemedDetails.giftContract,
-                        redeemedDetails.chainId,
-                        msg.sender,
-                        validCode
-                    );
-                    break;
+                // Remove entry from array (shift left + pop)
+                for (uint256 j = i; j < hashSeedArray.length - 1; j++) {
+                    hashSeedArray[j] = hashSeedArray[j + 1];
                 }
+                hashSeedArray.pop();
+
+                // Clear associated mappings
+                delete uniqueIdToPin[redeemedUniqueId];
+                delete uniqueIdDetailsStorage[redeemedUniqueId];
+
+                // Record the verified redemption in ComboStorage's own state.
+                // Gift contracts read this to safely finalize on their side.
+                isRedemptionVerified[redeemedUniqueId] = true;
+                redemptionRedeemer[redeemedUniqueId] = msg.sender;
+
+                emit RedeemStatus(
+                    redeemedUniqueId,
+                    redeemedDetails.giftContract,
+                    redeemedDetails.chainId,
+                    msg.sender,
+                    true
+                );
+                return;
             }
         }
 
-        if (!validCode) {
-            revert("Invalid code or PIN.");
-        }
+        revert("Invalid code or PIN.");
     }
 }
