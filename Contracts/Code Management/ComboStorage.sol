@@ -231,8 +231,8 @@ contract ComboStorage is IComboStorage {
         pinSlotCount[pin]--;
 
         // Record the verified redemption
-        isRedemptionVerified[redeemedUniqueId] = true;
         redemptionRedeemer[redeemedUniqueId] = msg.sender;
+        isRedemptionVerified[redeemedUniqueId] = true;
 
         emit RedeemStatus(
             redeemedUniqueId,
