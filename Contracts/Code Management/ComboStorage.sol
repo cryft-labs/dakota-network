@@ -16,15 +16,15 @@ pragma solidity >=0.8.2 <0.8.20;
   Version 1.0 — Production Combo Storage  [NON-UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
-  │                                                       │
-  │  Redemption verification service.                      │
-  │  Reads CodeManager + IRedeemable (view-only).          │
-  │  Stores combo→uniqueId mappings and verification.      │
-  │                                                       │
-  │  No cross-contract state writes.                       │
-  │  All validation via read-only calls to external        │
-  │  contracts (CodeManager, GreetingCards).                │
-  └───────────────────────────────────────────────────────┘
+  │                                                      │
+  │  Redemption verification service.                    │
+  │  Reads CodeManager + IRedeemable (view-only).        │
+  │  Stores combo→uniqueId mappings and verification.    │
+  │                                                      │
+  │  No cross-contract state writes.                     │
+  │  All validation via read-only calls to external      │
+  │  contracts (CodeManager, RedeemableCards).           │
+  └──────────────────────────────────────────────────────┘
 */
 
 import "./interfaces/ICodeManager.sol";
