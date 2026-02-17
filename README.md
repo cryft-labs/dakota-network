@@ -168,8 +168,8 @@ Tessera documentation is still available online:
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
-| **ValidatorSmartContractAllowList** | `0x0000...1111` | QBFT validator and voter governance with majority-vote quorum. Supports federated voter expansion via external voter contracts. |
-| **GasManager** | Genesis beneficiary | Receives block rewards. Voter-governed gas funding to whitelisted addresses with per-period rate limiting. Two-phase ERC-20 token burn (vote to approve, then permissionless execution). Auto-burns native excess above configurable cap. |
+| **ValidatorSmartContractAllowList** | `0x0000...1111` | Expandable Proof of Authority (ePoA) governance. Majority-vote quorum for all state changes. The initializer becomes the first voter (no guardian — fully votable). Supports pluggable external validator contracts (`otherValidatorContracts`) and voter contracts (`otherVotersArray`) that implement `ValidatorSmartContractInterface`, enabling federated expansion of both the validator set and governance pool without hard forks. |
+| **GasManager** | Genesis beneficiary | Receives block rewards. Own voter set with pluggable external voter contracts (`otherVotersArray`) — independent from the validator voter pool. Guardian-gated execution: only guardians (or the funded address itself) can execute approved gas funds; only guardians can execute token and native coin burns. Two-phase operations (vote → approve → execute). Auto-burns native excess above configurable cap. |
 | **TransparentUpgradeableProxy** | — | OpenZeppelin transparent proxy pattern for upgradeable genesis contracts. |
 
 ### Application Contracts (deployed post-genesis)

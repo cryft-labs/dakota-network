@@ -16,14 +16,14 @@ pragma solidity >=0.8.2 <0.8.20;
   Version 1.0 — Production Validator Allow List  [GENESIS]
 
   ┌──────────────── Contract Architecture ───────────────┐
-  │                                                       │
-  │  QBFT validator and voter governance.                  │
-  │  Majority-vote quorum for all state changes.           │
-  │  Deployed at genesis address 0x0000...1111.            │
-  │                                                       │
-  │  Manages: validators, voters, whitelist,               │
-  │  gas beneficiary, and max-validator cap.               │
-  └───────────────────────────────────────────────────────┘
+  │                                                      │
+  │  QBFT validator and voter governance.                │
+  │  Majority-vote quorum for all state changes.         │
+  │  Deployed at genesis address 0x0000...1111.          │
+  │                                                      │
+  │  Manages: validators, voters,                        │
+  │  gas beneficiary, and max-validator cap.             │
+  └──────────────────────────────────────────────────────┘
 */
 
 import "./ValidatorSmartContractInterface.sol";
@@ -35,6 +35,9 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
     event MaxValidatorsChanged(uint32 newMax);
     event VoteTallyBlockThresholdUpdated(uint32 newThreshold);
     event VoteTallyReset(VoteType voteType, address target);
+    event VoterUpdated(address indexed target, bool added);
+    event OtherValidatorContractUpdated(address indexed target, bool added);
+    event OtherVoterContractUpdated(address indexed target, bool added);
 
     enum VoteType {
         ADD_VALIDATOR,
@@ -54,8 +57,6 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         uint256 startVoteBlock;
         address[] voters;
     }
-
-    address public guardian;
 
     address[] public validators;
     address[] public otherValidatorContracts;
@@ -88,11 +89,12 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
     function initialize() public {
         require(votersArray.length == 0, "Contract already initialized");
         votersArray.push(msg.sender);
-        guardian = msg.sender;
 
         voteTallyBlockThreshold = 1000;
-        MAX_VALIDATORS = 100;
+        MAX_VALIDATORS = 11;
     }
+
+    // ── Voter & Validator Queries ─────────────────────
 
     function isVoter(
         address potentialVoter
@@ -117,6 +119,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         }
         return false;
     }
+
+    // ── Internal Vote Engine ──────────────────────────
 
     function _castVote(VoteType voteType, address target) internal {
         require(target != address(0), "Target should not be zero");
@@ -185,6 +189,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
             } else if (voteType == VoteType.ADD_VOTER) {
                 require(!isVoter(target), "Voter already in the list");
                 votersArray.push(target);
+                emit VoterUpdated(target, true);
             } else if (voteType == VoteType.REMOVE_VOTER) {
                 bool found = false;
                 for (uint256 i = 0; i < votersArray.length; i++) {
@@ -196,6 +201,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                     }
                 }
                 require(found, "Voter not found");
+                emit VoterUpdated(target, false);
             } else if (voteType == VoteType.ADD_CONTRACT) {
                 for (uint256 i = 0; i < otherValidatorContracts.length; i++) {
                     require(
@@ -204,6 +210,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                     );
                 }
                 otherValidatorContracts.push(target);
+                emit OtherValidatorContractUpdated(target, true);
             } else if (voteType == VoteType.REMOVE_CONTRACT) {
                 bool found = false;
                 for (uint256 i = 0; i < otherValidatorContracts.length; i++) {
@@ -217,6 +224,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                     }
                 }
                 require(found, "Contract not found");
+                emit OtherValidatorContractUpdated(target, false);
             } else if (voteType == VoteType.CHANGE_MAX_VALIDATORS) {
                 uint32 newMax = uint32(uint160(target));
                 MAX_VALIDATORS = newMax;
@@ -237,6 +245,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                     );
                 }
                 otherVotersArray.push(target);
+                emit OtherVoterContractUpdated(target, true);
             } else if (voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT) {
                 require(
                     votersArray.length > 0 || otherVotersArray.length > 1,
@@ -254,6 +263,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                     }
                 }
                 require(found, "Voter contract not found");
+                emit OtherVoterContractUpdated(target, false);
             }
 
             // clear votes for this target
@@ -265,6 +275,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
 
         emit VoteCast(msg.sender, voteType, target);
     }
+
+    // ── Validator Governance ──────────────────────────
 
     function voteToChangeMaxValidators(uint32 newMax) external onlyVoters {
         require(
@@ -290,6 +302,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         _castVote(VoteType.REMOVE_VALIDATOR, validator);
     }
 
+    // ── Voter Management ──────────────────────────────
+
     function voteToAddVoter(address voter) external onlyVoters {
         require(voter != address(0), "Voter address should not be zero");
         _castVote(VoteType.ADD_VOTER, voter);
@@ -303,6 +317,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         );
         _castVote(VoteType.REMOVE_VOTER, voter);
     }
+
+    // ── External Contract Management ──────────────────
 
     function voteToAddOtherValidatorContract(
         address contractAddress
@@ -394,6 +410,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         _castVote(VoteType.REMOVE_OTHER_VOTER_CONTRACT, voterContract);
     }
 
+    // ── Vote Threshold Governance ─────────────────────
+
     function voteToUpdateVoteTallyBlockThreshold(
         uint32 newThreshold
     ) external onlyVoters {
@@ -406,6 +424,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
             address(uint160(newThreshold))
         );
     }
+
+    // ── Vote Tally & Thresholds ───────────────────────
 
     function getVoteTally(
         VoteType voteType,
@@ -437,6 +457,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         require(totalVoterCount > 0, "No voters available");
         return (totalVoterCount / 2) + 1;
     }
+
+    // ── Aggregation Queries ───────────────────────────
 
     function getValidators() public view override returns (address[] memory) {
         uint256 totalLength = validators.length;
@@ -503,6 +525,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
 
         return allVoters;
     }
+
+    // ── Utilities ─────────────────────────────────────
 
     function isContract(address _addr) internal view returns (bool) {
         uint32 size;
