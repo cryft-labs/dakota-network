@@ -26,6 +26,13 @@ interface ITransparentUpgradeableProxy is IERC1967 {
     function upgradeToAndCall(address, bytes memory) external payable;
 }
 
+/// @dev Minimal interface for querying root overlords from the genesis validator contract.
+interface IValidatorRootOverlord {
+    function getRootOverlords() external view returns (address[] memory);
+    
+    function isRootOverlord(address addr) external view returns (bool);
+}
+
 /**
  * @dev This contract implements a proxy that is upgradeable by an admin.
  *
@@ -59,42 +66,70 @@ interface ITransparentUpgradeableProxy is IERC1967 {
  *0000000000000000000000000000000000001 render the admin operations inaccessible, which could prevent upgradeability. Transparency may also be compromised.
  */
 contract TransparentUpgradeableProxy is ERC1967Proxy {
-    bytes32 private constant _isInitSlot =
+    bytes32 private constant _proxy_isInitSlot =
         keccak256("TransparentUpgradeableProxy.isInit");
-    bytes32 private constant _guardianMapSlot =
+    bytes32 private constant _proxy_guardianMapSlot =
         keccak256("TransparentUpgradeableProxy.guardianMap");
-    bytes32 private constant _guardianCountSlot =
+    bytes32 private constant _proxy_guardianCountSlot =
         keccak256("TransparentUpgradeableProxy.guardianCount");
-    bytes32 private constant _guardianArraySlot =
+    bytes32 private constant _proxy_guardianArraySlot =
         keccak256("TransparentUpgradeableProxy.guardianArray");
-    bytes32 private constant _guardianArrayIndexSlot =
+    bytes32 private constant _proxy_guardianArrayIndexSlot =
         keccak256("TransparentUpgradeableProxy.guardianArrayIndex");
-    bytes32 private constant _overlordMapSlot =
+    bytes32 private constant _proxy_overlordMapSlot =
         keccak256("TransparentUpgradeableProxy.overlordMap");
-    bytes32 private constant _overlordCountSlot =
+    bytes32 private constant _proxy_overlordCountSlot =
         keccak256("TransparentUpgradeableProxy.overlordCount");
-    bytes32 private constant _rootRevokedSlot =
+    bytes32 private constant _proxy_rootRevokedSlot =
         keccak256("TransparentUpgradeableProxy.rootRevoked");
-    bytes32 private constant _voteEpochSlot =
+    bytes32 private constant _proxy_voteEpochSlot =
         keccak256("TransparentUpgradeableProxy.voteEpoch");
-    bytes32 private constant _proposalVoteCountSlot =
+    bytes32 private constant _proxy_proposalVoteCountSlot =
         keccak256("TransparentUpgradeableProxy.proposalVoteCount");
-    bytes32 private constant _proposalVoterSlot =
+    bytes32 private constant _proxy_proposalVoterSlot =
         keccak256("TransparentUpgradeableProxy.proposalVoter");
-    bytes32 private constant _proposalStartBlockSlot =
+    bytes32 private constant _proxy_proposalStartBlockSlot =
         keccak256("TransparentUpgradeableProxy.proposalStartBlock");
-    bytes32 private constant _proposalRoundSlot =
+    bytes32 private constant _proxy_proposalRoundSlot =
         keccak256("TransparentUpgradeableProxy.proposalRound");
-    bytes32 private constant _voteExpirySlot =
+    bytes32 private constant _proxy_voteExpirySlot =
         keccak256("TransparentUpgradeableProxy.voteExpiry");
-    bytes32 private constant _activeProposalSlot =
+    bytes32 private constant _proxy_activeProposalSlot =
         keccak256("TransparentUpgradeableProxy.activeProposal");
-    bytes32 private constant _activeProposalStartSlot =
+    bytes32 private constant _proxy_activeProposalStartSlot =
         keccak256("TransparentUpgradeableProxy.activeProposalStart");
 
-    address public constant rootOverlord = 0x2B7361056b31D2bf201E6764e7825fd31c0D223A;
+    address private constant _proxy_validatorContract = 0x0000000000000000000000000000000000001111;
     uint256 private constant DEFAULT_VOTE_EXPIRY = 60000; // ~1 week at 3s blocks
     uint256 private constant MAX_GUARDIANS = 10;
+
+    /// @dev Returns root overlords as reported by the validator contract (0x1111).
+    function proxy_getRootOverlords() external view returns (address[] memory) {
+        try IValidatorRootOverlord(_proxy_validatorContract).getRootOverlords() returns (address[] memory overlords) {
+            return overlords;
+        } catch {
+            return new address[](0);
+        }
+    }
+
+    /// @dev Checks if an address is a root overlord via the validator contract (0x1111).
+    function _isRootOverlordAddress(address addr) internal view returns (bool) {
+        if (addr == address(0)) return false;
+        try IValidatorRootOverlord(_proxy_validatorContract).isRootOverlord(addr) returns (bool result) {
+            return result;
+        } catch {
+            return false;
+        }
+    }
+
+    /// @dev Returns the count of root overlords from the validator contract.
+    function _getRootOverlordCount() internal view returns (uint256) {
+        try IValidatorRootOverlord(_proxy_validatorContract).getRootOverlords() returns (address[] memory overlords) {
+            return overlords.length;
+        } catch {
+            return 0;
+        }
+    }
 
     event OverlordAdded(address indexed overlord);
     event OverlordRemoved(address indexed overlord);
@@ -115,7 +150,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     modifier onlyOverlord() {
         require(
-            (msg.sender == rootOverlord && !_isRootRevoked()) || _isOverlord(msg.sender),
+            (_isRootOverlordAddress(msg.sender) && !_isRootRevoked()) || _isOverlord(msg.sender),
             "Only overlord can call this function"
         );
         _;
@@ -123,7 +158,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     modifier onlyRootOverlord() {
         require(
-            msg.sender == rootOverlord && !_isRootRevoked(),
+            _isRootOverlordAddress(msg.sender) && !_isRootRevoked(),
             "Only root overlord can call this function"
         );
         _;
@@ -131,15 +166,15 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     modifier onlyGuardian() {
         require(
-            (msg.sender == rootOverlord && !_isRootRevoked()) || _isGuardian(msg.sender),
+            (_isRootOverlordAddress(msg.sender) && !_isRootRevoked()) || _isGuardian(msg.sender),
             "Only guardian can call this function"
         );
         _;
     }
 
-    function getIsInit() public view returns (bool) {
+    function proxy_getIsInit() public view returns (bool) {
         bool isInit;
-        bytes32 slot = _isInitSlot;
+        bytes32 slot = _proxy_isInitSlot;
         assembly {
             isInit := sload(slot)
         }
@@ -147,7 +182,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function setIsInit(bool value) internal {
-        bytes32 slot = _isInitSlot;
+        bytes32 slot = _proxy_isInitSlot;
         assembly {
             sstore(slot, value)
         }
@@ -157,7 +192,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _isRootRevoked() internal view returns (bool) {
         bool revoked;
-        bytes32 slot = _rootRevokedSlot;
+        bytes32 slot = _proxy_rootRevokedSlot;
         assembly {
             revoked := sload(slot)
         }
@@ -165,13 +200,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setRootRevoked(bool status) internal {
-        bytes32 slot = _rootRevokedSlot;
+        bytes32 slot = _proxy_rootRevokedSlot;
         assembly {
             sstore(slot, status)
         }
     }
 
-    function isRootOverlordRevoked() external view returns (bool) {
+    function proxy_isRootOverlordRevoked() external view returns (bool) {
         return _isRootRevoked();
     }
 
@@ -181,8 +216,8 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      is not left without governance.
      *      Only another overlord can restore access via restoreRootOverlord().
      */
-    function revokeRootOverlord() external {
-        require(msg.sender == rootOverlord, "Only root overlord can revoke itself");
+    function proxy_revokeRootOverlord() external {
+        require(_isRootOverlordAddress(msg.sender), "Only root overlord can revoke");
         require(!_isRootRevoked(), "Root overlord already revoked");
         require(_rawOverlordCount() > 0, "Cannot revoke: no other overlords exist");
         _setRootRevoked(true);
@@ -202,7 +237,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Guardian management (proxy-safe slot storage) ──
 
     function _guardianSlot(address addr) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_guardianMapSlot, addr));
+        return keccak256(abi.encodePacked(_proxy_guardianMapSlot, addr));
     }
 
     function _isGuardian(address addr) internal view returns (bool) {
@@ -221,9 +256,9 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         }
     }
 
-    function getGuardianCount() public view returns (uint256) {
+    function proxy_getGuardianCount() public view returns (uint256) {
         uint256 count;
-        bytes32 slot = _guardianCountSlot;
+        bytes32 slot = _proxy_guardianCountSlot;
         assembly {
             count := sload(slot)
         }
@@ -231,7 +266,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setGuardianCount(uint256 count) internal {
-        bytes32 slot = _guardianCountSlot;
+        bytes32 slot = _proxy_guardianCountSlot;
         assembly {
             sstore(slot, count)
         }
@@ -240,7 +275,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Guardian array (for enumeration / bulk clear) ──
 
     function _guardianArrayElement(uint256 index) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_guardianArraySlot, index));
+        return keccak256(abi.encodePacked(_proxy_guardianArraySlot, index));
     }
 
     function _getGuardianAt(uint256 index) internal view returns (address) {
@@ -260,7 +295,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _guardianIndexSlot(address addr) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_guardianArrayIndexSlot, addr));
+        return keccak256(abi.encodePacked(_proxy_guardianArrayIndexSlot, addr));
     }
 
     /// @dev Returns stored index + 1 (0 means not in array).
@@ -281,7 +316,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _pushGuardian(address addr) internal {
-        uint256 count = getGuardianCount();
+        uint256 count = proxy_getGuardianCount();
         _setGuardianAt(count, addr);
         _setGuardianIndex(addr, count + 1); // store index+1 so 0 = absent
     }
@@ -290,7 +325,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         uint256 indexPlusOne = _getGuardianIndex(addr);
         if (indexPlusOne == 0) return; // not in array
         uint256 index = indexPlusOne - 1;
-        uint256 lastIndex = getGuardianCount() - 1;
+        uint256 lastIndex = proxy_getGuardianCount() - 1;
 
         if (index != lastIndex) {
             address lastAddr = _getGuardianAt(lastIndex);
@@ -301,13 +336,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         _setGuardianIndex(addr, 0);
     }
 
-    function isGuardian(address addr) external view returns (bool) {
-        return (addr == rootOverlord && !_isRootRevoked()) || _isGuardian(addr);
+    function proxy_isGuardian(address addr) external view returns (bool) {
+        return (_isRootOverlordAddress(addr) && !_isRootRevoked()) || _isGuardian(addr);
     }
 
     /// @dev View: returns all guardian addresses in the map.
-    function getGuardians() external view returns (address[] memory) {
-        uint256 count = getGuardianCount();
+    function proxy_getGuardians() external view returns (address[] memory) {
+        uint256 count = proxy_getGuardianCount();
         address[] memory result = new address[](count);
         for (uint256 i = 0; i < count; i++) {
             result[i] = _getGuardianAt(i);
@@ -318,19 +353,19 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function addGuardian(address newGuardian) internal {
         _setGuardian(newGuardian, true);
         _pushGuardian(newGuardian);
-        _setGuardianCount(getGuardianCount() + 1);
+        _setGuardianCount(proxy_getGuardianCount() + 1);
         emit GuardianAdded(newGuardian);
     }
 
     function removeGuardian(address guardianToRemove) internal {
         _setGuardian(guardianToRemove, false);
         _removeGuardianFromArray(guardianToRemove);
-        _setGuardianCount(getGuardianCount() - 1);
+        _setGuardianCount(proxy_getGuardianCount() - 1);
         emit GuardianRemoved(guardianToRemove);
     }
 
     function _clearAllGuardians() internal {
-        uint256 count = getGuardianCount();
+        uint256 count = proxy_getGuardianCount();
         for (uint256 i = 0; i < count; i++) {
             address addr = _getGuardianAt(i);
             _setGuardian(addr, false);
@@ -344,7 +379,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Overlord management (proxy-safe slot storage) ──
 
     function _overlordSlot(address addr) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_overlordMapSlot, addr));
+        return keccak256(abi.encodePacked(_proxy_overlordMapSlot, addr));
     }
 
     function _isOverlord(address addr) internal view returns (bool) {
@@ -366,36 +401,36 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     /// @dev Returns the raw (stored) overlord count, excluding root overlord.
     function _rawOverlordCount() internal view returns (uint256) {
         uint256 count;
-        bytes32 slot = _overlordCountSlot;
+        bytes32 slot = _proxy_overlordCountSlot;
         assembly {
             count := sload(slot)
         }
         return count;
     }
 
-    /// @dev Returns total overlord count, including root overlord when active.
-    function getOverlordCount() public view returns (uint256) {
+    /// @dev Returns total overlord count, including root overlords when active.
+    function proxy_getOverlordCount() public view returns (uint256) {
         uint256 count = _rawOverlordCount();
         if (!_isRootRevoked()) {
-            count += 1; // include root overlord
+            count += _getRootOverlordCount();
         }
         return count;
     }
 
     function _setOverlordCount(uint256 count) internal {
-        bytes32 slot = _overlordCountSlot;
+        bytes32 slot = _proxy_overlordCountSlot;
         assembly {
             sstore(slot, count)
         }
     }
 
-    function isOverlord(address addr) external view returns (bool) {
-        return (addr == rootOverlord && !_isRootRevoked()) || _isOverlord(addr);
+    function proxy_isOverlord(address addr) external view returns (bool) {
+        return (_isRootOverlordAddress(addr) && !_isRootRevoked()) || _isOverlord(addr);
     }
 
-    function addOverlord(address newOverlord) external onlyRootOverlord {
+    function proxy_addOverlord(address newOverlord) external onlyRootOverlord {
         require(newOverlord != address(0), "Overlord cannot be zero address");
-        require(newOverlord != rootOverlord, "Already root overlord");
+        require(!_isRootOverlordAddress(newOverlord), "Already a root overlord");
         require(!_isOverlord(newOverlord), "Already an overlord");
         require(
             !_isGuardian(newOverlord),
@@ -408,11 +443,11 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         emit OverlordAdded(newOverlord);
     }
 
-    function removeOverlord(address overlordToRemove) external onlyRootOverlord {
+    function proxy_removeOverlord(address overlordToRemove) external onlyRootOverlord {
         require(_isOverlord(overlordToRemove), "Not an overlord");
         require(
-            _rawOverlordCount() > 1 || !_isRootRevoked(),
-            "Cannot remove last overlord while root is revoked"
+            _rawOverlordCount() > 1 || (_getRootOverlordCount() > 0 && !_isRootRevoked()),
+            "Cannot remove last non-root overlord when no root overlords are active"
         );
         _setOverlord(overlordToRemove, false);
         _setOverlordCount(_rawOverlordCount() - 1);
@@ -425,7 +460,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _getVoteEpoch() internal view returns (uint256) {
         uint256 epoch;
-        bytes32 slot = _voteEpochSlot;
+        bytes32 slot = _proxy_voteEpochSlot;
         assembly {
             epoch := sload(slot)
         }
@@ -433,7 +468,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _incrementVoteEpoch() internal {
-        bytes32 slot = _voteEpochSlot;
+        bytes32 slot = _proxy_voteEpochSlot;
         uint256 epoch;
         assembly {
             epoch := sload(slot)
@@ -513,7 +548,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _getProposalVoteCount(bytes32 proposalId) internal view returns (uint256) {
-        bytes32 slot = keccak256(abi.encodePacked(_proposalVoteCountSlot, proposalId));
+        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoteCountSlot, proposalId));
         uint256 count;
         assembly {
             count := sload(slot)
@@ -522,14 +557,14 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setProposalVoteCount(bytes32 proposalId, uint256 count) internal {
-        bytes32 slot = keccak256(abi.encodePacked(_proposalVoteCountSlot, proposalId));
+        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoteCountSlot, proposalId));
         assembly {
             sstore(slot, count)
         }
     }
 
     function _hasVoted(bytes32 proposalId, address voter) internal view returns (bool) {
-        bytes32 slot = keccak256(abi.encodePacked(_proposalVoterSlot, proposalId, voter));
+        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoterSlot, proposalId, voter));
         bool voted;
         assembly {
             voted := sload(slot)
@@ -538,7 +573,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setHasVoted(bytes32 proposalId, address voter, bool voted) internal {
-        bytes32 slot = keccak256(abi.encodePacked(_proposalVoterSlot, proposalId, voter));
+        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoterSlot, proposalId, voter));
         assembly {
             sstore(slot, voted)
         }
@@ -547,7 +582,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Proposal start block tracking ──
 
     function _getProposalStartBlock(bytes32 proposalId) internal view returns (uint256) {
-        bytes32 slot = keccak256(abi.encodePacked(_proposalStartBlockSlot, proposalId));
+        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalStartBlockSlot, proposalId));
         uint256 startBlock;
         assembly {
             startBlock := sload(slot)
@@ -556,7 +591,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setProposalStartBlock(bytes32 proposalId, uint256 blockNum) internal {
-        bytes32 slot = keccak256(abi.encodePacked(_proposalStartBlockSlot, proposalId));
+        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalStartBlockSlot, proposalId));
         assembly {
             sstore(slot, blockNum)
         }
@@ -565,7 +600,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Proposal round tracking (increments on expiry to invalidate stale votes) ──
 
     function _proposalRoundKey(bytes32 proposalKey) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_proposalRoundSlot, proposalKey));
+        return keccak256(abi.encodePacked(_proxy_proposalRoundSlot, proposalKey));
     }
 
     function _getProposalRound(bytes32 proposalKey) internal view returns (uint256) {
@@ -589,9 +624,9 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     // ── Vote expiry window ──
 
-    function getVoteExpiry() public view returns (uint256) {
+    function proxy_getVoteExpiry() public view returns (uint256) {
         uint256 expiry;
-        bytes32 slot = _voteExpirySlot;
+        bytes32 slot = _proxy_voteExpirySlot;
         assembly {
             expiry := sload(slot)
         }
@@ -599,7 +634,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setVoteExpiry(uint256 newExpiry) internal {
-        bytes32 slot = _voteExpirySlot;
+        bytes32 slot = _proxy_voteExpirySlot;
         assembly {
             sstore(slot, newExpiry)
         }
@@ -609,7 +644,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _getActiveProposal() internal view returns (bytes32) {
         bytes32 result;
-        bytes32 slot = _activeProposalSlot;
+        bytes32 slot = _proxy_activeProposalSlot;
         assembly {
             result := sload(slot)
         }
@@ -617,7 +652,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setActiveProposal(bytes32 proposalId) internal {
-        bytes32 slot = _activeProposalSlot;
+        bytes32 slot = _proxy_activeProposalSlot;
         assembly {
             sstore(slot, proposalId)
         }
@@ -625,7 +660,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _getActiveProposalStart() internal view returns (uint256) {
         uint256 startBlock;
-        bytes32 slot = _activeProposalStartSlot;
+        bytes32 slot = _proxy_activeProposalStartSlot;
         assembly {
             startBlock := sload(slot)
         }
@@ -633,7 +668,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setActiveProposalStart(uint256 blockNum) internal {
-        bytes32 slot = _activeProposalStartSlot;
+        bytes32 slot = _proxy_activeProposalStartSlot;
         assembly {
             sstore(slot, blockNum)
         }
@@ -651,7 +686,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         bytes32 active = _getActiveProposal();
         if (active == bytes32(0)) return false;
         uint256 start = _getActiveProposalStart();
-        return block.number <= start + getVoteExpiry();
+        return block.number <= start + proxy_getVoteExpiry();
     }
 
     /**
@@ -674,7 +709,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         // Different proposal — check if current session expired
         uint256 start = _getActiveProposalStart();
         require(
-            block.number > start + getVoteExpiry(),
+            block.number > start + proxy_getVoteExpiry(),
             "Another proposal is still active, wait for it to expire or pass"
         );
         // Expired — clear and start new session
@@ -684,7 +719,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     /// @dev View: is a voting session currently active?
-    function isVotingSessionActive() external view returns (bool) {
+    function proxy_isVotingSessionActive() external view returns (bool) {
         return _isSessionActive();
     }
 
@@ -693,8 +728,8 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      voterCount includes rootOverlord only when it is active (not revoked).
      *      Examples: 1→1, 2→2, 3→2, 4→3, 5→4, 6→4
      */
-    function getOverlordThreshold() public view returns (uint256) {
-        uint256 count = getOverlordCount(); // already includes root when active
+    function proxy_getOverlordThreshold() public view returns (uint256) {
+        uint256 count = proxy_getOverlordCount(); // already includes root when active
         return (count * 2 + 2) / 3;
     }
 
@@ -704,10 +739,10 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      pending proposals are invalidated (epoch increments).
      *      Works independently of rootOverlord — allows self-governance.
      */
-    function proposeOverlordChange(address target, bool isAdd) external onlyOverlord {
+    function proxy_proposeOverlordChange(address target, bool isAdd) external onlyOverlord {
         require(target != address(0), "Target cannot be zero address");
-        require(target != rootOverlord, "Cannot vote on root overlord");
-        require(getOverlordCount() > 0, "No overlords to vote");
+        require(!_isRootOverlordAddress(target), "Cannot vote on root overlord via proxy");
+        require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
         if (isAdd) {
             require(!_isOverlord(target), "Already an overlord");
@@ -718,8 +753,8 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         } else {
             require(_isOverlord(target), "Not an overlord");
             require(
-                _rawOverlordCount() > 1 || !_isRootRevoked(),
-                "Cannot remove last overlord while root is revoked"
+                _rawOverlordCount() > 1 || (_getRootOverlordCount() > 0 && !_isRootRevoked()),
+                "Cannot remove last non-root overlord when no root overlords are active"
             );
         }
 
@@ -728,7 +763,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + getVoteExpiry()) {
+        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -748,7 +783,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
         _setProposalVoteCount(proposalId, newVoteCount);
 
-        uint256 threshold = getOverlordThreshold();
+        uint256 threshold = proxy_getOverlordThreshold();
         emit OverlordChangeProposed(msg.sender, target, isAdd, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -771,17 +806,17 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      Auto-executes at 2/3 threshold. Subject to the same expiry window.
      *      Minimum expiry: 100 blocks (~5 minutes at 3s blocks) to prevent abuse.
      */
-    function proposeExpiryChange(uint256 newExpiry) external onlyOverlord {
+    function proxy_proposeExpiryChange(uint256 newExpiry) external onlyOverlord {
         require(newExpiry >= 100, "Expiry too short, minimum 100 blocks");
-        require(newExpiry != getVoteExpiry(), "Already set to this value");
-        require(getOverlordCount() > 0, "No overlords to vote");
+        require(newExpiry != proxy_getVoteExpiry(), "Already set to this value");
+        require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
         bytes32 proposalKey = _getExpiryProposalKey(newExpiry);
         bytes32 proposalId = _getExpiryProposalId(newExpiry);
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + getVoteExpiry()) {
+        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -801,11 +836,11 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
         _setProposalVoteCount(proposalId, newVoteCount);
 
-        uint256 threshold = getOverlordThreshold();
+        uint256 threshold = proxy_getOverlordThreshold();
         emit ExpiryChangeProposed(msg.sender, newExpiry, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
-            uint256 oldExpiry = getVoteExpiry();
+            uint256 oldExpiry = proxy_getVoteExpiry();
             _setVoteExpiry(newExpiry);
             emit VoteExpiryChanged(oldExpiry, newExpiry);
             _clearActiveProposal();
@@ -814,77 +849,77 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     /// @dev View: current votes for a proposal in this epoch.
-    function getProposalVotes(address target, bool isAdd) external view returns (uint256) {
+    function proxy_getProposalVotes(address target, bool isAdd) external view returns (uint256) {
         return _getProposalVoteCount(_getProposalId(isAdd, target));
     }
 
     /// @dev View: has a specific overlord voted on a proposal in this epoch?
-    function hasVotedOnProposal(address voter, address target, bool isAdd) external view returns (bool) {
+    function proxy_hasVotedOnProposal(address voter, address target, bool isAdd) external view returns (bool) {
         return _hasVoted(_getProposalId(isAdd, target), voter);
     }
 
     /// @dev View: block number when the current proposal round started (0 if none).
-    function getProposalStartBlock(address target, bool isAdd) external view returns (uint256) {
+    function proxy_getProposalStartBlock(address target, bool isAdd) external view returns (uint256) {
         return _getProposalStartBlock(_getProposalId(isAdd, target));
     }
 
     /// @dev View: current votes for an expiry change proposal.
-    function getExpiryProposalVotes(uint256 newExpiry) external view returns (uint256) {
+    function proxy_getExpiryProposalVotes(uint256 newExpiry) external view returns (uint256) {
         return _getProposalVoteCount(_getExpiryProposalId(newExpiry));
     }
 
     /// @dev View: has a specific overlord voted on an expiry change proposal?
-    function hasVotedOnExpiryProposal(address voter, uint256 newExpiry) external view returns (bool) {
+    function proxy_hasVotedOnExpiryProposal(address voter, uint256 newExpiry) external view returns (bool) {
         return _hasVoted(_getExpiryProposalId(newExpiry), voter);
     }
 
     /// @dev View: current votes for the clear guardians proposal.
-    function getClearGuardiansProposalVotes() external view returns (uint256) {
+    function proxy_getClearGuardiansProposalVotes() external view returns (uint256) {
         return _getProposalVoteCount(_getClearGuardiansProposalId());
     }
 
     /// @dev View: has a specific overlord voted on the clear guardians proposal?
-    function hasVotedOnClearGuardians(address voter) external view returns (bool) {
+    function proxy_hasVotedOnClearGuardians(address voter) external view returns (bool) {
         return _hasVoted(_getClearGuardiansProposalId(), voter);
     }
 
     /// @dev View: current votes for a guardian change proposal.
-    function getGuardianProposalVotes(address target, bool isAdd) external view returns (uint256) {
+    function proxy_getGuardianProposalVotes(address target, bool isAdd) external view returns (uint256) {
         return _getProposalVoteCount(_getGuardianProposalId(isAdd, target));
     }
 
     /// @dev View: has a specific overlord voted on a guardian change proposal?
-    function hasVotedOnGuardianProposal(address voter, address target, bool isAdd) external view returns (bool) {
+    function proxy_hasVotedOnGuardianProposal(address voter, address target, bool isAdd) external view returns (bool) {
         return _hasVoted(_getGuardianProposalId(isAdd, target), voter);
     }
 
     /// @dev View: current votes for the restore root overlord proposal.
-    function getRestoreRootProposalVotes() external view returns (uint256) {
+    function proxy_getRestoreRootProposalVotes() external view returns (uint256) {
         return _getProposalVoteCount(_getRestoreRootProposalId());
     }
 
     /// @dev View: has a specific overlord voted on the restore root proposal?
-    function hasVotedOnRestoreRoot(address voter) external view returns (bool) {
+    function proxy_hasVotedOnRestoreRoot(address voter) external view returns (bool) {
         return _hasVoted(_getRestoreRootProposalId(), voter);
     }
 
     /// @dev View: current votes for the revoke root overlord proposal.
-    function getRevokeRootProposalVotes() external view returns (uint256) {
+    function proxy_getRevokeRootProposalVotes() external view returns (uint256) {
         return _getProposalVoteCount(_getRevokeRootProposalId());
     }
 
     /// @dev View: has a specific overlord voted on the revoke root proposal?
-    function hasVotedOnRevokeRoot(address voter) external view returns (bool) {
+    function proxy_hasVotedOnRevokeRoot(address voter) external view returns (bool) {
         return _hasVoted(_getRevokeRootProposalId(), voter);
     }
 
     /// @dev View: current votes for an admin change proposal.
-    function getAdminChangeProposalVotes(address newAdmin) external view returns (uint256) {
+    function proxy_getAdminChangeProposalVotes(address newAdmin) external view returns (uint256) {
         return _getProposalVoteCount(_getAdminChangeProposalId(newAdmin));
     }
 
     /// @dev View: has a specific overlord voted on an admin change proposal?
-    function hasVotedOnAdminChange(address voter, address newAdmin) external view returns (bool) {
+    function proxy_hasVotedOnAdminChange(address voter, address newAdmin) external view returns (bool) {
         return _hasVoted(_getAdminChangeProposalId(newAdmin), voter);
     }
 
@@ -892,7 +927,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      * @dev View: returns the active proposal ID, the block it started, and
      *      whether it has expired. Returns bytes32(0) if no proposal is active.
      */
-    function getActiveProposal()
+    function proxy_getActiveProposal()
         external
         view
         returns (
@@ -904,12 +939,12 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         proposalId = _getActiveProposal();
         startBlock = _getActiveProposalStart();
         if (proposalId != bytes32(0) && startBlock > 0) {
-            expired = block.number > startBlock + getVoteExpiry();
+            expired = block.number > startBlock + proxy_getVoteExpiry();
         }
     }
 
     /// @dev View: current vote epoch (increments on every executed proposal or direct overlord change).
-    function getVoteEpoch() external view returns (uint256) {
+    function proxy_getVoteEpoch() external view returns (uint256) {
         return _getVoteEpoch();
     }
 
@@ -918,16 +953,16 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      Auto-executes at 2/3 threshold. Subject to the same expiry/session rules.
      *      Guardians are temporary — add them for setup, clear when done.
      */
-    function proposeClearGuardians() external onlyOverlord {
-        require(getGuardianCount() > 0, "No guardians to clear");
-        require(getOverlordCount() > 0, "No overlords to vote");
+    function proxy_proposeClearGuardians() external onlyOverlord {
+        require(proxy_getGuardianCount() > 0, "No guardians to clear");
+        require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
         bytes32 proposalKey = _getClearGuardiansProposalKey();
         bytes32 proposalId = _getClearGuardiansProposalId();
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + getVoteExpiry()) {
+        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -947,7 +982,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
         _setProposalVoteCount(proposalId, newVoteCount);
 
-        uint256 threshold = getOverlordThreshold();
+        uint256 threshold = proxy_getOverlordThreshold();
         emit ClearGuardiansProposed(msg.sender, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -961,16 +996,16 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      * @dev Overlords vote to add or remove a guardian.
      *      Auto-executes at 2/3 threshold. Subject to same expiry/session rules.
      */
-    function proposeGuardianChange(address target, bool isAdd) external onlyOverlord {
+    function proxy_proposeGuardianChange(address target, bool isAdd) external onlyOverlord {
         require(target != address(0), "Target cannot be zero address");
-        require(target != rootOverlord, "Root overlord is an implicit guardian");
-        require(getOverlordCount() > 0, "No overlords to vote");
+        require(target != _proxy_validatorContract, "Root overlords are implicit guardians, manage via validator contract");
+        require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
         if (isAdd) {
             require(!_isGuardian(target), "Already a guardian");
-            require(getGuardianCount() < MAX_GUARDIANS, "Guardian limit reached (10)");
+            require(proxy_getGuardianCount() < MAX_GUARDIANS, "Guardian limit reached (10)");
             require(
-                !_isOverlord(target) && target != rootOverlord,
+                !_isOverlord(target) && !_isRootOverlordAddress(target),
                 "Address is an overlord and cannot also be a guardian"
             );
         } else {
@@ -982,7 +1017,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + getVoteExpiry()) {
+        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -1002,7 +1037,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
         _setProposalVoteCount(proposalId, newVoteCount);
 
-        uint256 threshold = getOverlordThreshold();
+        uint256 threshold = proxy_getOverlordThreshold();
         emit GuardianChangeProposed(msg.sender, target, isAdd, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -1021,17 +1056,17 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      Root overlord cannot participate (it's revoked).
      *      Auto-executes at 2/3 threshold.
      */
-    function proposeRestoreRootOverlord() external {
+    function proxy_proposeRestoreRootOverlord() external {
         require(_isOverlord(msg.sender), "Only a non-root overlord can propose restore");
         require(_isRootRevoked(), "Root overlord is not revoked");
-        require(getOverlordCount() > 0, "No overlords to vote");
+        require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
         bytes32 proposalKey = _getRestoreRootProposalKey();
         bytes32 proposalId = _getRestoreRootProposalId();
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + getVoteExpiry()) {
+        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -1051,7 +1086,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
         _setProposalVoteCount(proposalId, newVoteCount);
 
-        uint256 threshold = getOverlordThreshold();
+        uint256 threshold = proxy_getOverlordThreshold();
         emit RestoreRootProposed(msg.sender, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -1067,17 +1102,17 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      Root overlord CAN vote here (it counts toward threshold).
      *      Auto-executes at 2/3 threshold.
      */
-    function proposeRevokeRootOverlord() external onlyOverlord {
+    function proxy_proposeRevokeRootOverlord() external onlyOverlord {
         require(!_isRootRevoked(), "Root overlord already revoked");
         require(_rawOverlordCount() > 0, "Cannot revoke: no other overlords exist");
-        require(getOverlordCount() > 0, "No overlords to vote");
+        require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
         bytes32 proposalKey = _getRevokeRootProposalKey();
         bytes32 proposalId = _getRevokeRootProposalId();
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + getVoteExpiry()) {
+        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -1097,7 +1132,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
         _setProposalVoteCount(proposalId, newVoteCount);
 
-        uint256 threshold = getOverlordThreshold();
+        uint256 threshold = proxy_getOverlordThreshold();
         emit RevokeRootProposed(msg.sender, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -1113,17 +1148,17 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      This is a governance-level action — changing who controls upgrades.
      *      Auto-executes at 2/3 threshold.
      */
-    function proposeAdminChange(address newAdmin) external onlyOverlord {
+    function proxy_proposeAdminChange(address newAdmin) external onlyOverlord {
         require(newAdmin != address(0), "New admin cannot be zero address");
         require(newAdmin != _getAdmin(), "Already the current admin");
-        require(getOverlordCount() > 0, "No overlords to vote");
+        require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
         bytes32 proposalKey = _getAdminChangeProposalKey(newAdmin);
         bytes32 proposalId = _getAdminChangeProposalId(newAdmin);
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + getVoteExpiry()) {
+        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -1143,7 +1178,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
         _setProposalVoteCount(proposalId, newVoteCount);
 
-        uint256 threshold = getOverlordThreshold();
+        uint256 threshold = proxy_getOverlordThreshold();
         emit AdminChangeProposed(msg.sender, newAdmin, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -1153,12 +1188,12 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         }
     }
 
-    function linkLogicAdmin(
+    function proxy_linkLogicAdmin(
         address _logic,
         address admin_,
         bytes memory _data
     ) external payable onlyGuardian {
-        require(getIsInit() == false, "Already linked");
+        require(proxy_getIsInit() == false, "Already linked");
         require(_logic != address(0), "Logic address cannot be zero");
         require(admin_ != address(0), "Admin address cannot be zero");
         setIsInit(true);

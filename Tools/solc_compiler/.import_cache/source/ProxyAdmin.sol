@@ -24,7 +24,7 @@ contract ProxyAdmin {
 
     modifier onlyGuardianOf(ITransparentUpgradeableProxy proxy) {
         require(
-            TransparentUpgradeableProxy(payable(address(proxy))).isGuardian(msg.sender),
+            TransparentUpgradeableProxy(payable(address(proxy))).proxy_isGuardian(msg.sender),
             "ProxyAdmin: caller is not a guardian of this proxy"
         );
         _;
@@ -99,18 +99,18 @@ contract ProxyAdmin {
         currentImplementation = getProxyImplementation(proxy);
 
         // Governance state
-        rootRevoked = p.isRootOverlordRevoked();
-        overlordCount = p.getOverlordCount();
-        guardianCount = p.getGuardianCount();
-        overlordThreshold = p.getOverlordThreshold();
+        rootRevoked = p.proxy_isRootOverlordRevoked();
+        overlordCount = p.proxy_getOverlordCount();
+        guardianCount = p.proxy_getGuardianCount();
+        overlordThreshold = p.proxy_getOverlordThreshold();
 
         // Voting session
-        votingSessionActive = p.isVotingSessionActive();
-        (activeProposalId, activeProposalStartBlock, activeProposalExpired) = p.getActiveProposal();
+        votingSessionActive = p.proxy_isVotingSessionActive();
+        (activeProposalId, activeProposalStartBlock, activeProposalExpired) = p.proxy_getActiveProposal();
 
         // Epoch and expiry
-        voteEpoch = p.getVoteEpoch();
-        voteExpiry = p.getVoteExpiry();
+        voteEpoch = p.proxy_getVoteEpoch();
+        voteExpiry = p.proxy_getVoteExpiry();
     }
 
     /**
@@ -153,6 +153,6 @@ contract ProxyAdmin {
     function getProxyGuardians(
         ITransparentUpgradeableProxy proxy
     ) public view returns (address[] memory) {
-        return TransparentUpgradeableProxy(payable(address(proxy))).getGuardians();
+        return TransparentUpgradeableProxy(payable(address(proxy))).proxy_getGuardians();
     }
 }

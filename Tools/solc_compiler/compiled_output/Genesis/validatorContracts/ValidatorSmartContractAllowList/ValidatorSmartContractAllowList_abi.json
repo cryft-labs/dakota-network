@@ -47,6 +47,25 @@
         "type": "bool"
       }
     ],
+    "name": "OtherOverlordContractUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "added",
+        "type": "bool"
+      }
+    ],
     "name": "OtherValidatorContractUpdated",
     "type": "event"
   },
@@ -71,6 +90,31 @@
   },
   {
     "anonymous": false,
+    "inputs": [],
+    "name": "OverlordManagementRevoked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "target",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "added",
+        "type": "bool"
+      }
+    ],
+    "name": "RootOverlordUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
     "inputs": [
       {
         "indexed": false,
@@ -86,6 +130,12 @@
       }
     ],
     "name": "StateChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [],
+    "name": "ValidatorManagementRevoked",
     "type": "event"
   },
   {
@@ -147,6 +197,12 @@
   },
   {
     "anonymous": false,
+    "inputs": [],
+    "name": "VoterManagementRevoked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
     "inputs": [
       {
         "indexed": true,
@@ -198,6 +254,19 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRootOverlords",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
       }
     ],
     "stateMutability": "view",
@@ -295,6 +364,25 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "potentialOverlord",
+        "type": "address"
+      }
+    ],
+    "name": "isRootOverlord",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "potentialValidator",
         "type": "address"
       }
@@ -337,6 +425,25 @@
         "type": "uint256"
       }
     ],
+    "name": "otherOverlordContracts",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "name": "otherValidatorContracts",
     "outputs": [
       {
@@ -362,6 +469,51 @@
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "overlordManagementRevoked",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "rootOverlords",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "validatorManagementRevoked",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -407,6 +559,19 @@
         "type": "address"
       }
     ],
+    "name": "voteToAddOtherOverlordContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
+      }
+    ],
     "name": "voteToAddOtherValidatorContract",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -421,6 +586,19 @@
       }
     ],
     "name": "voteToAddOtherVoterContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "overlord",
+        "type": "address"
+      }
+    ],
+    "name": "voteToAddRootOverlord",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -472,6 +650,19 @@
         "type": "address"
       }
     ],
+    "name": "voteToRemoveOtherOverlordContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
+      }
+    ],
     "name": "voteToRemoveOtherValidatorContract",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -486,6 +677,19 @@
       }
     ],
     "name": "voteToRemoveOtherVoterContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "overlord",
+        "type": "address"
+      }
+    ],
+    "name": "voteToRemoveRootOverlord",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -517,6 +721,27 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "voteToRevokeOverlordManagement",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "voteToRevokeValidatorManagement",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "voteToRevokeVoterManagement",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint32",
@@ -527,6 +752,19 @@
     "name": "voteToUpdateVoteTallyBlockThreshold",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "voterManagementRevoked",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

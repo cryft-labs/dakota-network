@@ -11,4 +11,6 @@ interface ValidatorSmartContractInterface {
     function getAllVoters() external view returns (address[] memory);
     function isVoter(address potentialVoter) external view returns (bool);
     function isValidator(address potentialValidator) external view returns (bool);
+    function getRootOverlords() external view returns (address[] memory);
+    function isRootOverlord(address potentialOverlord) external view returns (bool);
 }
