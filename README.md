@@ -1,6 +1,6 @@
 # Dakota Network
 
-Smart contracts, tools, and node configuration for the **Dakota Network** — a public QBFT blockchain built on Hyperledger Besu with Tessera privacy.
+Smart contracts, tools, and node configuration for the **Dakota Network** — an enterprise QBFT blockchain built on Hyperledger Besu with Tessera privacy, designed for permissioned environments where a fully public and decentralized network is not desired.
 
 All project-owned contracts are licensed under **Apache 2.0**. This software is part of a patented system — see the [LICENSE](LICENSE) file and <https://cryftlabs.org/licenses> for details.
 
