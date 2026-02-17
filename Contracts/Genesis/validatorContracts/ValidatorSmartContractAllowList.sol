@@ -58,6 +58,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         address[] voters;
     }
 
+    address private __deprecated_guardian; // slot 0 — preserved for genesis storage compatibility
+
     address[] public validators;
     address[] public otherValidatorContracts;
 
