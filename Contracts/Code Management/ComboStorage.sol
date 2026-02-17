@@ -23,7 +23,7 @@ pragma solidity >=0.8.2 <0.8.20;
   │                                                      │
   │  No cross-contract state writes.                     │
   │  All validation via read-only calls to external      │
-  │  contracts (CodeManager, RedeemableCards).           │
+  │  contracts (CodeManager, RedeemableTokens).          │
   └──────────────────────────────────────────────────────┘
 */
 
