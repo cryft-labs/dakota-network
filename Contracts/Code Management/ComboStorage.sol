@@ -113,19 +113,10 @@ contract ComboStorage is IComboStorage {
         require(bytes(uniqueId).length > 0, "Unique ID cannot be empty");
         require(!pinToHash[pin][codeHash].exists, "Hash already stored");
 
-        // Verify the unique ID is registered in CodeManager
-        require(
-            codeManager.validateUniqueId(uniqueId),
-            "Unique ID not registered in CodeManager"
-        );
-
-        // Fetch details from CodeManager for event emission
+        // Fetch and validate unique ID details from CodeManager.
+        // getUniqueIdDetails reverts if the uniqueId is invalid.
         (address giftContract, string memory chainId, uint256 counter) =
             codeManager.getUniqueIdDetails(uniqueId);
-
-        // Verify counter matches the uniqueId
-        (, uint256 extractedCounter) = splitUniqueId(uniqueId);
-        require(counter == extractedCounter, "Mismatched counter");
 
         // Store PIN → hash → uniqueId
         pinToHash[pin][codeHash] = HashDetails(uniqueId, true);
@@ -138,18 +129,6 @@ contract ComboStorage is IComboStorage {
             counter,
             true
         );
-    }
-
-    function getDetailsFromCodeManager(string memory uniqueId)
-        public
-        view
-        returns (
-            address giftContract,
-            string memory chainId,
-            uint256 counter
-        )
-    {
-        return codeManager.getUniqueIdDetails(uniqueId);
     }
 
     /// @notice Redeem a code by submitting its PIN and hash.
@@ -194,56 +173,5 @@ contract ComboStorage is IComboStorage {
             msg.sender,
             true
         );
-    }
-
-    // ─── Internal helpers (used by storeData for uniqueId validation) ───
-
-    function splitUniqueId(string memory uniqueId)
-        internal
-        pure
-        returns (string memory contractIdentifier, uint256 counter)
-    {
-        uint256 delimiterIndex = bytes(uniqueId).length;
-        for (uint256 i = 0; i < bytes(uniqueId).length; i++) {
-            if (bytes(uniqueId)[i] == "-") {
-                delimiterIndex = i;
-                break;
-            }
-        }
-
-        require(
-            delimiterIndex != bytes(uniqueId).length,
-            "Invalid uniqueId format"
-        );
-
-        contractIdentifier = substring(uniqueId, 0, delimiterIndex);
-        counter = parseUint(
-            substring(uniqueId, delimiterIndex + 1, bytes(uniqueId).length)
-        );
-    }
-
-    function parseUint(string memory s) internal pure returns (uint256) {
-        uint256 res = 0;
-        for (uint256 i = 0; i < bytes(s).length; i++) {
-            require(
-                bytes(s)[i] >= "0" && bytes(s)[i] <= "9",
-                "Non-numeric character"
-            );
-            res = res * 10 + (uint256(uint8(bytes(s)[i])) - 48);
-        }
-        return res;
-    }
-
-    function substring(
-        string memory str,
-        uint256 startIndex,
-        uint256 endIndex
-    ) internal pure returns (string memory) {
-        bytes memory strBytes = bytes(str);
-        bytes memory result = new bytes(endIndex - startIndex);
-        for (uint256 i = startIndex; i < endIndex; i++) {
-            result[i - startIndex] = strBytes[i];
-        }
-        return string(result);
     }
 }
