@@ -23,8 +23,16 @@ pragma solidity >=0.8.2 <0.8.20;
   │                                                      │
   │  Two-phase operations:                               │
   │    vote → approve → execute (guardian-gated).        │
+  │    Applies to: gas funding, token burns,             │
+  │    native coin burns.                                │
+  │                                                      │
+  │  Guardian management:                                │
+  │    Add/remove individual guardians, or clear all     │
+  │    via voteToClearGuardians().  Enumerable via        │
+  │    getGuardians() / getGuardianCount().              │
   │                                                      │
   │  Uses .call{value:} for all ETH transfers.           │
+  │  ReentrancyGuard on all execute functions.           │
   └──────────────────────────────────────────────────────┘
 */
 
@@ -43,16 +51,13 @@ interface IVoterContract {
 
 contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     uint256 public voteTallyBlockThreshold;
-    uint256 public maxContractBalance;
     uint256 public totalGasFunded;
-
-    uint256 public period;
-    uint256 public limit;
 
     address[] public votersArray;
     address[] public otherVotersArray;
 
     mapping(address => bool) public isGuardian;
+    address[] public guardiansArray;
 
     mapping(VoteType => mapping(uint256 => VoteTally)) private voteTallies;
     mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
@@ -64,10 +69,8 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         REMOVE_VOTER,
         ADD_OTHER_VOTER_CONTRACT,
         REMOVE_OTHER_VOTER_CONTRACT,
-        LIMIT,
         VOTE_TALLY_BLOCK_THRESHOLD,
-        PERIOD,
-        MAX_CONTRACT_BALANCE,
+        CLEAR_GUARDIANS,
         BURN_TOKENS,
         FUND_GAS,
         BURN_NATIVE_COIN
@@ -84,9 +87,9 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     event StateChanged(VoteType voteType, uint256 newValue);
     event GasFunded(address indexed to, uint256 amount);
     event TokenBurned(address indexed tokenAddress, uint256 amount);
-    event MaxContractBalanceChanged(uint256 newMaxBalance);
-    event ExcessBurned(uint256 amount);
+    event NativeCoinBurned(uint256 amount);
     event GuardianUpdated(address indexed target, bool added);
+    event GuardiansCleared(uint256 count);
     event VoterUpdated(address indexed target, bool added);
     event OtherVoterContractUpdated(address indexed target, bool added);
     event TokenBurnApproved(address indexed tokenAddress, uint256 amount, bytes32 burnKey);
@@ -115,9 +118,6 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         __ReentrancyGuard_init();
         votersArray.push(msg.sender);
         voteTallyBlockThreshold = 1000;
-        maxContractBalance = 100 ether;
-        period = 1000;
-        limit = 1 ether;
     }
 
     // ── Voter Queries ─────────────────────────────────────
@@ -243,25 +243,33 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         if (tally.totalVotes >= getMajorityThreshold()) {
             emit StateChanged(voteType, target);
 
-            if (voteType == VoteType.LIMIT) {
-                limit = target;
-            } else if (voteType == VoteType.VOTE_TALLY_BLOCK_THRESHOLD) {
+            if (voteType == VoteType.VOTE_TALLY_BLOCK_THRESHOLD) {
                 voteTallyBlockThreshold = target;
-            } else if (voteType == VoteType.PERIOD) {
-                period = target;
-            } else if (voteType == VoteType.MAX_CONTRACT_BALANCE) {
-                maxContractBalance = target;
-                emit MaxContractBalanceChanged(target);
             } else {
                 address targetAddress = address(uint160(target));
                 if (voteType == VoteType.ADD_GUARDIAN) {
                     require(!isGuardian[targetAddress], "Already a guardian");
                     isGuardian[targetAddress] = true;
+                    guardiansArray.push(targetAddress);
                     emit GuardianUpdated(targetAddress, true);
                 } else if (voteType == VoteType.REMOVE_GUARDIAN) {
                     require(isGuardian[targetAddress], "Not a guardian");
                     isGuardian[targetAddress] = false;
+                    for (uint256 i = 0; i < guardiansArray.length; i++) {
+                        if (guardiansArray[i] == targetAddress) {
+                            guardiansArray[i] = guardiansArray[guardiansArray.length - 1];
+                            guardiansArray.pop();
+                            break;
+                        }
+                    }
                     emit GuardianUpdated(targetAddress, false);
+                } else if (voteType == VoteType.CLEAR_GUARDIANS) {
+                    uint256 count = guardiansArray.length;
+                    for (uint256 i = 0; i < count; i++) {
+                        isGuardian[guardiansArray[i]] = false;
+                    }
+                    delete guardiansArray;
+                    emit GuardiansCleared(count);
                 } else if (voteType == VoteType.ADD_VOTER) {
                     require(!isVoter(targetAddress), "Voter already in the list");
                     votersArray.push(targetAddress);
@@ -365,26 +373,25 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         _castVote(VoteType.REMOVE_GUARDIAN, uint256(uint160(guardian)));
     }
 
+    function voteToClearGuardians() external onlyVoters {
+        require(guardiansArray.length > 0, "No guardians to clear");
+        // Use 1 as sentinel for this non-targeted vote
+        _castVote(VoteType.CLEAR_GUARDIANS, 1);
+    }
+
+    function getGuardians() public view returns (address[] memory) {
+        return guardiansArray;
+    }
+
+    function getGuardianCount() public view returns (uint256) {
+        return guardiansArray.length;
+    }
+
     // ── Parameter Governance ──────────────────────────────
-
-    function voteToChangeMaxContractBalance(uint256 _newMaxBalance) external onlyVoters {
-        require(_newMaxBalance > 0, "Invalid max balance");
-        _castVote(VoteType.MAX_CONTRACT_BALANCE, _newMaxBalance);
-    }
-
-    function voteToChangeMaxGasAmount(uint256 _amount) external onlyVoters {
-        require(_amount > 0 && _amount <= 1000 ether, "Invalid gas amount");
-        _castVote(VoteType.LIMIT, _amount);
-    }
 
     function voteToUpdateVoteTallyBlockThreshold(uint256 _blocks) external onlyVoters {
         require(_blocks > 0 && _blocks <= 100000, "Invalid block threshold");
         _castVote(VoteType.VOTE_TALLY_BLOCK_THRESHOLD, _blocks);
-    }
-
-    function voteToUpdateFundingBlockThreshold(uint256 _blocks) external onlyVoters {
-        require(_blocks > 0 && _blocks <= 100000, "Invalid block threshold");
-        _castVote(VoteType.PERIOD, _blocks);
     }
 
     // ── Gas Funding ───────────────────────────────────────
@@ -424,18 +431,6 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         totalGasFunded += _amount;
 
         emit GasFunded(_to, _amount);
-
-        burnExcessGas();
-    }
-
-    function burnExcessGas() internal {
-        if (address(this).balance > maxContractBalance) {
-            uint256 excess = address(this).balance - maxContractBalance;
-            (bool success, ) = payable(DEAD_ADDRESS).call{value: excess}("");
-            if (success) {
-                emit ExcessBurned(excess);
-            }
-        }
     }
 
     // ── Token Burns ───────────────────────────────────────
@@ -486,18 +481,10 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         require(address(this).balance >= _amount, "Insufficient balance");
         (bool success, ) = payable(DEAD_ADDRESS).call{value: _amount}("");
         require(success, "Burn failed");
-        emit ExcessBurned(_amount);
+        emit NativeCoinBurned(_amount);
     }
 
-    receive() external payable {
-        if (address(this).balance > maxContractBalance) {
-            uint256 excess = address(this).balance - maxContractBalance;
-            (bool success, ) = payable(DEAD_ADDRESS).call{value: excess}("");
-            if (success) {
-                emit ExcessBurned(excess);
-            }
-        }
-    }
+    receive() external payable {}
 
     // ── Utilities ─────────────────────────────────────
 

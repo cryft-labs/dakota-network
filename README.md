@@ -168,8 +168,8 @@ Tessera documentation is still available online:
 
 | Contract | Address | Runtime Size | Purpose |
 |----------|---------|-------------|---------|
-| **ValidatorSmartContractAllowList** | `0x0000...1111` | 19,838 B | QBFT validator, voter, and root overlord governance |
-| **GasManager** | Genesis beneficiary | 13,666 B | Voter-governed gas funding, token burns, and native coin burns |
+| **ValidatorSmartContractAllowList** | `0x0000...1111` | 19,850 B | QBFT validator, voter, and root overlord governance |
+| **GasManager** | Genesis beneficiary | 13,444 B | Voter-governed gas funding, token burns, and native coin burns |
 | **TransparentUpgradeableProxy** | Per-contract | 17,175 B | Multi-party overlord/guardian transparent proxy |
 | **ProxyAdmin** | Per-proxy | 3,296 B | Guardian-gated ERC1967 upgrade dispatch |
 
@@ -235,7 +235,7 @@ Three independent management domains can be **permanently and irreversibly** rev
 
 **2. Validator Management Revocation** (`voteToRevokeValidatorManagement()`)
 - Pre-conditions: `validators[]` must be empty; `otherValidatorContracts[]` must have ≥1 entry; `getValidators()` must return ≥4 addresses (aggregated)
-- Effect: Blocks `ADD_VALIDATOR`, `REMOVE_VALIDATOR`, `ADD_CONTRACT`, `REMOVE_CONTRACT`
+- Effect: Blocks `ADD_VALIDATOR`, `REMOVE_VALIDATOR`, `ADD_OTHER_VALIDATOR_CONTRACT`, `REMOVE_OTHER_VALIDATOR_CONTRACT`
 
 **3. Voter Management Revocation** (`voteToRevokeVoterManagement()`) — **must be last**
 - Pre-conditions: Overlord management already revoked; validator management already revoked; `votersArray[]` must be empty; `otherVotersArray[]` must have ≥1 entry; `getAllVoters()` must return ≥1 address (aggregated)
@@ -265,7 +265,7 @@ Receives all block rewards as the QBFT beneficiary address. Provides voter-gover
 | Role | How Assigned | Powers |
 |------|-------------|--------|
 | **Voter** | Majority vote of existing voters | Vote on all governance actions |
-| **Guardian** | Majority vote of voters | Execute approved funds/burns; execute token and native coin burns |
+| **Guardian** | Majority vote of voters | Execute approved funds/burns; execute token and native coin burns. Can be individually added/removed or bulk-cleared via `voteToClearGuardians()`. Enumerable via `getGuardians()` / `getGuardianCount()`. |
 
 #### Two-Phase Operations
 
@@ -282,20 +282,27 @@ Destructive operations (funding, burns) require two phases:
 
 All execute functions are protected by `ReentrancyGuard` and use `.call{value:}` for transfers. The `executeFundGas` function also verifies the exact balance delta after transfer.
 
+#### Guardian Management
+
+| Action | Function | Notes |
+|--------|----------|-------|
+| Add guardian | `voteToAddGuardian(address)` | Voter majority required; must not already be a guardian |
+| Remove guardian | `voteToRemoveGuardian(address)` | Voter majority required; must be an existing guardian |
+| Clear all guardians | `voteToClearGuardians()` | Voter majority required; at least 1 guardian must exist |
+| List guardians | `getGuardians()` | Returns full `address[]` array |
+| Count guardians | `getGuardianCount()` | Returns `uint256` count |
+
+Clearing emits `GuardiansCleared(count)` and resets all guardian mappings and the array in one operation.
+
 #### Configurable Parameters (voter majority)
 
 | Parameter | Default | Function | Constraints |
 |-----------|---------|----------|-------------|
-| `maxContractBalance` | 100 ETH | `voteToChangeMaxContractBalance()` | Must be > 0 |
-| `limit` (max gas fund per tx) | 1 ETH | `voteToChangeMaxGasAmount()` | 1 to 1,000 ETH |
 | `voteTallyBlockThreshold` | 1,000 blocks | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 |
-| `period` (funding block threshold) | 1,000 blocks | `voteToUpdateFundingBlockThreshold()` | 1 to 100,000 |
 
-#### Auto-Burn Excess
+#### Native Coin Burns
 
-When the contract's native balance exceeds `maxContractBalance`, excess is automatically burned to `0x...dEaD`:
-- After every `executeFundGas()` call
-- On every incoming `receive()` (block rewards)
+Voters can burn any amount of the contract's native coin balance via `voteToBurnNativeCoin(amount)` → `executeCoinBurn(amount)`, sending it to `0x...dEaD`. This is the only mechanism for reducing accumulated gas fees — there is no automatic cap or auto-burn.
 
 #### Voter Pool (Independent)
 
@@ -308,6 +315,7 @@ The GasManager has its own local `votersArray[]` and pluggable `otherVotersArray
 | Remove last voter | `getAllVoters().length > 1` enforced before removal |
 | Remove last external voter contract when no local voters | `votersArray.length > 0 \|\| otherVotersArray.length > 1` |
 | `address(0)` as voter/guardian/recipient | All entry points require `!= address(0)` |
+| Clear guardians when none exist | `guardiansArray.length > 0` required |
 | Re-entrancy on fund/burn execution | `ReentrancyGuard` modifier on all execute functions |
 | Balance discrepancy after fund transfer | Exact balance delta check: `balanceBefore - balanceAfter == _amount` |
 

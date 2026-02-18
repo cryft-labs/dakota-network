@@ -78,8 +78,8 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         REMOVE_VALIDATOR,
         ADD_VOTER,
         REMOVE_VOTER,
-        ADD_CONTRACT,
-        REMOVE_CONTRACT,
+        ADD_OTHER_VALIDATOR_CONTRACT,
+        REMOVE_OTHER_VALIDATOR_CONTRACT,
         ADD_OTHER_VOTER_CONTRACT,
         REMOVE_OTHER_VOTER_CONTRACT,
         CHANGE_MAX_VALIDATORS,
@@ -180,7 +180,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
 
         // reset expired tallies based on startVoteBlock
         if (
-            tally.voters.length > 0 &&
+            tally.startVoteBlock != 0 &&
             block.number > tally.startVoteBlock + voteTallyBlockThreshold
         ) {
             for (uint256 i = 0; i < tally.voters.length; i++) {
@@ -256,7 +256,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                 }
                 require(found, "Voter not found");
                 emit VoterUpdated(target, false);
-            } else if (voteType == VoteType.ADD_CONTRACT) {
+            } else if (voteType == VoteType.ADD_OTHER_VALIDATOR_CONTRACT) {
                 require(!validatorManagementRevoked, "Validator management permanently revoked");
                 for (uint256 i = 0; i < otherValidatorContracts.length; i++) {
                     require(
@@ -266,7 +266,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                 }
                 otherValidatorContracts.push(target);
                 emit OtherValidatorContractUpdated(target, true);
-            } else if (voteType == VoteType.REMOVE_CONTRACT) {
+            } else if (voteType == VoteType.REMOVE_OTHER_VALIDATOR_CONTRACT) {
                 require(!validatorManagementRevoked, "Validator management permanently revoked");
                 bool found = false;
                 for (uint256 i = 0; i < otherValidatorContracts.length; i++) {
@@ -506,7 +506,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
             );
         }
 
-        _castVote(VoteType.ADD_CONTRACT, contractAddress);
+        _castVote(VoteType.ADD_OTHER_VALIDATOR_CONTRACT, contractAddress);
     }
 
     function voteToRemoveOtherValidatorContract(
@@ -516,7 +516,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
             contractAddress != address(0),
             "Contract address should not be zero"
         );
-        _castVote(VoteType.REMOVE_CONTRACT, contractAddress);
+        _castVote(VoteType.REMOVE_OTHER_VALIDATOR_CONTRACT, contractAddress);
     }
 
     function voteToAddOtherVoterContract(
