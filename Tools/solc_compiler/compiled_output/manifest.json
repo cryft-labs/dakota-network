@@ -34,8 +34,8 @@
   {
     "source": "Code Management\\CodeManager.sol",
     "contract": "CodeManager",
-    "runtime_bytes": 8354,
-    "creation_bytes": 8591,
+    "runtime_bytes": 13640,
+    "creation_bytes": 13883,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\CodeManager\\CodeManager",
     "over_limit": false
   },
@@ -58,8 +58,8 @@
   {
     "source": "Genesis\\GasManager.sol",
     "contract": "GasManager",
-    "runtime_bytes": 13444,
-    "creation_bytes": 13687,
+    "runtime_bytes": 14510,
+    "creation_bytes": 14753,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\GasManager\\GasManager",
     "over_limit": false
   },
@@ -106,8 +106,8 @@
   {
     "source": "Genesis\\validatorContracts\\ValidatorSmartContractAllowList.sol",
     "contract": "ValidatorSmartContractAllowList",
-    "runtime_bytes": 19850,
-    "creation_bytes": 19882,
+    "runtime_bytes": 20569,
+    "creation_bytes": 20601,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\validatorContracts\\ValidatorSmartContractAllowList\\ValidatorSmartContractAllowList",
     "over_limit": false
   },

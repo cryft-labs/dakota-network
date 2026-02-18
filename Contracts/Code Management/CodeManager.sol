@@ -13,7 +13,7 @@ pragma solidity >=0.8.2 <0.8.20;
  \___/\___/\_,_/\__/_/  /_/\_,_/_//_/\_,_/\_, /\__/_/
                                          /___/ By: CryftCreator
 
-  Version 1.0 — Production Code Manager  [UPGRADEABLE]
+  Version 2.0 — Production Code Manager  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
   │                                                      │
@@ -22,8 +22,10 @@ pragma solidity >=0.8.2 <0.8.20;
   │  keccak256(address(this), giftContract, chainId)     │
   │  + incrementing counter.                             │
   │                                                      │
-  │  Voter governance derived from                       │
-  │  ValidatorSmartContractAllowList at 0x...1111.       │
+  │  2/3 supermajority quorum for all state changes.     │
+  │  Voter-pool changes frozen while any tally is active.│
+  │  Own voter set with pluggable external voter         │
+  │  contracts via otherVoterContracts[].                │
   │                                                      │
   │  No cross-contract state writes.                     │
   └──────────────────────────────────────────────────────┘
@@ -36,7 +38,7 @@ import "./interfaces/ICodeManager.sol";
 
 interface IVoterChecker {
     function isVoter(address potentialVoter) external view returns (bool);
-    function getAllVoters() external view returns (address[] memory);
+    function getVoters() external view returns (address[] memory);
 }
 
 contract CodeManager is Initializable, ICodeManager {
@@ -51,107 +53,291 @@ contract CodeManager is Initializable, ICodeManager {
         ADD_WHITELISTED_ADDRESS,
         REMOVE_WHITELISTED_ADDRESS,
         UPDATE_REGISTRATION_FEE,
-        UPDATE_FEE_VAULT
+        UPDATE_FEE_VAULT,
+        ADD_VOTER,
+        REMOVE_VOTER,
+        ADD_OTHER_VOTER_CONTRACT,
+        REMOVE_OTHER_VOTER_CONTRACT,
+        UPDATE_VOTE_TALLY_BLOCK_THRESHOLD
     }
 
     struct VoteTally {
         uint256 totalVotes;
-        uint256 lastVoteBlock;
+        uint256 startVoteBlock;
+        address[] voters;
     }
 
-    IVoterChecker public validatorContract;
+    address[] public votersArray;
+    address[] public otherVoterContracts;
+    uint256 public activeVoteCount;
+
     uint256 public registrationFee;
-    uint32 public voteTallyBlockThreshold;
+    uint256 public voteTallyBlockThreshold;
     address public feeVault;
 
     mapping(address => bool) public isWhitelistedAddress;
     mapping(string => uint256) private identifierCounter;
     mapping(string => ContractData) private contractIdentifierToData;
-    mapping(VoteType => mapping(address => VoteTally)) private voteTallies;
-    mapping(VoteType => mapping(address => mapping(address => bool))) private hasVoted;
+    mapping(VoteType => mapping(uint256 => VoteTally)) private voteTallies;
+    mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
 
-    event registrationFeeUpdated(uint256 newFee);
-    event VoteCast(address indexed voter, VoteType voteType, address target);
-    event StateChanged(VoteType voteType, address newValue);
+    event RegistrationFeeUpdated(uint256 newFee);
+    event VoteCast(address indexed voter, VoteType voteType, uint256 target);
+    event StateChanged(VoteType voteType, uint256 newValue);
+    event VoteTallyReset(VoteType voteType, uint256 target);
     event UniqueIdsRegistered(address indexed giftContract, string chainId, uint256 quantity);
+    event VoterUpdated(address indexed target, bool added);
+    event OtherVoterContractUpdated(address indexed target, bool added);
 
     constructor() {
         _disableInitializers();
     }
 
     modifier onlyVoters() {
-        require(validatorContract.isVoter(msg.sender), "Caller is not a voter");
+        require(isVoter(msg.sender), "Only voters can call this function");
         _;
     }
 
     function initialize() public virtual initializer {
-        validatorContract = IVoterChecker(0x0000000000000000000000000000000000001111);
+        votersArray.push(msg.sender);
         registrationFee = 10**15;
-        voteTallyBlockThreshold = 10000;
+        voteTallyBlockThreshold = 1000;
     }
 
-    function _castVote(VoteType voteType, address target) internal {
-        require(target != address(0), "Target address should not be zero");
-        require(validatorContract.isVoter(msg.sender), "Only voters can vote");
+    // ── Voter Queries ─────────────────────────────────────
+
+    function isVoter(address potentialVoter) public view returns (bool) {
+        for (uint256 i = 0; i < votersArray.length; i++) {
+            if (votersArray[i] == potentialVoter) {
+                return true;
+            }
+        }
+        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+            try IVoterChecker(otherVoterContracts[i]).isVoter(potentialVoter) returns (bool result) {
+                if (result) return true;
+            } catch {}
+        }
+        return false;
+    }
+
+    function getVoters() public view returns (address[] memory) {
+        uint256 totalLen = votersArray.length;
+        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
+                totalLen += ext.length;
+            } catch {}
+        }
+
+        address[] memory allVoters = new address[](totalLen);
+        uint256 counter = 0;
+        for (uint256 i = 0; i < votersArray.length; i++) {
+            allVoters[counter] = votersArray[i];
+            counter++;
+        }
+        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
+                for (uint256 j = 0; j < ext.length; j++) {
+                    allVoters[counter] = ext[j];
+                    counter++;
+                }
+            } catch {}
+        }
+        return allVoters;
+    }
+
+    // ── Vote Tally & Thresholds ───────────────────────────
+
+    function getVoteTally(
+        VoteType voteType,
+        uint256 target
+    )
+        public
+        view
+        returns (
+            uint256 totalVotes,
+            uint256 startVoteBlock,
+            uint256 voteExpirationBlock,
+            address[] memory votedAddresses
+        )
+    {
+        VoteTally memory tally = voteTallies[voteType][target];
+        totalVotes = tally.totalVotes;
+        startVoteBlock = tally.startVoteBlock;
+        if (startVoteBlock != 0) {
+            voteExpirationBlock = startVoteBlock + voteTallyBlockThreshold;
+        } else {
+            voteExpirationBlock = 0;
+        }
+        votedAddresses = tally.voters;
+    }
+
+    function getSupermajorityThreshold() public view returns (uint256) {
+        uint256 totalVoterCount = getVoters().length;
+        require(totalVoterCount > 0, "No voters available");
+        return (totalVoterCount * 2 + 2) / 3;
+    }
+
+    // ── Internal Vote Engine ──────────────────────────────
+
+    function _castVote(VoteType voteType, uint256 target) internal {
+        require(target != 0, "Target should not be zero");
+        // Caller validation is enforced by the onlyVoters modifier on all public entry points
 
         VoteTally storage tally = voteTallies[voteType][target];
 
-        if (block.number > tally.lastVoteBlock + voteTallyBlockThreshold) {
-            tally.totalVotes = 0;
-            address[] memory allVoters = validatorContract.getAllVoters();
-            for (uint256 i = 0; i < allVoters.length; i++) {
-                hasVoted[voteType][target][allVoters[i]] = false;
+        // reset expired tallies based on startVoteBlock
+        if (
+            tally.startVoteBlock != 0 &&
+            block.number > tally.startVoteBlock + voteTallyBlockThreshold
+        ) {
+            for (uint256 i = 0; i < tally.voters.length; i++) {
+                hasVoted[voteType][target][tally.voters[i]] = false;
             }
+            tally.totalVotes = 0;
+            tally.voters = new address[](0);
+            tally.startVoteBlock = 0;
+            activeVoteCount--;
+            emit VoteTallyReset(voteType, target);
         }
 
         require(!hasVoted[voteType][target][msg.sender], "Voter has already voted for this target");
 
+        // record vote
+        if (tally.voters.length == 0) {
+            tally.startVoteBlock = block.number;
+            activeVoteCount++;
+        }
         tally.totalVotes++;
-        tally.lastVoteBlock = block.number;
+        tally.voters.push(msg.sender);
         hasVoted[voteType][target][msg.sender] = true;
 
-        if (tally.totalVotes >= (validatorContract.getAllVoters().length / 2) + 1) {
+        // check for supermajority (2/3)
+        if (tally.totalVotes >= getSupermajorityThreshold()) {
             emit StateChanged(voteType, target);
+
             if (voteType == VoteType.ADD_WHITELISTED_ADDRESS) {
-                isWhitelistedAddress[target] = true;
+                isWhitelistedAddress[address(uint160(target))] = true;
             } else if (voteType == VoteType.REMOVE_WHITELISTED_ADDRESS) {
-                isWhitelistedAddress[target] = false;
+                isWhitelistedAddress[address(uint160(target))] = false;
             } else if (voteType == VoteType.UPDATE_REGISTRATION_FEE) {
-                registrationFee = uint256(uint160(target));
-                emit registrationFeeUpdated(registrationFee);
+                registrationFee = target;
+                emit RegistrationFeeUpdated(registrationFee);
             } else if (voteType == VoteType.UPDATE_FEE_VAULT) {
-                feeVault = target;
+                feeVault = address(uint160(target));
+            } else if (voteType == VoteType.ADD_VOTER) {
+                require(!isVoter(address(uint160(target))), "Voter already in the list");
+                votersArray.push(address(uint160(target)));
+                emit VoterUpdated(address(uint160(target)), true);
+            } else if (voteType == VoteType.REMOVE_VOTER) {
+                address targetAddress = address(uint160(target));
+                bool found = false;
+                for (uint256 i = 0; i < votersArray.length; i++) {
+                    if (votersArray[i] == targetAddress) {
+                        votersArray[i] = votersArray[votersArray.length - 1];
+                        votersArray.pop();
+                        found = true;
+                        break;
+                    }
+                }
+                require(found, "Voter not found");
+                emit VoterUpdated(targetAddress, false);
+            } else if (voteType == VoteType.ADD_OTHER_VOTER_CONTRACT) {
+                address targetAddress = address(uint160(target));
+                for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+                    require(otherVoterContracts[i] != targetAddress, "Voter contract already in list");
+                }
+                otherVoterContracts.push(targetAddress);
+                emit OtherVoterContractUpdated(targetAddress, true);
+            } else if (voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT) {
+                address targetAddress = address(uint160(target));
+                require(
+                    votersArray.length > 0 || otherVoterContracts.length > 1,
+                    "Cannot remove: would leave no voters in the system"
+                );
+                bool found = false;
+                for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+                    if (otherVoterContracts[i] == targetAddress) {
+                        otherVoterContracts[i] = otherVoterContracts[otherVoterContracts.length - 1];
+                        otherVoterContracts.pop();
+                        found = true;
+                        break;
+                    }
+                }
+                require(found, "Voter contract not found");
+                emit OtherVoterContractUpdated(targetAddress, false);
+            } else if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
+                voteTallyBlockThreshold = target;
+            }
+
+            // clear votes
+            for (uint256 i = 0; i < tally.voters.length; i++) {
+                hasVoted[voteType][target][tally.voters[i]] = false;
             }
             delete voteTallies[voteType][target];
-            address[] memory allVoters = validatorContract.getAllVoters();
-            for (uint256 i = 0; i < allVoters.length; i++) {
-                hasVoted[voteType][target][allVoters[i]] = false;
-            }
+            activeVoteCount--;
         }
 
         emit VoteCast(msg.sender, voteType, target);
     }
 
-    function voteToAddWhitelistedAddress(address newAddress) public onlyVoters {
-        _castVote(VoteType.ADD_WHITELISTED_ADDRESS, newAddress);
+    // ── Voter Management ──────────────────────────────────
+
+    function voteToAddVoter(address voter) external onlyVoters {
+        require(voter != address(0), "Voter address should not be zero");
+        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+        _castVote(VoteType.ADD_VOTER, uint256(uint160(voter)));
     }
 
-    function voteToRemoveWhitelistedAddress(address removeAddress) public onlyVoters {
-        _castVote(VoteType.REMOVE_WHITELISTED_ADDRESS, removeAddress);
+    function voteToRemoveVoter(address voter) external onlyVoters {
+        require(voter != address(0), "Voter address should not be zero");
+        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+        require(getVoters().length > 1, "Cannot remove the last voter");
+        _castVote(VoteType.REMOVE_VOTER, uint256(uint160(voter)));
     }
 
-    function voteToUpdateRegistrationFee(uint256 newFee) public onlyVoters {
-        _castVote(VoteType.UPDATE_REGISTRATION_FEE, address(uint160(newFee)));
+    function voteToAddOtherVoterContract(address voterContract) external onlyVoters {
+        require(voterContract != address(0), "Voter contract address should not be zero");
+        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+        require(isContract(voterContract), "Provided address does not point to a valid contract");
+        try IVoterChecker(voterContract).getVoters() {} catch {
+            revert("Contract does not implement required getVoters function");
+        }
+        try IVoterChecker(voterContract).isVoter(msg.sender) {} catch {
+            revert("Contract does not implement required isVoter function");
+        }
+        _castVote(VoteType.ADD_OTHER_VOTER_CONTRACT, uint256(uint160(voterContract)));
     }
 
-    function voteToUpdateFeeVault(address newFeeVault) public onlyVoters {
-        _castVote(VoteType.UPDATE_FEE_VAULT, newFeeVault);
+    function voteToRemoveOtherVoterContract(address voterContract) external onlyVoters {
+        require(voterContract != address(0), "Voter contract address should not be zero");
+        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+        _castVote(VoteType.REMOVE_OTHER_VOTER_CONTRACT, uint256(uint160(voterContract)));
     }
 
-    function getVoteTally(VoteType voteType, address target) external view returns (uint256, uint256) {
-        VoteTally storage tally = voteTallies[voteType][target];
-        return (tally.lastVoteBlock, tally.totalVotes);
+    // ── Governance Entry Points ───────────────────────────
+
+    function voteToAddWhitelistedAddress(address newAddress) external onlyVoters {
+        _castVote(VoteType.ADD_WHITELISTED_ADDRESS, uint256(uint160(newAddress)));
     }
+
+    function voteToRemoveWhitelistedAddress(address removeAddress) external onlyVoters {
+        _castVote(VoteType.REMOVE_WHITELISTED_ADDRESS, uint256(uint160(removeAddress)));
+    }
+
+    function voteToUpdateRegistrationFee(uint256 newFee) external onlyVoters {
+        _castVote(VoteType.UPDATE_REGISTRATION_FEE, newFee);
+    }
+
+    function voteToUpdateFeeVault(address newFeeVault) external onlyVoters {
+        _castVote(VoteType.UPDATE_FEE_VAULT, uint256(uint160(newFeeVault)));
+    }
+
+    function voteToUpdateVoteTallyBlockThreshold(uint256 _blocks) external onlyVoters {
+        require(_blocks > 0 && _blocks <= 100000, "Invalid block threshold");
+        _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, _blocks);
+    }
+
+    // ── Unique ID Queries ─────────────────────────────────
 
     function getContractData(string memory contractIdentifier) public view returns (ContractData memory) {
         return contractIdentifierToData[contractIdentifier];
@@ -229,6 +415,7 @@ contract CodeManager is Initializable, ICodeManager {
 
         uint256 totalFee = registrationFee * quantity;
         require(msg.value >= totalFee, "Insufficient registration fee");
+        require(feeVault != address(0), "Fee vault not set");
 
         // Forward fee to fee vault
         payable(feeVault).transfer(totalFee);
@@ -242,6 +429,35 @@ contract CodeManager is Initializable, ICodeManager {
         if (refund > 0) {
             payable(msg.sender).transfer(refund);
         }
+    }
+
+    // ── Expired Tally Cleanup ─────────────────────────────
+
+    /// @notice Voter-only function to reset an expired tally and decrement the active vote counter.
+    ///         Call this to clean up stale tallies that would otherwise block voter-pool changes.
+    function resetExpiredTally(VoteType voteType, uint256 target) external onlyVoters {
+        VoteTally storage tally = voteTallies[voteType][target];
+        require(tally.startVoteBlock != 0, "No active tally for this target");
+        require(
+            block.number > tally.startVoteBlock + voteTallyBlockThreshold,
+            "Tally has not expired yet"
+        );
+        for (uint256 i = 0; i < tally.voters.length; i++) {
+            hasVoted[voteType][target][tally.voters[i]] = false;
+        }
+        delete voteTallies[voteType][target];
+        activeVoteCount--;
+        emit VoteTallyReset(voteType, target);
+    }
+
+    // ── Utilities ─────────────────────────────────────
+
+    function isContract(address _addr) internal view returns (bool) {
+        uint32 size;
+        assembly {
+            size := extcodesize(_addr)
+        }
+        return (size > 0);
     }
 
     function incrementCounter(address giftContract, string memory chainId, uint256 quantity) internal {

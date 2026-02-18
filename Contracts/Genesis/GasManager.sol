@@ -18,8 +18,10 @@ pragma solidity >=0.8.2 <0.8.20;
   ┌──────────────── Contract Architecture ───────────────┐
   │                                                      │
   │  Gas beneficiary — voter-governed funding & burns.   │
+  │  2/3 supermajority quorum for all state changes.     │
+  │  Voter-pool changes frozen while any tally is active.│
   │  Own voter set with pluggable external voter         │
-  │  contracts via otherVotersArray.                     │
+  │  contracts via otherVoterContracts[].                │
   │                                                      │
   │  Two-phase operations:                               │
   │    vote → approve → execute (guardian-gated).        │
@@ -28,7 +30,7 @@ pragma solidity >=0.8.2 <0.8.20;
   │                                                      │
   │  Guardian management:                                │
   │    Add/remove individual guardians, or clear all     │
-  │    via voteToClearGuardians().  Enumerable via        │
+  │    via voteToClearGuardians().  Enumerable via       │
   │    getGuardians() / getGuardianCount().              │
   │                                                      │
   │  Uses .call{value:} for all ETH transfers.           │
@@ -44,23 +46,28 @@ interface IERC20 {
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
-interface IVoterContract {
+interface IVoterChecker {
     function isVoter(address potentialVoter) external view returns (bool);
-    function getAllVoters() external view returns (address[] memory);
+    function getVoters() external view returns (address[] memory);
 }
 
 contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     uint256 public voteTallyBlockThreshold;
     uint256 public totalGasFunded;
+    uint256 public activeVoteCount;
 
     address[] public votersArray;
-    address[] public otherVotersArray;
-
-    mapping(address => bool) public isGuardian;
+    address[] public otherVoterContracts;
     address[] public guardiansArray;
 
+    mapping(address => bool) public isGuardian;
     mapping(VoteType => mapping(uint256 => VoteTally)) private voteTallies;
     mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
+    mapping(bytes32 => bool) public approvedBurns;
+    mapping(bytes32 => bool) public approvedFunds;
+    mapping(bytes32 => bool) public approvedCoinBurns;
+
+    address constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     enum VoteType {
         ADD_GUARDIAN,
@@ -69,7 +76,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         REMOVE_VOTER,
         ADD_OTHER_VOTER_CONTRACT,
         REMOVE_OTHER_VOTER_CONTRACT,
-        VOTE_TALLY_BLOCK_THRESHOLD,
+        UPDATE_VOTE_TALLY_BLOCK_THRESHOLD,
         CLEAR_GUARDIANS,
         BURN_TOKENS,
         FUND_GAS,
@@ -96,15 +103,6 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     event GasFundApproved(address indexed to, uint256 amount, bytes32 fundKey);
     event CoinBurnApproved(uint256 amount, bytes32 coinBurnKey);
 
-    // Approved token burns: keccak256(tokenAddress, amount) => true
-    mapping(bytes32 => bool) public approvedBurns;
-    // Approved gas funds: keccak256(to, amount) => true
-    mapping(bytes32 => bool) public approvedFunds;
-    // Approved native coin burns: keccak256("nativeBurn", amount) => true
-    mapping(bytes32 => bool) public approvedCoinBurns;
-
-    address constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
-
     modifier onlyVoters() {
         require(isVoter(msg.sender), "Only voters can call this function");
         _;
@@ -128,35 +126,37 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                 return true;
             }
         }
-        for (uint256 i = 0; i < otherVotersArray.length; i++) {
-            try IVoterContract(otherVotersArray[i]).isVoter(potentialVoter) returns (bool result) {
+        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+            try IVoterChecker(otherVoterContracts[i]).isVoter(potentialVoter) returns (bool result) {
                 if (result) return true;
             } catch {}
         }
         return false;
     }
 
-    function getAllVoters() public view returns (address[] memory) {
+    function getVoters() public view returns (address[] memory) {
         uint256 totalLen = votersArray.length;
-        for (uint256 i = 0; i < otherVotersArray.length; i++) {
-            try IVoterContract(otherVotersArray[i]).getAllVoters() returns (address[] memory ext) {
+        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
                 totalLen += ext.length;
             } catch {}
         }
 
-        address[] memory all = new address[](totalLen);
-        uint256 idx = 0;
+        address[] memory allVoters = new address[](totalLen);
+        uint256 counter = 0;
         for (uint256 i = 0; i < votersArray.length; i++) {
-            all[idx++] = votersArray[i];
+            allVoters[counter] = votersArray[i];
+            counter++;
         }
-        for (uint256 i = 0; i < otherVotersArray.length; i++) {
-            try IVoterContract(otherVotersArray[i]).getAllVoters() returns (address[] memory ext) {
+        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
                 for (uint256 j = 0; j < ext.length; j++) {
-                    all[idx++] = ext[j];
+                    allVoters[counter] = ext[j];
+                    counter++;
                 }
             } catch {}
         }
-        return all;
+        return allVoters;
     }
 
     // ── Vote Tally & Thresholds ───────────────────────────
@@ -182,10 +182,10 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         votedAddresses = tally.voters;
     }
 
-    function getMajorityThreshold() public view returns (uint256) {
-        uint256 totalVoterCount = getAllVoters().length;
+    function getSupermajorityThreshold() public view returns (uint256) {
+        uint256 totalVoterCount = getVoters().length;
         require(totalVoterCount > 0, "No voters available");
-        return (totalVoterCount / 2) + 1;
+        return (totalVoterCount * 2 + 2) / 3;
     }
 
     // ── Balance Queries ───────────────────────────────────
@@ -223,6 +223,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             tally.totalVotes = 0;
             tally.voters = new address[](0);
             tally.startVoteBlock = 0;
+            activeVoteCount--;
             emit VoteTallyReset(voteType, target);
         }
 
@@ -234,16 +235,17 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         // record the vote
         if (tally.voters.length == 0) {
             tally.startVoteBlock = block.number;
+            activeVoteCount++;
         }
         tally.totalVotes++;
         tally.voters.push(msg.sender);
         hasVoted[voteType][target][msg.sender] = true;
 
-        // check for majority
-        if (tally.totalVotes >= getMajorityThreshold()) {
+        // check for supermajority (2/3)
+        if (tally.totalVotes >= getSupermajorityThreshold()) {
             emit StateChanged(voteType, target);
 
-            if (voteType == VoteType.VOTE_TALLY_BLOCK_THRESHOLD) {
+            if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
                 voteTallyBlockThreshold = target;
             } else {
                 address targetAddress = address(uint160(target));
@@ -287,21 +289,21 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                     require(found, "Voter not found");
                     emit VoterUpdated(targetAddress, false);
                 } else if (voteType == VoteType.ADD_OTHER_VOTER_CONTRACT) {
-                    for (uint256 i = 0; i < otherVotersArray.length; i++) {
-                        require(otherVotersArray[i] != targetAddress, "Voter contract already in list");
+                    for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+                        require(otherVoterContracts[i] != targetAddress, "Voter contract already in list");
                     }
-                    otherVotersArray.push(targetAddress);
+                    otherVoterContracts.push(targetAddress);
                     emit OtherVoterContractUpdated(targetAddress, true);
                 } else if (voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT) {
                     require(
-                        votersArray.length > 0 || otherVotersArray.length > 1,
+                        votersArray.length > 0 || otherVoterContracts.length > 1,
                         "Cannot remove: would leave no voters in the system"
                     );
                     bool found = false;
-                    for (uint256 i = 0; i < otherVotersArray.length; i++) {
-                        if (otherVotersArray[i] == targetAddress) {
-                            otherVotersArray[i] = otherVotersArray[otherVotersArray.length - 1];
-                            otherVotersArray.pop();
+                    for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+                        if (otherVoterContracts[i] == targetAddress) {
+                            otherVoterContracts[i] = otherVoterContracts[otherVoterContracts.length - 1];
+                            otherVoterContracts.pop();
                             found = true;
                             break;
                         }
@@ -326,6 +328,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                 hasVoted[voteType][target][tally.voters[i]] = false;
             }
             delete voteTallies[voteType][target];
+            activeVoteCount--;
         }
 
         emit VoteCast(msg.sender, voteType, target);
@@ -335,22 +338,25 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     function voteToAddVoter(address voter) external onlyVoters {
         require(voter != address(0), "Voter address should not be zero");
+        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
         _castVote(VoteType.ADD_VOTER, uint256(uint160(voter)));
     }
 
     function voteToRemoveVoter(address voter) external onlyVoters {
         require(voter != address(0), "Voter address should not be zero");
-        require(getAllVoters().length > 1, "Cannot remove the last voter");
+        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+        require(getVoters().length > 1, "Cannot remove the last voter");
         _castVote(VoteType.REMOVE_VOTER, uint256(uint160(voter)));
     }
 
     function voteToAddOtherVoterContract(address voterContract) external onlyVoters {
         require(voterContract != address(0), "Voter contract address should not be zero");
+        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
         require(isContract(voterContract), "Provided address does not point to a valid contract");
-        try IVoterContract(voterContract).getAllVoters() {} catch {
-            revert("Contract does not implement required getAllVoters function");
+        try IVoterChecker(voterContract).getVoters() {} catch {
+            revert("Contract does not implement required getVoters function");
         }
-        try IVoterContract(voterContract).isVoter(msg.sender) {} catch {
+        try IVoterChecker(voterContract).isVoter(msg.sender) {} catch {
             revert("Contract does not implement required isVoter function");
         }
         _castVote(VoteType.ADD_OTHER_VOTER_CONTRACT, uint256(uint160(voterContract)));
@@ -358,6 +364,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     function voteToRemoveOtherVoterContract(address voterContract) external onlyVoters {
         require(voterContract != address(0), "Voter contract address should not be zero");
+        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
         _castVote(VoteType.REMOVE_OTHER_VOTER_CONTRACT, uint256(uint160(voterContract)));
     }
 
@@ -391,7 +398,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     function voteToUpdateVoteTallyBlockThreshold(uint256 _blocks) external onlyVoters {
         require(_blocks > 0 && _blocks <= 100000, "Invalid block threshold");
-        _castVote(VoteType.VOTE_TALLY_BLOCK_THRESHOLD, _blocks);
+        _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, _blocks);
     }
 
     // ── Gas Funding ───────────────────────────────────────
@@ -484,6 +491,25 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         emit NativeCoinBurned(_amount);
     }
 
+    // ── Expired Tally Cleanup ─────────────────────────────
+
+    /// @notice Voter-only function to reset an expired tally and decrement the active vote counter.
+    ///         Call this to clean up stale tallies that would otherwise block voter-pool changes.
+    function resetExpiredTally(VoteType voteType, uint256 target) external onlyVoters {
+        VoteTally storage tally = voteTallies[voteType][target];
+        require(tally.startVoteBlock != 0, "No active tally for this target");
+        require(
+            block.number > tally.startVoteBlock + voteTallyBlockThreshold,
+            "Tally has not expired yet"
+        );
+        for (uint256 i = 0; i < tally.voters.length; i++) {
+            hasVoted[voteType][target][tally.voters[i]] = false;
+        }
+        delete voteTallies[voteType][target];
+        activeVoteCount--;
+        emit VoteTallyReset(voteType, target);
+    }
+
     receive() external payable {}
 
     // ── Utilities ─────────────────────────────────────
@@ -495,9 +521,4 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         }
         return (size > 0);
     }
-
-    /**
-     * @dev Reserved storage gap for future upgrades.
-     */
-    uint256[50] private __gap;
 }

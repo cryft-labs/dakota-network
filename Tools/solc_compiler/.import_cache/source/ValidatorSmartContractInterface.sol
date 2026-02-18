@@ -8,7 +8,7 @@ pragma solidity >=0.8.2 <0.8.20;
 
 interface ValidatorSmartContractInterface {
     function getValidators() external view returns (address[] memory);
-    function getAllVoters() external view returns (address[] memory);
+    function getVoters() external view returns (address[] memory);
     function isVoter(address potentialVoter) external view returns (bool);
     function isValidator(address potentialValidator) external view returns (bool);
     function getRootOverlords() external view returns (address[] memory);

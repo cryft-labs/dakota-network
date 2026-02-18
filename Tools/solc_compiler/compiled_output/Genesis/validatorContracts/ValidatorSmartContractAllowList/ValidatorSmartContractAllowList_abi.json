@@ -23,9 +23,9 @@
     "inputs": [
       {
         "indexed": false,
-        "internalType": "uint32",
+        "internalType": "uint256",
         "name": "newMax",
-        "type": "uint32"
+        "type": "uint256"
       }
     ],
     "name": "MaxValidatorsChanged",
@@ -124,9 +124,9 @@
       },
       {
         "indexed": false,
-        "internalType": "address",
+        "internalType": "uint256",
         "name": "newValue",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "name": "StateChanged",
@@ -155,9 +155,9 @@
       },
       {
         "indexed": false,
-        "internalType": "address",
+        "internalType": "uint256",
         "name": "target",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "name": "VoteCast",
@@ -168,9 +168,9 @@
     "inputs": [
       {
         "indexed": false,
-        "internalType": "uint32",
+        "internalType": "uint256",
         "name": "newThreshold",
-        "type": "uint32"
+        "type": "uint256"
       }
     ],
     "name": "VoteTallyBlockThresholdUpdated",
@@ -187,9 +187,9 @@
       },
       {
         "indexed": false,
-        "internalType": "address",
+        "internalType": "uint256",
         "name": "target",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "name": "VoteTallyReset",
@@ -225,9 +225,9 @@
     "name": "MAX_VALIDATORS",
     "outputs": [
       {
-        "internalType": "uint32",
+        "internalType": "uint256",
         "name": "",
-        "type": "uint32"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -235,20 +235,7 @@
   },
   {
     "inputs": [],
-    "name": "getAllVoters",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getMajorityThreshold",
+    "name": "activeVoteCount",
     "outputs": [
       {
         "internalType": "uint256",
@@ -267,6 +254,19 @@
         "internalType": "address[]",
         "name": "",
         "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getSupermajorityThreshold",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -293,9 +293,9 @@
         "type": "uint8"
       },
       {
-        "internalType": "address",
+        "internalType": "uint256",
         "name": "target",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "name": "getVoteTally",
@@ -325,6 +325,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getVoters",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "enum ValidatorSmartContractAllowList.VoteType",
@@ -332,9 +345,9 @@
         "type": "uint8"
       },
       {
-        "internalType": "address",
+        "internalType": "uint256",
         "name": "",
-        "type": "address"
+        "type": "uint256"
       },
       {
         "internalType": "address",
@@ -463,7 +476,7 @@
         "type": "uint256"
       }
     ],
-    "name": "otherVotersArray",
+    "name": "otherVoterContracts",
     "outputs": [
       {
         "internalType": "address",
@@ -485,6 +498,24 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum ValidatorSmartContractAllowList.VoteType",
+        "name": "voteType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "target",
+        "type": "uint256"
+      }
+    ],
+    "name": "resetExpiredTally",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -543,9 +574,9 @@
     "name": "voteTallyBlockThreshold",
     "outputs": [
       {
-        "internalType": "uint32",
+        "internalType": "uint256",
         "name": "",
-        "type": "uint32"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -632,9 +663,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint32",
+        "internalType": "uint256",
         "name": "newMax",
-        "type": "uint32"
+        "type": "uint256"
       }
     ],
     "name": "voteToChangeMaxValidators",
@@ -744,9 +775,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint32",
+        "internalType": "uint256",
         "name": "newThreshold",
-        "type": "uint32"
+        "type": "uint256"
       }
     ],
     "name": "voteToUpdateVoteTallyBlockThreshold",

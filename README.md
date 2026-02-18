@@ -168,8 +168,8 @@ Tessera documentation is still available online:
 
 | Contract | Address | Runtime Size | Purpose |
 |----------|---------|-------------|---------|
-| **ValidatorSmartContractAllowList** | `0x0000...1111` | 19,850 B | QBFT validator, voter, and root overlord governance |
-| **GasManager** | Genesis beneficiary | 13,444 B | Voter-governed gas funding, token burns, and native coin burns |
+| **ValidatorSmartContractAllowList** | `0x0000...1111` | 20,569 B | QBFT validator, voter, and root overlord governance |
+| **GasManager** | Genesis beneficiary | 14,510 B | Voter-governed gas funding, token burns, and native coin burns |
 | **TransparentUpgradeableProxy** | Per-contract | 17,175 B | Multi-party overlord/guardian transparent proxy |
 | **ProxyAdmin** | Per-proxy | 3,296 B | Guardian-gated ERC1967 upgrade dispatch |
 
@@ -183,35 +183,35 @@ The core governance contract for the QBFT consensus layer. Deployed at genesis a
 
 | Role | How Assigned | Powers |
 |------|-------------|--------|
-| **Voter** | Majority vote of existing voters | All governance actions below |
+| **Voter** | Supermajority vote of existing voters | All governance actions below |
 
-All state changes require **majority quorum**: `(totalVoterCount / 2) + 1`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVotersArray[]`.
+All state changes require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`.
 
-#### Governance Actions (all require voter majority)
+#### Governance Actions (all require voter supermajority)
 
 | Action | Function | Constraints |
 |--------|----------|-------------|
 | Add validator | `voteToAddValidator()` | Must not exceed `MAX_VALIDATORS` cap; not already in list |
 | Remove validator | `voteToRemoveValidator()` | Must exist in local list |
 | Add voter | `voteToAddVoter()` | Must not already be a voter (aggregated) |
-| Remove voter | `voteToRemoveVoter()` | `getAllVoters().length > 1` — cannot remove the last voter |
+| Remove voter | `voteToRemoveVoter()` | `getVoters().length > 1` — cannot remove the last voter |
 | Add external validator contract | `voteToAddOtherValidatorContract()` | Must be a contract implementing `getValidators()` and `isValidator()` |
 | Remove external validator contract | `voteToRemoveOtherValidatorContract()` | Must exist in list |
-| Add external voter contract | `voteToAddOtherVoterContract()` | Must implement `getAllVoters()` and `isVoter()` |
-| Remove external voter contract | `voteToRemoveOtherVoterContract()` | `votersArray.length > 0 \|\| otherVotersArray.length > 1` — prevents empty voter pool |
+| Add external voter contract | `voteToAddOtherVoterContract()` | Must implement `getVoters()` and `isVoter()` |
+| Remove external voter contract | `voteToRemoveOtherVoterContract()` | `votersArray.length > 0 \|\| otherVoterContracts.length > 1` — prevents empty voter pool |
 | Add root overlord | `voteToAddRootOverlord()` | Not `address(0)`, not already an overlord |
 | Remove root overlord | `voteToRemoveRootOverlord()` | Must exist in local list |
 | Add external overlord contract | `voteToAddOtherOverlordContract()` | Must implement `getRootOverlords()` and `isRootOverlord()` |
 | Remove external overlord contract | `voteToRemoveOtherOverlordContract()` | Must exist in list |
-| Change max validators | `voteToChangeMaxValidators()` | 1 to `uint32.max` |
+| Change max validators | `voteToChangeMaxValidators()` | Must be > 0 (no upper bound) |
 | Change vote tally block threshold | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 blocks |
 
 #### Vote Tally Mechanics
 
 - Each vote type + target pair has an independent tally with a start block.
 - Votes expire after `voteTallyBlockThreshold` blocks (default: 1,000, ~50 min at 3s blocks).
-- Expired tallies auto-reset on the next vote attempt for that target.
-- The quorum threshold is computed dynamically — adding/removing voters during an active tally shifts the required majority for in-flight votes.
+- Expired tallies auto-reset on the next vote attempt for that target, or via the voter-only `resetExpiredTally()` function (`external onlyVoters`).
+- Voter-pool changes (add/remove voter, add/remove external voter contract, revoke voter management) are blocked while any tally is active (`activeVoteCount > 0`), ensuring the supermajority threshold remains stable for in-flight votes.
 
 #### Federated Expansion (Pluggable External Contracts)
 
@@ -220,14 +220,14 @@ Three categories of external contracts can be plugged in:
 | Array | Interface Required | Aggregation Function |
 |-------|-------------------|---------------------|
 | `otherValidatorContracts[]` | `getValidators()`, `isValidator()` | `getValidators()` — union of local + all external validators |
-| `otherVotersArray[]` | `getAllVoters()`, `isVoter()` | `getAllVoters()` — union of local + all external voters |
+| `otherVoterContracts[]` | `getVoters()`, `isVoter()` | `getVoters()` — union of local + all external voters |
 | `otherOverlordContracts[]` | `getRootOverlords()`, `isRootOverlord()` | `getRootOverlords()` — union of local + all external overlords |
 
 All external calls use `try/catch` — a failing external contract is silently skipped (returns 0 entries), preventing a single broken contract from bricking governance.
 
 #### Permanent Management Revocation
 
-Three independent management domains can be **permanently and irreversibly** revoked via voter majority, delegating all future governance to external contracts:
+Three independent management domains can be **permanently and irreversibly** revoked via voter supermajority, delegating all future governance to external contracts:
 
 **1. Overlord Management Revocation** (`voteToRevokeOverlordManagement()`)
 - Pre-conditions: `rootOverlords[]` must be empty; `otherOverlordContracts[]` must have ≥1 entry
@@ -238,18 +238,19 @@ Three independent management domains can be **permanently and irreversibly** rev
 - Effect: Blocks `ADD_VALIDATOR`, `REMOVE_VALIDATOR`, `ADD_OTHER_VALIDATOR_CONTRACT`, `REMOVE_OTHER_VALIDATOR_CONTRACT`
 
 **3. Voter Management Revocation** (`voteToRevokeVoterManagement()`) — **must be last**
-- Pre-conditions: Overlord management already revoked; validator management already revoked; `votersArray[]` must be empty; `otherVotersArray[]` must have ≥1 entry; `getAllVoters()` must return ≥1 address (aggregated)
+- Pre-conditions: Overlord management already revoked; validator management already revoked; `votersArray[]` must be empty; `otherVoterContracts[]` must have ≥1 entry; `getVoters()` must return ≥1 address (aggregated)
 - Effect: Blocks `ADD_VOTER`, `REMOVE_VOTER`, `ADD_OTHER_VOTER_CONTRACT`, `REMOVE_OTHER_VOTER_CONTRACT`
 
-Once all three are revoked, this contract's local lists are permanently frozen. All governance is delegated to the listed external contracts. The contract continues to serve aggregation queries (`getValidators()`, `getAllVoters()`, `getRootOverlords()`) combining local (frozen) and external (live) data.
+Once all three are revoked, this contract's local lists are permanently frozen. All governance is delegated to the listed external contracts. The contract continues to serve aggregation queries (`getValidators()`, `getVoters()`, `getRootOverlords()`) combining local (frozen) and external (live) data.
 
 #### Lockout Prevention
 
 | Scenario | Guard |
 |----------|-------|
-| Remove last voter | `getAllVoters().length > 1` enforced before removal |
-| Remove last external voter contract when no local voters | `votersArray.length > 0 \|\| otherVotersArray.length > 1` |
-| Revoke voter management with no external voters | Requires `otherVotersArray.length > 0` and `getAllVoters().length >= 1` |
+| Remove last voter | `getVoters().length > 1` enforced before removal |
+| Remove last external voter contract when no local voters | `votersArray.length > 0 \|\| otherVoterContracts.length > 1` |
+| Voter-pool change during active tally | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |
+| Revoke voter management with no external voters | Requires `otherVoterContracts.length > 0` and `getVoters().length >= 1` |
 | Revoke validator management with too few validators | Requires `getValidators().length >= 4` (QBFT minimum) |
 | Revoke voter management before other domains | Requires overlord + validator management already revoked |
 | `address(0)` as voter/validator/overlord | All entry points require `!= address(0)` |
@@ -264,14 +265,14 @@ Receives all block rewards as the QBFT beneficiary address. Provides voter-gover
 
 | Role | How Assigned | Powers |
 |------|-------------|--------|
-| **Voter** | Majority vote of existing voters | Vote on all governance actions |
-| **Guardian** | Majority vote of voters | Execute approved funds/burns; execute token and native coin burns. Can be individually added/removed or bulk-cleared via `voteToClearGuardians()`. Enumerable via `getGuardians()` / `getGuardianCount()`. |
+| **Voter** | Supermajority vote of existing voters | Vote on all governance actions |
+| **Guardian** | Supermajority vote of voters | Execute approved funds/burns; execute token and native coin burns. Can be individually added/removed or bulk-cleared via `voteToClearGuardians()`. Enumerable via `getGuardians()` / `getGuardianCount()`. |
 
 #### Two-Phase Operations
 
 Destructive operations (funding, burns) require two phases:
 
-1. **Vote phase**: Voters reach majority quorum on the operation. On passing, a `bytes32` approval key is stored.
+1. **Vote phase**: Voters reach supermajority quorum on the operation. On passing, a `bytes32` approval key is stored.
 2. **Execute phase**: A guardian (or the funded address for gas funds) calls the execute function, which checks the approval key, clears it, and performs the transfer.
 
 | Operation | Vote Function | Execute Function | Who Can Execute |
@@ -286,15 +287,15 @@ All execute functions are protected by `ReentrancyGuard` and use `.call{value:}`
 
 | Action | Function | Notes |
 |--------|----------|-------|
-| Add guardian | `voteToAddGuardian(address)` | Voter majority required; must not already be a guardian |
-| Remove guardian | `voteToRemoveGuardian(address)` | Voter majority required; must be an existing guardian |
-| Clear all guardians | `voteToClearGuardians()` | Voter majority required; at least 1 guardian must exist |
+| Add guardian | `voteToAddGuardian(address)` | Voter supermajority required; must not already be a guardian |
+| Remove guardian | `voteToRemoveGuardian(address)` | Voter supermajority required; must be an existing guardian |
+| Clear all guardians | `voteToClearGuardians()` | Voter supermajority required; at least 1 guardian must exist |
 | List guardians | `getGuardians()` | Returns full `address[]` array |
 | Count guardians | `getGuardianCount()` | Returns `uint256` count |
 
 Clearing emits `GuardiansCleared(count)` and resets all guardian mappings and the array in one operation.
 
-#### Configurable Parameters (voter majority)
+#### Configurable Parameters (voter supermajority)
 
 | Parameter | Default | Function | Constraints |
 |-----------|---------|----------|-------------|
@@ -306,14 +307,15 @@ Voters can burn any amount of the contract's native coin balance via `voteToBurn
 
 #### Voter Pool (Independent)
 
-The GasManager has its own local `votersArray[]` and pluggable `otherVotersArray[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External voter contracts must implement `getAllVoters()` and `isVoter()`. Quorum is `(totalVoterCount / 2) + 1`.
+The GasManager has its own local `votersArray[]` and pluggable `otherVoterContracts[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External voter contracts must implement `getVoters()` and `isVoter()`. Quorum is `(totalVoterCount * 2 + 2) / 3`.
 
 #### Lockout Prevention
 
 | Scenario | Guard |
 |----------|-------|
-| Remove last voter | `getAllVoters().length > 1` enforced before removal |
-| Remove last external voter contract when no local voters | `votersArray.length > 0 \|\| otherVotersArray.length > 1` |
+| Remove last voter | `getVoters().length > 1` enforced before removal |
+| Remove last external voter contract when no local voters | `votersArray.length > 0 \|\| otherVoterContracts.length > 1` |
+| Voter-pool change during active tally | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |
 | `address(0)` as voter/guardian/recipient | All entry points require `!= address(0)` |
 | Clear guardians when none exist | `guardiansArray.length > 0` required |
 | Re-entrancy on fund/burn execution | `ReentrancyGuard` modifier on all execute functions |
@@ -321,7 +323,7 @@ The GasManager has its own local `votersArray[]` and pluggable `otherVotersArray
 
 #### Upgradeability
 
-GasManager inherits `Initializable` and `ReentrancyGuardUpgradeable` from OpenZeppelin v4.9.0. It includes a `uint256[50] __gap` storage gap for future upgrades. The constructor calls `_disableInitializers()` to prevent re-initialization of the implementation contract.
+GasManager inherits `Initializable` and `ReentrancyGuardUpgradeable` from OpenZeppelin v4.9.0. The constructor calls `_disableInitializers()` to prevent re-initialization of the implementation contract.
 
 ---
 
@@ -443,7 +445,7 @@ ValidatorSmartContractAllowList (0x1111)
   ├── getRootOverlords() ──────────► TransparentUpgradeableProxy
   ├── isRootOverlord(addr) ────────►   (reads root overlords dynamically)
   │
-  └── Voter majority governs:
+  └── Voter supermajority governs:
         - Validators (QBFT consensus)
         - Voters (self-governance)
         - Root overlords (proxy governance tier)
@@ -460,6 +462,10 @@ TransparentUpgradeableProxy
 GasManager (independent)
   │
   └── Own voter pool ──► vote → approve → guardian executes
+
+CodeManager (independent)
+  │
+  └── Own voter pool ──► supermajority governance (whitelist, fees, voter mgmt)
 ```
 
 ---
@@ -468,7 +474,7 @@ GasManager (independent)
 
 | Contract | Purpose |
 |----------|---------|
-| **CodeManager2** | **Patent-covered.** Permissionless unique ID registry. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`. |
+| **CodeManager** | **Patent-covered.** Permissionless unique ID registry. Own independent voter pool with pluggable `otherVoterContracts[]`, 2/3 supermajority quorum, voter-pool freeze while tallies are active. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`. |
 | **ComboStorage** | **Patent-covered.** Redemption verification service. Validates codes against CodeManager, records verified redemptions. Access-controlled via CodeManager's whitelist. |
 | **CryftGreetingCards** | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase with atomic CodeManager registration. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Explicit freeze for lost/stolen codes. Interfacing with the redeemable-code service is permitted with proper fees or license. |
 
@@ -695,7 +701,7 @@ dakota-network/
 ├── LICENSE                            # Apache 2.0 + patent notice
 ├── Contracts/
 │   ├── Code Management/
-│   │   ├── CodeManager2.sol          # Permissionless unique ID registry (fee-based)
+│   │   ├── CodeManager.sol           # Permissionless unique ID registry (fee-based)
 │   │   ├── ComboStorage.sol          # Redemption verification service
 │   │   └── interfaces/
 │   │       ├── ICodeManager.sol
