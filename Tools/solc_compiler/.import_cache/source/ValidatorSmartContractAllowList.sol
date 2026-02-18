@@ -100,18 +100,18 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         address[] voters;
     }
 
-    address private __deprecated_guardian; // slot 0 — preserved for genesis storage compatibility
-
-    uint256 public MAX_VALIDATORS;
-    uint256 public voteTallyBlockThreshold;
-    uint256 public activeVoteCount;
-
+    address private __deprecated_guardian; 
     address[] public validators;
+    
     address[] public otherValidatorContracts;
     address[] public votersArray;
     address[] public otherVoterContracts;
     address[] public rootOverlords;
     address[] public otherOverlordContracts;
+
+    uint256 public MAX_VALIDATORS;
+    uint256 public voteTallyBlockThreshold;
+    uint256 public activeVoteCount;
 
     bool public overlordManagementRevoked;
     bool public validatorManagementRevoked;

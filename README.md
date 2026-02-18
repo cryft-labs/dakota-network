@@ -168,7 +168,7 @@ Tessera documentation is still available online:
 
 | Contract | Address | Runtime Size | Purpose |
 |----------|---------|-------------|---------|
-| **ValidatorSmartContractAllowList** | `0x0000...1111` | 20,569 B | QBFT validator, voter, and root overlord governance |
+| **ValidatorSmartContractAllowList** | `0x0000...1111` | 20,565 B | QBFT validator, voter, and root overlord governance |
 | **GasManager** | Genesis beneficiary | 14,510 B | Voter-governed gas funding, token burns, and native coin burns |
 | **TransparentUpgradeableProxy** | Per-contract | 17,175 B | Multi-party overlord/guardian transparent proxy |
 | **ProxyAdmin** | Per-proxy | 3,296 B | Guardian-gated ERC1967 upgrade dispatch |

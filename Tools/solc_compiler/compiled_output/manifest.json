@@ -106,8 +106,8 @@
   {
     "source": "Genesis\\validatorContracts\\ValidatorSmartContractAllowList.sol",
     "contract": "ValidatorSmartContractAllowList",
-    "runtime_bytes": 20569,
-    "creation_bytes": 20601,
+    "runtime_bytes": 20565,
+    "creation_bytes": 20597,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\validatorContracts\\ValidatorSmartContractAllowList\\ValidatorSmartContractAllowList",
     "over_limit": false
   },
