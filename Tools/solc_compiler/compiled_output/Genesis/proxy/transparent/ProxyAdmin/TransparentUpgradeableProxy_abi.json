@@ -646,6 +646,19 @@
   },
   {
     "inputs": [],
+    "name": "proxy_getValidatorContract",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "proxy_getVoteEpoch",
     "outputs": [
       {

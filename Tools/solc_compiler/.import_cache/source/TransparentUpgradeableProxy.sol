@@ -8,6 +8,33 @@ pragma solidity ^0.8.0;
 
 import "../ERC1967/ERC1967Proxy.sol";
 
+/*
+  ┌──────────────── Contract Architecture ──────────────────────┐
+  │                                                             │
+  │  ERC1967-based transparent proxy with multi-party           │
+  │  overlord/guardian governance and threshold voting.         │
+  │                                                             │
+  │  Root overlords are read dynamically from the genesis       │
+  │  validator contract at 0x0000...1111 via try/catch.         │
+  │                                                             │
+  │  Access tiers:                                              │
+  │    Root Overlord — add/remove overlords directly            │
+  │    Overlord      — 2/3 threshold vote on governance         │
+  │    Guardian      — operational: deploy, upgrade, link       │
+  │    Admin         — ERC1967 upgrade dispatch (ProxyAdmin)    │
+  │                                                             │
+  │  Governance actions (2/3 supermajority):                    │
+  │    - Add/remove overlords and guardians                     │
+  │    - Change vote expiry window                              │
+  │    - Clear all guardians                                    │
+  │    - Revoke/restore root overlord privileges                │
+  │    - Change proxy admin contract                            │
+  │                                                             │
+  │  All proxy state is stored in namespaced keccak256          │
+  │  slots to avoid collisions with implementation storage.     │
+  └─────────────────────────────────────────────────────────────┘
+*/
+
 /**
  * @dev Interface for {TransparentUpgradeableProxy}. In order to implement transparency, {TransparentUpgradeableProxy}
  * does not implement this interface directly, and some of its functions are implemented by an internal dispatch
@@ -29,7 +56,7 @@ interface ITransparentUpgradeableProxy is IERC1967 {
 /// @dev Minimal interface for querying root overlords from the genesis validator contract.
 interface IValidatorRootOverlord {
     function getRootOverlords() external view returns (address[] memory);
-    
+
     function isRootOverlord(address addr) external view returns (bool);
 }
 
@@ -63,7 +90,7 @@ interface IValidatorRootOverlord {
  * WARNING: It is not recommended to extend this contract to add additional external functions. If you do so, the compiler
  * will not check that there are no selector conflicts, due to the note above. A selector clash between any new function
  * and the functions declared in {ITransparentUpgradeableProxy} will be resolved in favor of the new one. This could
- *0000000000000000000000000000000000001 render the admin operations inaccessible, which could prevent upgradeability. Transparency may also be compromised.
+ * render the admin operations inaccessible, which could prevent upgradeability. Transparency may also be compromised.
  */
 contract TransparentUpgradeableProxy is ERC1967Proxy {
     bytes32 private constant _proxy_isInitSlot =
@@ -102,6 +129,11 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     address private constant _proxy_validatorContract = 0x0000000000000000000000000000000000001111;
     uint256 private constant DEFAULT_VOTE_EXPIRY = 60000; // ~1 week at 3s blocks
     uint256 private constant MAX_GUARDIANS = 10;
+
+    /// @dev Returns the address of the genesis validator contract.
+    function proxy_getValidatorContract() external pure returns (address) {
+        return _proxy_validatorContract;
+    }
 
     /// @dev Returns root overlords as reported by the validator contract (0x1111).
     function proxy_getRootOverlords() external view returns (address[] memory) {

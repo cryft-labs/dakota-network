@@ -82,8 +82,8 @@
   {
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "TransparentUpgradeableProxy",
-    "runtime_bytes": 17135,
-    "creation_bytes": 17167,
+    "runtime_bytes": 17175,
+    "creation_bytes": 17207,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\TransparentUpgradeableProxy",
     "over_limit": false
   },

@@ -8,18 +8,29 @@ pragma solidity ^0.8.0;
 
 import "./TransparentUpgradeableProxy.sol";
 
-/**
- * @dev Auxiliary contract assigned as the admin of {TransparentUpgradeableProxy} instances.
- *      Instead of a single owner, each proxy's own guardian/overlord sets
- *      (defined on TransparentUpgradeableProxy) control upgrade authority.
- *
- *      - Guardians of a proxy can upgrade its implementation.
- *      - Overlords of a proxy change the admin via proposeAdminChange() on the proxy itself
- *        (2/3 threshold vote). This contract no longer exposes a direct changeProxyAdmin.
- *
- *      This eliminates the single-owner bottleneck and allows each proxy
- *      to be independently governed by its own controller set.
- */
+/*
+  ┌──────────────── Contract Architecture ──────────────────────┐
+  │                                                             │
+  │  Auxiliary contract assigned as the ERC1967 admin of        │
+  │  TransparentUpgradeableProxy instances.                     │
+  │                                                             │
+  │  Replaces OpenZeppelin's single-owner pattern with          │
+  │  per-proxy guardian/overlord governance.                    │
+  │                                                             │
+  │  Access control:                                            │
+  │    Guardian — upgrade proxy implementation                  │
+  │    Overlord — change admin via threshold vote on proxy      │
+  │                                                             │
+  │  Provides:                                                  │
+  │    - upgrade() / upgradeAndCall() — guardian-gated          │
+  │    - getProxyGovernanceStatus()   — full state snapshot     │
+  │    - getProxyGuardians()          — guardian enumeration    │
+  │    - getProxyAdmin/Implementation — admin introspection     │
+  │                                                             │
+  │  Each proxy is independently governed by its own            │
+  │  controller set — no single-owner bottleneck.               │
+  └─────────────────────────────────────────────────────────────┘
+*/
 contract ProxyAdmin {
 
     modifier onlyGuardianOf(ITransparentUpgradeableProxy proxy) {
