@@ -166,11 +166,295 @@ Tessera documentation is still available online:
 
 ### Genesis Contracts (deployed at network genesis)
 
-| Contract | Address | Purpose |
-|----------|---------|---------|
-| **ValidatorSmartContractAllowList** | `0x0000...1111` | Expandable Proof of Authority (ePoA) governance. Majority-vote quorum for all state changes. The initializer becomes the first voter (no guardian — fully votable). Supports pluggable external validator contracts (`otherValidatorContracts`) and voter contracts (`otherVotersArray`) that implement `ValidatorSmartContractInterface`, enabling federated expansion of both the validator set and governance pool without hard forks. |
-| **GasManager** | Genesis beneficiary | Receives block rewards. Own voter set with pluggable external voter contracts (`otherVotersArray`) — independent from the validator voter pool. Guardian-gated execution: only guardians (or the funded address itself) can execute approved gas funds; only guardians can execute token and native coin burns. Two-phase operations (vote → approve → execute). Auto-burns native excess above configurable cap. |
-| **TransparentUpgradeableProxy** | — | OpenZeppelin transparent proxy pattern for upgradeable genesis contracts. |
+| Contract | Address | Runtime Size | Purpose |
+|----------|---------|-------------|---------|
+| **ValidatorSmartContractAllowList** | `0x0000...1111` | 19,838 B | QBFT validator, voter, and root overlord governance |
+| **GasManager** | Genesis beneficiary | 13,666 B | Voter-governed gas funding, token burns, and native coin burns |
+| **TransparentUpgradeableProxy** | Per-contract | 17,175 B | Multi-party overlord/guardian transparent proxy |
+| **ProxyAdmin** | Per-proxy | 3,296 B | Guardian-gated ERC1967 upgrade dispatch |
+
+---
+
+### ValidatorSmartContractAllowList (`0x0000...1111`)
+
+The core governance contract for the QBFT consensus layer. Deployed at genesis address `0x0000000000000000000000000000000000001111`. The initializer (`initialize()`) becomes the first voter — there is no guardian role in this contract, all operations are voter-driven.
+
+#### Access Control
+
+| Role | How Assigned | Powers |
+|------|-------------|--------|
+| **Voter** | Majority vote of existing voters | All governance actions below |
+
+All state changes require **majority quorum**: `(totalVoterCount / 2) + 1`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVotersArray[]`.
+
+#### Governance Actions (all require voter majority)
+
+| Action | Function | Constraints |
+|--------|----------|-------------|
+| Add validator | `voteToAddValidator()` | Must not exceed `MAX_VALIDATORS` cap; not already in list |
+| Remove validator | `voteToRemoveValidator()` | Must exist in local list |
+| Add voter | `voteToAddVoter()` | Must not already be a voter (aggregated) |
+| Remove voter | `voteToRemoveVoter()` | `getAllVoters().length > 1` — cannot remove the last voter |
+| Add external validator contract | `voteToAddOtherValidatorContract()` | Must be a contract implementing `getValidators()` and `isValidator()` |
+| Remove external validator contract | `voteToRemoveOtherValidatorContract()` | Must exist in list |
+| Add external voter contract | `voteToAddOtherVoterContract()` | Must implement `getAllVoters()` and `isVoter()` |
+| Remove external voter contract | `voteToRemoveOtherVoterContract()` | `votersArray.length > 0 \|\| otherVotersArray.length > 1` — prevents empty voter pool |
+| Add root overlord | `voteToAddRootOverlord()` | Not `address(0)`, not already an overlord |
+| Remove root overlord | `voteToRemoveRootOverlord()` | Must exist in local list |
+| Add external overlord contract | `voteToAddOtherOverlordContract()` | Must implement `getRootOverlords()` and `isRootOverlord()` |
+| Remove external overlord contract | `voteToRemoveOtherOverlordContract()` | Must exist in list |
+| Change max validators | `voteToChangeMaxValidators()` | 1 to `uint32.max` |
+| Change vote tally block threshold | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 blocks |
+
+#### Vote Tally Mechanics
+
+- Each vote type + target pair has an independent tally with a start block.
+- Votes expire after `voteTallyBlockThreshold` blocks (default: 1,000, ~50 min at 3s blocks).
+- Expired tallies auto-reset on the next vote attempt for that target.
+- The quorum threshold is computed dynamically — adding/removing voters during an active tally shifts the required majority for in-flight votes.
+
+#### Federated Expansion (Pluggable External Contracts)
+
+Three categories of external contracts can be plugged in:
+
+| Array | Interface Required | Aggregation Function |
+|-------|-------------------|---------------------|
+| `otherValidatorContracts[]` | `getValidators()`, `isValidator()` | `getValidators()` — union of local + all external validators |
+| `otherVotersArray[]` | `getAllVoters()`, `isVoter()` | `getAllVoters()` — union of local + all external voters |
+| `otherOverlordContracts[]` | `getRootOverlords()`, `isRootOverlord()` | `getRootOverlords()` — union of local + all external overlords |
+
+All external calls use `try/catch` — a failing external contract is silently skipped (returns 0 entries), preventing a single broken contract from bricking governance.
+
+#### Permanent Management Revocation
+
+Three independent management domains can be **permanently and irreversibly** revoked via voter majority, delegating all future governance to external contracts:
+
+**1. Overlord Management Revocation** (`voteToRevokeOverlordManagement()`)
+- Pre-conditions: `rootOverlords[]` must be empty; `otherOverlordContracts[]` must have ≥1 entry
+- Effect: Blocks `ADD_ROOT_OVERLORD`, `REMOVE_ROOT_OVERLORD`, `ADD_OTHER_OVERLORD_CONTRACT`, `REMOVE_OTHER_OVERLORD_CONTRACT`
+
+**2. Validator Management Revocation** (`voteToRevokeValidatorManagement()`)
+- Pre-conditions: `validators[]` must be empty; `otherValidatorContracts[]` must have ≥1 entry; `getValidators()` must return ≥4 addresses (aggregated)
+- Effect: Blocks `ADD_VALIDATOR`, `REMOVE_VALIDATOR`, `ADD_CONTRACT`, `REMOVE_CONTRACT`
+
+**3. Voter Management Revocation** (`voteToRevokeVoterManagement()`) — **must be last**
+- Pre-conditions: Overlord management already revoked; validator management already revoked; `votersArray[]` must be empty; `otherVotersArray[]` must have ≥1 entry; `getAllVoters()` must return ≥1 address (aggregated)
+- Effect: Blocks `ADD_VOTER`, `REMOVE_VOTER`, `ADD_OTHER_VOTER_CONTRACT`, `REMOVE_OTHER_VOTER_CONTRACT`
+
+Once all three are revoked, this contract's local lists are permanently frozen. All governance is delegated to the listed external contracts. The contract continues to serve aggregation queries (`getValidators()`, `getAllVoters()`, `getRootOverlords()`) combining local (frozen) and external (live) data.
+
+#### Lockout Prevention
+
+| Scenario | Guard |
+|----------|-------|
+| Remove last voter | `getAllVoters().length > 1` enforced before removal |
+| Remove last external voter contract when no local voters | `votersArray.length > 0 \|\| otherVotersArray.length > 1` |
+| Revoke voter management with no external voters | Requires `otherVotersArray.length > 0` and `getAllVoters().length >= 1` |
+| Revoke validator management with too few validators | Requires `getValidators().length >= 4` (QBFT minimum) |
+| Revoke voter management before other domains | Requires overlord + validator management already revoked |
+| `address(0)` as voter/validator/overlord | All entry points require `!= address(0)` |
+
+---
+
+### GasManager (Genesis Beneficiary)
+
+Receives all block rewards as the QBFT beneficiary address. Provides voter-governed gas funding, token burns, and native coin burns with a two-phase vote → approve → execute pattern. Uses its own independent voter pool, separate from the validator contract's voters.
+
+#### Access Control
+
+| Role | How Assigned | Powers |
+|------|-------------|--------|
+| **Voter** | Majority vote of existing voters | Vote on all governance actions |
+| **Guardian** | Majority vote of voters | Execute approved funds/burns; execute token and native coin burns |
+
+#### Two-Phase Operations
+
+Destructive operations (funding, burns) require two phases:
+
+1. **Vote phase**: Voters reach majority quorum on the operation. On passing, a `bytes32` approval key is stored.
+2. **Execute phase**: A guardian (or the funded address for gas funds) calls the execute function, which checks the approval key, clears it, and performs the transfer.
+
+| Operation | Vote Function | Execute Function | Who Can Execute |
+|-----------|--------------|-----------------|-----------------|
+| Fund gas to address | `voteToFundGas(to, amount)` | `executeFundGas(to, amount)` | Guardian or `to` address |
+| Burn ERC-20 tokens | `voteToBurnTokens(token, amount)` | `executeTokenBurn(token, amount)` | Guardian only |
+| Burn native coin | `voteToBurnNativeCoin(amount)` | `executeCoinBurn(amount)` | Guardian only |
+
+All execute functions are protected by `ReentrancyGuard` and use `.call{value:}` for transfers. The `executeFundGas` function also verifies the exact balance delta after transfer.
+
+#### Configurable Parameters (voter majority)
+
+| Parameter | Default | Function | Constraints |
+|-----------|---------|----------|-------------|
+| `maxContractBalance` | 100 ETH | `voteToChangeMaxContractBalance()` | Must be > 0 |
+| `limit` (max gas fund per tx) | 1 ETH | `voteToChangeMaxGasAmount()` | 1 to 1,000 ETH |
+| `voteTallyBlockThreshold` | 1,000 blocks | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 |
+| `period` (funding block threshold) | 1,000 blocks | `voteToUpdateFundingBlockThreshold()` | 1 to 100,000 |
+
+#### Auto-Burn Excess
+
+When the contract's native balance exceeds `maxContractBalance`, excess is automatically burned to `0x...dEaD`:
+- After every `executeFundGas()` call
+- On every incoming `receive()` (block rewards)
+
+#### Voter Pool (Independent)
+
+The GasManager has its own local `votersArray[]` and pluggable `otherVotersArray[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External voter contracts must implement `getAllVoters()` and `isVoter()`. Quorum is `(totalVoterCount / 2) + 1`.
+
+#### Lockout Prevention
+
+| Scenario | Guard |
+|----------|-------|
+| Remove last voter | `getAllVoters().length > 1` enforced before removal |
+| Remove last external voter contract when no local voters | `votersArray.length > 0 \|\| otherVotersArray.length > 1` |
+| `address(0)` as voter/guardian/recipient | All entry points require `!= address(0)` |
+| Re-entrancy on fund/burn execution | `ReentrancyGuard` modifier on all execute functions |
+| Balance discrepancy after fund transfer | Exact balance delta check: `balanceBefore - balanceAfter == _amount` |
+
+#### Upgradeability
+
+GasManager inherits `Initializable` and `ReentrancyGuardUpgradeable` from OpenZeppelin v4.9.0. It includes a `uint256[50] __gap` storage gap for future upgrades. The constructor calls `_disableInitializers()` to prevent re-initialization of the implementation contract.
+
+---
+
+### TransparentUpgradeableProxy
+
+Extended OpenZeppelin ERC1967 transparent proxy with multi-party overlord/guardian governance and 2/3 supermajority threshold voting. Every proxy instance deployed in the genesis file is an independent governance unit.
+
+#### Access Tiers
+
+| Tier | Source | Powers |
+|------|--------|--------|
+| **Root Overlord** | Read dynamically from validator contract at `0x0000...1111` via `getRootOverlords()` / `isRootOverlord()` | Add/remove non-root overlords directly (no vote needed) |
+| **Overlord** (non-root) | Added by root overlord or via 2/3 overlord vote | Propose and vote on governance actions (2/3 threshold) |
+| **Guardian** | Added via 2/3 overlord vote | Operational: `proxy_linkLogicAdmin()` (one-time), trigger upgrades via ProxyAdmin |
+| **Admin** (ProxyAdmin contract) | Set during `proxy_linkLogicAdmin()`, changeable via 2/3 overlord vote | ERC1967 upgrade dispatch (`upgradeTo`, `upgradeToAndCall`, `changeAdmin`) |
+
+Root overlords are **not stored** in the proxy — they are read live from the validator contract via `try/catch`. If the validator contract is unreachable, root overlord calls return `false` / empty array (safe degradation).
+
+#### Overlord Count and Threshold
+
+- `proxy_getOverlordCount()` = non-root overlords + root overlord count (when active)
+- Threshold = `ceil(count × 2 / 3)` = `(count * 2 + 2) / 3`
+- Examples: 1→1, 2→2, 3→2, 4→3, 5→4, 6→4
+
+A single overlord can pass any proposal unilaterally (threshold = 1).
+
+#### Governance Actions (2/3 supermajority)
+
+| Action | Function | Constraints |
+|--------|----------|-------------|
+| Add overlord | `proxy_proposeOverlordChange(target, true)` | Not `address(0)`, not a root overlord, not already an overlord, not a guardian |
+| Remove overlord | `proxy_proposeOverlordChange(target, false)` | Must be an overlord; cannot remove last non-root when no root overlords are active |
+| Add guardian | `proxy_proposeGuardianChange(target, true)` | Not `address(0)`, not the validator contract, not an overlord, max 10 guardians |
+| Remove guardian | `proxy_proposeGuardianChange(target, false)` | Must be a guardian |
+| Clear all guardians | `proxy_proposeClearGuardians()` | At least 1 guardian exists |
+| Change vote expiry | `proxy_proposeExpiryChange(newExpiry)` | Minimum 100 blocks (~5 min at 3s blocks) |
+| Revoke root overlord | `proxy_proposeRevokeRootOverlord()` | Root not already revoked; at least 1 non-root overlord exists |
+| Restore root overlord | `proxy_proposeRestoreRootOverlord()` | Root must be revoked; only non-root overlords can propose (root is excluded) |
+| Change proxy admin | `proxy_proposeAdminChange(newAdmin)` | Not `address(0)`, not the current admin |
+
+#### Root Overlord Direct Actions (no vote)
+
+| Action | Function | Constraints |
+|--------|----------|-------------|
+| Add overlord | `proxy_addOverlord()` | Same as voted version |
+| Remove overlord | `proxy_removeOverlord()` | Same as voted version |
+| Voluntary self-revoke | `proxy_revokeRootOverlord()` | Must be root overlord; root not already revoked; `_rawOverlordCount() > 0` |
+
+Direct root overlord changes also increment the vote epoch, invalidating all pending proposals.
+
+#### Voting Mechanics
+
+- **Single-session lock**: Only one proposal can be actively voted on at a time. A second proposal reverts unless the first has expired.
+- **Vote expiry**: Default 60,000 blocks (~1 week at 3s blocks). Expired proposals auto-increment their round, invalidating stale votes.
+- **Vote epoch**: Incremented on every executed proposal or direct overlord change. Changing the epoch invalidates all pending proposals across all proposal types.
+- **Proposal rounds**: Each proposal key tracks a round counter. On expiry, the round increments, creating a fresh proposal ID while preserving the base key.
+
+#### Storage Design
+
+All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., `keccak256("TransparentUpgradeableProxy.overlordMap")`) to avoid collisions with the implementation contract's storage. This is critical — standard Solidity storage slots 0, 1, 2... would conflict with the proxied contract.
+
+#### Proxy Linkage (One-Time)
+
+`proxy_linkLogicAdmin(logic, admin, data)` — guardian-gated, can only be called once (`isInit` flag). Sets the implementation address, initializes it with `data`, and assigns the ERC1967 admin (typically a ProxyAdmin contract).
+
+#### Lockout Prevention
+
+| Scenario | Guard |
+|----------|-------|
+| Remove last non-root overlord when root is inactive | `_rawOverlordCount() > 1 \|\| (rootCount > 0 && !revoked)` |
+| Voluntary root revoke with no non-root overlords | `_rawOverlordCount() > 0` |
+| Force-revoke root with no non-root overlords | Same check in `proxy_proposeRevokeRootOverlord()` |
+| Set admin to `address(0)` | `_setAdmin` in ERC1967Upgrade requires `newAdmin != address(0)` |
+| Link logic with `address(0)` admin/logic | Both checked `!= address(0)` in `proxy_linkLogicAdmin()` |
+| Overlord/guardian dual-role | Both `proxy_addOverlord` and `proxy_proposeGuardianChange` cross-check to prevent any address holding both roles |
+| Mid-vote membership manipulation | Every direct add/remove calls `_incrementVoteEpoch()`, invalidating all pending proposals |
+| Single overlord stuck (threshold too high) | Threshold formula: `(1*2+2)/3 = 1` — a single overlord passes anything |
+| Guardian overflow | Hard cap: `MAX_GUARDIANS = 10` |
+
+#### Constants
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| `_proxy_validatorContract` | `0x0000...1111` | Genesis validator contract address |
+| `DEFAULT_VOTE_EXPIRY` | 60,000 blocks | ~1 week at 3s blocks |
+| `MAX_GUARDIANS` | 10 | Hard cap on guardian count per proxy |
+
+---
+
+### ProxyAdmin
+
+Auxiliary contract assigned as the ERC1967 admin of `TransparentUpgradeableProxy` instances. Replaces OpenZeppelin's single-owner pattern with per-proxy guardian/overlord governance — each proxy is independently governed by its own controller set.
+
+#### Access Control
+
+| Action | Who | How |
+|--------|-----|-----|
+| Upgrade implementation | Guardian of the target proxy | `upgrade(proxy, impl)` or `upgradeAndCall(proxy, impl, data)` |
+| Change admin | Overlords of the target proxy | `proxy_proposeAdminChange()` on the proxy itself (2/3 vote) |
+
+The `onlyGuardianOf(proxy)` modifier queries the proxy's `proxy_isGuardian(msg.sender)` — which returns `true` for mapped guardians and for active root overlords (root overlords are implicit guardians).
+
+#### Introspection
+
+| Function | Returns |
+|----------|---------|
+| `getProxyAdmin(proxy)` | Current ERC1967 admin address |
+| `getProxyImplementation(proxy)` | Current implementation address |
+| `getProxyGuardians(proxy)` | Array of all guardian addresses |
+| `getProxyGovernanceStatus(proxy)` | Full state snapshot: admin, implementation, root revoked, overlord count, guardian count, threshold, active proposal, vote epoch, expiry |
+
+---
+
+### Cross-Contract Interaction Model
+
+```
+ValidatorSmartContractAllowList (0x1111)
+  │
+  ├── getRootOverlords() ──────────► TransparentUpgradeableProxy
+  ├── isRootOverlord(addr) ────────►   (reads root overlords dynamically)
+  │
+  └── Voter majority governs:
+        - Validators (QBFT consensus)
+        - Voters (self-governance)
+        - Root overlords (proxy governance tier)
+        - External contract delegation
+
+TransparentUpgradeableProxy
+  │
+  ├── Root overlords ──► direct add/remove overlords
+  ├── Overlords (2/3) ──► governance votes
+  ├── Guardians ──► proxy_linkLogicAdmin(), trigger upgrades via ProxyAdmin
+  │
+  └── ERC1967 admin (ProxyAdmin) ──► upgradeTo(), upgradeToAndCall()
+
+GasManager (independent)
+  │
+  └── Own voter pool ──► vote → approve → guardian executes
+```
+
+---
 
 ### Application Contracts (deployed post-genesis)
 

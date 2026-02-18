@@ -39,6 +39,7 @@ pragma solidity >=0.8.2 <0.8.20;
   │     Pre-conditions:                                         │
   │       - validators[] must be empty                          │
   │       - otherValidatorContracts[] must have ≥1 entry        │
+  │       - getValidators() must return ≥4 addresses            │
   │                                                             │
   │  3. Voter management revocation (LAST — final switch)       │
   │     Pre-conditions:                                         │
@@ -46,6 +47,7 @@ pragma solidity >=0.8.2 <0.8.20;
   │       - Validator management must already be revoked        │
   │       - votersArray[] must be empty                         │
   │       - otherVotersArray[] must have ≥1 entry               │
+  │       - getAllVoters() must return ≥1 address                │
   │                                                             │
   │  Once all three are revoked, this contract's lists are      │
   │  permanently frozen. All governance is delegated to the     │
@@ -386,6 +388,10 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                     otherValidatorContracts.length > 0,
                     "Cannot revoke: at least one other validator contract must be listed"
                 );
+                require(
+                    getValidators().length >= 4,
+                    "Cannot revoke: aggregated validator count must be at least 4"
+                );
                 validatorManagementRevoked = true;
                 emit ValidatorManagementRevoked();
             } else if (voteType == VoteType.REVOKE_VOTER_MANAGEMENT) {
@@ -405,6 +411,10 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                 require(
                     otherVotersArray.length > 0,
                     "Cannot revoke: at least one other voter contract must be listed"
+                );
+                require(
+                    getAllVoters().length >= 1,
+                    "Cannot revoke: aggregated voter count must be at least 1"
                 );
                 voterManagementRevoked = true;
                 emit VoterManagementRevoked();
