@@ -47,7 +47,7 @@ pragma solidity >=0.8.2 <0.8.20;
   │       - Validator management must already be revoked        │
   │       - votersArray[] must be empty                         │
   │       - otherVotersArray[] must have ≥1 entry               │
-  │       - getAllVoters() must return ≥1 address                │
+  │       - getAllVoters() must return ≥1 address               │
   │                                                             │
   │  Once all three are revoked, this contract's lists are      │
   │  permanently frozen. All governance is delegated to the     │

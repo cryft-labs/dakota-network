@@ -63,7 +63,11 @@ def replace_bytecode(target_path, old_bc, new_bc, dry_run=False, backup=True):
             new_bc = "0x" + new_bc
             print(f"  (Matched with '0x' prefix)")
 
+    # Count pre-existing instances of the new bytecode (already replaced previously)
+    pre_existing = content.count(new_bc)
     print(f"  Found {count:,} occurrence(s)")
+    if pre_existing > 0:
+        print(f"  Pre-existing new bytecode: {pre_existing:,} (already replaced previously)")
 
     if count == 0:
         print("  No matches found.")
@@ -126,7 +130,7 @@ def replace_bytecode(target_path, old_bc, new_bc, dry_run=False, backup=True):
     found_new = verify.count(new_bc)
     print(f"  Verify: old remaining={remaining:,}  new found={found_new:,}")
 
-    if remaining > 0 or found_new != count:
+    if remaining > 0 or found_new != count + pre_existing:
         print(f"  WARNING: Verification mismatch! Restoring backup...")
         if backup:
             shutil.copy2(bak, str(target))
