@@ -195,7 +195,7 @@ The genesis file (`Contracts/Genesis/besuGenesis.json`, ~1.07 GB) contains the f
 | Addresses ending in `323` | 32,324 | Pre-deployed contract instances (greeting card service) |
 | Addresses ending in `c0DE` | 100 | Pre-deployed contract instances (code management service) |
 | Repeating-pattern addresses | 4 | Reserved contract slots (`0x2222...`, `0x2323...`, `0x3232...`, `0x3333...`) |
-| Reserved system addresses | 4 | Governance and infrastructure contracts (see below) |
+| Reserved system addresses | 5 | Governance and infrastructure contracts (see below) |
 | EOA accounts | 1 | Deployer account with 32 ETH initial balance |
 
 #### Reserved System Addresses
