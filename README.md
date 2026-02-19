@@ -185,7 +185,7 @@ The genesis file (`Contracts/Genesis/besuGenesis.json`, ~1.07 GB) contains the f
 | **Consensus** | QBFT (Istanbul BFT) |
 | **Gas limit** | 32,000,000 |
 | **Block reward** | 3.2 ETH per block (sent to `miningBeneficiary`) |
-| **Contract size limit** | 32,000 bytes |
+| **Contract size limit** | 32,768 bytes (32 KiB) |
 | **EVM fork** | London (all forks enabled at block 0) |
 
 #### Alloc Entries (32,432 total)
