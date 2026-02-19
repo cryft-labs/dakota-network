@@ -162,6 +162,54 @@ Tessera documentation is still available online:
 
 ---
 
+## Network Configuration
+
+### Block Timing
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| **Block period** | 1 second | Time between blocks when transactions are pending |
+| **Empty block period** | 64 seconds | Time between blocks when no transactions are pending |
+| **Epoch length** | 64,000 blocks | Validator set checkpoint interval |
+| **Request timeout** | 86 seconds | QBFT round-change timeout |
+
+### Genesis File Breakdown
+
+The genesis file (`Contracts/Genesis/besuGenesis.json`, ~1.07 GB) contains the full initial state for the network.
+
+#### Chain Parameters
+
+| Parameter | Value |
+|-----------|-------|
+| **Chain ID** | `112311` |
+| **Consensus** | QBFT (Istanbul BFT) |
+| **Gas limit** | 32,000,000 |
+| **Block reward** | 3.2 ETH per block (sent to `miningBeneficiary`) |
+| **Contract size limit** | 32,000 bytes |
+| **EVM fork** | London (all forks enabled at block 0) |
+
+#### Alloc Entries (32,432 total)
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| Addresses ending in `323` | 32,324 | Pre-deployed contract instances (greeting card service) |
+| Addresses ending in `c0DE` | 100 | Pre-deployed contract instances (code management service) |
+| Repeating-pattern addresses | 4 | Reserved contract slots (`0x2222...`, `0x2323...`, `0x3232...`, `0x3333...`) |
+| Reserved system addresses | 4 | Governance and infrastructure contracts (see below) |
+| EOA accounts | 1 | Deployer account with 32 ETH initial balance |
+
+#### Reserved System Addresses
+
+| Address | Comment | Purpose |
+|---------|---------|---------|
+| `0x0000...1111` | Validator smart contract | `ValidatorSmartContractAllowList` — QBFT validator/voter/overlord governance |
+| `0x0000...cafE` | GasManager smart contract | `GasManager` — block reward beneficiary, voter-governed gas funding and burns |
+| `0x0000...c0DE` | Reserved smart contract | Reserved for future use |
+| `0x0000...Face` | Reserved smart contract | Reserved for future use |
+| `0x0000...FacAdE` | ProxyAdmin smart contract | `ProxyAdmin` — guardian-gated ERC1967 upgrade dispatch |
+
+---
+
 ## Contracts
 
 ### Genesis Contracts (deployed at network genesis)
