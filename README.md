@@ -1,6 +1,6 @@
 # Dakota Network
 
-Smart contracts, tools, and node configuration for the **Dakota Network** — an enterprise QBFT blockchain built on Hyperledger Besu with Tessera privacy, designed for permissioned environments where a fully public and decentralized network is not required.
+Smart contracts, tools, and node configuration for the **Dakota Network** — an enterprise QBFT blockchain built on Hyperledger Besu with [Paladin](https://github.com/LFDT-Paladin/paladin) privacy, designed for permissioned environments where a fully public and decentralized network is not required.
 
 All project-owned contracts are licensed under **Apache 2.0**. This software is part of a patented system — see the [LICENSE](LICENSE) file and <https://cryftlabs.org/licenses> for details.
 
@@ -18,79 +18,129 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ### Java
 
-Two JDK versions are required:
-
 | Component | Version | Java |
 |-----------|---------|------|
-| **Besu** | 24.10.0 | Java 21 |
-| **Tessera** | 24.4.2 | Java 17 |
+| **Besu** | 26.1.0 | Java 21 |
+
+### Kubernetes (for Paladin privacy manager)
+
+Paladin runs as a Kubernetes operator alongside your Besu nodes. If you need privacy features:
+
+- [Helm v3](https://helm.sh/docs/intro/install/)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- A running Kubernetes cluster (or [kind](https://kind.sigs.k8s.io/) for local development)
 
 ---
 
 ## Installation (Ubuntu)
 
-The following script installs both Besu and Tessera with pinned Java versions and adds them to your PATH via global wrappers:
+The following script installs Besu and adds it to your PATH via a global wrapper:
 
 ```bash
 (
   set -e
 
-  # --- Packages (Besu uses Java 21; Tessera pinned to Java 17) ---
+  # --- Packages ---
   sudo apt update
-  sudo apt install -y curl unzip tar openjdk-21-jdk openjdk-17-jre-headless
+  sudo apt install -y curl unzip tar openjdk-21-jdk
 
-  # --- Install Besu 24.10.0 (official dist zip) ---
+  # --- Install Besu 26.1.0 (official dist zip) ---
   cd /tmp
-  curl -fL -o besu-24.10.0.zip \
-    https://github.com/hyperledger/besu/releases/download/24.10.0/besu-24.10.0.zip
+  curl -fL -o besu-26.1.0.zip \
+    https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
 
-  sudo rm -rf /opt/besu-24.10.0
-  sudo unzip -q -o besu-24.10.0.zip -d /opt
-  sudo chmod +x /opt/besu-24.10.0/bin/besu /opt/besu-24.10.0/bin/evmtool
+  sudo rm -rf /opt/besu-26.1.0
+  sudo unzip -q -o besu-26.1.0.zip -d /opt
+  sudo chmod +x /opt/besu-26.1.0/bin/besu /opt/besu-26.1.0/bin/evmtool
 
-  # --- Install Tessera 24.4.2 (dist tar) ---
-  cd /tmp
-  curl -fL -o tessera-dist-24.4.2.tar \
-    https://repo1.maven.org/maven2/net/consensys/quorum/tessera/tessera-dist/24.4.2/tessera-dist-24.4.2.tar
-
-  sudo rm -rf /opt/tessera-24.4.2
-  sudo mkdir -p /opt/tessera-24.4.2
-  sudo tar -xf tessera-dist-24.4.2.tar -C /opt/tessera-24.4.2
-
-  # Find the actual tessera launcher (handles nested directory in the tar)
-  TESS_BIN="$(sudo find /opt/tessera-24.4.2 -type f -path '*/bin/tessera' -print | head -n 1)"
-  if [ -z "$TESS_BIN" ]; then
-    echo "ERROR: Could not locate tessera under /opt/tessera-24.4.2"
-    exit 1
-  fi
-
-  # --- Global wrappers (pin JAVA_HOME per tool) ---
+  # --- Global wrapper (pin JAVA_HOME) ---
   sudo tee /usr/local/bin/besu >/dev/null <<'EOF'
 #!/usr/bin/env bash
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-exec /opt/besu-24.10.0/bin/besu "$@"
+exec /opt/besu-26.1.0/bin/besu "$@"
 EOF
 
-  sudo tee /usr/local/bin/tessera >/dev/null <<EOF
-#!/usr/bin/env bash
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-exec "$TESS_BIN" "\$@"
-EOF
-
-  sudo chmod +x /usr/local/bin/besu /usr/local/bin/tessera
+  sudo chmod +x /usr/local/bin/besu
 
   # --- Verify ---
   hash -r
   command -v besu
   besu --version
-  command -v tessera
-  tessera version
 )
 ```
 
+**SHA-256 checksums (26.1.0):**
+```
+356bae18a4c08a2135aa006e62a550b52428e1d613c08aa97c40ec8b908ae6cf  besu-26.1.0.zip
+de6356bf2db9e7a68dc3de391864dc373a0440f51fbf6d78d63d1e205091248e  besu-26.1.0.tar.gz
+```
+
+### Upgrading from Besu 24.10.0
+
+If you are running Besu 24.10.0, follow these steps to upgrade to 26.1.0:
+
+```bash
+(
+  set -e
+
+  # --- Stop Besu ---
+  # Stop your running Besu node(s) before upgrading
+  sudo systemctl stop besu  # or kill the process manually
+
+  # --- Install Besu 26.1.0 ---
+  cd /tmp
+  curl -fL -o besu-26.1.0.zip \
+    https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
+
+  sudo rm -rf /opt/besu-26.1.0
+  sudo unzip -q -o besu-26.1.0.zip -d /opt
+  sudo chmod +x /opt/besu-26.1.0/bin/besu /opt/besu-26.1.0/bin/evmtool
+
+  # --- Update global wrapper ---
+  sudo tee /usr/local/bin/besu >/dev/null <<'EOF'
+#!/usr/bin/env bash
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+exec /opt/besu-26.1.0/bin/besu "$@"
+EOF
+  sudo chmod +x /usr/local/bin/besu
+
+  # --- Remove Tessera (no longer needed) ---
+  sudo rm -rf /opt/tessera-*
+  sudo rm -f /usr/local/bin/tessera
+  # Remove Java 17 if nothing else needs it:
+  # sudo apt remove -y openjdk-17-jre-headless
+
+  # --- Verify ---
+  hash -r
+  besu --version
+  # Expected: besu/v26.1.0/...
+)
+```
+
+#### Breaking Changes in 26.1.0
+
+- The experimental CLI flag `--Xenable-extra-debug-tracers` has been **removed**. The call tracer (`callTracer`) is now always available for `debug_trace*` methods.
+- `eth_getLogs` and `trace_filter` now return an **error** (instead of an empty list) if `fromBlock > toBlock` or `toBlock` extends beyond chain head.
+- Plugin API changes: `BlockHeader`, `Log`, `TransactionProcessingResult`, and `TransactionReceipt` now use specific types for `LogsBloomFilter`, `LogTopic`, and `Log`.
+
+#### Upcoming Deprecations (post-26.1.0)
+
+The Besu maintainers have announced the following features will be **removed** in future releases ([details](https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu)):
+
+| Feature | Status | Replacement |
+|---------|--------|-------------|
+| **Tessera privacy** | **Deprecated & removed** | [Paladin](https://github.com/LFDT-Paladin/paladin) |
+| Smart-contract-based permissioning | Deprecated | Plugin API |
+| Proof of Work consensus | Deprecated | Plugin API |
+| Fast Sync | Deprecated | Snap Sync (direct migration) |
+| ETC / Mordor / Holesky networks | Deprecated | — |
+| Decimal block number parameters | Deprecated | Hex-only block numbers |
+
+> **Tessera has been sunset.** The Besu project officially recommends migrating to [Paladin](https://github.com/LFDT-Paladin/paladin) for programmable privacy on EVM. See the [Paladin Setup](#paladin-privacy-manager-tessera-replacement) section below.
+
 ### Copy Node Configuration
 
-The `Node/` directory contains a sample directory structure with node keys and Tessera config:
+The `Node/` directory contains a sample directory structure with node keys:
 
 ```bash
 cp -r Node/Node /home/user/dakota-node
@@ -119,12 +169,137 @@ besu \
   --sync-min-peers=3
 ```
 
-### Start Tessera (optional)
+### Paladin Privacy Manager (Tessera Replacement)
 
-`tessera` is also on your PATH with Java 17 pinned automatically:
+[Paladin](https://github.com/LFDT-Paladin/paladin) is the recommended replacement for Tessera. It provides programmable privacy-preserving tokens on EVM, including ZKP tokens, notarized tokens, and private smart contracts. Paladin runs as a Kubernetes operator that connects to your Besu nodes.
+
+> **Why Paladin?** Tessera has been officially sunset by the Besu maintainers. Paladin provides a modern, app-layer privacy solution that doesn't require modifications to the Besu client itself. See the [announcement](https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu).
+
+#### Quick Start (kind + Helm)
 
 ```bash
-tessera -configfile /home/user/dakota-node/Tessera/tessera-config1.json
+# Create a local Kubernetes cluster
+curl https://raw.githubusercontent.com/LFDT-Paladin/paladin/refs/heads/main/operator/paladin-kind.yaml -L -O
+kind create cluster --name paladin --config paladin-kind.yaml
+
+# Install Paladin CRDs
+helm repo add paladin https://LFDT-Paladin.github.io/paladin --force-update
+helm upgrade --install paladin-crds paladin/paladin-operator-crd
+
+# Install cert-manager
+helm repo add jetstack https://charts.jetstack.io --force-update
+helm install cert-manager --namespace cert-manager --version v1.16.1 \
+  jetstack/cert-manager --create-namespace --set crds.enabled=true
+
+# Install Paladin operator (devnet mode — deploys 3 Besu + 3 Paladin nodes)
+helm upgrade --install paladin paladin/paladin-operator -n paladin --create-namespace
+```
+
+Verify the deployment:
+```bash
+kubectl config set-context --current --namespace paladin
+kubectl get pods
+kubectl get scd    # smart contract deployments
+kubectl get reg    # node registrations
+```
+
+#### Connecting Paladin to Existing Dakota Nodes (customnet mode)
+
+For integration with your existing Dakota Besu network, use `customnet` mode with a values file:
+
+```yaml
+# values-dakota.yaml
+mode: customnet
+paladinNodes:
+  - name: dakota-node1
+    baseLedgerEndpoint:
+      type: endpoint
+      endpoint:
+        jsonrpc: http://<BESU_NODE_IP>:8545
+        ws: ws://<BESU_NODE_IP>:8546
+        auth:
+          enabled: false
+    domains:
+      - noto
+      - zeto
+      - pente
+    registries:
+      - evm-registry
+    transports:
+      - name: grpc
+        plugin:
+          type: c-shared
+          library: /app/transports/libgrpc.so
+        config:
+          port: 9000
+          address: 0.0.0.0
+        ports:
+          transportGrpc:
+            port: 9000
+            targetPort: 9000
+    service:
+      type: NodePort
+      ports:
+        rpcHttp:
+          port: 8548
+          nodePort: 31548
+        rpcWs:
+          port: 8549
+          nodePort: 31549
+    database:
+      mode: sidecarPostgres
+      migrationMode: auto
+    secretBackedSigners:
+      - name: signer-auto-wallet
+        secret: dakota-node1.keys
+        type: autoHDWallet
+        keySelector: ".*"
+    paladinRegistration:
+      registryAdminNode: dakota-node1
+      registryAdminKey: registry.operator
+      registry: evm-registry
+    config: |
+      log:
+        level: info
+```
+
+Deploy:
+```bash
+helm install paladin paladin/paladin-operator -n paladin --create-namespace \
+  -f values-dakota.yaml
+```
+
+#### Paladin Privacy Domains
+
+| Domain | Description |
+|--------|-------------|
+| **Noto** | Notarized tokens — issuer-backed private token transfers |
+| **Zeto** | ZKP tokens — zero-knowledge proof backed private transfers |
+| **Pente** | Private EVM smart contracts — privacy groups with private state |
+
+#### Paladin UI
+
+Each Paladin node runs a web UI at `/ui`. With the default kind port mappings:
+- `http://localhost:31548/ui`
+- `http://localhost:31648/ui`
+- `http://localhost:31748/ui`
+
+#### Paladin Resources
+
+- **Documentation:** <https://lfdt-paladin.github.io/paladin/head>
+- **GitHub:** <https://github.com/LFDT-Paladin/paladin>
+- **Latest release:** v0.15.0
+- **Tutorials:** <https://lfdt-paladin.github.io/paladin/head/tutorials/>
+- **Discord:** [paladin channel on LFDT Discord](https://discord.com/channels/905194001349627914/1303371167020879903)
+
+#### Uninstall Paladin
+
+```bash
+helm uninstall paladin -n paladin
+helm uninstall paladin-crds
+kubectl delete namespace paladin
+helm uninstall cert-manager -n cert-manager
+kubectl delete namespace cert-manager
 ```
 
 ---
@@ -142,23 +317,21 @@ tessera -configfile /home/user/dakota-node/Tessera/tessera-config1.json
 
 ### Besu
 
-Besu documentation has moved to a self-hosted versioned model. The relevant version for Dakota Network is **24.8.0**.
+Besu documentation has moved to a self-hosted versioned model.
 
 - **Versioned documentation index:** <https://lf-hyperledger.atlassian.net/wiki/spaces/BESU/pages/22156555/Versioned+documentation>
-- **Self-host the docs:** Clone the Besu docs repo at tag `24.8.0` and build locally:
-  ```bash
-  git clone --branch 24.8.0 https://github.com/hyperledger/besu-docs.git
-  cd besu-docs
-  # Follow the repo's README to serve the docs locally
-  ```
-- **Besu GitHub releases:** <https://github.com/hyperledger/besu/releases/tag/24.10.0>
+- **Besu GitHub releases:** <https://github.com/hyperledger/besu/releases/tag/26.1.0>
+- **Besu 26.1.0 release notes:** <https://github.com/hyperledger/besu/releases/tag/26.1.0>
 
-### Tessera
+### Paladin (Privacy Manager)
 
-Tessera documentation is still available online:
+Paladin replaces Tessera as the recommended privacy solution for Besu networks.
 
-- **Tessera docs:** <https://docs.tessera.consensys.io/>
-- **Tessera GitHub:** <https://github.com/ConsenSys/tessera>
+- **Paladin docs:** <https://lfdt-paladin.github.io/paladin/head>
+- **Paladin GitHub:** <https://github.com/LFDT-Paladin/paladin>
+- **Installation guide:** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation>
+- **Advanced installation:** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
+- **Tessera sunset announcement:** <https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu>
 
 ---
 
@@ -186,11 +359,11 @@ The genesis file (`Contracts/Genesis/besuGenesis.json`, ~1.07 GB) contains the f
 | **Gas limit** | 32,000,000 |
 | **Block reward** | 3.2 ETH per block (sent to `miningBeneficiary`) |
 | **Contract size limit** | 32,768 bytes (32 KiB) |
-| **EVM fork** | Cancun (all forks enabled from genesis) |
+| **EVM fork** | Prague/Pectra (all forks enabled from genesis) |
 
 #### Ethereum Fork Activation
 
-All Ethereum hard forks through Cancun are activated from genesis (block 0 / timestamp 0). Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention.
+All Ethereum hard forks through Prague/Pectra are activated from genesis (block 0 / timestamp 0). Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention.
 
 | Fork | Genesis Key | Activation | Notable EIPs |
 |------|------------|------------|--------------|
@@ -206,6 +379,7 @@ All Ethereum hard forks through Cancun are activated from genesis (block 0 / tim
 | **London** | `londonBlock: 0` | Block 0 | EIP-1559 base fee, EIP-3529 refund reduction |
 | **Shanghai** | `shanghaiTime: 0` | Timestamp 0 | PUSH0 (EIP-3855), warm COINBASE (EIP-3651), initcode limits (EIP-3860) |
 | **Cancun** | `cancunTime: 0` | Timestamp 0 | Transient storage TSTORE/TLOAD (EIP-1153), MCOPY (EIP-5656), SELFDESTRUCT neutered (EIP-6780) |
+| **Prague/Pectra** | `pragueTime: 0` | Timestamp 0 | EIP-7702 (EOA code delegation), EIP-7251 (max effective balance), EIP-7002 (execution layer withdrawals) |
 
 #### Alloc Entries (32,432 total)
 
@@ -556,7 +730,6 @@ Interactive wizard for generating and distributing three types of cryptographic 
 **Key types:**
 - **EOA accounts** — private key + address, optional keystore V3 JSON
 - **Besu node keys** — `key` + `key.pub` for P2P identity / validator signing
-- **Tessera keys** — via `tessera -keygen` (locked or unlocked)
 
 **SCP distribution:** After generation, the wizard can distribute each key set to remote nodes via SCP with per-key review, retry on failure, and optional deletion of local originals.
 
@@ -567,10 +740,9 @@ python3 Tools/keywizard/dakota_keywizard.py
 
 **CLI flags for scripted/batch use:**
 ```bash
-# Generate 4 Besu node keys + 4 Tessera keys, no EOA, with SCP step
+# Generate 4 Besu node keys, no EOA, with SCP step
 python3 Tools/keywizard/dakota_keywizard.py \
   --besu-count 4 \
-  --tessera-count 4 \
   --no-eoa \
   --scp
 
@@ -583,8 +755,7 @@ python3 Tools/keywizard/dakota_keywizard.py \
 # Non-interactive batch (no SCP, uses defaults)
 python3 Tools/keywizard/dakota_keywizard.py \
   --non-interactive \
-  --besu-count 4 \
-  --tessera-count 4
+  --besu-count 4
 ```
 
 **All flags:**
@@ -598,13 +769,8 @@ python3 Tools/keywizard/dakota_keywizard.py \
 | `--eoa-keystore` | off | Also generate keystore V3 JSON |
 | `--eoa-keystore-pass` | prompt | Keystore password |
 | `--besu-count` | 0 | Number of Besu node keys to generate |
-| `--tessera-count` | 0 | Number of Tessera keys to generate |
-| `--tessera-bin` | `tessera` | Tessera binary name/path |
-| `--tessera-basename` | `nodeKey` | Base filename for Tessera keys |
-| `--tessera-locked` | off | Generate password-locked Tessera keys |
 | `--name-prefix-eoa` | `eoa-` | Folder prefix for EOA keys |
 | `--name-prefix-besu` | `besu-node-` | Folder prefix for Besu node keys |
-| `--name-prefix-tessera` | `tessera-` | Folder prefix for Tessera keys |
 | `--scp` | off | Enable SCP distribution step |
 
 ### `Tools/bytecode_replacer/replace_bytecode.py`
@@ -795,7 +961,7 @@ dakota-network/
 │   │   ├── old.txt                    # Old bytecode to find (paste here)
 │   │   └── new.txt                    # New bytecode to replace with (paste here)
 │   ├── keywizard/
-│   │   └── dakota_keywizard.py       # EOA, Besu node key, and Tessera key generator
+│   │   └── dakota_keywizard.py       # EOA and Besu node key generator
 │   ├── tx_simulator/
 │   │   └── tx_simulator.py            # Block-paced ETH transfer loop (QBFT/PoA)
 │   └── solc_compiler/
@@ -804,13 +970,9 @@ dakota-network/
 ├── Node/                             # Sample node directory structure
 │   ├── genesisPalceholder.json       # Placeholder genesis (production file too large for repo)
 │   └── Node/
-│       ├── data/
-│       │   ├── key                   # Besu node private key (P2P / validator signing)
-│       │   └── key.pub               # Besu node public key
-│       └── Tessera/
-│           ├── tessera-config1.json   # Tessera privacy manager configuration
-│           ├── node1.key             # Tessera private key
-│           └── node1.pub             # Tessera public key
+│       └── data/
+│           ├── key                   # Besu node private key (P2P / validator signing)
+│           └── key.pub               # Besu node public key
 └── README.md
 ```
 
