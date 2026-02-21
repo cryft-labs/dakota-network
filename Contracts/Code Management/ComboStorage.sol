@@ -106,39 +106,6 @@ contract ComboStorage is IComboStorage {
         emit WhitelistUpdated(account, false);
     }
 
-    /// @notice Store a pre-computed hash for a registered unique ID.
-    ///         Off-chain: giftCode = pin + code, codeHash = keccak256(giftCode).
-    ///         On-chain: PIN is the bucket index, codeHash is the key within it.
-    function storeData(
-        string memory uniqueId,
-        string memory pin,
-        bytes32 codeHash
-    ) public onlyWhitelisted {
-        require(bytes(pin).length > 0, "PIN cannot be empty");
-        require(codeHash != bytes32(0), "Hash cannot be zero");
-        require(bytes(uniqueId).length > 0, "Unique ID cannot be empty");
-        require(!pinToHash[pin][codeHash].exists, "Hash already stored");
-        require(pinSlotCount[pin] < MAX_PER_PIN, "PIN slot full (max 32)");
-
-        // Fetch and validate unique ID details from CodeManager.
-        // getUniqueIdDetails reverts if the uniqueId is invalid.
-        (address giftContract, string memory chainId, uint256 counter) =
-            codeManager.getUniqueIdDetails(uniqueId);
-
-        // Store PIN → hash → uniqueId
-        pinToHash[pin][codeHash] = HashDetails(uniqueId, true);
-        pinSlotCount[pin]++;
-
-        emit DataStoredStatus(
-            uniqueId,
-            codeHash,
-            giftContract,
-            chainId,
-            counter,
-            true
-        );
-    }
-
     /// @notice Store multiple pre-computed hashes in one transaction.
     ///         Codes that cannot be stored (PIN slot full, duplicate hash,
     ///         invalid uniqueId, etc.) are skipped with a status=false event.

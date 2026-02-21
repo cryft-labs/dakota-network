@@ -186,7 +186,26 @@ The genesis file (`Contracts/Genesis/besuGenesis.json`, ~1.07 GB) contains the f
 | **Gas limit** | 32,000,000 |
 | **Block reward** | 3.2 ETH per block (sent to `miningBeneficiary`) |
 | **Contract size limit** | 32,768 bytes (32 KiB) |
-| **EVM fork** | London (all forks enabled at block 0) |
+| **EVM fork** | Cancun (all forks enabled from genesis) |
+
+#### Ethereum Fork Activation
+
+All Ethereum hard forks through Cancun are activated from genesis (block 0 / timestamp 0). Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention.
+
+| Fork | Genesis Key | Activation | Notable EIPs |
+|------|------------|------------|--------------|
+| **Homestead** | `homesteadBlock: 0` | Block 0 | EIP-2 (tx validation), EIP-7 (DELEGATECALL) |
+| **EIP-150** | `eip150Block: 0` | Block 0 | Gas cost rebalancing (Tangerine Whistle) |
+| **EIP-155/158** | `eip155Block: 0` / `eip158Block: 0` | Block 0 | Replay protection, state clearing (Spurious Dragon) |
+| **Byzantium** | `byzantiumBlock: 0` | Block 0 | REVERT opcode, STATICCALL, precompiles |
+| **Constantinople** | `constantinopleBlock: 0` | Block 0 | SHL/SHR/SAR opcodes, CREATE2, EXTCODEHASH |
+| **Petersburg** | `petersburgBlock: 0` | Block 0 | Removed EIP-1283 (SSTORE re-entrancy fix) |
+| **Istanbul** | `istanbulBlock: 0` | Block 0 | ChainID opcode, SELFBALANCE, Blake2 precompile |
+| **Muir Glacier** | `muirglacierblock: 0` | Block 0 | Difficulty bomb delay (no EVM changes) |
+| **Berlin** | `berlinBlock: 0` | Block 0 | Access lists (EIP-2929/2930), cold/warm storage pricing |
+| **London** | `londonBlock: 0` | Block 0 | EIP-1559 base fee, EIP-3529 refund reduction |
+| **Shanghai** | `shanghaiTime: 0` | Timestamp 0 | PUSH0 (EIP-3855), warm COINBASE (EIP-3651), initcode limits (EIP-3860) |
+| **Cancun** | `cancunTime: 0` | Timestamp 0 | Transient storage TSTORE/TLOAD (EIP-1153), MCOPY (EIP-5656), SELFDESTRUCT neutered (EIP-6780) |
 
 #### Alloc Entries (32,432 total)
 

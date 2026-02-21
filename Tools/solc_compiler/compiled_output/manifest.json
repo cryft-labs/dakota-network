@@ -42,8 +42,8 @@
   {
     "source": "Code Management\\ComboStorage.sol",
     "contract": "ComboStorage",
-    "runtime_bytes": 7077,
-    "creation_bytes": 7109,
+    "runtime_bytes": 6062,
+    "creation_bytes": 6094,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\ComboStorage\\ComboStorage",
     "over_limit": false
   },

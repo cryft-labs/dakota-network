@@ -289,29 +289,6 @@
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "pin",
-        "type": "string"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "codeHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "storeData",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "string[]",
         "name": "uniqueIds",
         "type": "string[]"
