@@ -283,6 +283,29 @@ VALID_EVM_VERSIONS = [
 DEFAULT_SOLC_VERSION = "0.8.19"
 DEFAULT_EVM_VERSION = "cancun"
 
+# Maximum EVM version supported by each solc range
+_SOLC_EVM_CAPS = [
+    # (max_solc_exclusive, max_evm)
+    ((0, 8, 20), "london"),    # solc <0.8.20 → max london
+    ((0, 8, 24), "shanghai"),  # solc 0.8.20–0.8.23 → max shanghai
+    ((0, 9, 0),  "cancun"),    # solc 0.8.24+ → cancun
+]
+
+def clamp_evm_version(solc_version: str, evm_version: str) -> str:
+    """
+    Clamp the EVM target to the maximum supported by the selected solc.
+    E.g. solc 0.8.19 only supports up to london, so cancun → london.
+    """
+    sv = _ver_tuple(solc_version)
+    evm_idx = VALID_EVM_VERSIONS.index(evm_version) if evm_version in VALID_EVM_VERSIONS else 0
+    for max_solc, max_evm in _SOLC_EVM_CAPS:
+        if sv < max_solc:
+            cap_idx = VALID_EVM_VERSIONS.index(max_evm)
+            if evm_idx > cap_idx:
+                return max_evm
+            return evm_version
+    return evm_version
+
 
 def get_pragma_constraints(source: str) -> tuple:
     """
@@ -406,6 +429,12 @@ def compile_contract(
     if evm_version not in VALID_EVM_VERSIONS:
         print(f"Warning: Invalid EVM version '{evm_version}', using 'cancun'")
         evm_version = DEFAULT_EVM_VERSION
+
+    # Clamp EVM version to max supported by this solc
+    original_evm = evm_version
+    evm_version = clamp_evm_version(solc_version, evm_version)
+    if evm_version != original_evm:
+        print(f"Note: EVM clamped from {original_evm} → {evm_version} (solc {solc_version} limit)")
 
     print(f"\nCompiling with:")
     print(f"  Solidity: {solc_version}")

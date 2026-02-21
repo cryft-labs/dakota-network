@@ -4,7 +4,7 @@
 // This software is part of a patented system. See LICENSE and PATENT NOTICE.
 // Licensed under the Apache License, Version 2.0.
 
-pragma solidity >=0.8.2 <0.9.0;
+pragma solidity >=0.8.2 <0.8.20;
 
 interface ValidatorSmartContractInterface {
     function getValidators() external view returns (address[] memory);
