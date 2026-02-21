@@ -83,9 +83,26 @@ If you are running Besu 24.10.0, follow these steps to upgrade to 26.1.0:
 (
   set -e
 
-  # --- Stop Besu ---
-  # Stop your running Besu node(s) before upgrading
-  sudo systemctl stop besu  # or kill the process manually
+  # --- Stop running services ---
+  # Stop Besu and Tessera before upgrading
+  sudo systemctl stop besu 2>/dev/null || true   # or kill the process manually
+  sudo systemctl stop tessera 2>/dev/null || true
+  # If running via screen/tmux/nohup, kill those processes too
+
+  # --- Remove old Besu 24.10.0 ---
+  sudo rm -rf /opt/besu-24.10.0
+  # The old wrapper at /usr/local/bin/besu will be overwritten below
+
+  # --- Remove Tessera completely (sunset — replaced by Paladin) ---
+  sudo rm -rf /opt/tessera-*
+  sudo rm -f /usr/local/bin/tessera
+  sudo systemctl disable tessera 2>/dev/null || true
+  sudo rm -f /etc/systemd/system/tessera.service
+  sudo systemctl daemon-reload 2>/dev/null || true
+  # Remove Tessera data directory if present:
+  # sudo rm -rf /home/user/dakota-node/Tessera
+  # Remove Java 17 if nothing else needs it:
+  # sudo apt remove -y openjdk-17-jre-headless
 
   # --- Install Besu 26.1.0 ---
   cd /tmp
@@ -96,7 +113,7 @@ If you are running Besu 24.10.0, follow these steps to upgrade to 26.1.0:
   sudo unzip -q -o besu-26.1.0.zip -d /opt
   sudo chmod +x /opt/besu-26.1.0/bin/besu /opt/besu-26.1.0/bin/evmtool
 
-  # --- Update global wrapper ---
+  # --- Update global wrapper (points to 26.1.0) ---
   sudo tee /usr/local/bin/besu >/dev/null <<'EOF'
 #!/usr/bin/env bash
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
@@ -104,16 +121,20 @@ exec /opt/besu-26.1.0/bin/besu "$@"
 EOF
   sudo chmod +x /usr/local/bin/besu
 
-  # --- Remove Tessera (no longer needed) ---
-  sudo rm -rf /opt/tessera-*
-  sudo rm -f /usr/local/bin/tessera
-  # Remove Java 17 if nothing else needs it:
-  # sudo apt remove -y openjdk-17-jre-headless
+  # --- Update systemd service (if using one) ---
+  # If you have a besu.service, update the ExecStart path:
+  # sudo sed -i 's|besu-24.10.0|besu-26.1.0|g' /etc/systemd/system/besu.service
+  # sudo systemctl daemon-reload
 
   # --- Verify ---
   hash -r
   besu --version
   # Expected: besu/v26.1.0/...
+
+  # Confirm old versions are gone
+  test ! -d /opt/besu-24.10.0 && echo "Old Besu removed OK"
+  test ! -d /opt/tessera-24.4.2 && echo "Tessera removed OK"
+  ! command -v tessera 2>/dev/null && echo "Tessera wrapper removed OK"
 )
 ```
 
@@ -162,12 +183,17 @@ besu \
   --p2p-port=30303 \
   --rpc-http-enabled \
   --rpc-http-api=ETH,NET,QBFT \
+  --rpc-ws-enabled \
+  --rpc-ws-api=ETH,NET,QBFT \
+  --rpc-ws-port=8546 \
   --host-allowlist="*" \
   --rpc-http-cors-origins="all" \
   --rpc-http-port=8545 \
   --p2p-host=<YOUR_IP> \
   --sync-min-peers=3
 ```
+
+> **Note:** The `--rpc-ws-*` flags enable WebSocket RPC, required if connecting Paladin to this node.
 
 ### Paladin Privacy Manager (Tessera Replacement)
 
