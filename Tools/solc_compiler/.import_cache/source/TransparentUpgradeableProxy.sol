@@ -4,7 +4,7 @@
 // Extended by Cryft Labs — overlord/guardian governance with threshold voting.
 // Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
 
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.2 <0.9.0;
 
 import "../ERC1967/ERC1967Proxy.sol";
 

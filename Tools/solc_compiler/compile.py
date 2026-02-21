@@ -6,7 +6,7 @@
 Solidity Runtime Bytecode Compiler
 ===================================
 Compiles Solidity contracts locally and extracts runtime bytecode
-without deploying to a testnet. Uses Berlin EVM and Solidity 0.8.x+.
+without deploying to a testnet. Uses Cancun EVM and Solidity 0.8.x+.
 
 Directory layout (alongside this script):
     solc_compiler/
@@ -277,11 +277,11 @@ def copy_local_tree(src_file: Path, work_dir: Path, visited: set):
 VALID_EVM_VERSIONS = [
     "homestead", "tangerineWhistle", "spuriousDragon",
     "byzantium", "constantinople", "petersburg",
-    "istanbul", "berlin", "london", "paris", "shanghai",
+    "istanbul", "berlin", "london", "paris", "shanghai", "cancun",
 ]
 
 DEFAULT_SOLC_VERSION = "0.8.19"
-DEFAULT_EVM_VERSION = "berlin"
+DEFAULT_EVM_VERSION = "cancun"
 
 
 def get_pragma_constraints(source: str) -> tuple:
@@ -404,7 +404,7 @@ def compile_contract(
 
     # Validate EVM version
     if evm_version not in VALID_EVM_VERSIONS:
-        print(f"Warning: Invalid EVM version '{evm_version}', using 'berlin'")
+        print(f"Warning: Invalid EVM version '{evm_version}', using 'cancun'")
         evm_version = DEFAULT_EVM_VERSION
 
     print(f"\nCompiling with:")

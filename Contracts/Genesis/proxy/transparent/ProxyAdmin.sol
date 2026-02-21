@@ -4,7 +4,7 @@
 // Modified by Cryft Labs — guardian/overlord governance replaces single-owner pattern.
 // Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
 
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.2 <0.9.0;
 
 import "./TransparentUpgradeableProxy.sol";
 

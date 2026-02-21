@@ -2,160 +2,160 @@
   {
     "source": "Code Management\\CodeManager.sol",
     "contract": "AddressUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\CodeManager\\AddressUpgradeable",
     "over_limit": false
   },
   {
     "source": "Code Management\\CodeManager.sol",
     "contract": "StringsUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\CodeManager\\StringsUpgradeable",
     "over_limit": false
   },
   {
     "source": "Code Management\\CodeManager.sol",
     "contract": "MathUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\CodeManager\\MathUpgradeable",
     "over_limit": false
   },
   {
     "source": "Code Management\\CodeManager.sol",
     "contract": "SignedMathUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\CodeManager\\SignedMathUpgradeable",
     "over_limit": false
   },
   {
     "source": "Code Management\\CodeManager.sol",
     "contract": "CodeManager",
-    "runtime_bytes": 13640,
-    "creation_bytes": 13883,
+    "runtime_bytes": 13212,
+    "creation_bytes": 13449,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\CodeManager\\CodeManager",
     "over_limit": false
   },
   {
     "source": "Code Management\\ComboStorage.sol",
     "contract": "ComboStorage",
-    "runtime_bytes": 6062,
-    "creation_bytes": 6094,
+    "runtime_bytes": 5943,
+    "creation_bytes": 5972,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\ComboStorage\\ComboStorage",
     "over_limit": false
   },
   {
     "source": "Genesis\\GasManager.sol",
     "contract": "AddressUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\GasManager\\AddressUpgradeable",
     "over_limit": false
   },
   {
     "source": "Genesis\\GasManager.sol",
     "contract": "GasManager",
-    "runtime_bytes": 14510,
-    "creation_bytes": 14753,
+    "runtime_bytes": 14089,
+    "creation_bytes": 14326,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\GasManager\\GasManager",
     "over_limit": false
   },
   {
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "ERC1967Proxy",
-    "runtime_bytes": 177,
-    "creation_bytes": 208,
+    "runtime_bytes": 170,
+    "creation_bytes": 197,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\ERC1967Proxy",
     "over_limit": false
   },
   {
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "ProxyAdmin",
-    "runtime_bytes": 3296,
-    "creation_bytes": 3328,
+    "runtime_bytes": 3212,
+    "creation_bytes": 3241,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\ProxyAdmin",
     "over_limit": false
   },
   {
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "TransparentUpgradeableProxy",
-    "runtime_bytes": 17175,
-    "creation_bytes": 17207,
+    "runtime_bytes": 16829,
+    "creation_bytes": 16858,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\TransparentUpgradeableProxy",
     "over_limit": false
   },
   {
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "Address",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\Address",
     "over_limit": false
   },
   {
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "StorageSlot",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\StorageSlot",
     "over_limit": false
   },
   {
     "source": "Genesis\\validatorContracts\\ValidatorSmartContractAllowList.sol",
     "contract": "ValidatorSmartContractAllowList",
-    "runtime_bytes": 20565,
-    "creation_bytes": 20597,
+    "runtime_bytes": 19787,
+    "creation_bytes": 19816,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\validatorContracts\\ValidatorSmartContractAllowList\\ValidatorSmartContractAllowList",
     "over_limit": false
   },
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "ERC721Upgradeable",
-    "runtime_bytes": 4339,
-    "creation_bytes": 4371,
+    "runtime_bytes": 4267,
+    "creation_bytes": 4296,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Tokens\\GreetingCards\\ERC721Upgradeable",
     "over_limit": false
   },
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "AddressUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Tokens\\GreetingCards\\AddressUpgradeable",
     "over_limit": false
   },
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "StringsUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Tokens\\GreetingCards\\StringsUpgradeable",
     "over_limit": false
   },
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "MathUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Tokens\\GreetingCards\\MathUpgradeable",
     "over_limit": false
   },
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "SignedMathUpgradeable",
-    "runtime_bytes": 86,
-    "creation_bytes": 141,
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Tokens\\GreetingCards\\SignedMathUpgradeable",
     "over_limit": false
   },
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "CryftGreetingCards",
-    "runtime_bytes": 15821,
-    "creation_bytes": 16064,
+    "runtime_bytes": 15515,
+    "creation_bytes": 15752,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Tokens\\GreetingCards\\CryftGreetingCards",
     "over_limit": false
   }
