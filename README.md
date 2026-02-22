@@ -197,41 +197,56 @@ besu \
 
 ### Paladin Privacy Manager (Tessera Replacement)
 
-[Paladin](https://github.com/LFDT-Paladin/paladin) is the recommended replacement for Tessera. It provides programmable privacy-preserving tokens on EVM, including ZKP tokens, notarized tokens, and private smart contracts. Paladin runs as a Kubernetes operator that connects to your Besu nodes.
+[Paladin](https://github.com/LFDT-Paladin/paladin) is the recommended replacement for Tessera. It provides programmable privacy-preserving tokens on EVM, including ZKP tokens, notarized tokens, and private smart contracts. Paladin runs as a Kubernetes operator that connects to your Besu node.
 
 > **Why Paladin?** Tessera has been officially sunset by the Besu maintainers. Paladin provides a modern, app-layer privacy solution that doesn't require modifications to the Besu client itself. See the [announcement](https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu).
 
-#### Quick Start (kind + Helm)
+#### Prerequisites
 
+| Component | Required |
+|-----------|----------|
+| Kubernetes | Single-node cluster (e.g., [k3s](https://k3s.io/), [microk8s](https://microk8s.io/), or [kind](https://kind.sigs.k8s.io/)) |
+| Helm v3 | <https://helm.sh/docs/intro/install/> |
+| kubectl | <https://kubernetes.io/docs/tasks/tools/> |
+| Besu node | Local (`localhost:8545/8546`) or remote (`<BESU_NODE_IP>:8545/8546`) with HTTP + WebSocket RPC enabled |
+
+#### Step 1 — Single-Node Kubernetes (if not already running)
+
+For production on a single machine, [k3s](https://k3s.io/) is recommended (lightweight, single-binary). Alternatively, use kind for local development:
+
+**Option A — k3s (production):**
 ```bash
-# Create a local Kubernetes cluster
+curl -sfL https://get.k3s.io | sh -
+# k3s includes kubectl; add helm separately:
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+# Verify:
+kubectl get nodes
+```
+
+**Option B — kind (development/testing):**
+```bash
 curl https://raw.githubusercontent.com/LFDT-Paladin/paladin/refs/heads/main/operator/paladin-kind.yaml -L -O
 kind create cluster --name paladin --config paladin-kind.yaml
+```
 
-# Install Paladin CRDs
+#### Step 2 — Install Paladin Operator CRDs
+
+```bash
 helm repo add paladin https://LFDT-Paladin.github.io/paladin --force-update
 helm upgrade --install paladin-crds paladin/paladin-operator-crd
+```
 
-# Install cert-manager
+#### Step 3 — Install cert-manager
+
+```bash
 helm repo add jetstack https://charts.jetstack.io --force-update
 helm install cert-manager --namespace cert-manager --version v1.16.1 \
   jetstack/cert-manager --create-namespace --set crds.enabled=true
-
-# Install Paladin operator (devnet mode — deploys 3 Besu + 3 Paladin nodes)
-helm upgrade --install paladin paladin/paladin-operator -n paladin --create-namespace
 ```
 
-Verify the deployment:
-```bash
-kubectl config set-context --current --namespace paladin
-kubectl get pods
-kubectl get scd    # smart contract deployments
-kubectl get reg    # node registrations
-```
+#### Step 4 — Deploy Paladin (single node, attached to Besu)
 
-#### Connecting Paladin to Existing Dakota Nodes (customnet mode)
-
-For integration with your existing Dakota Besu network, use `customnet` mode with a values file:
+Create a values file for a **single Paladin node** connected to your Besu node:
 
 ```yaml
 # values-dakota.yaml
@@ -241,10 +256,15 @@ paladinNodes:
     baseLedgerEndpoint:
       type: endpoint
       endpoint:
-        jsonrpc: http://<BESU_NODE_IP>:8545
-        ws: ws://<BESU_NODE_IP>:8546
+        # --- Local Besu (same machine) ---
+        jsonrpc: http://host.docker.internal:8545
+        ws: ws://host.docker.internal:8546
+        # --- OR Remote Besu ---
+        # jsonrpc: http://<BESU_NODE_IP>:8545
+        # ws: ws://<BESU_NODE_IP>:8546
         auth:
-          enabled: false
+          enabled: false          # set true + secretName for basic auth
+          # secretName: besu-auth
     domains:
       - noto
       - zeto
@@ -273,12 +293,12 @@ paladinNodes:
           port: 8549
           nodePort: 31549
     database:
-      mode: sidecarPostgres
+      mode: sidecarPostgres     # embedded Postgres sidecar (no external DB needed)
       migrationMode: auto
     secretBackedSigners:
       - name: signer-auto-wallet
         secret: dakota-node1.keys
-        type: autoHDWallet
+        type: autoHDWallet      # auto-generates HD wallet seed phrase
         keySelector: ".*"
     paladinRegistration:
       registryAdminNode: dakota-node1
@@ -287,12 +307,28 @@ paladinNodes:
     config: |
       log:
         level: info
+      publicTxManager:
+        gasLimit:
+          gasEstimateFactor: 2.0
 ```
+
+> **Connecting to local Besu:** If Besu runs on the same machine (outside Kubernetes), use `host.docker.internal` (Docker Desktop / kind) or the host's LAN IP. For k3s, use the machine's actual IP address instead.
+>
+> **Connecting to remote Besu:** Replace with the remote node's IP/hostname. Ensure ports `8545` (HTTP) and `8546` (WebSocket) are reachable from the Kubernetes pod network.
 
 Deploy:
 ```bash
 helm install paladin paladin/paladin-operator -n paladin --create-namespace \
   -f values-dakota.yaml
+```
+
+#### Step 5 — Verify
+
+```bash
+kubectl -n paladin get pods             # Paladin pod + Postgres sidecar should be Running
+kubectl -n paladin get scd              # Smart contract deployments (noto, pente, zeto factories)
+kubectl -n paladin get reg              # Node registration status
+kubectl -n paladin logs deploy/dakota-node1 --tail=50   # Check logs
 ```
 
 #### Paladin Privacy Domains
@@ -305,18 +341,86 @@ helm install paladin paladin/paladin-operator -n paladin --create-namespace \
 
 #### Paladin UI
 
-Each Paladin node runs a web UI at `/ui`. With the default kind port mappings:
-- `http://localhost:31548/ui`
-- `http://localhost:31648/ui`
-- `http://localhost:31748/ui`
+The Paladin node runs a web UI at `/ui`:
+- `http://localhost:31548/ui` (with the NodePort config above)
+- If using k3s, access via `http://<MACHINE_IP>:31548/ui`
 
-#### Paladin Resources
+#### Adding Paladin Nodes on Other Machines
 
-- **Documentation:** <https://lfdt-paladin.github.io/paladin/head>
-- **GitHub:** <https://github.com/LFDT-Paladin/paladin>
-- **Latest release:** v0.15.0
-- **Tutorials:** <https://lfdt-paladin.github.io/paladin/head/tutorials/>
-- **Discord:** [paladin channel on LFDT Discord](https://discord.com/channels/905194001349627914/1303371167020879903)
+To add nodes on additional machines that join the same Paladin network, use `attach` mode with the contract addresses from the primary node:
+
+```bash
+# On the primary node, get deployed contract addresses:
+kubectl -n paladin get paladindomains,paladinregistries
+```
+
+Then on the new machine, create a values file with `mode: attach` and the contract addresses:
+
+```yaml
+# values-attach.yaml
+mode: attach
+smartContractsReferences:
+  notoFactory:
+    address: "0x..."    # from primary node output
+  zetoFactory:
+    address: "0x..."
+  penteFactory:
+    address: "0x..."
+  registry:
+    address: "0x..."
+paladinNodes:
+  - name: dakota-node2
+    baseLedgerEndpoint:
+      type: endpoint
+      endpoint:
+        jsonrpc: http://<BESU_NODE_IP>:8545
+        ws: ws://<BESU_NODE_IP>:8546
+        auth:
+          enabled: false
+    domains: [noto, zeto, pente]
+    registries: [evm-registry]
+    transports:
+      - name: grpc
+        plugin:
+          type: c-shared
+          library: /app/transports/libgrpc.so
+        config:
+          port: 9000
+          address: 0.0.0.0
+        ports:
+          transportGrpc:
+            port: 9000
+            targetPort: 9000
+    service:
+      type: NodePort
+      ports:
+        rpcHttp:
+          port: 8548
+          nodePort: 31548
+        rpcWs:
+          port: 8549
+          nodePort: 31549
+    database:
+      mode: sidecarPostgres
+      migrationMode: auto
+    secretBackedSigners:
+      - name: signer-auto-wallet
+        secret: dakota-node2.keys
+        type: autoHDWallet
+        keySelector: ".*"
+    paladinRegistration:
+      registryAdminNode: dakota-node1    # primary node that deployed contracts
+      registryAdminKey: registry.operator
+      registry: evm-registry
+    config: |
+      log:
+        level: info
+```
+
+```bash
+helm install paladin paladin/paladin-operator -n paladin --create-namespace \
+  -f values-attach.yaml
+```
 
 #### Uninstall Paladin
 
@@ -327,6 +431,16 @@ kubectl delete namespace paladin
 helm uninstall cert-manager -n cert-manager
 kubectl delete namespace cert-manager
 ```
+
+#### Paladin Resources
+
+- **Documentation:** <https://lfdt-paladin.github.io/paladin/head>
+- **GitHub:** <https://github.com/LFDT-Paladin/paladin>
+- **Latest release:** v0.15.0
+- **Tutorials:** <https://lfdt-paladin.github.io/paladin/head/tutorials/>
+- **Advanced installation:** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
+- **Manual installation:** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-manual/>
+- **Discord:** [paladin channel on LFDT Discord](https://discord.com/channels/905194001349627914/1303371167020879903)
 
 ---
 
