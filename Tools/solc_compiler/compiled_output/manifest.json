@@ -1,5 +1,21 @@
 [
   {
+    "source": "7702\\DakotaDelegation.sol",
+    "contract": "DakotaDelegation",
+    "runtime_bytes": 6050,
+    "creation_bytes": 6079,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\7702\\DakotaDelegation\\DakotaDelegation",
+    "over_limit": false
+  },
+  {
+    "source": "7702\\GasSponsor.sol",
+    "contract": "GasSponsor",
+    "runtime_bytes": 5088,
+    "creation_bytes": 5117,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\7702\\GasSponsor\\GasSponsor",
+    "over_limit": false
+  },
+  {
     "source": "Code Management\\CodeManager.sol",
     "contract": "AddressUpgradeable",
     "runtime_bytes": 85,

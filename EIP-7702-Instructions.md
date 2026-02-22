@@ -22,8 +22,7 @@ EIP-7702 requires Pectra (Prague + Electra) fork support in Besu.
 | Requirement | Version |
 |---|---|
 | Minimum Besu version | **≥ 25.3.x** (Pectra support landed in 25.x line) |
-| Recommended | **≥ 25.9.0** (Fusaka-ready, which includes Pectra) |
-| Current Latest | **26.1.0** |
+| Recommended | **26.1.0** |
 
 ### 1.2 Genesis Configuration
 
@@ -87,19 +86,19 @@ When an EOA signs an authorization, the protocol sets the EOA's code to:
 
 This makes the EOA *behave* like a smart contract for the duration of calls to it, delegating execution to the specified contract's code while using the EOA's own storage and balance.
 
-### 2.3 No Contracts or Bundlers Needed on Your Chain
+### 2.3 On-Chain Requirements
 
 Unlike ERC-4337, EIP-7702 does **not** require:
 - ❌ EntryPoint contract
 - ❌ Bundler node
-- ❌ Paymaster contract
 - ❌ Account factory contract
 - ❌ Smart contract wallet per user
 
 It **does** require:
 - ✅ Prague/Pectra fork activated on your chain (done — `pragueTime: 0`)
-- ✅ A Besu version that supports Pectra (≥ 25.x)
-- ✅ A delegation target contract (only if you want smart-account features like batching, session keys, etc. — thirdweb provides this automatically)
+- ✅ Besu **26.1.0** (or any version ≥ 25.3.x with Pectra support)
+- ✅ A **delegation target contract** — the smart-account implementation that EOAs delegate to (see `Contracts/7702/DakotaDelegation.sol`)
+- ✅ *(Optional)* A **gas sponsor contract** for self-hosted gas sponsorship (see `Contracts/7702/GasSponsor.sol`)
 
 ---
 
@@ -386,7 +385,7 @@ Set up in dashboard: **Project → Wallets → Dedicated Relayer**
 
 ## 6. Checklist
 
-- [ ] **Besu ≥ 25.9.0** installed on all validator/RPC nodes
+- [ ] **Besu 26.1.0** installed on all validator/RPC nodes
 - [ ] **`pragueTime: 0`** in genesis config (done ✅)
 - [ ] **Network restarted** with updated genesis
 - [ ] **thirdweb account** created with project + API keys
