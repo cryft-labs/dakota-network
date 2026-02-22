@@ -47,6 +47,13 @@ import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/prox
 
 import "./interfaces/IGasSponsor.sol";
 
+/// @dev Minimal interface to call GasManager.executeFundGas.
+interface IGasManager {
+    function executeFundGas(address payable _to, uint256 _amount) external;
+    function approvedFunds(bytes32 fundKey) external view returns (bool);
+    function isGuardian(address) external view returns (bool);
+}
+
 contract GasSponsor is Initializable, ReentrancyGuardUpgradeable, IGasSponsor {
 
     // ═══════════════════════════════════════════════════════
@@ -66,6 +73,9 @@ contract GasSponsor is Initializable, ReentrancyGuardUpgradeable, IGasSponsor {
     mapping(address => SponsorState)                    private _sponsors;
     mapping(address => mapping(address => bool))        private _authorizedRelayers;
     mapping(address => mapping(address => bool))        private _allowedTargets;
+
+    /// @notice The GasManager genesis contract.
+    address constant public GAS_MANAGER = 0x000000000000000000000000000000000000cafE;
 
     /// @dev Approximate gas overhead for sponsoredCall housekeeping.
     ///      Covers: base TX cost (~21k), pre-call checks, post-call
@@ -155,6 +165,54 @@ contract GasSponsor is Initializable, ReentrancyGuardUpgradeable, IGasSponsor {
     function disableTargetAllowlist() external override {
         _sponsors[msg.sender].useTargetAllowlist = false;
         emit ConfigUpdated(msg.sender, "targetAllowlist", 0);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  Top-Off from GasManager
+    // ═══════════════════════════════════════════════════════
+
+    /// @inheritdoc IGasSponsor
+    function topOff(address sponsor, uint256 amount) external override nonReentrant {
+        require(amount > 0, "GasSponsor: zero amount");
+        require(
+            IGasManager(GAS_MANAGER).isGuardian(msg.sender),
+            "GasSponsor: caller is not a GasManager guardian"
+        );
+
+        SponsorState storage s = _sponsors[sponsor];
+        if (!s.active) {
+            s.active       = true;
+            s.lastResetDay = block.timestamp / 1 days;
+        }
+
+        // Verify that the GasManager has an approved fund for this contract
+        // with the requested amount.  The fundKey matches GasManager's
+        // keccak256(abi.encodePacked(_to, _amount)).
+        bytes32 fundKey = keccak256(
+            abi.encodePacked(address(this), amount)
+        );
+        require(
+            IGasManager(GAS_MANAGER).approvedFunds(fundKey),
+            "GasSponsor: fund not approved in GasManager"
+        );
+
+        uint256 balBefore = address(this).balance;
+
+        // Pull the approved funds from GasManager into this contract.
+        // GasManager.executeFundGas allows msg.sender == _to,
+        // so this contract calls it with _to = address(this).
+        IGasManager(GAS_MANAGER).executeFundGas(
+            payable(address(this)),
+            amount
+        );
+
+        uint256 received = address(this).balance - balBefore;
+        require(received == amount, "GasSponsor: amount mismatch");
+
+        // Credit the sponsor's balance
+        s.balance += amount;
+
+        emit ToppedOff(sponsor, amount);
     }
 
     // ═══════════════════════════════════════════════════════

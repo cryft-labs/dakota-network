@@ -74,6 +74,9 @@ interface IGasSponsor {
         uint256 totalCost
     );
 
+    /// @notice Emitted when a sponsor tops off from the GasManager.
+    event ToppedOff(address indexed sponsor, uint256 amount);
+
     // ── Sponsor Management ─────────────────────────────────
 
     /// @notice Deposit native tokens as a sponsor.
@@ -113,6 +116,17 @@ interface IGasSponsor {
 
     /// @notice Disable the target allowlist entirely (all targets allowed).
     function disableTargetAllowlist() external;
+
+    // ── Top-Off ────────────────────────────────────────────
+
+    /// @notice Pull voter-approved funds from the GasManager contract
+    ///         and credit them to a sponsor's balance.
+    ///         Only callable by a GasManager guardian.
+    ///         Requires an approved fund in GasManager for this contract
+    ///         address and the requested amount.
+    /// @param sponsor Address of the sponsor to credit.
+    /// @param amount  Amount of native tokens to pull.
+    function topOff(address sponsor, uint256 amount) external;
 
     // ── Reimbursement ──────────────────────────────────────
 

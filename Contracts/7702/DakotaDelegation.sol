@@ -13,7 +13,7 @@ pragma solidity >=0.8.2 <0.9.0;
 /____/\_,_/_/\_\\___/\__/\_,_/____/\__/_/\__/\_, /\_,_/\__/_/\___/_//_/
                                             /___/  By: CryftCreator
 
-  Version 1.0 — EIP-7702 Delegation Target
+  Version 1.0 — EIP-7702 Delegation Target  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
   │                                                      │
@@ -37,14 +37,17 @@ pragma solidity >=0.8.2 <0.9.0;
   │    calls.  Sponsored execution requires the owner's  │
   │    EIP-712 signature, nonce, and deadline.           │
   │                                                      │
-  │  Not upgradeable — deploy a new version and          │
-  │  re-delegate EOAs to it via a new type 0x04 tx.     │
+  │  Upgradeable (Initializable + proxy pattern).        │
+  │  Can also re-delegate EOAs via a new type 0x04 tx.  │
   └──────────────────────────────────────────────────────┘
 */
 
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.0/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.0/contracts/proxy/utils/Initializable.sol";
+
 import "./interfaces/IDakotaDelegation.sol";
 
-contract DakotaDelegation is IDakotaDelegation {
+contract DakotaDelegation is Initializable, ReentrancyGuardUpgradeable, IDakotaDelegation {
 
     // ═══════════════════════════════════════════════════════
     //  ERC-7201 Namespaced Storage
@@ -60,7 +63,6 @@ contract DakotaDelegation is IDakotaDelegation {
     /// @dev All mutable state lives here, anchored at _STORAGE_SLOT.
     struct DelegationState {
         uint256 nonce;                                // sponsored-exec nonce
-        bool    locked;                               // reentrancy guard
         mapping(address => bool)    isSessionKey;     // active session keys
         mapping(address => uint256) sessionKeyExpiry;  // expiry timestamps
     }
@@ -94,6 +96,15 @@ contract DakotaDelegation is IDakotaDelegation {
     bytes4 private constant _EIP1271_MAGIC = 0x1626ba7e;
 
     // ═══════════════════════════════════════════════════════
+    //  Initialization
+    // ═══════════════════════════════════════════════════════
+
+    /// @notice Initializes the reentrancy guard.  Called once by the proxy.
+    function initialize() external initializer {
+        __ReentrancyGuard_init();
+    }
+
+    // ═══════════════════════════════════════════════════════
     //  Modifiers
     // ═══════════════════════════════════════════════════════
 
@@ -119,15 +130,6 @@ contract DakotaDelegation is IDakotaDelegation {
             );
         }
         _;
-    }
-
-    /// @dev Reentrancy protection using namespaced storage flag.
-    modifier nonReentrant() {
-        DelegationState storage s = _state();
-        require(!s.locked, "DakotaDelegation: reentrant call");
-        s.locked = true;
-        _;
-        s.locked = false;
     }
 
     // ═══════════════════════════════════════════════════════

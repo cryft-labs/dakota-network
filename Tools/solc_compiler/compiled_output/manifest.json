@@ -1,9 +1,17 @@
 [
   {
     "source": "7702\\DakotaDelegation.sol",
+    "contract": "AddressUpgradeable",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\7702\\DakotaDelegation\\AddressUpgradeable",
+    "over_limit": false
+  },
+  {
+    "source": "7702\\DakotaDelegation.sol",
     "contract": "DakotaDelegation",
-    "runtime_bytes": 6050,
-    "creation_bytes": 6079,
+    "runtime_bytes": 6252,
+    "creation_bytes": 6280,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\7702\\DakotaDelegation\\DakotaDelegation",
     "over_limit": false
   },
@@ -18,8 +26,8 @@
   {
     "source": "7702\\GasSponsor.sol",
     "contract": "GasSponsor",
-    "runtime_bytes": 5474,
-    "creation_bytes": 5704,
+    "runtime_bytes": 6466,
+    "creation_bytes": 6690,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\7702\\GasSponsor\\GasSponsor",
     "over_limit": false
   },
@@ -58,16 +66,16 @@
   {
     "source": "Code Management\\CodeManager.sol",
     "contract": "CodeManager",
-    "runtime_bytes": 13212,
-    "creation_bytes": 13449,
+    "runtime_bytes": 13250,
+    "creation_bytes": 13474,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\CodeManager\\CodeManager",
     "over_limit": false
   },
   {
     "source": "Code Management\\ComboStorage.sol",
     "contract": "ComboStorage",
-    "runtime_bytes": 5943,
-    "creation_bytes": 5972,
+    "runtime_bytes": 5940,
+    "creation_bytes": 5968,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Code Management\\ComboStorage\\ComboStorage",
     "over_limit": false
   },
@@ -82,8 +90,8 @@
   {
     "source": "Genesis\\GasManager.sol",
     "contract": "GasManager",
-    "runtime_bytes": 14089,
-    "creation_bytes": 14326,
+    "runtime_bytes": 14163,
+    "creation_bytes": 14387,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\GasManager\\GasManager",
     "over_limit": false
   },
@@ -91,23 +99,23 @@
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "ERC1967Proxy",
     "runtime_bytes": 170,
-    "creation_bytes": 197,
+    "creation_bytes": 196,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\ERC1967Proxy",
     "over_limit": false
   },
   {
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "ProxyAdmin",
-    "runtime_bytes": 3212,
-    "creation_bytes": 3241,
+    "runtime_bytes": 3200,
+    "creation_bytes": 3228,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\ProxyAdmin",
     "over_limit": false
   },
   {
     "source": "Genesis\\proxy\\transparent\\ProxyAdmin.sol",
     "contract": "TransparentUpgradeableProxy",
-    "runtime_bytes": 16829,
-    "creation_bytes": 16858,
+    "runtime_bytes": 16799,
+    "creation_bytes": 16827,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Genesis\\proxy\\transparent\\ProxyAdmin\\TransparentUpgradeableProxy",
     "over_limit": false
   },
@@ -138,8 +146,8 @@
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "ERC721Upgradeable",
-    "runtime_bytes": 4267,
-    "creation_bytes": 4296,
+    "runtime_bytes": 4242,
+    "creation_bytes": 4270,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Tokens\\GreetingCards\\ERC721Upgradeable",
     "over_limit": false
   },
@@ -178,8 +186,8 @@
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "CryftGreetingCards",
-    "runtime_bytes": 15515,
-    "creation_bytes": 15752,
+    "runtime_bytes": 15475,
+    "creation_bytes": 15699,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\Tokens\\GreetingCards\\CryftGreetingCards",
     "over_limit": false
   }

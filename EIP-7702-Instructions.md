@@ -48,7 +48,9 @@
 | `0x000000000000000000000000000000000000cafE` | GasManager | Block reward beneficiary, voter-governed gas funding/burns |
 | `0x000000000000000000000000000000000000c0DE` | CodeManager | Official Dakota code management service (patent-covered) |
 | `0x000000000000000000000000000000000000Face` | ERC-8004 Agent Registry | Official ERC-8004 agent identity contract |
-| `0x00000000000000000000000000000000000FacAdE` | ProxyAdmin | Guardian-gated ERC1967 upgrade dispatch |
+| `0x0000000000000000000000000000000000FacAdE` | ProxyAdmin | Guardian-gated ERC1967 upgrade dispatch |
+| `0x00000000000000000000000000000000de1E6A7E` | DakotaDelegation | EIP-7702 delegation target (upgradeable — TransparentUpgradeableProxy) |
+| `0x000000000000000000000000000000000000FEeD` | GasSponsor | Gas sponsorship treasury (upgradeable — TransparentUpgradeableProxy) |
 
 ### 1.3 Genesis Configuration
 
@@ -136,8 +138,8 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 
 | Contract | Source File | Upgradeable | Proxy Address |
 |---|---|---|---|
-| **DakotaDelegation** | `Contracts/7702/DakotaDelegation.sol` | No (protocol-level upgrade via re-delegation) | `<address>` |
-| **GasSponsor** | `Contracts/7702/GasSponsor.sol` | Yes (TransparentUpgradeableProxy) | `<proxy_address>` |
+| **DakotaDelegation** | `Contracts/7702/DakotaDelegation.sol` | Yes (TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
+| **GasSponsor** | `Contracts/7702/GasSponsor.sol` | Yes (TransparentUpgradeableProxy) | `0x...FEeD` (genesis) |
 | **CodeManager** | `Contracts/Code Management/CodeManager.sol` | Yes | `<proxy_address>` |
 | **ComboStorage** | `Contracts/Code Management/ComboStorage.sol` | No | `<address>` |
 | **CryftGreetingCards** | `Contracts/Tokens/GreetingCards.sol` | Yes | `<proxy_address>` |
@@ -570,7 +572,7 @@ The `topOff` function connects GasSponsor to GasManager: GasManager voters appro
 ## 7. DakotaDelegation Contract Reference
 
 **Source:** `Contracts/7702/DakotaDelegation.sol`
-**Not upgradeable** — re-delegate EOAs to a new version via type 0x04 tx.
+**Upgradeable:** Yes (Initializable + TransparentUpgradeableProxy)
 **Storage:** ERC-7201 namespaced at `keccak256("dakota.delegation.v1")`
 
 ### Functions

@@ -6,7 +6,7 @@
 Solidity Runtime Bytecode Compiler
 ===================================
 Compiles Solidity contracts locally and extracts runtime bytecode
-without deploying to a testnet. Uses Cancun EVM and Solidity 0.8.x+.
+without deploying to a testnet. Uses Cancun/Prague EVM and Solidity 0.8.x+.
 
 Directory layout (alongside this script):
     solc_compiler/
@@ -278,6 +278,7 @@ VALID_EVM_VERSIONS = [
     "homestead", "tangerineWhistle", "spuriousDragon",
     "byzantium", "constantinople", "petersburg",
     "istanbul", "berlin", "london", "paris", "shanghai", "cancun",
+    "prague",
 ]
 
 DEFAULT_SOLC_VERSION = "0.8.19"
@@ -288,7 +289,8 @@ _SOLC_EVM_CAPS = [
     # (max_solc_exclusive, max_evm)
     ((0, 8, 20), "london"),    # solc <0.8.20 → max london
     ((0, 8, 24), "shanghai"),  # solc 0.8.20–0.8.23 → max shanghai
-    ((0, 9, 0),  "cancun"),    # solc 0.8.24+ → cancun
+    ((0, 8, 28), "cancun"),    # solc 0.8.24–0.8.27 → max cancun
+    ((0, 9, 0),  "prague"),    # solc 0.8.28+ → prague
 ]
 
 def clamp_evm_version(solc_version: str, evm_version: str) -> str:

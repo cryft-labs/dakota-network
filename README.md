@@ -22,6 +22,13 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 |-----------|---------|------|
 | **Besu** | 26.1.0 | Java 21 |
 
+### Solidity
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| **solc** | 0.8.34 | All contracts except ValidatorSmartContractAllowList |
+| **solc** | 0.8.19 | ValidatorSmartContractAllowList only (pragma `<0.8.20`) |
+
 ### Kubernetes (for Paladin privacy manager)
 
 Paladin runs as a Kubernetes operator alongside your Besu nodes. If you need privacy features:
@@ -528,7 +535,7 @@ All Ethereum hard forks through Prague/Pectra are activated from genesis (block 
 | Addresses ending in `323` | 32,324 | Pre-deployed contract instances (greeting card service) |
 | Addresses ending in `c0DE` | 100 | Pre-deployed contract instances (code management service) |
 | Repeating-pattern addresses | 4 | Reserved contract slots (`0x2222...`, `0x2323...`, `0x3232...`, `0x3333...`) |
-| Reserved system addresses | 5 | Governance and infrastructure contracts (see below) |
+| Reserved system addresses | 7 | Governance and infrastructure contracts (see below) |
 | EOA accounts | 1 | Deployer account with 32 ETH initial balance |
 
 #### Reserved System Addresses
@@ -540,6 +547,8 @@ All Ethereum hard forks through Prague/Pectra are activated from genesis (block 
 | `0x0000...c0DE` | CodeManager smart contract | `CodeManager` — official Dakota code management service (patent-covered) |
 | `0x0000...Face` | ERC-8004 Agent Registry | Official ERC-8004 agent identity contract |
 | `0x0000...FacAdE` | ProxyAdmin smart contract | `ProxyAdmin` — guardian-gated ERC1967 upgrade dispatch |
+| `0x0000...de1E6A7E` | DakotaDelegation | EIP-7702 delegation target (upgradeable — TransparentUpgradeableProxy) |
+| `0x0000...FEeD` | GasSponsor | Gas sponsorship treasury (upgradeable — TransparentUpgradeableProxy) |
 
 ---
 
@@ -1062,7 +1071,7 @@ python3 Tools/solc_compiler/compile.py
 
 Options:
 - `--clean-cache` — clear downloaded import cache
-- `--solc-version 0.8.19` — override compiler version
+- `--solc-version 0.8.34` — override compiler version
 - `--evm berlin` — override EVM target
 
 ---
