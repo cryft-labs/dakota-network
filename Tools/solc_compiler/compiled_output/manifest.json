@@ -9,9 +9,17 @@
   },
   {
     "source": "7702\\GasSponsor.sol",
+    "contract": "AddressUpgradeable",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\7702\\GasSponsor\\AddressUpgradeable",
+    "over_limit": false
+  },
+  {
+    "source": "7702\\GasSponsor.sol",
     "contract": "GasSponsor",
-    "runtime_bytes": 5088,
-    "creation_bytes": 5117,
+    "runtime_bytes": 5474,
+    "creation_bytes": 5704,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\solc_compiler\\compiled_output\\7702\\GasSponsor\\GasSponsor",
     "over_limit": false
   },

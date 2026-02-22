@@ -13,7 +13,7 @@ pragma solidity >=0.8.2 <0.9.0;
  \___/\_,_/___//___/ .__/\___/_//_/___/\___/_/
                   /_/            By: CryftCreator
 
-  Version 1.0 — On-Chain Gas Sponsorship Treasury
+  Version 1.0 — On-Chain Gas Sponsorship Treasury  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
   │                                                      │
@@ -36,15 +36,25 @@ pragma solidity >=0.8.2 <0.9.0;
   │  thirdweb's hosted gas sponsorship with a            │
   │  self-hosted, on-chain alternative.                  │
   │                                                      │
-  │  Not upgradeable.  Not voter-governed — each         │
-  │  sponsor independently manages their own relayers    │
-  │  and limits.                                         │
+  │  Upgradeable (Initializable + proxy pattern).        │
+  │  Not voter-governed — each sponsor independently     │
+  │  manages their own relayers and limits.              │
   └──────────────────────────────────────────────────────┘
 */
 
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.0/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.0/contracts/proxy/utils/Initializable.sol";
+
 import "./interfaces/IGasSponsor.sol";
 
-contract GasSponsor is IGasSponsor {
+/// @dev Minimal interface to call GasManager.executeFundGas.
+interface IGasManager {
+    function executeFundGas(address payable _to, uint256 _amount) external;
+    function approvedFunds(bytes32 fundKey) external view returns (bool);
+    function isGuardian(address) external view returns (bool);
+}
+
+contract GasSponsor is Initializable, ReentrancyGuardUpgradeable, IGasSponsor {
 
     // ═══════════════════════════════════════════════════════
     //  Storage
@@ -64,7 +74,8 @@ contract GasSponsor is IGasSponsor {
     mapping(address => mapping(address => bool))        private _authorizedRelayers;
     mapping(address => mapping(address => bool))        private _allowedTargets;
 
-    bool private _locked; // reentrancy guard
+    /// @notice The GasManager genesis contract.
+    address constant public GAS_MANAGER = 0x000000000000000000000000000000000000cafE;
 
     /// @dev Approximate gas overhead for sponsoredCall housekeeping.
     ///      Covers: base TX cost (~21k), pre-call checks, post-call
@@ -72,14 +83,17 @@ contract GasSponsor is IGasSponsor {
     uint256 private constant _OVERHEAD_GAS = 50_000;
 
     // ═══════════════════════════════════════════════════════
-    //  Modifiers
+    //  Initialisation
     // ═══════════════════════════════════════════════════════
 
-    modifier nonReentrant() {
-        require(!_locked, "GasSponsor: reentrant");
-        _locked = true;
-        _;
-        _locked = false;
+    /// @dev Prevent the implementation contract from being initialised.
+    constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initialise the proxy instance.  Call once via the proxy.
+    function initialize() public virtual initializer {
+        __ReentrancyGuard_init();
     }
 
     // ═══════════════════════════════════════════════════════
@@ -151,6 +165,54 @@ contract GasSponsor is IGasSponsor {
     function disableTargetAllowlist() external override {
         _sponsors[msg.sender].useTargetAllowlist = false;
         emit ConfigUpdated(msg.sender, "targetAllowlist", 0);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  Top-Off from GasManager
+    // ═══════════════════════════════════════════════════════
+
+    /// @inheritdoc IGasSponsor
+    function topOff(address sponsor, uint256 amount) external override nonReentrant {
+        require(amount > 0, "GasSponsor: zero amount");
+        require(
+            IGasManager(GAS_MANAGER).isGuardian(msg.sender),
+            "GasSponsor: caller is not a GasManager guardian"
+        );
+
+        SponsorState storage s = _sponsors[sponsor];
+        if (!s.active) {
+            s.active       = true;
+            s.lastResetDay = block.timestamp / 1 days;
+        }
+
+        // Verify that the GasManager has an approved fund for this contract
+        // with the requested amount.  The fundKey matches GasManager's
+        // keccak256(abi.encodePacked(_to, _amount)).
+        bytes32 fundKey = keccak256(
+            abi.encodePacked(address(this), amount)
+        );
+        require(
+            IGasManager(GAS_MANAGER).approvedFunds(fundKey),
+            "GasSponsor: fund not approved in GasManager"
+        );
+
+        uint256 balBefore = address(this).balance;
+
+        // Pull the approved funds from GasManager into this contract.
+        // GasManager.executeFundGas allows msg.sender == _to,
+        // so this contract calls it with _to = address(this).
+        IGasManager(GAS_MANAGER).executeFundGas(
+            payable(address(this)),
+            amount
+        );
+
+        uint256 received = address(this).balance - balBefore;
+        require(received == amount, "GasSponsor: amount mismatch");
+
+        // Credit the sponsor's balance
+        s.balance += amount;
+
+        emit ToppedOff(sponsor, amount);
     }
 
     // ═══════════════════════════════════════════════════════

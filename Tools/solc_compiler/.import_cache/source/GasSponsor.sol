@@ -13,7 +13,7 @@ pragma solidity >=0.8.2 <0.9.0;
  \___/\_,_/___//___/ .__/\___/_//_/___/\___/_/
                   /_/            By: CryftCreator
 
-  Version 1.0 — On-Chain Gas Sponsorship Treasury
+  Version 1.0 — On-Chain Gas Sponsorship Treasury  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
   │                                                      │
@@ -36,15 +36,18 @@ pragma solidity >=0.8.2 <0.9.0;
   │  thirdweb's hosted gas sponsorship with a            │
   │  self-hosted, on-chain alternative.                  │
   │                                                      │
-  │  Not upgradeable.  Not voter-governed — each         │
-  │  sponsor independently manages their own relayers    │
-  │  and limits.                                         │
+  │  Upgradeable (Initializable + proxy pattern).        │
+  │  Not voter-governed — each sponsor independently     │
+  │  manages their own relayers and limits.              │
   └──────────────────────────────────────────────────────┘
 */
 
+import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/proxy/utils/Initializable.sol";
+
 import "./interfaces/IGasSponsor.sol";
 
-contract GasSponsor is IGasSponsor {
+contract GasSponsor is Initializable, ReentrancyGuardUpgradeable, IGasSponsor {
 
     // ═══════════════════════════════════════════════════════
     //  Storage
@@ -64,22 +67,23 @@ contract GasSponsor is IGasSponsor {
     mapping(address => mapping(address => bool))        private _authorizedRelayers;
     mapping(address => mapping(address => bool))        private _allowedTargets;
 
-    bool private _locked; // reentrancy guard
-
     /// @dev Approximate gas overhead for sponsoredCall housekeeping.
     ///      Covers: base TX cost (~21k), pre-call checks, post-call
     ///      accounting, and reimbursement transfer.
     uint256 private constant _OVERHEAD_GAS = 50_000;
 
     // ═══════════════════════════════════════════════════════
-    //  Modifiers
+    //  Initialisation
     // ═══════════════════════════════════════════════════════
 
-    modifier nonReentrant() {
-        require(!_locked, "GasSponsor: reentrant");
-        _locked = true;
-        _;
-        _locked = false;
+    /// @dev Prevent the implementation contract from being initialised.
+    constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initialise the proxy instance.  Call once via the proxy.
+    function initialize() public virtual initializer {
+        __ReentrancyGuard_init();
     }
 
     // ═══════════════════════════════════════════════════════
