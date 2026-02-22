@@ -333,6 +333,19 @@ Each ERC-721 NFT gets its own **Token Bound Account** (TBA) via ERC-6551. The TB
 └──────────────────────────────────────────────┘
 ```
 
+### 5.1.1 ERC-8004: Agent Identity (Optional)
+
+For use cases involving **autonomous agents, AI identities, or digital representatives**, ERC-721 tokens can follow the **ERC-8004 (Agent Identity)** standard. ERC-8004 extends ERC-721 with on-chain metadata that binds a token to an agent's identity — capabilities, service endpoints, authentication keys, and delegation policies.
+
+This is relevant when the ERC-721 token doesn't represent a collectible or avatar, but instead represents an **agent** (AI agent, bot, service account, IoT device) that needs a portable, verifiable on-chain identity. The agent's ERC-6551 TBA then becomes the agent's wallet — holding tokens, credentials, and ERC-1155 capability badges.
+
+| Pattern | ERC-721 Represents | TBA Contains |
+|---|---|---|
+| **Collectible / Avatar** | Character, artwork, PFP | ERC-1155 traits (hats, skins, attributes) |
+| **Agent Identity (ERC-8004)** | Autonomous agent, AI, service | ERC-1155 capability tokens, credentials, funds |
+
+> **When to use ERC-8004:** If your ERC-721 tokens represent agents that need discoverable on-chain identity metadata (service endpoints, auth keys, delegation policies), implement ERC-8004 on top of your 721 collection. If your tokens are standard collectibles or game items, standard ERC-721 + ERC-6551 is sufficient.
+
 ### 5.2 Contract Deployment Order
 
 1. **Deploy ERC-721 Collection** (your NFT collection)
