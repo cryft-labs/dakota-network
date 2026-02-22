@@ -46,8 +46,8 @@
 |---|---|---|
 | `0x0000000000000000000000000000000000001111` | ValidatorSmartContractAllowList | QBFT validator/voter/overlord governance |
 | `0x000000000000000000000000000000000000cafE` | GasManager | Block reward beneficiary, voter-governed gas funding/burns |
-| `0x000000000000000000000000000000000000c0DE` | *(Reserved)* | Future use |
-| `0x000000000000000000000000000000000000Face` | *(Reserved)* | Future use |
+| `0x000000000000000000000000000000000000c0DE` | CodeManager | Official Dakota code management service (patent-covered) |
+| `0x000000000000000000000000000000000000Face` | ERC-8004 Agent Registry | Official ERC-8004 agent identity contract |
 | `0x00000000000000000000000000000000000FacAdE` | ProxyAdmin | Guardian-gated ERC1967 upgrade dispatch |
 
 ### 1.3 Genesis Configuration

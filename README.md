@@ -537,8 +537,8 @@ All Ethereum hard forks through Prague/Pectra are activated from genesis (block 
 |---------|---------|---------|
 | `0x0000...1111` | Validator smart contract | `ValidatorSmartContractAllowList` — QBFT validator/voter/overlord governance |
 | `0x0000...cafE` | GasManager smart contract | `GasManager` — block reward beneficiary, voter-governed gas funding and burns |
-| `0x0000...c0DE` | Reserved smart contract | Reserved for future use |
-| `0x0000...Face` | Reserved smart contract | Reserved for future use |
+| `0x0000...c0DE` | CodeManager smart contract | `CodeManager` — official Dakota code management service (patent-covered) |
+| `0x0000...Face` | ERC-8004 Agent Registry | Official ERC-8004 agent identity contract |
 | `0x0000...FacAdE` | ProxyAdmin smart contract | `ProxyAdmin` — guardian-gated ERC1967 upgrade dispatch |
 
 ---
