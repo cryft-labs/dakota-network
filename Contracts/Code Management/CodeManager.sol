@@ -13,9 +13,11 @@ pragma solidity >=0.8.2 <0.9.0;
  \___/\___/\_,_/\__/_/  /_/\_,_/_//_/\_,_/\_, /\__/_/
                                          /___/ By: CryftCreator
 
-  Version 2.0 — Production Code Manager  [UPGRADEABLE]
+  Version 3.0 — Production Code Manager  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
+  │                                                      │
+  │  PUBLIC REGISTRY + PENTE ROUTER                      │
   │                                                      │
   │  Minimal permissionless unique ID registry.          │
   │  Fee-based registration, deterministic IDs via       │
@@ -27,7 +29,16 @@ pragma solidity >=0.8.2 <0.9.0;
   │  Own voter set with pluggable external voter         │
   │  contracts via otherVoterContracts[].                │
   │                                                      │
-  │  No cross-contract state writes.                     │
+  │  PENTE INTEGRATION:                                  │
+  │  Authorized Pente privacy groups call router         │
+  │  functions (recordRedemption, setUidFrozen,          │
+  │  setUidContent) which resolve the UID to its gift    │
+  │  contract and forward via IRedeemable. The gift      │
+  │  contract is the SOLE AUTHORITY on per-UID state.    │
+  │  CodeManager stores NO per-UID state — it is a       │
+  │  thin registry + router only.                        │
+  │                                                      │
+  │  Patent: U.S. App. Ser. No. 18/930,857               │
   └──────────────────────────────────────────────────────┘
 */
 
@@ -35,6 +46,7 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/
 import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.0/contracts/proxy/utils/Initializable.sol";
 
 import "./interfaces/ICodeManager.sol";
+import "./interfaces/IRedeemable.sol";
 
 interface IVoterChecker {
     function isVoter(address potentialVoter) external view returns (bool);
@@ -58,7 +70,8 @@ contract CodeManager is Initializable, ICodeManager {
         REMOVE_VOTER,
         ADD_OTHER_VOTER_CONTRACT,
         REMOVE_OTHER_VOTER_CONTRACT,
-        UPDATE_VOTE_TALLY_BLOCK_THRESHOLD
+        UPDATE_VOTE_TALLY_BLOCK_THRESHOLD,
+        AUTHORIZE_PRIVACY_GROUP
     }
 
     struct VoteTally {
@@ -81,6 +94,9 @@ contract CodeManager is Initializable, ICodeManager {
     mapping(VoteType => mapping(uint256 => VoteTally)) private voteTallies;
     mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
 
+    /// @dev Authorized Pente privacy groups that can call router functions.
+    mapping(address => bool) public isAuthorizedPrivacyGroup;
+
     event RegistrationFeeUpdated(uint256 newFee);
     event VoteCast(address indexed voter, VoteType voteType, uint256 target);
     event StateChanged(VoteType voteType, uint256 newValue);
@@ -88,6 +104,10 @@ contract CodeManager is Initializable, ICodeManager {
     event UniqueIdsRegistered(address indexed giftContract, string chainId, uint256 quantity);
     event VoterUpdated(address indexed target, bool added);
     event OtherVoterContractUpdated(address indexed target, bool added);
+    event PrivacyGroupAuthorized(address indexed privacyGroup, bool authorized);
+    event RedemptionRouted(string uniqueId, address indexed giftContract, address indexed redeemer);
+    event FrozenStatusRouted(string uniqueId, address indexed giftContract, bool frozen);
+    event ContentChangeRouted(string uniqueId, address indexed giftContract, string contentId);
 
     constructor() {
         _disableInitializers();
@@ -95,6 +115,14 @@ contract CodeManager is Initializable, ICodeManager {
 
     modifier onlyVoters() {
         require(isVoter(msg.sender), "Only voters can call this function");
+        _;
+    }
+
+    modifier onlyAuthorizedPrivacyGroup() {
+        require(
+            isAuthorizedPrivacyGroup[msg.sender],
+            "Caller is not an authorized privacy group"
+        );
         _;
     }
 
@@ -267,6 +295,10 @@ contract CodeManager is Initializable, ICodeManager {
                 emit OtherVoterContractUpdated(targetAddress, false);
             } else if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
                 voteTallyBlockThreshold = target;
+            } else if (voteType == VoteType.AUTHORIZE_PRIVACY_GROUP) {
+                address targetAddress = address(uint160(target));
+                isAuthorizedPrivacyGroup[targetAddress] = !isAuthorizedPrivacyGroup[targetAddress];
+                emit PrivacyGroupAuthorized(targetAddress, isAuthorizedPrivacyGroup[targetAddress]);
             }
 
             // clear votes
@@ -335,6 +367,69 @@ contract CodeManager is Initializable, ICodeManager {
     function voteToUpdateVoteTallyBlockThreshold(uint256 _blocks) external onlyVoters {
         require(_blocks > 0 && _blocks <= 100000, "Invalid block threshold");
         _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, _blocks);
+    }
+
+    /// @notice Vote to authorize (or de-authorize) a Pente privacy group address.
+    ///         Authorized privacy groups can call router functions.
+    function voteToAuthorizePrivacyGroup(address privacyGroup) external onlyVoters {
+        require(privacyGroup != address(0), "Privacy group address cannot be zero");
+        _castVote(VoteType.AUTHORIZE_PRIVACY_GROUP, uint256(uint160(privacyGroup)));
+    }
+
+    // ── Pente Router Functions ────────────────────────────
+    //
+    //    Called by authorized Pente privacy groups via PenteExternalCall.
+    //    Each function resolves the UID → gift contract and forwards the
+    //    call via IRedeemable. CodeManager stores NO per-UID state.
+    //    The gift contract is the SOLE AUTHORITY on all per-UID state.
+    //
+    //    Patent Reference: Claims 1, 6, 7, 8, 10
+
+    /// @notice Route a redemption from the Pente privacy group to the gift contract.
+    ///         The gift contract decides how to handle the redemption — single-use,
+    ///         multi-use, NFT mint, etc. If the gift contract reverts, the entire
+    ///         Pente transition rolls back atomically.
+    function recordRedemption(string memory uniqueId, address redeemer) external onlyAuthorizedPrivacyGroup {
+        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
+        IRedeemable(giftContract).recordRedemption(uniqueId, redeemer);
+        emit RedemptionRouted(uniqueId, giftContract, redeemer);
+    }
+
+    /// @notice Route a freeze/unfreeze from the Pente privacy group to the gift contract.
+    function setUidFrozen(string memory uniqueId, bool frozen) external onlyAuthorizedPrivacyGroup {
+        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
+        IRedeemable(giftContract).setFrozen(uniqueId, frozen);
+        emit FrozenStatusRouted(uniqueId, giftContract, frozen);
+    }
+
+    /// @notice Route a content change from the Pente privacy group to the gift contract.
+    function setUidContent(string memory uniqueId, string memory contentId) external onlyAuthorizedPrivacyGroup {
+        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
+        IRedeemable(giftContract).setContent(uniqueId, contentId);
+        emit ContentChangeRouted(uniqueId, giftContract, contentId);
+    }
+
+    // ── UID View Functions (read from gift contract) ──────
+    //
+    //    These read per-UID state from the gift contract via IRedeemable.
+    //    CodeManager is a pass-through — it stores no per-UID state.
+
+    /// @notice Returns whether a UID is frozen, as reported by its gift contract.
+    function isUniqueIdFrozen(string memory uniqueId) external view returns (bool) {
+        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
+        return IRedeemable(giftContract).isUniqueIdFrozen(uniqueId);
+    }
+
+    /// @notice Returns whether a UID has been redeemed, as reported by its gift contract.
+    function isUniqueIdRedeemed(string memory uniqueId) external view returns (bool) {
+        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
+        return IRedeemable(giftContract).isUniqueIdRedeemed(uniqueId);
+    }
+
+    /// @notice Returns the content identifier for a UID, as reported by its gift contract.
+    function getUniqueIdContent(string memory uniqueId) external view returns (string memory) {
+        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
+        return IRedeemable(giftContract).getUniqueIdContent(uniqueId);
     }
 
     // ── Unique ID Queries ─────────────────────────────────

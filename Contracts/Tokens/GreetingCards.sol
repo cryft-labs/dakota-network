@@ -519,7 +519,7 @@ contract CryftGreetingCards is
     }
 
     // ════════════════════════════════════════════════════
-    //        IRedeemable (derived — read-only for ComboStorage)
+    //        IRedeemable (gift contract authority)
     // ════════════════════════════════════════════════════
 
     /// @inheritdoc IRedeemable
@@ -545,6 +545,52 @@ contract CryftGreetingCards is
         (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
         if (!valid || !_exists(tokenId)) return false;
         return ownerOf(tokenId) != address(this);
+    }
+
+    /// @inheritdoc IRedeemable
+    /// @dev GreetingCards uses per-batch IPFS URIs as content, not per-UID content IDs.
+    ///      Returns empty string since content is managed via tokenURI / batch metadata.
+    function getUniqueIdContent(string memory)
+        public pure override returns (string memory)
+    {
+        return "";
+    }
+
+    /// @inheritdoc IRedeemable
+    /// @dev GreetingCards derives frozen from explicit admin flags + vault state.
+    ///      Only CodeManager (acting as Pente router) can call this.
+    function setFrozen(string memory uniqueId, bool frozen) external override {
+        require(msg.sender == codeManagerAddress, "Only CodeManager");
+        (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
+        require(valid && _exists(tokenId), "Invalid uniqueId");
+        require(ownerOf(tokenId) == address(this), "Not in vault");
+        _explicitlyFrozen[tokenId] = frozen;
+        emit TokenFrozen(tokenId, frozen);
+    }
+
+    /// @inheritdoc IRedeemable
+    /// @dev GreetingCards uses batch-level IPFS URIs, not per-UID content.
+    ///      This is a no-op; content is managed via setRedeemedBaseURI / setBatchRedeemedURI.
+    function setContent(string memory, string memory) external view override {
+        require(msg.sender == codeManagerAddress, "Only CodeManager");
+        // No per-UID content in GreetingCards — content is batch-level IPFS metadata.
+    }
+
+    /// @inheritdoc IRedeemable
+    /// @dev Records redemption by transferring the NFT from vault to redeemer.
+    ///      Only CodeManager (acting as Pente router) can call this.
+    ///      Reverts if already redeemed, frozen, or invalid — causing the
+    ///      Pente transition to roll back atomically.
+    function recordRedemption(string memory uniqueId, address redeemer) external override {
+        require(msg.sender == codeManagerAddress, "Only CodeManager");
+        (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
+        require(valid && _exists(tokenId), "Invalid uniqueId");
+        require(ownerOf(tokenId) == address(this), "Not in vault");
+        require(!_explicitlyFrozen[tokenId], "Token is frozen");
+
+        unchecked { ++totalRedeems; }
+        _transfer(address(this), redeemer, tokenId);
+        emit CardRedeemed(tokenId, uniqueId, redeemer);
     }
 
     // ════════════════════════════════════════════════════

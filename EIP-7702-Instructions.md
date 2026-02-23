@@ -2,6 +2,10 @@
 
 > **Purpose:** This document is a self-contained reference for building web applications on the Dakota Network using thirdweb, EIP-7702 delegation, ERC-6551 Token Bound Accounts, and ERC-1155 trait tokens. It includes every contract address, ABI detail, function signature, and integration pattern needed to prompt-generate a full-stack app.
 
+> **PATENT & LICENSING NOTICE**
+>
+> The redeemable-code management system described in this repository (CodeManager, ComboStorage, PrivateComboStorage, and the three-layer Pente privacy architecture) is covered by [U.S. Patent Application Serial No. 18/930,857](https://patents.google.com/patent/US20250139608A1/en). **Implementing, deploying, or operating any substantially similar system requires a license from Cryft Labs.** This documentation is provided for licensed parties. See <https://cryftlabs.org/licenses> for licensing inquiries.
+
 ---
 
 ## Table of Contents

@@ -63,6 +63,26 @@ contract ComboStorage is IComboStorage {
     mapping(string => bool) public isRedemptionVerified;
     mapping(string => address) public redemptionRedeemer;
 
+    // ── IComboStorage stubs (legacy contract — not tracked here) ──
+    //    The legacy public ComboStorage does not track per-UID frozen,
+    //    redeemed, or content state. These return safe defaults.
+    //    See PrivateComboStorage.sol for the full Pente implementation.
+
+    /// @inheritdoc IComboStorage
+    function isFrozen(string memory) external pure override returns (bool) {
+        return false;
+    }
+
+    /// @inheritdoc IComboStorage
+    function isRedeemed(string memory) external pure override returns (bool) {
+        return false;
+    }
+
+    /// @inheritdoc IComboStorage
+    function getContentId(string memory) external pure override returns (string memory) {
+        return "";
+    }
+
     event DataStoredStatus(
         string uniqueId,
         bytes32 codeHash,
