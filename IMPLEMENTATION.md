@@ -110,22 +110,72 @@ The patented system uses a three-layer architecture where no single layer holds 
 
 ### 3.1 Install Besu
 
+**Fresh install:**
 ```bash
-sudo apt update && sudo apt install -y curl unzip tar openjdk-21-jdk
+sudo apt update
+sudo apt install -y curl unzip openjdk-21-jdk ca-certificates
 
 cd /tmp
-curl -fL -o besu-26.1.0.zip \
+curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
+  -o besu-26.1.0.zip \
   https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
-sudo unzip -q -o besu-26.1.0.zip -d /opt
-sudo chmod +x /opt/besu-26.1.0/bin/besu
-
-sudo tee /usr/local/bin/besu >/dev/null <<'EOF'
-#!/usr/bin/env bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-exec /opt/besu-26.1.0/bin/besu "$@"
-EOF
-sudo chmod +x /usr/local/bin/besu
+unzip -t /tmp/besu-26.1.0.zip >/dev/null   # verify integrity
+sudo unzip -q -o /tmp/besu-26.1.0.zip -d /opt
+sudo ln -sfn /opt/besu-26.1.0/bin/besu /usr/local/bin/besu
+besu --version
 ```
+
+**Upgrading from an older Besu (and removing Tessera if present):**
+```bash
+(
+  set -euo pipefail
+
+  echo "==[1] Packages =="
+  sudo apt update
+  sudo apt install -y curl unzip openjdk-21-jdk ca-certificates
+
+  echo "==[2] Stop services =="
+  sudo systemctl stop besu 2>/dev/null || true
+  sudo systemctl stop tessera 2>/dev/null || true
+
+  echo "==[3] Remove Tessera (system + path + local config dir) =="
+  sudo systemctl disable tessera 2>/dev/null || true
+  sudo systemctl reset-failed tessera 2>/dev/null || true
+  sudo rm -f /etc/systemd/system/tessera.service
+  sudo rm -f /lib/systemd/system/tessera.service
+  sudo rm -f /usr/local/bin/tessera
+  sudo rm -f /usr/bin/tessera
+  sudo rm -rf /opt/tessera-*
+  sudo rm -rf ~/dakota-network/Node/Node/Tessera
+  sudo systemctl daemon-reload 2>/dev/null || true
+
+  echo "==[4] Remove old Besu =="
+  sudo rm -rf /opt/besu-24.10.0
+  sudo rm -rf /opt/besu-26.1.0
+
+  echo "==[5] Download Besu 26.1.0 =="
+  builtin cd /tmp
+  rm -f besu-26.1.0.zip
+  curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
+    -o besu-26.1.0.zip \
+    https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
+
+  echo "==[6] Verify zip file =="
+  ls -lh /tmp/besu-26.1.0.zip
+  unzip -t /tmp/besu-26.1.0.zip >/dev/null
+
+  echo "==[7] Install Besu =="
+  sudo unzip -q -o /tmp/besu-26.1.0.zip -d /opt
+
+  echo "==[8] Symlink =="
+  sudo ln -sfn /opt/besu-26.1.0/bin/besu /usr/local/bin/besu
+
+  echo "==[9] Verify install =="
+  /usr/local/bin/besu --version || /opt/besu-26.1.0/bin/besu --version
+) && echo "Besu 26.1.0 installed, Tessera removed from system/path/config dir."
+```
+
+> Tessera is no longer used — Paladin/Pente replaces it for private transaction support.
 
 ### 3.2 Genesis Configuration
 

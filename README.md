@@ -43,39 +43,19 @@ Paladin runs as a Kubernetes operator alongside your Besu nodes. If you need pri
 
 ## Installation (Ubuntu)
 
-The following script installs Besu and adds it to your PATH via a global wrapper:
-
+**Fresh install:**
 ```bash
-(
-  set -e
+sudo apt update
+sudo apt install -y curl unzip openjdk-21-jdk ca-certificates
 
-  # --- Packages ---
-  sudo apt update
-  sudo apt install -y curl unzip tar openjdk-21-jdk
-
-  # --- Install Besu 26.1.0 (official dist zip) ---
-  cd /tmp
-  curl -fL -o besu-26.1.0.zip \
-    https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
-
-  sudo rm -rf /opt/besu-26.1.0
-  sudo unzip -q -o besu-26.1.0.zip -d /opt
-  sudo chmod +x /opt/besu-26.1.0/bin/besu /opt/besu-26.1.0/bin/evmtool
-
-  # --- Global wrapper (pin JAVA_HOME) ---
-  sudo tee /usr/local/bin/besu >/dev/null <<'EOF'
-#!/usr/bin/env bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-exec /opt/besu-26.1.0/bin/besu "$@"
-EOF
-
-  sudo chmod +x /usr/local/bin/besu
-
-  # --- Verify ---
-  hash -r
-  command -v besu
-  besu --version
-)
+cd /tmp
+curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
+  -o besu-26.1.0.zip \
+  https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
+unzip -t /tmp/besu-26.1.0.zip >/dev/null   # verify integrity
+sudo unzip -q -o besu-26.1.0.zip -d /opt
+sudo ln -sfn /opt/besu-26.1.0/bin/besu /usr/local/bin/besu
+besu --version
 ```
 
 **SHA-256 checksums (26.1.0):**
@@ -84,67 +64,57 @@ EOF
 de6356bf2db9e7a68dc3de391864dc373a0440f51fbf6d78d63d1e205091248e  besu-26.1.0.tar.gz
 ```
 
-### Upgrading from Besu 24.10.0
+### Upgrading from an older Besu (and removing Tessera)
 
-If you are running Besu 24.10.0, follow these steps to upgrade to 26.1.0:
+Tessera is no longer used — Paladin/Pente replaces it for private transaction support. The following script stops services, removes Tessera completely (systemd, binaries, config), removes old Besu versions, and installs 26.1.0:
 
 ```bash
 (
-  set -e
+  set -euo pipefail
 
-  # --- Stop running services ---
-  # Stop Besu and Tessera before upgrading
-  sudo systemctl stop besu 2>/dev/null || true   # or kill the process manually
+  echo "==[1] Packages =="
+  sudo apt update
+  sudo apt install -y curl unzip openjdk-21-jdk ca-certificates
+
+  echo "==[2] Stop services =="
+  sudo systemctl stop besu 2>/dev/null || true
   sudo systemctl stop tessera 2>/dev/null || true
-  # If running via screen/tmux/nohup, kill those processes too
 
-  # --- Remove old Besu 24.10.0 ---
-  sudo rm -rf /opt/besu-24.10.0
-  # The old wrapper at /usr/local/bin/besu will be overwritten below
-
-  # --- Remove Tessera completely (sunset — replaced by Paladin) ---
-  sudo rm -rf /opt/tessera-*
-  sudo rm -f /usr/local/bin/tessera
+  echo "==[3] Remove Tessera (system + path + local config dir) =="
   sudo systemctl disable tessera 2>/dev/null || true
+  sudo systemctl reset-failed tessera 2>/dev/null || true
   sudo rm -f /etc/systemd/system/tessera.service
+  sudo rm -f /lib/systemd/system/tessera.service
+  sudo rm -f /usr/local/bin/tessera
+  sudo rm -f /usr/bin/tessera
+  sudo rm -rf /opt/tessera-*
+  sudo rm -rf ~/dakota-network/Node/Node/Tessera
   sudo systemctl daemon-reload 2>/dev/null || true
-  # Remove Tessera data directory if present:
-  # sudo rm -rf /home/user/dakota-node/Tessera
-  # Remove Java 17 if nothing else needs it:
-  # sudo apt remove -y openjdk-17-jre-headless
 
-  # --- Install Besu 26.1.0 ---
-  cd /tmp
-  curl -fL -o besu-26.1.0.zip \
+  echo "==[4] Remove old Besu =="
+  sudo rm -rf /opt/besu-24.10.0
+  sudo rm -rf /opt/besu-26.1.0
+
+  echo "==[5] Download Besu 26.1.0 =="
+  builtin cd /tmp
+  rm -f besu-26.1.0.zip
+  curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
+    -o besu-26.1.0.zip \
     https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
 
-  sudo rm -rf /opt/besu-26.1.0
-  sudo unzip -q -o besu-26.1.0.zip -d /opt
-  sudo chmod +x /opt/besu-26.1.0/bin/besu /opt/besu-26.1.0/bin/evmtool
+  echo "==[6] Verify zip file =="
+  ls -lh /tmp/besu-26.1.0.zip
+  unzip -t /tmp/besu-26.1.0.zip >/dev/null
 
-  # --- Update global wrapper (points to 26.1.0) ---
-  sudo tee /usr/local/bin/besu >/dev/null <<'EOF'
-#!/usr/bin/env bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-exec /opt/besu-26.1.0/bin/besu "$@"
-EOF
-  sudo chmod +x /usr/local/bin/besu
+  echo "==[7] Install Besu =="
+  sudo unzip -q -o /tmp/besu-26.1.0.zip -d /opt
 
-  # --- Update systemd service (if using one) ---
-  # If you have a besu.service, update the ExecStart path:
-  # sudo sed -i 's|besu-24.10.0|besu-26.1.0|g' /etc/systemd/system/besu.service
-  # sudo systemctl daemon-reload
+  echo "==[8] Symlink =="
+  sudo ln -sfn /opt/besu-26.1.0/bin/besu /usr/local/bin/besu
 
-  # --- Verify ---
-  hash -r
-  besu --version
-  # Expected: besu/v26.1.0/...
-
-  # Confirm old versions are gone
-  test ! -d /opt/besu-24.10.0 && echo "Old Besu removed OK"
-  test ! -d /opt/tessera-24.4.2 && echo "Tessera removed OK"
-  ! command -v tessera 2>/dev/null && echo "Tessera wrapper removed OK"
-)
+  echo "==[9] Verify install =="
+  /usr/local/bin/besu --version || /opt/besu-26.1.0/bin/besu --version
+) && echo "Besu 26.1.0 installed, Tessera removed from system/path/config dir."
 ```
 
 #### Breaking Changes in 26.1.0
