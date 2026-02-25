@@ -90,11 +90,12 @@ The patented system uses a three-layer architecture where no single layer holds 
 | **Hyperledger Besu** | 26.1.0 | EVM blockchain client (QBFT consensus) |
 | **Java** | 21 | Besu runtime |
 | **Paladin** | Latest | Privacy manager (Pente privacy groups) |
-| **Kubernetes** | Any (k3s / kind / microk8s) | Paladin operator runtime |
-| **Helm v3** | Latest | Paladin deployment |
+| **Docker** | 24+ | Paladin container runtime (no Kubernetes required) |
 | **solc** | 0.8.34 | Solidity compiler |
 | **Node.js** | 18+ | Web application / thirdweb SDK |
 | **Python** | 3.10+ | Compilation tooling |
+
+> **Note:** Paladin can also be deployed via Kubernetes (k3s + Helm) for multi-node production environments. See [Method C in the README](README.md) for the Kubernetes approach. Prepackaged Paladin binaries for licensed parties are planned once the system is established.
 
 ### Accounts & Services
 
@@ -246,115 +247,116 @@ besu \
 
 ## 4. Layer 2 — Paladin / Pente Privacy Setup
 
-Paladin provides the Pente privacy domain — private EVM smart contracts with shared state visible only to privacy group members.
+Paladin provides the Pente privacy domain — private EVM smart contracts with shared state visible only to privacy group members. **Kubernetes is not required** — Paladin can run as a standalone Docker container.
 
-### 4.1 Install Kubernetes + Helm
+> **Prepackaged distributions:** Cryft Labs plans to provide prepackaged Paladin binaries and turnkey installation scripts for licensed parties once the system is established. Until then, use one of the methods below.
 
-**Production (k3s):**
-```bash
-curl -sfL https://get.k3s.io | sh -
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-kubectl get nodes
-```
+### 4.1 Install Paladin (Docker — No Kubernetes Required)
 
-**Development (kind):**
-```bash
-curl https://raw.githubusercontent.com/LFDT-Paladin/paladin/refs/heads/main/operator/paladin-kind.yaml -L -O
-kind create cluster --name paladin --config paladin-kind.yaml
-```
+This is the simplest approach. Only Docker is needed.
 
-### 4.2 Install Paladin Operator
-
-```bash
-# CRDs
-helm repo add paladin https://LFDT-Paladin.github.io/paladin --force-update
-helm upgrade --install paladin-crds paladin/paladin-operator-crd
-
-# cert-manager
-helm repo add jetstack https://charts.jetstack.io --force-update
-helm install cert-manager --namespace cert-manager --version v1.16.1 \
-  jetstack/cert-manager --create-namespace --set crds.enabled=true
-```
-
-### 4.3 Deploy Paladin Node
-
-Create `values-dakota.yaml`:
+**Create a config file:**
 
 ```yaml
-mode: customnet
-paladinNodes:
-  - name: dakota-node1
-    baseLedgerEndpoint:
-      type: endpoint
-      endpoint:
-        jsonrpc: http://host.docker.internal:8545    # or <BESU_IP>:8545
-        ws: ws://host.docker.internal:8546            # or <BESU_IP>:8546
-        auth:
-          enabled: false
-    domains: [noto, zeto, pente]
-    registries: [evm-registry]
-    transports:
-      - name: grpc
-        plugin:
-          type: c-shared
-          library: /app/transports/libgrpc.so
-        config:
-          port: 9000
-          address: 0.0.0.0
-        ports:
-          transportGrpc:
-            port: 9000
-            targetPort: 9000
-    service:
-      type: NodePort
-      ports:
-        rpcHttp:
-          port: 8548
-          nodePort: 31548
-        rpcWs:
-          port: 8549
-          nodePort: 31549
-    database:
-      mode: sidecarPostgres
-      migrationMode: auto
-    secretBackedSigners:
-      - name: signer-auto-wallet
-        secret: dakota-node1.keys
-        type: autoHDWallet
-        keySelector: ".*"
-    paladinRegistration:
-      registryAdminNode: dakota-node1
-      registryAdminKey: registry.operator
-      registry: evm-registry
-    config: |
-      log:
-        level: info
-      publicTxManager:
-        gasLimit:
-          gasEstimateFactor: 2.0
+# paladin-config.yaml
+log:
+  level: info
+db:
+  type: sqlite                          # or "postgres" for production
+  sqlite:
+    dsn: /data/paladin.db
+    autoMigrate: true
+  # postgres:
+  #   dsn: "postgres://paladin:password@localhost:5432/paladin?sslmode=disable"
+  #   autoMigrate: true
+blockchain:
+  http:
+    url: http://host.docker.internal:8545    # or <BESU_IP>:8545
+  ws:
+    url: ws://host.docker.internal:8546      # or <BESU_IP>:8546
+signer:
+  keyStore:
+    type: static
+    static:
+      keys:
+        signer1:
+          encoding: hex
+          inline: "<YOUR_PRIVATE_KEY_HEX>"   # operator signing key
+publicTxManager:
+  gasLimit:
+    gasEstimateFactor: 2.0
 ```
 
-Deploy:
+> **Connecting to local Besu:** Use `host.docker.internal` (Docker Desktop on Mac/Windows) or your machine's LAN IP (Linux). On Linux without Docker Desktop, add `--add-host=host.docker.internal:host-gateway` to the docker run command.
+
+**Run Paladin:**
+
 ```bash
-helm install paladin paladin/paladin-operator -n paladin --create-namespace \
-  -f values-dakota.yaml
+mkdir -p ~/paladin-data
+cp paladin-config.yaml ~/paladin-data/config.yaml
+
+docker run -d \
+  --name paladin \
+  --restart unless-stopped \
+  -p 8548:8548 \
+  -p 8549:8549 \
+  -p 9000:9000 \
+  -v ~/paladin-data:/data \
+  ghcr.io/lfdt-paladin/paladin:latest \
+  paladin -c /data/config.yaml
 ```
 
-### 4.4 Verify Paladin
+**For production, use Postgres instead of SQLite:**
 
 ```bash
-kubectl -n paladin get pods              # Should show Running
-kubectl -n paladin get scd               # Smart contract deployments
-kubectl -n paladin get reg               # Node registration
+docker run -d --name paladin-db \
+  -e POSTGRES_USER=paladin \
+  -e POSTGRES_PASSWORD=paladin \
+  -e POSTGRES_DB=paladin \
+  -p 5432:5432 \
+  postgres:15
+
+# Then update paladin-config.yaml:
+#   db:
+#     type: postgres
+#     postgres:
+#       dsn: "postgres://paladin:paladin@host.docker.internal:5432/paladin?sslmode=disable"
+#       autoMigrate: true
+```
+
+### 4.1 (Alternative) Install Paladin via Kubernetes
+
+For multi-node production deployments, Paladin can be managed by its Kubernetes operator. See the [full Kubernetes setup in the README](README.md) (Method C — k3s + Helm).
+
+### 4.2 Verify Paladin
+
+**Docker:**
+```bash
+docker logs paladin --tail=30
+
+curl -s http://localhost:8548/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"ptx_queryTransactions","params":[{}]}'
+```
+
+**Kubernetes (if using Method C):**
+```bash
+kubectl -n paladin get pods
+kubectl -n paladin get scd
+kubectl -n paladin get reg
 kubectl -n paladin logs deploy/dakota-node1 --tail=50
 ```
 
-### 4.5 Create a Pente Privacy Group
+The Paladin UI is available at `http://localhost:8548/ui` (Docker) or `http://<MACHINE_IP>:31548/ui` (k3s).
+
+### 4.3 Create a Pente Privacy Group
 
 Use the Paladin JSON-RPC API to create a privacy group for code storage:
 
 ```bash
-curl -X POST http://localhost:31548/rpc \
+# Docker: use port 8548
+# Kubernetes: use port 31548
+curl -X POST http://localhost:8548/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -374,7 +376,7 @@ curl -X POST http://localhost:31548/rpc \
 
 The response contains a `privacyGroupAddress` — record this for PrivateComboStorage deployment.
 
-### 4.6 Authorize the Privacy Group on CodeManager
+### 4.4 Authorize the Privacy Group on CodeManager
 
 After creating the privacy group, the CodeManager voters must authorize it:
 

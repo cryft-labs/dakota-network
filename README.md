@@ -31,13 +31,17 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 | **solc** | 0.8.34 | All contracts except ValidatorSmartContractAllowList |
 | **solc** | 0.8.19 | ValidatorSmartContractAllowList only (pragma `<0.8.20`) |
 
-### Kubernetes (for Paladin privacy manager)
+### Paladin (Privacy Manager)
 
-Paladin runs as a Kubernetes operator alongside your Besu nodes. If you need privacy features:
+Paladin provides the Pente privacy domain used by PrivateComboStorage. It can be installed in several ways:
 
-- [Helm v3](https://helm.sh/docs/intro/install/)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-- A running Kubernetes cluster (or [kind](https://kind.sigs.k8s.io/) for local development)
+| Method | Complexity | Best For |
+|--------|-----------|----------|
+| **Docker** (recommended) | Low | Single-node, bare-metal servers, no K8s experience needed |
+| **Build from source** | Medium | Developers, custom builds, air-gapped environments |
+| **k3s + Helm** (Kubernetes) | Medium | Multi-node production, operator-managed lifecycle |
+
+> **Prepackaged binaries:** Cryft Labs plans to provide prepackaged Paladin distributions for licensed parties once the system is established. Until then, use one of the methods below.
 
 ---
 
@@ -176,46 +180,186 @@ besu \
 
 ### Paladin Privacy Manager (Tessera Replacement)
 
-[Paladin](https://github.com/LFDT-Paladin/paladin) is the recommended replacement for Tessera. It provides programmable privacy-preserving tokens on EVM, including ZKP tokens, notarized tokens, and private smart contracts. Paladin runs as a Kubernetes operator that connects to your Besu node.
+[Paladin](https://github.com/LFDT-Paladin/paladin) is the recommended replacement for Tessera. It provides programmable privacy-preserving tokens on EVM, including ZKP tokens, notarized tokens, and private smart contracts (Pente privacy groups). Paladin connects to your Besu node via HTTP + WebSocket RPC.
 
 > **Why Paladin?** Tessera has been officially sunset by the Besu maintainers. Paladin provides a modern, app-layer privacy solution that doesn't require modifications to the Besu client itself. See the [announcement](https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu).
 
-#### Prerequisites
+> **Prepackaged distributions:** Cryft Labs plans to provide prepackaged Paladin binaries and turnkey installation scripts for licensed parties once the system is established. Until then, use one of the installation methods below.
+
+#### Prerequisites (all methods)
 
 | Component | Required |
 |-----------|----------|
-| Kubernetes | Single-node cluster (e.g., [k3s](https://k3s.io/), [microk8s](https://microk8s.io/), or [kind](https://kind.sigs.k8s.io/)) |
-| Helm v3 | <https://helm.sh/docs/intro/install/> |
-| kubectl | <https://kubernetes.io/docs/tasks/tools/> |
-| Besu node | Local (`localhost:8545/8546`) or remote (`<BESU_NODE_IP>:8545/8546`) with HTTP + WebSocket RPC enabled |
+| **Besu node** | Running with HTTP (`8545`) + WebSocket (`8546`) RPC enabled |
+| **Docker** | Required for Docker method; optional for build-from-source |
+| **Go 1.22+** | Required only for build-from-source |
+| **PostgreSQL 15+** or **SQLite** | Paladin state store (Postgres recommended for production; SQLite for development) |
 
-#### Step 1 — Single-Node Kubernetes (if not already running)
+---
 
-For production on a single machine, [k3s](https://k3s.io/) is recommended (lightweight, single-binary). Alternatively, use kind for local development:
+#### Method A — Docker (No Kubernetes Required)
 
-**Option A — k3s (production):**
+This is the simplest approach. Run the Paladin container directly on any machine with Docker installed — no Kubernetes, Helm, or kubectl needed.
+
+**Step 1 — Create a config file:**
+
+```yaml
+# paladin-config.yaml
+log:
+  level: info
+db:
+  type: sqlite                          # or "postgres" for production
+  sqlite:
+    dsn: /data/paladin.db
+    autoMigrate: true
+  # postgres:
+  #   dsn: "postgres://paladin:password@localhost:5432/paladin?sslmode=disable"
+  #   autoMigrate: true
+blockchain:
+  http:
+    url: http://host.docker.internal:8545    # or <BESU_IP>:8545
+  ws:
+    url: ws://host.docker.internal:8546      # or <BESU_IP>:8546
+signer:
+  keyStore:
+    type: static
+    static:
+      keys:
+        signer1:
+          encoding: hex
+          inline: "<YOUR_PRIVATE_KEY_HEX>"   # operator signing key
+publicTxManager:
+  gasLimit:
+    gasEstimateFactor: 2.0
+```
+
+> **Connecting to local Besu:** Use `host.docker.internal` (Docker Desktop on Mac/Windows) or your machine's LAN IP (Linux). On Linux without Docker Desktop, add `--add-host=host.docker.internal:host-gateway` to the docker run command.
+
+**Step 2 — Create a data directory:**
+
+```bash
+mkdir -p ~/paladin-data
+cp paladin-config.yaml ~/paladin-data/config.yaml
+```
+
+**Step 3 — Run Paladin:**
+
+```bash
+docker run -d \
+  --name paladin \
+  --restart unless-stopped \
+  -p 8548:8548 \
+  -p 8549:8549 \
+  -p 9000:9000 \
+  -v ~/paladin-data:/data \
+  ghcr.io/lfdt-paladin/paladin:latest \
+  paladin -c /data/config.yaml
+```
+
+**Step 4 — Verify:**
+
+```bash
+# Check the container is running
+docker logs paladin --tail=30
+
+# Test the JSON-RPC endpoint
+curl -s http://localhost:8548/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"ptx_queryTransactions","params":[{}]}'
+```
+
+**Step 5 — Access the UI:**
+
+Open `http://localhost:8548/ui` in your browser.
+
+**Managing the container:**
+
+```bash
+docker stop paladin          # stop
+docker start paladin         # restart
+docker logs -f paladin       # follow logs
+docker rm -f paladin         # remove (data persists in ~/paladin-data)
+```
+
+**Using Postgres instead of SQLite (recommended for production):**
+
+```bash
+# Start Postgres alongside Paladin
+docker run -d --name paladin-db \
+  -e POSTGRES_USER=paladin \
+  -e POSTGRES_PASSWORD=paladin \
+  -e POSTGRES_DB=paladin \
+  -p 5432:5432 \
+  postgres:15
+
+# Update paladin-config.yaml to use postgres:
+#   db:
+#     type: postgres
+#     postgres:
+#       dsn: "postgres://paladin:paladin@host.docker.internal:5432/paladin?sslmode=disable"
+#       autoMigrate: true
+```
+
+---
+
+#### Method B — Build from Source
+
+For developers, air-gapped environments, or custom builds. Paladin is a Go project (85% Go) with Gradle orchestrating the full build.
+
+**Prerequisites:**
+- Go 1.22+ (`go version`)
+- JDK 17+ (`java -version`)
+- Node.js 18+ (`node --version`)
+- Protoc (`protoc --version`) — [install](https://grpc.io/docs/protoc-installation/)
+- Docker (for building domain plugins)
+- PostgreSQL or SQLite
+
+**Build:**
+
+```bash
+git clone https://github.com/LFDT-Paladin/paladin.git
+cd paladin
+./gradlew build
+```
+
+This produces the `paladin` binary and domain plugin shared libraries (`.so` files for Noto, Pente, Zeto).
+
+**Run:**
+
+```bash
+# Create config (same format as Method A, but with local file paths for domain plugins)
+./paladin -c /path/to/paladin-config.yaml
+```
+
+> See the [Paladin configuration reference](https://lfdt-paladin.github.io/paladin/head/administration/configuration/) for the full set of config options.
+
+---
+
+#### Method C — k3s + Helm (Kubernetes Operator)
+
+For multi-node production deployments, the Kubernetes operator provides managed lifecycle, auto-scaling, and declarative configuration. k3s is a lightweight single-binary Kubernetes distribution — it adds minimal overhead on a single server.
+
+**Step 1 — Install k3s + Helm:**
 ```bash
 curl -sfL https://get.k3s.io | sh -
-# k3s includes kubectl; add helm separately:
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-# Verify:
 kubectl get nodes
 ```
 
-**Option B — kind (development/testing):**
+For local development, [kind](https://kind.sigs.k8s.io/) is an alternative:
 ```bash
 curl https://raw.githubusercontent.com/LFDT-Paladin/paladin/refs/heads/main/operator/paladin-kind.yaml -L -O
 kind create cluster --name paladin --config paladin-kind.yaml
 ```
 
-#### Step 2 — Install Paladin Operator CRDs
+**Step 2 — Install Paladin Operator CRDs:**
 
 ```bash
 helm repo add paladin https://LFDT-Paladin.github.io/paladin --force-update
 helm upgrade --install paladin-crds paladin/paladin-operator-crd
 ```
 
-#### Step 3 — Install cert-manager
+**Step 3 — Install cert-manager:**
 
 ```bash
 helm repo add jetstack https://charts.jetstack.io --force-update
@@ -223,9 +367,9 @@ helm install cert-manager --namespace cert-manager --version v1.16.1 \
   jetstack/cert-manager --create-namespace --set crds.enabled=true
 ```
 
-#### Step 4 — Deploy Paladin (single node, attached to Besu)
+**Step 4 — Deploy Paladin (single node, attached to Besu):**
 
-Create a values file for a **single Paladin node** connected to your Besu node:
+Create a values file:
 
 ```yaml
 # values-dakota.yaml
@@ -242,8 +386,7 @@ paladinNodes:
         # jsonrpc: http://<BESU_NODE_IP>:8545
         # ws: ws://<BESU_NODE_IP>:8546
         auth:
-          enabled: false          # set true + secretName for basic auth
-          # secretName: besu-auth
+          enabled: false
     domains:
       - noto
       - zeto
@@ -272,12 +415,12 @@ paladinNodes:
           port: 8549
           nodePort: 31549
     database:
-      mode: sidecarPostgres     # embedded Postgres sidecar (no external DB needed)
+      mode: sidecarPostgres
       migrationMode: auto
     secretBackedSigners:
       - name: signer-auto-wallet
         secret: dakota-node1.keys
-        type: autoHDWallet      # auto-generates HD wallet seed phrase
+        type: autoHDWallet
         keySelector: ".*"
     paladinRegistration:
       registryAdminNode: dakota-node1
@@ -291,9 +434,9 @@ paladinNodes:
           gasEstimateFactor: 2.0
 ```
 
-> **Connecting to local Besu:** If Besu runs on the same machine (outside Kubernetes), use `host.docker.internal` (Docker Desktop / kind) or the host's LAN IP. For k3s, use the machine's actual IP address instead.
+> **Connecting to local Besu:** Use the machine's actual IP for k3s (not `localhost`). For kind, use `host.docker.internal`.
 >
-> **Connecting to remote Besu:** Replace with the remote node's IP/hostname. Ensure ports `8545` (HTTP) and `8546` (WebSocket) are reachable from the Kubernetes pod network.
+> **Connecting to remote Besu:** Replace with the remote node's IP/hostname. Ensure ports `8545` and `8546` are reachable from the Kubernetes pod network.
 
 Deploy:
 ```bash
@@ -301,35 +444,20 @@ helm install paladin paladin/paladin-operator -n paladin --create-namespace \
   -f values-dakota.yaml
 ```
 
-#### Step 5 — Verify
+**Step 5 — Verify:**
 
 ```bash
 kubectl -n paladin get pods             # Paladin pod + Postgres sidecar should be Running
 kubectl -n paladin get scd              # Smart contract deployments (noto, pente, zeto factories)
 kubectl -n paladin get reg              # Node registration status
-kubectl -n paladin logs deploy/dakota-node1 --tail=50   # Check logs
+kubectl -n paladin logs deploy/dakota-node1 --tail=50
 ```
 
-#### Paladin Privacy Domains
+**Adding Paladin nodes on other machines:**
 
-| Domain | Description |
-|--------|-------------|
-| **Noto** | Notarized tokens — issuer-backed private token transfers |
-| **Zeto** | ZKP tokens — zero-knowledge proof backed private transfers |
-| **Pente** | Private EVM smart contracts — privacy groups with private state |
-
-#### Paladin UI
-
-The Paladin node runs a web UI at `/ui`:
-- `http://localhost:31548/ui` (with the NodePort config above)
-- If using k3s, access via `http://<MACHINE_IP>:31548/ui`
-
-#### Adding Paladin Nodes on Other Machines
-
-To add nodes on additional machines that join the same Paladin network, use `attach` mode with the contract addresses from the primary node:
+Use `attach` mode with the contract addresses from the primary node:
 
 ```bash
-# On the primary node, get deployed contract addresses:
 kubectl -n paladin get paladindomains,paladinregistries
 ```
 
@@ -388,7 +516,7 @@ paladinNodes:
         type: autoHDWallet
         keySelector: ".*"
     paladinRegistration:
-      registryAdminNode: dakota-node1    # primary node that deployed contracts
+      registryAdminNode: dakota-node1
       registryAdminKey: registry.operator
       registry: evm-registry
     config: |
@@ -401,7 +529,7 @@ helm install paladin paladin/paladin-operator -n paladin --create-namespace \
   -f values-attach.yaml
 ```
 
-#### Uninstall Paladin
+**Uninstall:**
 
 ```bash
 helm uninstall paladin -n paladin
@@ -411,14 +539,32 @@ helm uninstall cert-manager -n cert-manager
 kubectl delete namespace cert-manager
 ```
 
+---
+
+#### Paladin Privacy Domains
+
+| Domain | Description |
+|--------|-------------|
+| **Noto** | Notarized tokens — issuer-backed private token transfers |
+| **Zeto** | ZKP tokens — zero-knowledge proof backed private transfers |
+| **Pente** | Private EVM smart contracts — privacy groups with private state |
+
+#### Paladin UI
+
+The Paladin node runs a web UI at `/ui`:
+- **Docker:** `http://localhost:8548/ui`
+- **k3s:** `http://<MACHINE_IP>:31548/ui`
+- **kind:** `http://localhost:31548/ui`
+
 #### Paladin Resources
 
 - **Documentation:** <https://lfdt-paladin.github.io/paladin/head>
 - **GitHub:** <https://github.com/LFDT-Paladin/paladin>
 - **Latest release:** v0.15.0
+- **Configuration reference:** <https://lfdt-paladin.github.io/paladin/head/administration/configuration/>
 - **Tutorials:** <https://lfdt-paladin.github.io/paladin/head/tutorials/>
-- **Advanced installation:** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
-- **Manual installation:** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-manual/>
+- **Advanced installation (Helm):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
+- **Manual installation (Helm CRDs):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-manual/>
 - **Discord:** [paladin channel on LFDT Discord](https://discord.com/channels/905194001349627914/1303371167020879903)
 
 ---
@@ -448,8 +594,10 @@ Paladin replaces Tessera as the recommended privacy solution for Besu networks.
 
 - **Paladin docs:** <https://lfdt-paladin.github.io/paladin/head>
 - **Paladin GitHub:** <https://github.com/LFDT-Paladin/paladin>
-- **Installation guide:** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation>
-- **Advanced installation:** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
+- **Docker image:** `ghcr.io/lfdt-paladin/paladin:latest`
+- **Configuration reference:** <https://lfdt-paladin.github.io/paladin/head/administration/configuration/>
+- **Installation guide (Helm):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation>
+- **Advanced installation (Helm):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
 - **Tessera sunset announcement:** <https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu>
 
 ---
