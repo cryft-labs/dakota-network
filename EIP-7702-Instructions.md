@@ -4,7 +4,7 @@
 
 > **PATENT & LICENSING NOTICE**
 >
-> The redeemable-code management system described in this repository (CodeManager, ComboStorage, PrivateComboStorage, and the three-layer Pente privacy architecture) is covered by [U.S. Patent Application Serial No. 18/930,857](https://patents.google.com/patent/US20250139608A1/en). **Implementing, deploying, or operating any substantially similar system requires a license from Cryft Labs.** This documentation is provided for licensed parties. See <https://cryftlabs.org/licenses> for licensing inquiries.
+> The redeemable-code management system described in this repository (CodeManager, PrivateComboStorage, and the three-layer Pente privacy architecture) is covered by [U.S. Patent Application Serial No. 18/930,857](https://patents.google.com/patent/US20250139608A1/en). **Implementing, deploying, or operating any substantially similar system requires a license from Cryft Labs.** This documentation is provided for licensed parties. See <https://cryftlabs.org/licenses> for licensing inquiries.
 
 ---
 
@@ -145,7 +145,6 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 | **DakotaDelegation** | `Contracts/7702/DakotaDelegation.sol` | Yes (TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
 | **GasSponsor** | `Contracts/7702/GasSponsor.sol` | Yes (TransparentUpgradeableProxy) | `0x...FEeD` (genesis) |
 | **CodeManager** | `Contracts/Code Management/CodeManager.sol` | Yes | `<proxy_address>` |
-| **ComboStorage** | `Contracts/Code Management/ComboStorage.sol` | No | `<address>` |
 | **CryftGreetingCards** | `Contracts/Tokens/GreetingCards.sol` | Yes | `<proxy_address>` |
 | **GasManager** | `Contracts/Genesis/GasManager.sol` | Yes | `0x...cafE` (genesis) |
 | **ValidatorSmartContractAllowList** | `Contracts/Genesis/validatorContracts/` | No | `0x...1111` (genesis) |
@@ -674,7 +673,7 @@ event ToppedOff(address indexed sponsor, uint256 amount);
 │ • defineChain()     │     │ • EIP-7702 Delegation    │     │ • DakotaDelegation    │
 │ • NFT Gallery       │     │ • Gas Sponsorship        │     │ • GasSponsor (proxy)  │
 │ • Trait Viewer      │     │ • Server Wallets         │     │ • CodeManager (proxy) │
-│ • Code Redemption   │     │ • Batch Execution        │     │ • ComboStorage        │
+│ • Code Redemption   │     │ • Batch Execution        │     │ • PrivateComboStorage │
 │ • TBA Explorer      │     │                          │     │ • GreetingCards (proxy)│
 │                     │     │                          │     │ • GasManager (genesis) │
 └─────────────────────┘     └────────────────────────┘     │ • AllowList (genesis)  │
@@ -878,7 +877,6 @@ docker-compose up -d
 - [ ] **DakotaDelegation** deployed (note address)
 - [ ] **GasSponsor** deployed via TransparentUpgradeableProxy (note proxy address)
 - [ ] **CodeManager** deployed via proxy (note address)
-- [ ] **ComboStorage** deployed (note address)
 - [ ] **CryftGreetingCards** deployed via proxy (note address)
 - [ ] **ERC-721 Collection** deployed (your NFT collection)
 - [ ] **ERC-6551 Registry** deployed or verified at canonical address

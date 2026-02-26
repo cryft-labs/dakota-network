@@ -30,9 +30,6 @@ pragma solidity >=0.8.2 <0.9.0;
  *         The gift contract SHOULD return frozen=true from isUniqueIdFrozen()
  *         for any UID that has not been explicitly unfrozen. This ensures
  *         UIDs have a default frozen state upon initial registration
- *         (Patent Claim 7, Spec [0049]).
- *
- *         Patent Reference: Claims 1, 6, 7, 8, 10
  */
 interface IRedeemable {
     // ── Read Functions ──────────────────────────────────────
@@ -50,8 +47,6 @@ interface IRedeemable {
 
     /// @notice Set frozen status for a unique ID.
     ///         Called by CodeManager when routing from Pente externalCall.
-    ///         Patent Claim 6: updating state by authorized manager.
-    ///         Patent Claim 10: freeze upon compromised notification.
     /// @param uniqueId The unique identifier to freeze/unfreeze.
     /// @param frozen True to freeze (prevent redemption), false to unfreeze.
     function setFrozen(string memory uniqueId, bool frozen) external;
@@ -72,7 +67,6 @@ interface IRedeemable {
     ///           - Conditional: only allow after a date, etc.
     ///         If the gift contract does not allow the redemption, it MUST
     ///         revert — causing the entire Pente transition to roll back.
-    ///         Patent Claim 1: updating to reflect redemption.
     /// @param uniqueId The unique identifier being redeemed.
     /// @param redeemer The address performing the redemption.
     function recordRedemption(string memory uniqueId, address redeemer) external;

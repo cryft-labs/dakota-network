@@ -383,8 +383,6 @@ contract CodeManager is Initializable, ICodeManager {
     //    call via IRedeemable. CodeManager stores NO per-UID state.
     //    The gift contract is the SOLE AUTHORITY on all per-UID state.
     //
-    //    Patent Reference: Claims 1, 6, 7, 8, 10
-
     /// @notice Route a redemption from the Pente privacy group to the gift contract.
     ///         The gift contract decides how to handle the redemption — single-use,
     ///         multi-use, NFT mint, etc. If the gift contract reverts, the entire

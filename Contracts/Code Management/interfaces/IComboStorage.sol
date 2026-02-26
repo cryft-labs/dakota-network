@@ -21,7 +21,6 @@ pragma solidity >=0.8.2 <0.9.0;
  *         the public chain. The gift contract is the sole authority on
  *         redemption behavior; the private state is for internal tracking.
  *
- *         Patent Reference: Claims 1–5, 13
  */
 interface IComboStorage {
     /// @notice Returns true if a verified redemption exists for this unique ID.

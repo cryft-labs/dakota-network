@@ -8,11 +8,11 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 >
 > Portions of this software implement methods and systems described in [U.S. Patent Application Serial No. 18/930,857: *"Card System Utilizing On-Chain Managed Redeemable Gift Code"*](https://patents.google.com/patent/US20250139608A1/en), held by Cryft Labs.
 >
-> **The patented system covers the on-chain redeemable-code management architecture embodied primarily by the `CodeManager`, `ComboStorage`, and `PrivateComboStorage` contracts, including the three-layer Pente privacy integration (CodeManager router + Gift Contract authority + PrivateComboStorage in Pente privacy group).** Unauthorized reproduction, deployment, or commercial use of these contracts or any substantially similar implementation of the patented methods — on any blockchain or network — constitutes patent infringement and **will result in legal action, including injunctive relief and monetary damages, at the infringer's expense.**
+> **The patented system covers the on-chain redeemable-code management architecture embodied primarily by the `CodeManager` and `PrivateComboStorage` contracts, including the three-layer Pente privacy integration (CodeManager router + Gift Contract authority + PrivateComboStorage in Pente privacy group).** Unauthorized reproduction, deployment, or commercial use of these contracts or any substantially similar implementation of the patented methods — on any blockchain or network — constitutes patent infringement and **will result in legal action, including injunctive relief and monetary damages, at the infringer's expense.**
 >
-> **IMPLEMENTATION NOTICE:** The accompanying implementation guide describes a patented architecture covering all 20 patent claims. **Implementing, deploying, or operating the described system — including any substantially similar three-layer architecture using a public registry/router, an authoritative gift contract, and a private verification layer — requires a license from Cryft Labs.** The implementation guide and source code are provided for **licensed parties only**. See <https://cryftlabs.org/licenses> for licensing inquiries.
+> **IMPLEMENTATION NOTICE:** The accompanying implementation guide describes a patented architecture. **Implementing, deploying, or operating the described system — including any substantially similar three-layer architecture using a public registry/router, an authoritative gift contract, and a private verification layer — requires a license from Cryft Labs.** The implementation guide and source code are provided for **licensed parties only**. See <https://cryftlabs.org/licenses> for licensing inquiries.
 >
-> The `CryftGreetingCards` ERC-721 contract is a client of the redeemable-code service and is **not** itself the subject of the patent claims. Third parties may interface with the Cryft redeemable-code service (CodeManager / ComboStorage) under a valid license or when the applicable fees and permissions have been granted. See <https://cryftlabs.org/licenses> for licensing inquiries.
+> The `CryftGreetingCards` ERC-721 contract is a client of the redeemable-code service and is **not** itself covered by the patent. Third parties may interface with the Cryft redeemable-code service (CodeManager / PrivateComboStorage) under a valid license or when the applicable fees and permissions have been granted. See <https://cryftlabs.org/licenses> for licensing inquiries.
 
 ---
 
@@ -456,7 +456,6 @@ CodeManager (independent)
 | Contract | Purpose |
 |----------|---------|
 | **CodeManager** | **Patent-covered.** Permissionless unique ID registry. Own independent voter pool with pluggable `otherVoterContracts[]`, 2/3 supermajority quorum, voter-pool freeze while tallies are active. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`. |
-| **ComboStorage** | **Patent-covered.** Public redemption verification service. Validates codes against CodeManager, records verified redemptions. Access-controlled via overlord whitelist. |
 | **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores hash+salt pairs privately, verifies redemption codes, emits `PenteExternalCall` events to route state changes through CodeManager to the gift contract on the public chain. |
 | **DakotaDelegation** | EIP-7702 delegation target. EOAs delegate to this contract for smart-account capabilities: single/batch execution, sponsored execution (EIP-712), session keys, EIP-1271 signature validation. |
 | **GasSponsor** | On-chain gas sponsorship treasury. Per-sponsor deposits, authorized relayer management, daily/per-claim spending limits, optional target allowlisting, and integrated `sponsoredCall` forwarding with automatic gas metering and reimbursement. |
@@ -522,41 +521,6 @@ Also serves as the Pente router — authorized privacy groups call router functi
 | `isWhitelistedAddress[addr]` | `bool` | Whether an address is whitelisted for legacy operations |
 | `isAuthorizedPrivacyGroup[addr]` | `bool` | Whether an address is an authorized Pente privacy group |
 | `hasVoted[VoteType][target][addr]` | `bool` | Whether an address has voted on a specific tally |
-
----
-
-### ComboStorage (Public Redemption Verification)
-
-Public-chain redemption verification service. Stores `keccak256(giftCode)` hashes indexed by PIN for O(1) lookup. Validates submitted codes against stored hashes, queries gift contracts for frozen/redeemed status via `IRedeemable` (read-only), then records the verified redemption. No cleartext code ever touches the chain.
-
-#### Access Control
-
-| Role | How Assigned | Powers |
-|------|-------------|--------|
-| **Overlord** | Hard-coded at deployment | Add/remove whitelist entries |
-| **Whitelisted** | Added by overlord | Store code hashes, redeem codes |
-
-#### Write Functions
-
-| Function | Description |
-|----------|-------------|
-| `storeDataBatch(uniqueIds[], pins[], codeHashes[])` | Whitelisted-only. Bulk store pre-computed hashes. Partial success — invalid entries skipped with `status=false` event. |
-| `redeemCode(pin, codeHash)` | Whitelisted-only. Verify code, check frozen/redeemed via `IRedeemable`, record redemption, clear stored hash. |
-
-#### Convenience View Functions
-
-| Function | Returns | Description |
-|----------|---------|-------------|
-| `isRedemptionVerified[uniqueId]` | `bool` | Whether a UID has been verified for redemption |
-| `redemptionRedeemer[uniqueId]` | `address` | The address that redeemed a verified UID |
-| `pinSlotCount[pin]` | `uint256` | Number of hashes stored under a PIN |
-| `isWhitelisted[addr]` | `bool` | Whether an address is whitelisted |
-| `codeManager` | `ICodeManager` | The CodeManager contract address |
-| `overlord` | `address` | The overlord address |
-| `MAX_PER_PIN` | `uint256` | Maximum entries per PIN slot (32) |
-| `isFrozen(uniqueId)` | `bool` | Returns `false` (legacy stub — see PrivateComboStorage for Pente implementation) |
-| `isRedeemed(uniqueId)` | `bool` | Returns `false` (legacy stub) |
-| `getContentId(uniqueId)` | `string` | Returns `""` (legacy stub) |
 
 ---
 
@@ -691,7 +655,7 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 | Function | Access | Description |
 |----------|--------|-------------|
 | `buy(buyer, quantity, redeemedBaseURI)` | Anyone (payable) | Purchase cards — pays `pricePerCard × qty + registrationFee × qty`. Mints into vault, registers on CodeManager atomically. |
-| `claimRedemption(uniqueId, recipient)` | Verified redeemer (via ComboStorage) | Transfer NFT from vault to recipient. Recipient ≠ msg.sender (gift flow). |
+| `claimRedemption(uniqueId, recipient)` | Verified redeemer (via PrivateComboStorage) | Transfer NFT from vault to recipient. Recipient ≠ msg.sender (gift flow). |
 | `setFrozen(tokenId, frozen)` | Buyer or owner | Freeze/unfreeze a card in the vault (lost/stolen code protection). |
 | `recordRedemption(uniqueId, redeemer)` | CodeManager only (Pente router) | Route redemption from privacy group — transfers NFT from vault to redeemer. |
 | `setFrozen(uniqueId, frozen)` (IRedeemable) | CodeManager only | Route freeze from privacy group. |
@@ -968,7 +932,6 @@ dakota-network/
 │   │       └── IGasSponsor.sol
 │   ├── Code Management/
 │   │   ├── CodeManager.sol           # Permissionless unique ID registry (fee-based)
-│   │   ├── ComboStorage.sol          # Public redemption verification service
 │   │   ├── PrivateComboStorage.sol   # Pente privacy group (private redemption)
 │   │   └── interfaces/
 │   │       ├── ICodeManager.sol
@@ -1022,4 +985,4 @@ OpenZeppelin-derived contracts under `Contracts/Genesis/proxy/`, `Contracts/Gene
 
 ### Patent Enforcement
 
-The `CodeManager` and `ComboStorage` contracts implement methods claimed in [U.S. Patent Application Serial No. 18/930,857](https://patents.google.com/patent/US20250139608A1/en). **Any unauthorized use, reproduction, or deployment of these contracts or substantially similar implementations will be pursued through legal action. All costs, damages, and attorney fees will be sought against the infringing party.** Contact <https://cryftlabs.org/licenses> for licensing.
+The `CodeManager` and `PrivateComboStorage` contracts implement methods claimed in [U.S. Patent Application Serial No. 18/930,857](https://patents.google.com/patent/US20250139608A1/en). **Any unauthorized use, reproduction, or deployment of these contracts or substantially similar implementations will be pursued through legal action. All costs, damages, and attorney fees will be sought against the infringing party.** Contact <https://cryftlabs.org/licenses> for licensing.
