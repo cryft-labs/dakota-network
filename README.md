@@ -57,7 +57,7 @@ The genesis file (`Contracts/Genesis/besuGenesis.json`, ~1.07 GB) contains the f
 
 #### Ethereum Fork Activation
 
-All Ethereum hard forks through Fusaka are activated from genesis (block 0 / timestamp 0). Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention.
+All Ethereum hard forks through Osaka are activated from genesis (block 0 / timestamp 0), along with BPO1 and BPO2 milestones. Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention.
 
 | Fork | Genesis Key | Activation | Notable EIPs |
 |------|------------|------------|--------------|
@@ -75,6 +75,8 @@ All Ethereum hard forks through Fusaka are activated from genesis (block 0 / tim
 | **Cancun** | `cancunTime: 0` | Timestamp 0 | Transient storage TSTORE/TLOAD (EIP-1153), MCOPY (EIP-5656), SELFDESTRUCT neutered (EIP-6780) |
 | **Prague/Pectra** | `pragueTime: 0` | Timestamp 0 | EIP-7702 (EOA code delegation), EIP-7251 (max effective balance), EIP-7002 (execution layer withdrawals) |
 | **Osaka** | `osakaTime: 0` | Timestamp 0 | EIP-7594 (PeerDAS), EIP-7692 (EOF v1), EIP-7823 (set max blob count), EIP-7691 (blob throughput increase) |
+| **BPO1** | `bpo1Time: 0` | Timestamp 0 | Besu Protocol Optimization phase 1 — post-Fusaka protocol refinements |
+| **BPO2** | `bpo2Time: 0` | Timestamp 0 | Besu Protocol Optimization phase 2 — additional post-Fusaka protocol refinements |
 
 #### Alloc Entries (32,432 total)
 

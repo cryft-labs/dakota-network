@@ -249,7 +249,9 @@ The genesis file must activate all forks through Fusaka from block 0. Key parame
     "shanghaiTime": 0,
     "cancunTime": 0,
     "pragueTime": 0,
-    "fusakaTime": 0,
+    "osakaTime": 0,
+    "bpo1Time": 0,
+    "bpo2Time": 0,
     "qbft": {
       "blockperiodseconds": 1,
       "emptyblockperiodseconds": 64,
