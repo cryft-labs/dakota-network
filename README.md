@@ -53,11 +53,11 @@ The genesis file (`Contracts/Genesis/besuGenesis.json`, ~1.07 GB) contains the f
 | **Gas limit** | 64,000,000 (`0x3D09000`) |
 | **Block reward** | 3.2 ETH per block (sent to `miningBeneficiary`) |
 | **Contract size limit** | 32,768 bytes (32 KiB) |
-| **EVM fork** | Fusaka (all forks through Fusaka enabled from genesis) |
+| **EVM fork** | Osaka + BPO2 (all forks through Osaka plus BPO1/BPO2 enabled from genesis) |
 
 #### Ethereum Fork Activation
 
-All Ethereum hard forks through Osaka are activated from genesis (block 0 / timestamp 0), along with BPO1 and BPO2 milestones. Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention.
+All Ethereum hard forks through Osaka are activated from genesis (block 0 / timestamp 0), along with BPO1 and BPO2 Blob Parameter Only upgrades. Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention. BPO upgrades adjust blob-related parameters (target and maximum blobs per block) without requiring a full hard fork, enabling incremental Layer 2 data throughput scaling.
 
 | Fork | Genesis Key | Activation | Notable EIPs |
 |------|------------|------------|--------------|
@@ -75,8 +75,8 @@ All Ethereum hard forks through Osaka are activated from genesis (block 0 / time
 | **Cancun** | `cancunTime: 0` | Timestamp 0 | Transient storage TSTORE/TLOAD (EIP-1153), MCOPY (EIP-5656), SELFDESTRUCT neutered (EIP-6780) |
 | **Prague/Pectra** | `pragueTime: 0` | Timestamp 0 | EIP-7702 (EOA code delegation), EIP-7251 (max effective balance), EIP-7002 (execution layer withdrawals) |
 | **Osaka** | `osakaTime: 0` | Timestamp 0 | EIP-7594 (PeerDAS), EIP-7692 (EOF v1), EIP-7823 (set max blob count), EIP-7691 (blob throughput increase) |
-| **BPO1** | `bpo1Time: 0` | Timestamp 0 | Besu Protocol Optimization phase 1 — post-Fusaka protocol refinements |
-| **BPO2** | `bpo2Time: 0` | Timestamp 0 | Besu Protocol Optimization phase 2 — additional post-Fusaka protocol refinements |
+| **BPO1** | `bpo1Time: 0` | Timestamp 0 | Blob Parameter Only upgrade 1 — raises blob target from 6→10, max from 9→15 (Mainnet: 2025-12-09 14:21:11 UTC, epoch 412,672) |
+| **BPO2** | `bpo2Time: 0` | Timestamp 0 | Blob Parameter Only upgrade 2 — raises blob target from 10→14, max from 15→21 (Mainnet: 2026-01-07 01:01:11 UTC, epoch 419,072) |
 
 #### Alloc Entries (32,432 total)
 
