@@ -15,7 +15,21 @@
 1. [Architecture Overview](#1-architecture-overview)
 2. [Prerequisites](#2-prerequisites)
 3. [Layer 1 — Besu Network Setup](#3-layer-1--besu-network-setup)
+   - 3.1 [Install Besu (Ubuntu)](#31-install-besu-ubuntu)
+   - 3.2 [Genesis Configuration](#32-genesis-configuration)
+   - 3.3 [Genesis Contract Allocation](#33-genesis-contract-allocation)
+   - 3.4 [Start a Node](#34-start-a-node)
+   - 3.5 [Security Notes](#35-security-notes)
 4. [Layer 2 — Paladin / Pente Privacy Setup](#4-layer-2--paladin--pente-privacy-setup)
+   - 4.1 [Method A — Docker](#41-method-a--docker-no-kubernetes-required)
+   - 4.2 [Method B — Build from Source](#42-method-b--build-from-source)
+   - 4.3 [Method C — k3s + Helm](#43-method-c--k3s--helm-kubernetes-operator)
+   - 4.4 [Paladin Privacy Domains](#44-paladin-privacy-domains)
+   - 4.5 [Paladin UI](#45-paladin-ui)
+   - 4.6 [Paladin Resources](#46-paladin-resources)
+   - 4.7 [Create a Pente Privacy Group](#47-create-a-pente-privacy-group)
+   - 4.8 [Authorize Privacy Group on CodeManager](#48-authorize-the-privacy-group-on-codemanager)
+   - 4.9 [Documentation & References](#49-documentation--references)
 5. [Layer 3 — Contract Deployment](#5-layer-3--contract-deployment)
 6. [Standardized Interfaces for Gift Contracts](#6-standardized-interfaces-for-gift-contracts)
 7. [Implementing a Custom Gift Contract](#7-implementing-a-custom-gift-contract)
@@ -109,7 +123,7 @@ The patented system uses a three-layer architecture where no single layer holds 
 
 ## 3. Layer 1 — Besu Network Setup
 
-### 3.1 Install Besu
+### 3.1 Install Besu (Ubuntu)
 
 **Fresh install:**
 ```bash
@@ -121,12 +135,21 @@ curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
   -o besu-26.1.0.zip \
   https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
 unzip -t /tmp/besu-26.1.0.zip >/dev/null   # verify integrity
-sudo unzip -q -o /tmp/besu-26.1.0.zip -d /opt
+sudo unzip -q -o besu-26.1.0.zip -d /opt
 sudo ln -sfn /opt/besu-26.1.0/bin/besu /usr/local/bin/besu
 besu --version
 ```
 
-**Upgrading from an older Besu (and removing Tessera if present):**
+**SHA-256 checksums (26.1.0):**
+```
+356bae18a4c08a2135aa006e62a550b52428e1d613c08aa97c40ec8b908ae6cf  besu-26.1.0.zip
+de6356bf2db9e7a68dc3de391864dc373a0440f51fbf6d78d63d1e205091248e  besu-26.1.0.tar.gz
+```
+
+#### Upgrading from an older Besu (and removing Tessera)
+
+Tessera is no longer used — Paladin/Pente replaces it for private transaction support. The following script stops services, removes Tessera completely (systemd, binaries, config), removes old Besu versions, and installs 26.1.0:
+
 ```bash
 (
   set -euo pipefail
@@ -176,11 +199,38 @@ besu --version
 ) && echo "Besu 26.1.0 installed, Tessera removed from system/path/config dir."
 ```
 
-> Tessera is no longer used — Paladin/Pente replaces it for private transaction support.
+#### Breaking Changes in 26.1.0
+
+- The experimental CLI flag `--Xenable-extra-debug-tracers` has been **removed**. The call tracer (`callTracer`) is now always available for `debug_trace*` methods.
+- `eth_getLogs` and `trace_filter` now return an **error** (instead of an empty list) if `fromBlock > toBlock` or `toBlock` extends beyond chain head.
+- Plugin API changes: `BlockHeader`, `Log`, `TransactionProcessingResult`, and `TransactionReceipt` now use specific types for `LogsBloomFilter`, `LogTopic`, and `Log`.
+
+#### Upcoming Deprecations (post-26.1.0)
+
+The Besu maintainers have announced the following features will be **removed** in future releases ([details](https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu)):
+
+| Feature | Status | Replacement |
+|---------|--------|-------------|
+| **Tessera privacy** | **Deprecated & removed** | [Paladin](https://github.com/LFDT-Paladin/paladin) |
+| Smart-contract-based permissioning | Deprecated | Plugin API |
+| Proof of Work consensus | Deprecated | Plugin API |
+| Fast Sync | Deprecated | Snap Sync (direct migration) |
+| ETC / Mordor / Holesky networks | Deprecated | — |
+| Decimal block number parameters | Deprecated | Hex-only block numbers |
+
+> **Tessera has been sunset.** The Besu project officially recommends migrating to [Paladin](https://github.com/LFDT-Paladin/paladin) for programmable privacy on EVM.
+
+#### Copy Node Configuration
+
+The `Node/` directory contains a sample directory structure with node keys:
+
+```bash
+cp -r Node/Node /home/user/dakota-node
+```
 
 ### 3.2 Genesis Configuration
 
-The genesis file must activate all forks through Prague/Pectra from block 0. Key parameters:
+The genesis file must activate all forks through Fusaka from block 0. Key parameters:
 
 ```json
 {
@@ -199,6 +249,7 @@ The genesis file must activate all forks through Prague/Pectra from block 0. Key
     "shanghaiTime": 0,
     "cancunTime": 0,
     "pragueTime": 0,
+    "fusakaTime": 0,
     "qbft": {
       "blockperiodseconds": 1,
       "emptyblockperiodseconds": 64,
@@ -226,36 +277,61 @@ The genesis `alloc` section must include pre-deployed system contracts:
 
 ### 3.4 Start a Node
 
+After installation, `besu` is on your PATH with Java 21 pinned automatically:
+
 ```bash
 besu \
   --data-path=/home/user/dakota-node/data \
   --genesis-file=/home/user/dakota-node/genesis.json \
-  --bootnodes=enode://<BOOTNODE>@<IP>:30303 \
+  --bootnodes=enode://<BOOTNODE_ENODE>@<BOOTNODE_IP>:30303 \
   --p2p-port=30303 \
-  --rpc-http-enabled --rpc-http-api=ETH,NET,WEB3,TXPOOL,QBFT \
-  --rpc-ws-enabled --rpc-ws-api=ETH,NET,WEB3,TXPOOL,QBFT \
+  --rpc-http-enabled \
+  --rpc-http-api=ETH,NET,QBFT \
+  --rpc-ws-enabled \
+  --rpc-ws-api=ETH,NET,QBFT \
   --rpc-ws-port=8546 \
-  --rpc-http-port=8545 \
   --host-allowlist="*" \
   --rpc-http-cors-origins="all" \
-  --p2p-host=<YOUR_IP>
+  --rpc-http-port=8545 \
+  --p2p-host=<YOUR_IP> \
+  --sync-min-peers=3
 ```
 
-> WebSocket (`--rpc-ws-*`) is **required** for Paladin connectivity.
+> **Note:** The `--rpc-ws-*` flags enable WebSocket RPC, required if connecting Paladin to this node.
+
+### 3.5 Security Notes
+
+- Replace the default keys in `Node/` before any production deployment.
+- Ensure your firewall allows port `30303` (P2P) and `8545` (HTTP-RPC).
+- Restrict `--rpc-http-api`, `--host-allowlist`, and `--rpc-http-cors-origins` for production.
+- Customize `genesis.json` if additional parameters are required.
 
 ---
 
 ## 4. Layer 2 — Paladin / Pente Privacy Setup
 
-Paladin provides the Pente privacy domain — private EVM smart contracts with shared state visible only to privacy group members. **Kubernetes is not required** — Paladin can run as a standalone Docker container.
+[Paladin](https://github.com/LFDT-Paladin/paladin) is the recommended replacement for Tessera. It provides programmable privacy-preserving tokens on EVM, including ZKP tokens, notarized tokens, and private smart contracts (Pente privacy groups). Paladin connects to your Besu node via HTTP + WebSocket RPC. **Kubernetes is not required** — Paladin can run as a standalone Docker container.
 
-> **Prepackaged distributions:** Cryft Labs plans to provide prepackaged Paladin binaries and turnkey installation scripts for licensed parties once the system is established. Until then, use one of the methods below.
+> **Why Paladin?** Tessera has been officially sunset by the Besu maintainers. Paladin provides a modern, app-layer privacy solution that doesn't require modifications to the Besu client itself. See the [announcement](https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu).
 
-### 4.1 Install Paladin (Docker — No Kubernetes Required)
+> **Prepackaged distributions:** Cryft Labs plans to provide prepackaged Paladin binaries and turnkey installation scripts for licensed parties once the system is established. Until then, use one of the installation methods below.
 
-This is the simplest approach. Only Docker is needed.
+#### Prerequisites (all methods)
 
-**Create a config file:**
+| Component | Required |
+|-----------|----------|
+| **Besu node** | Running with HTTP (`8545`) + WebSocket (`8546`) RPC enabled |
+| **Docker** | Required for Docker method; optional for build-from-source |
+| **Go 1.22+** | Required only for build-from-source |
+| **PostgreSQL 15+** or **SQLite** | Paladin state store (Postgres recommended for production; SQLite for development) |
+
+---
+
+### 4.1 Method A — Docker (No Kubernetes Required)
+
+This is the simplest approach. Run the Paladin container directly on any machine with Docker installed — no Kubernetes, Helm, or kubectl needed.
+
+**Step 1 — Create a config file:**
 
 ```yaml
 # paladin-config.yaml
@@ -289,12 +365,16 @@ publicTxManager:
 
 > **Connecting to local Besu:** Use `host.docker.internal` (Docker Desktop on Mac/Windows) or your machine's LAN IP (Linux). On Linux without Docker Desktop, add `--add-host=host.docker.internal:host-gateway` to the docker run command.
 
-**Run Paladin:**
+**Step 2 — Create a data directory:**
 
 ```bash
 mkdir -p ~/paladin-data
 cp paladin-config.yaml ~/paladin-data/config.yaml
+```
 
+**Step 3 — Run Paladin:**
+
+```bash
 docker run -d \
   --name paladin \
   --restart unless-stopped \
@@ -306,9 +386,35 @@ docker run -d \
   paladin -c /data/config.yaml
 ```
 
-**For production, use Postgres instead of SQLite:**
+**Step 4 — Verify:**
 
 ```bash
+# Check the container is running
+docker logs paladin --tail=30
+
+# Test the JSON-RPC endpoint
+curl -s http://localhost:8548/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"ptx_queryTransactions","params":[{}]}'
+```
+
+**Step 5 — Access the UI:**
+
+Open `http://localhost:8548/ui` in your browser.
+
+**Managing the container:**
+
+```bash
+docker stop paladin          # stop
+docker start paladin         # restart
+docker logs -f paladin       # follow logs
+docker rm -f paladin         # remove (data persists in ~/paladin-data)
+```
+
+**Using Postgres instead of SQLite (recommended for production):**
+
+```bash
+# Start Postgres alongside Paladin
 docker run -d --name paladin-db \
   -e POSTGRES_USER=paladin \
   -e POSTGRES_PASSWORD=paladin \
@@ -316,7 +422,7 @@ docker run -d --name paladin-db \
   -p 5432:5432 \
   postgres:15
 
-# Then update paladin-config.yaml:
+# Update paladin-config.yaml to use postgres:
 #   db:
 #     type: postgres
 #     postgres:
@@ -324,32 +430,276 @@ docker run -d --name paladin-db \
 #       autoMigrate: true
 ```
 
-### 4.1 (Alternative) Install Paladin via Kubernetes
+---
 
-For multi-node production deployments, Paladin can be managed by its Kubernetes operator. See the [full Kubernetes setup in the README](README.md) (Method C — k3s + Helm).
+### 4.2 Method B — Build from Source
 
-### 4.2 Verify Paladin
+For developers, air-gapped environments, or custom builds. Paladin is a Go project (85% Go) with Gradle orchestrating the full build.
 
-**Docker:**
+**Prerequisites:**
+- Go 1.22+ (`go version`)
+- JDK 17+ (`java -version`)
+- Node.js 18+ (`node --version`)
+- Protoc (`protoc --version`) — [install](https://grpc.io/docs/protoc-installation/)
+- Docker (for building domain plugins)
+- PostgreSQL or SQLite
+
+**Build:**
+
 ```bash
-docker logs paladin --tail=30
-
-curl -s http://localhost:8548/rpc \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"ptx_queryTransactions","params":[{}]}'
+git clone https://github.com/LFDT-Paladin/paladin.git
+cd paladin
+./gradlew build
 ```
 
-**Kubernetes (if using Method C):**
+This produces the `paladin` binary and domain plugin shared libraries (`.so` files for Noto, Pente, Zeto).
+
+**Run:**
+
 ```bash
-kubectl -n paladin get pods
-kubectl -n paladin get scd
-kubectl -n paladin get reg
+# Create config (same format as Method A, but with local file paths for domain plugins)
+./paladin -c /path/to/paladin-config.yaml
+```
+
+> See the [Paladin configuration reference](https://lfdt-paladin.github.io/paladin/head/administration/configuration/) for the full set of config options.
+
+---
+
+### 4.3 Method C — k3s + Helm (Kubernetes Operator)
+
+For multi-node production deployments, the Kubernetes operator provides managed lifecycle, auto-scaling, and declarative configuration. k3s is a lightweight single-binary Kubernetes distribution — it adds minimal overhead on a single server.
+
+**Step 1 — Install k3s + Helm:**
+```bash
+curl -sfL https://get.k3s.io | sh -
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+kubectl get nodes
+```
+
+For local development, [kind](https://kind.sigs.k8s.io/) is an alternative:
+```bash
+curl https://raw.githubusercontent.com/LFDT-Paladin/paladin/refs/heads/main/operator/paladin-kind.yaml -L -O
+kind create cluster --name paladin --config paladin-kind.yaml
+```
+
+**Step 2 — Install Paladin Operator CRDs:**
+
+```bash
+helm repo add paladin https://LFDT-Paladin.github.io/paladin --force-update
+helm upgrade --install paladin-crds paladin/paladin-operator-crd
+```
+
+**Step 3 — Install cert-manager:**
+
+```bash
+helm repo add jetstack https://charts.jetstack.io --force-update
+helm install cert-manager --namespace cert-manager --version v1.16.1 \
+  jetstack/cert-manager --create-namespace --set crds.enabled=true
+```
+
+**Step 4 — Deploy Paladin (single node, attached to Besu):**
+
+Create a values file:
+
+```yaml
+# values-dakota.yaml
+mode: customnet
+paladinNodes:
+  - name: dakota-node1
+    baseLedgerEndpoint:
+      type: endpoint
+      endpoint:
+        # --- Local Besu (same machine) ---
+        jsonrpc: http://host.docker.internal:8545
+        ws: ws://host.docker.internal:8546
+        # --- OR Remote Besu ---
+        # jsonrpc: http://<BESU_NODE_IP>:8545
+        # ws: ws://<BESU_NODE_IP>:8546
+        auth:
+          enabled: false
+    domains:
+      - noto
+      - zeto
+      - pente
+    registries:
+      - evm-registry
+    transports:
+      - name: grpc
+        plugin:
+          type: c-shared
+          library: /app/transports/libgrpc.so
+        config:
+          port: 9000
+          address: 0.0.0.0
+        ports:
+          transportGrpc:
+            port: 9000
+            targetPort: 9000
+    service:
+      type: NodePort
+      ports:
+        rpcHttp:
+          port: 8548
+          nodePort: 31548
+        rpcWs:
+          port: 8549
+          nodePort: 31549
+    database:
+      mode: sidecarPostgres
+      migrationMode: auto
+    secretBackedSigners:
+      - name: signer-auto-wallet
+        secret: dakota-node1.keys
+        type: autoHDWallet
+        keySelector: ".*"
+    paladinRegistration:
+      registryAdminNode: dakota-node1
+      registryAdminKey: registry.operator
+      registry: evm-registry
+    config: |
+      log:
+        level: info
+      publicTxManager:
+        gasLimit:
+          gasEstimateFactor: 2.0
+```
+
+> **Connecting to local Besu:** Use the machine's actual IP for k3s (not `localhost`). For kind, use `host.docker.internal`.
+>
+> **Connecting to remote Besu:** Replace with the remote node's IP/hostname. Ensure ports `8545` and `8546` are reachable from the Kubernetes pod network.
+
+Deploy:
+```bash
+helm install paladin paladin/paladin-operator -n paladin --create-namespace \
+  -f values-dakota.yaml
+```
+
+**Step 5 — Verify:**
+
+```bash
+kubectl -n paladin get pods             # Paladin pod + Postgres sidecar should be Running
+kubectl -n paladin get scd              # Smart contract deployments (noto, pente, zeto factories)
+kubectl -n paladin get reg              # Node registration status
 kubectl -n paladin logs deploy/dakota-node1 --tail=50
 ```
 
-The Paladin UI is available at `http://localhost:8548/ui` (Docker) or `http://<MACHINE_IP>:31548/ui` (k3s).
+**Adding Paladin nodes on other machines:**
 
-### 4.3 Create a Pente Privacy Group
+Use `attach` mode with the contract addresses from the primary node:
+
+```bash
+kubectl -n paladin get paladindomains,paladinregistries
+```
+
+Then on the new machine, create a values file with `mode: attach` and the contract addresses:
+
+```yaml
+# values-attach.yaml
+mode: attach
+smartContractsReferences:
+  notoFactory:
+    address: "0x..."    # from primary node output
+  zetoFactory:
+    address: "0x..."
+  penteFactory:
+    address: "0x..."
+  registry:
+    address: "0x..."
+paladinNodes:
+  - name: dakota-node2
+    baseLedgerEndpoint:
+      type: endpoint
+      endpoint:
+        jsonrpc: http://<BESU_NODE_IP>:8545
+        ws: ws://<BESU_NODE_IP>:8546
+        auth:
+          enabled: false
+    domains: [noto, zeto, pente]
+    registries: [evm-registry]
+    transports:
+      - name: grpc
+        plugin:
+          type: c-shared
+          library: /app/transports/libgrpc.so
+        config:
+          port: 9000
+          address: 0.0.0.0
+        ports:
+          transportGrpc:
+            port: 9000
+            targetPort: 9000
+    service:
+      type: NodePort
+      ports:
+        rpcHttp:
+          port: 8548
+          nodePort: 31548
+        rpcWs:
+          port: 8549
+          nodePort: 31549
+    database:
+      mode: sidecarPostgres
+      migrationMode: auto
+    secretBackedSigners:
+      - name: signer-auto-wallet
+        secret: dakota-node2.keys
+        type: autoHDWallet
+        keySelector: ".*"
+    paladinRegistration:
+      registryAdminNode: dakota-node1
+      registryAdminKey: registry.operator
+      registry: evm-registry
+    config: |
+      log:
+        level: info
+```
+
+```bash
+helm install paladin paladin/paladin-operator -n paladin --create-namespace \
+  -f values-attach.yaml
+```
+
+**Uninstall:**
+
+```bash
+helm uninstall paladin -n paladin
+helm uninstall paladin-crds
+kubectl delete namespace paladin
+helm uninstall cert-manager -n cert-manager
+kubectl delete namespace cert-manager
+```
+
+---
+
+### 4.4 Paladin Privacy Domains
+
+| Domain | Description |
+|--------|-------------|
+| **Noto** | Notarized tokens — issuer-backed private token transfers |
+| **Zeto** | ZKP tokens — zero-knowledge proof backed private transfers |
+| **Pente** | Private EVM smart contracts — privacy groups with private state |
+
+### 4.5 Paladin UI
+
+The Paladin node runs a web UI at `/ui`:
+- **Docker:** `http://localhost:8548/ui`
+- **k3s:** `http://<MACHINE_IP>:31548/ui`
+- **kind:** `http://localhost:31548/ui`
+
+### 4.6 Paladin Resources
+
+- **Documentation:** <https://lfdt-paladin.github.io/paladin/head>
+- **GitHub:** <https://github.com/LFDT-Paladin/paladin>
+- **Latest release:** v0.15.0
+- **Configuration reference:** <https://lfdt-paladin.github.io/paladin/head/administration/configuration/>
+- **Tutorials:** <https://lfdt-paladin.github.io/paladin/head/tutorials/>
+- **Advanced installation (Helm):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
+- **Manual installation (Helm CRDs):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-manual/>
+- **Docker image:** `ghcr.io/lfdt-paladin/paladin:latest`
+- **Discord:** [paladin channel on LFDT Discord](https://discord.com/channels/905194001349627914/1303371167020879903)
+- **Tessera sunset announcement:** <https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu>
+
+### 4.7 Create a Pente Privacy Group
 
 Use the Paladin JSON-RPC API to create a privacy group for code storage:
 
@@ -376,7 +726,7 @@ curl -X POST http://localhost:8548/rpc \
 
 The response contains a `privacyGroupAddress` — record this for PrivateComboStorage deployment.
 
-### 4.4 Authorize the Privacy Group on CodeManager
+### 4.8 Authorize the Privacy Group on CodeManager
 
 After creating the privacy group, the CodeManager voters must authorize it:
 
@@ -387,6 +737,28 @@ await codeManager.voteToAuthorizePrivacyGroup(privacyGroupAddress);
 ```
 
 Once the supermajority is reached, `isAuthorizedPrivacyGroup[privacyGroupAddress]` becomes `true`, allowing PrivateComboStorage's `PenteExternalCall` events to be accepted by CodeManager's router functions.
+
+### 4.9 Documentation & References
+
+#### Besu
+
+Besu documentation has moved to a self-hosted versioned model.
+
+- **Versioned documentation index:** <https://lf-hyperledger.atlassian.net/wiki/spaces/BESU/pages/22156555/Versioned+documentation>
+- **Besu GitHub releases:** <https://github.com/hyperledger/besu/releases/tag/26.1.0>
+- **Besu 26.1.0 release notes:** <https://github.com/hyperledger/besu/releases/tag/26.1.0>
+
+#### Paladin (Privacy Manager)
+
+Paladin replaces Tessera as the recommended privacy solution for Besu networks.
+
+- **Paladin docs:** <https://lfdt-paladin.github.io/paladin/head>
+- **Paladin GitHub:** <https://github.com/LFDT-Paladin/paladin>
+- **Docker image:** `ghcr.io/lfdt-paladin/paladin:latest`
+- **Configuration reference:** <https://lfdt-paladin.github.io/paladin/head/administration/configuration/>
+- **Installation guide (Helm):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation>
+- **Advanced installation (Helm):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
+- **Tessera sunset announcement:** <https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu>
 
 ---
 
