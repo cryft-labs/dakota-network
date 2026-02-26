@@ -74,7 +74,7 @@ All Ethereum hard forks through Fusaka are activated from genesis (block 0 / tim
 | **Shanghai** | `shanghaiTime: 0` | Timestamp 0 | PUSH0 (EIP-3855), warm COINBASE (EIP-3651), initcode limits (EIP-3860) |
 | **Cancun** | `cancunTime: 0` | Timestamp 0 | Transient storage TSTORE/TLOAD (EIP-1153), MCOPY (EIP-5656), SELFDESTRUCT neutered (EIP-6780) |
 | **Prague/Pectra** | `pragueTime: 0` | Timestamp 0 | EIP-7702 (EOA code delegation), EIP-7251 (max effective balance), EIP-7002 (execution layer withdrawals) |
-| **Fusaka** | `fusakaTime: 0` | Timestamp 0 | EIP-7594 (PeerDAS), EIP-7692 (EOF v1), EIP-7823 (set max blob count), EIP-7691 (blob throughput increase) |
+| **Osaka** | `osakaTime: 0` | Timestamp 0 | EIP-7594 (PeerDAS), EIP-7692 (EOF v1), EIP-7823 (set max blob count), EIP-7691 (blob throughput increase) |
 
 #### Alloc Entries (32,432 total)
 
