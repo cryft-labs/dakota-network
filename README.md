@@ -183,6 +183,26 @@ Three independent management domains can be **permanently and irreversibly** rev
 
 Once all three are revoked, this contract's local lists are permanently frozen. All governance is delegated to the listed external contracts. The contract continues to serve aggregation queries (`getValidators()`, `getVoters()`, `getRootOverlords()`) combining local (frozen) and external (live) data.
 
+#### Convenience View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `isVoter(address)` | `bool` | Check if address is a voter (local + external contracts) |
+| `isValidator(address)` | `bool` | Check if address is an active validator (local + external) |
+| `isRootOverlord(address)` | `bool` | Check if address is a root overlord (local + external) |
+| `getVoters()` | `address[]` | All voters (local `votersArray` + external contracts) |
+| `getValidators()` | `address[]` | All validators (local + external contracts) |
+| `getRootOverlords()` | `address[]` | All root overlords (local + external contracts) |
+| `getSupermajorityThreshold()` | `uint256` | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
+| `getVoteTally(VoteType, target)` | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target |
+| `MAX_VALIDATORS` | `uint256` | Current validator cap |
+| `voteTallyBlockThreshold` | `uint256` | Blocks before a vote tally expires (default: 1,000) |
+| `activeVoteCount` | `uint256` | Number of currently active vote tallies |
+| `overlordManagementRevoked` | `bool` | Whether overlord management has been permanently revoked |
+| `validatorManagementRevoked` | `bool` | Whether validator management has been permanently revoked |
+| `voterManagementRevoked` | `bool` | Whether voter management has been permanently revoked |
+| `hasVoted[VoteType][target][addr]` | `bool` | Whether an address has voted on a specific tally |
+
 #### Lockout Prevention
 
 | Scenario | Guard |
@@ -248,6 +268,27 @@ Voters can burn any amount of the contract's native coin balance via `voteToBurn
 #### Voter Pool (Independent)
 
 The GasManager has its own local `votersArray[]` and pluggable `otherVoterContracts[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External voter contracts must implement `getVoters()` and `isVoter()`. Quorum is `(totalVoterCount * 2 + 2) / 3`.
+
+#### Convenience View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `isVoter(address)` | `bool` | Check if address is a voter (local + external contracts) |
+| `getVoters()` | `address[]` | All voters (local `votersArray` + external contracts) |
+| `getSupermajorityThreshold()` | `uint256` | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
+| `getVoteTally(VoteType, target)` | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target |
+| `getContractBalance()` | `uint256` | Native coin balance held by this contract |
+| `getTokenBalance(token)` | `uint256` | ERC-20 token balance held by this contract |
+| `getGuardians()` | `address[]` | All guardian addresses |
+| `getGuardianCount()` | `uint256` | Number of guardians |
+| `isGuardian[addr]` | `bool` | Whether an address is a guardian |
+| `totalGasFunded` | `uint256` | Cumulative native coin funded to date |
+| `voteTallyBlockThreshold` | `uint256` | Blocks before a vote tally expires (default: 1,000) |
+| `activeVoteCount` | `uint256` | Number of currently active vote tallies |
+| `approvedFunds[key]` | `bool` | Whether a fund-gas operation has been approved |
+| `approvedBurns[key]` | `bool` | Whether a token-burn operation has been approved |
+| `approvedCoinBurns[key]` | `bool` | Whether a native-coin-burn operation has been approved |
+| `hasVoted[VoteType][target][addr]` | `bool` | Whether an address has voted on a specific tally |
 
 #### Lockout Prevention
 
@@ -415,8 +456,269 @@ CodeManager (independent)
 | Contract | Purpose |
 |----------|---------|
 | **CodeManager** | **Patent-covered.** Permissionless unique ID registry. Own independent voter pool with pluggable `otherVoterContracts[]`, 2/3 supermajority quorum, voter-pool freeze while tallies are active. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`. |
-| **ComboStorage** | **Patent-covered.** Redemption verification service. Validates codes against CodeManager, records verified redemptions. Access-controlled via CodeManager's whitelist. |
+| **ComboStorage** | **Patent-covered.** Public redemption verification service. Validates codes against CodeManager, records verified redemptions. Access-controlled via overlord whitelist. |
+| **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores hash+salt pairs privately, verifies redemption codes, emits `PenteExternalCall` events to route state changes through CodeManager to the gift contract on the public chain. |
+| **DakotaDelegation** | EIP-7702 delegation target. EOAs delegate to this contract for smart-account capabilities: single/batch execution, sponsored execution (EIP-712), session keys, EIP-1271 signature validation. |
+| **GasSponsor** | On-chain gas sponsorship treasury. Per-sponsor deposits, authorized relayer management, daily/per-claim spending limits, optional target allowlisting, and integrated `sponsoredCall` forwarding with automatic gas metering and reimbursement. |
 | **CryftGreetingCards** | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase with atomic CodeManager registration. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Explicit freeze for lost/stolen codes. Interfacing with the redeemable-code service is permitted with proper fees or license. |
+
+---
+
+### CodeManager (Unique ID Registry + Pente Router)
+
+Permissionless unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`. Voter-pool changes are blocked while any tally is active (`activeVoteCount > 0`).
+
+Also serves as the Pente router — authorized privacy groups call router functions (`recordRedemption`, `setUidFrozen`, `setUidContent`) which resolve the UID to its gift contract and forward via `IRedeemable`. CodeManager stores **no per-UID state** — it is a thin registry + router only. The gift contract is the **sole authority** on per-UID state.
+
+#### Governance Actions (all require voter supermajority)
+
+| Action | Function | Constraints |
+|--------|----------|-------------|
+| Add whitelisted address | `voteToAddWhitelistedAddress(address)` | Voter supermajority required |
+| Remove whitelisted address | `voteToRemoveWhitelistedAddress(address)` | Voter supermajority required |
+| Update registration fee | `voteToUpdateRegistrationFee(uint256)` | Voter supermajority required |
+| Update fee vault | `voteToUpdateFeeVault(address)` | Voter supermajority required |
+| Add voter | `voteToAddVoter(address)` | `activeVoteCount == 0`; not already a voter |
+| Remove voter | `voteToRemoveVoter(address)` | `activeVoteCount == 0`; `getVoters().length > 1` |
+| Add external voter contract | `voteToAddOtherVoterContract(address)` | `activeVoteCount == 0`; must implement `getVoters()` + `isVoter()` |
+| Remove external voter contract | `voteToRemoveOtherVoterContract(address)` | `activeVoteCount == 0` |
+| Update vote tally block threshold | `voteToUpdateVoteTallyBlockThreshold(uint256)` | 1 to 100,000 blocks |
+| Authorize/de-authorize privacy group | `voteToAuthorizePrivacyGroup(address)` | Toggles `isAuthorizedPrivacyGroup[addr]`; voter supermajority required |
+| Reset expired tally | `resetExpiredTally(VoteType, uint256)` | Voter-only; tally must have expired |
+
+#### Pente Router Functions (called by authorized privacy groups)
+
+| Function | Description |
+|----------|-------------|
+| `recordRedemption(uniqueId, redeemer)` | Resolves UID → gift contract, calls `IRedeemable.recordRedemption()` |
+| `setUidFrozen(uniqueId, frozen)` | Resolves UID → gift contract, calls `IRedeemable.setFrozen()` |
+| `setUidContent(uniqueId, contentId)` | Resolves UID → gift contract, calls `IRedeemable.setContent()` |
+
+#### Registration (permissionless)
+
+| Function | Description |
+|----------|-------------|
+| `registerUniqueIds(giftContract, chainId, quantity)` | Payable — `registrationFee × quantity`. Forwards fee to `feeVault`. Increments counter range for the gift contract. |
+
+#### Convenience View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `isVoter(address)` | `bool` | Check if address is a voter (local + external contracts) |
+| `getVoters()` | `address[]` | All voters (local `votersArray` + external contracts) |
+| `getSupermajorityThreshold()` | `uint256` | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
+| `getVoteTally(VoteType, target)` | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target |
+| `validateUniqueId(uniqueId)` | `bool` | Check if a UID is valid (registered and within counter range) |
+| `getUniqueIdDetails(uniqueId)` | `(giftContract, chainId, counter)` | Resolve a UID to its gift contract, chain, and counter |
+| `getContractData(contractIdentifier)` | `ContractData` | Look up the gift contract and chain ID for a contract identifier |
+| `getIdentifierCounter(giftContract, chainId)` | `(contractIdentifier, counter)` | Get the current counter for a gift contract + chain pair |
+| `isUniqueIdFrozen(uniqueId)` | `bool` | Router pass-through — reads frozen status from the gift contract |
+| `isUniqueIdRedeemed(uniqueId)` | `bool` | Router pass-through — reads redeemed status from the gift contract |
+| `getUniqueIdContent(uniqueId)` | `string` | Router pass-through — reads content ID from the gift contract |
+| `registrationFee` | `uint256` | Current per-UID registration fee (wei) |
+| `feeVault` | `address` | Address that receives registration fees |
+| `voteTallyBlockThreshold` | `uint256` | Blocks before a vote tally expires (default: 1,000) |
+| `activeVoteCount` | `uint256` | Number of currently active vote tallies |
+| `isWhitelistedAddress[addr]` | `bool` | Whether an address is whitelisted for legacy operations |
+| `isAuthorizedPrivacyGroup[addr]` | `bool` | Whether an address is an authorized Pente privacy group |
+| `hasVoted[VoteType][target][addr]` | `bool` | Whether an address has voted on a specific tally |
+
+---
+
+### ComboStorage (Public Redemption Verification)
+
+Public-chain redemption verification service. Stores `keccak256(giftCode)` hashes indexed by PIN for O(1) lookup. Validates submitted codes against stored hashes, queries gift contracts for frozen/redeemed status via `IRedeemable` (read-only), then records the verified redemption. No cleartext code ever touches the chain.
+
+#### Access Control
+
+| Role | How Assigned | Powers |
+|------|-------------|--------|
+| **Overlord** | Hard-coded at deployment | Add/remove whitelist entries |
+| **Whitelisted** | Added by overlord | Store code hashes, redeem codes |
+
+#### Write Functions
+
+| Function | Description |
+|----------|-------------|
+| `storeDataBatch(uniqueIds[], pins[], codeHashes[])` | Whitelisted-only. Bulk store pre-computed hashes. Partial success — invalid entries skipped with `status=false` event. |
+| `redeemCode(pin, codeHash)` | Whitelisted-only. Verify code, check frozen/redeemed via `IRedeemable`, record redemption, clear stored hash. |
+
+#### Convenience View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `isRedemptionVerified[uniqueId]` | `bool` | Whether a UID has been verified for redemption |
+| `redemptionRedeemer[uniqueId]` | `address` | The address that redeemed a verified UID |
+| `pinSlotCount[pin]` | `uint256` | Number of hashes stored under a PIN |
+| `isWhitelisted[addr]` | `bool` | Whether an address is whitelisted |
+| `codeManager` | `ICodeManager` | The CodeManager contract address |
+| `overlord` | `address` | The overlord address |
+| `MAX_PER_PIN` | `uint256` | Maximum entries per PIN slot (32) |
+| `isFrozen(uniqueId)` | `bool` | Returns `false` (legacy stub — see PrivateComboStorage for Pente implementation) |
+| `isRedeemed(uniqueId)` | `bool` | Returns `false` (legacy stub) |
+| `getContentId(uniqueId)` | `string` | Returns `""` (legacy stub) |
+
+---
+
+### PrivateComboStorage (Pente Privacy Group)
+
+Deployed inside a Paladin Pente privacy group. All state is private to privacy group members. Stores hash+salt pairs, verifies codes via hash comparison, and manages per-UID state (frozen, redeemed, content) privately. On state changes, emits `PenteExternalCall` events that atomically route through CodeManager to the gift contract on the public chain.
+
+#### Access Control
+
+| Role | How Assigned | Powers |
+|------|-------------|--------|
+| **Admin** | Deployer (constructor `msg.sender`) | Authorize/deauthorize callers, all storage and redemption operations |
+| **Authorized** | Added by admin | Store code hashes, redeem codes, set frozen/content |
+
+#### Write Functions
+
+| Function | Description |
+|----------|-------------|
+| `storeDataBatch(uniqueIds[], pins[], codeHashes[])` | Bulk store hashes. Each entry defaults to `frozen=true`. Partial success allowed. |
+| `redeemCode(pin, codeHash)` | Verify code, update private state, emit `PenteExternalCall` to route `recordRedemption` through CodeManager. |
+| `setFrozen(uniqueId, frozen)` | Update private frozen state + emit `PenteExternalCall` to route `setUidFrozen` through CodeManager. |
+| `setContent(uniqueId, contentId)` | Update private content + emit `PenteExternalCall` to route `setUidContent` through CodeManager. |
+| `authorize(address)` | Admin-only. Add authorized caller. |
+| `deauthorize(address)` | Admin-only. Remove authorized caller. |
+
+#### Convenience View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `isFrozen(uniqueId)` | `bool` | Private frozen status for a UID |
+| `isRedeemed(uniqueId)` | `bool` | Private redeemed status for a UID |
+| `getContentId(uniqueId)` | `string` | Private content identifier for a UID |
+| `isRedemptionVerified[uniqueId]` | `bool` | Whether a UID has been verified for redemption (private) |
+| `redemptionRedeemer[uniqueId]` | `address` | Redeemer address for a verified UID (private) |
+| `pinSlotCount[pin]` | `uint256` | Number of hashes stored under a PIN |
+| `isAuthorized[addr]` | `bool` | Whether an address is authorized |
+| `admin` | `address` | Admin address |
+| `codeManager` | `address` | CodeManager address on the public chain |
+| `MAX_PER_PIN` | `uint256` | Maximum entries per PIN slot (32) |
+
+---
+
+### DakotaDelegation (EIP-7702 Delegation Target)
+
+EIP-7702 delegation target for EOA smart-account capabilities. EOAs delegate to this contract via a type `0x04` transaction to gain execution batching, sponsored execution, session keys, and EIP-1271 signature validation — without creating a separate smart-contract wallet.
+
+Uses ERC-7201 namespaced storage (`keccak256("dakota.delegation.v1")`) to avoid slot collisions if the EOA later re-delegates to a different implementation.
+
+#### Access Control
+
+| Role | How | Powers |
+|------|-----|--------|
+| **Owner** (`address(this)` = the delegating EOA) | EIP-7702 delegation | All account operations, session key management |
+| **Session Key** | Added by owner via `addSessionKey()` | Execute calls (single + batch) until expiry |
+| **Sponsor** (anyone) | Provides owner's EIP-712 signature | Execute sponsored batches on behalf of the owner |
+
+#### Write Functions
+
+| Function | Access | Description |
+|----------|--------|-------------|
+| `execute(target, value, data)` | Owner or session key | Single call execution with reentrancy protection |
+| `executeBatch(calls[])` | Owner or session key | Batch call execution |
+| `executeSponsored(calls[], nonce, deadline, ownerSignature)` | Anyone (with valid EIP-712 owner signature) | Sponsored batch execution — relayer pays gas, owner authorizes via signature |
+| `addSessionKey(key, expiry)` | Owner only | Grant temporary execution rights |
+| `removeSessionKey(key)` | Owner only | Revoke session key |
+
+#### Convenience View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `getNonce()` | `uint256` | Current sponsored-execution nonce (increments per `executeSponsored` call) |
+| `isValidSessionKey(address)` | `bool` | Whether a key is an active, non-expired session key |
+| `domainSeparator()` | `bytes32` | EIP-712 domain separator (unique per delegating EOA since `verifyingContract = address(this)`) |
+| `isValidSignature(hash, signature)` | `bytes4` | EIP-1271: returns `0x1626ba7e` if signature is valid for the account owner, `0xffffffff` otherwise |
+
+#### Token Receiving
+
+Supports `receive()` (native tokens), `onERC721Received()` (ERC-721 safe transfers), `onERC1155Received()` and `onERC1155BatchReceived()` (ERC-1155 transfers).
+
+---
+
+### GasSponsor (On-Chain Gas Sponsorship Treasury)
+
+Per-sponsor gas deposit and reimbursement contract. Sponsors deposit native tokens and authorize relayers to claim reimbursement for sponsored transactions. Designed for use alongside DakotaDelegation and EIP-7702 delegation targets. Not voter-governed — each sponsor independently manages their own relayers and limits.
+
+#### Sponsor Management Functions
+
+| Function | Description |
+|----------|-------------|
+| `deposit()` | Payable. Deposit native tokens as a sponsor. Also accepts bare `receive()` transfers. |
+| `withdraw(amount)` | Withdraw deposited funds (reentrancy-protected). |
+| `authorizeRelayer(relayer)` | Authorize an address to claim gas reimbursement from your deposit. |
+| `revokeRelayer(relayer)` | Revoke a relayer's authorization. |
+| `setMaxClaimPerTx(amount)` | Cap the maximum reimbursement per single claim (0 = unlimited). |
+| `setDailyLimit(amount)` | Cap daily total spending (0 = unlimited). Auto-resets every 24 hours. |
+| `addAllowedTarget(target)` | Restrict sponsored calls to specific target contracts. |
+| `removeAllowedTarget(target)` | Remove a target from the allowlist. |
+| `disableTargetAllowlist()` | Disable target restrictions (allow any target). |
+
+#### Reimbursement Functions
+
+| Function | Description |
+|----------|-------------|
+| `claim(sponsor, amount)` | Authorized relayer claims a specific amount from a sponsor's balance (reentrancy-protected). |
+| `sponsoredCall(sponsor, target, value, data)` | Forward a call on behalf of a sponsor. Automatically meters gas, reimburses the relayer, and debits the sponsor. Target allowlist enforced if enabled. |
+| `topOff(sponsor, amount)` | GasManager guardian-only. Pull approved funds from GasManager into a sponsor's balance. |
+
+#### Convenience View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `getSponsorInfo(sponsor)` | `(balance, maxClaimPerTx, dailyLimit, dailySpent, active, useTargetAllowlist)` | Full state snapshot for a sponsor (daily spent auto-resets for the current day) |
+| `isAuthorizedRelayer(sponsor, relayer)` | `bool` | Whether a relayer is authorized for a sponsor |
+| `isAllowedTarget(sponsor, target)` | `bool` | Whether a target is on a sponsor's allowlist |
+| `GAS_MANAGER` | `address` | Genesis GasManager contract address (`0x...cafE`) |
+
+---
+
+### CryftGreetingCards (ERC-721 NFT)
+
+ERC-721 NFT gift card contract. Service client of the redeemable-code system — not itself patent-covered. Mint-on-purchase with atomic CodeManager registration. Uses per-batch `PurchaseSegment` storage for O(1) buyer/URI lookups via binary search. Tokens live in an internal vault until redemption.
+
+#### Status Derivation (no explicit state flags)
+
+| Status | Derivation |
+|--------|-----------|
+| **Frozen** | Token not yet minted (not purchased), OR explicitly frozen by admin/buyer |
+| **Redeemed** | Token exists AND is no longer held by the vault (`ownerOf(tokenId) != address(this)`) |
+
+#### Write Functions
+
+| Function | Access | Description |
+|----------|--------|-------------|
+| `buy(buyer, quantity, redeemedBaseURI)` | Anyone (payable) | Purchase cards — pays `pricePerCard × qty + registrationFee × qty`. Mints into vault, registers on CodeManager atomically. |
+| `claimRedemption(uniqueId, recipient)` | Verified redeemer (via ComboStorage) | Transfer NFT from vault to recipient. Recipient ≠ msg.sender (gift flow). |
+| `setFrozen(tokenId, frozen)` | Buyer or owner | Freeze/unfreeze a card in the vault (lost/stolen code protection). |
+| `recordRedemption(uniqueId, redeemer)` | CodeManager only (Pente router) | Route redemption from privacy group — transfers NFT from vault to redeemer. |
+| `setFrozen(uniqueId, frozen)` (IRedeemable) | CodeManager only | Route freeze from privacy group. |
+| `setContent(uniqueId, contentId)` (IRedeemable) | CodeManager only | No-op for GreetingCards (content is batch-level IPFS metadata). |
+
+#### Convenience View Functions
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `getCardStatus(uniqueId)` | `(tokenId, nftHolder, frozen, redeemed)` | Single-call full card status — use for UI status displays |
+| `tokenURI(tokenId)` | `string` | IPFS metadata URI — unredeemed: `baseTokenURI/tokenId.json`; redeemed: per-batch redeemed URI |
+| `contractURI()` | `string` | Collection-level metadata for marketplaces (OpenSea standard) |
+| `ownerOf(tokenId)` | `address` | Current holder — vault address if unredeemed, recipient if redeemed |
+| `totalSupply()` | `uint256` | Total minted tokens |
+| `availableSupply()` | `uint256` | Cards registered but not yet purchased |
+| `pricePerCard` | `uint256` | Current price per card (wei) |
+| `registeredSupply` | `uint256` | Total cards available for purchase |
+| `totalRedeems` | `uint256` | Total number of redeemed cards |
+| `getUniqueIdForToken(tokenId)` | `string` | Compute uniqueId from tokenId (deterministic, no storage) |
+| `getTokenForUniqueId(uniqueId)` | `uint256` | Parse tokenId from uniqueId (no storage) |
+| `cardBuyer(tokenId)` | `address` | Original purchaser (binary search through purchase segments) |
+| `getCardCreator()` | `address` | Creator who registered the uniqueIds on CodeManager |
+| `isUniqueIdFrozen(uniqueId)` | `bool` | Derived frozen status (IRedeemable implementation) |
+| `isUniqueIdRedeemed(uniqueId)` | `bool` | Derived redeemed status (IRedeemable implementation) |
+| `getUniqueIdContent(uniqueId)` | `string` | Returns `""` (content is batch-level IPFS, not per-UID) |
+| `isValidUniqueId(uniqueId)` | `bool` | Validates against CodeManager registry (read-only pass-through) |
+| `getDetailsFromCodeManager(uniqueId)` | `(giftContract, chainId, counter)` | Fetches UID details from CodeManager (read-only pass-through) |
 
 ---
 
@@ -658,9 +960,16 @@ As long as all parties compile from LF-normalized sources, the resulting bytecod
 dakota-network/
 ├── LICENSE                            # Apache 2.0 + patent notice
 ├── Contracts/
+│   ├── 7702/
+│   │   ├── DakotaDelegation.sol      # EIP-7702 delegation target (session keys, EIP-1271)
+│   │   ├── GasSponsor.sol            # On-chain gas sponsorship treasury
+│   │   └── interfaces/
+│   │       ├── IDakotaDelegation.sol
+│   │       └── IGasSponsor.sol
 │   ├── Code Management/
 │   │   ├── CodeManager.sol           # Permissionless unique ID registry (fee-based)
-│   │   ├── ComboStorage.sol          # Redemption verification service
+│   │   ├── ComboStorage.sol          # Public redemption verification service
+│   │   ├── PrivateComboStorage.sol   # Pente privacy group (private redemption)
 │   │   └── interfaces/
 │   │       ├── ICodeManager.sol
 │   │       ├── IComboStorage.sol
