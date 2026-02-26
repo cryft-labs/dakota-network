@@ -623,14 +623,14 @@ The genesis file (`Contracts/Genesis/besuGenesis.json`, ~1.07 GB) contains the f
 |-----------|-------|
 | **Chain ID** | `112311` |
 | **Consensus** | QBFT (Istanbul BFT) |
-| **Gas limit** | 32,000,000 |
+| **Gas limit** | 64,000,000 (`0x3D09000`) |
 | **Block reward** | 3.2 ETH per block (sent to `miningBeneficiary`) |
 | **Contract size limit** | 32,768 bytes (32 KiB) |
-| **EVM fork** | Prague/Pectra (all forks enabled from genesis) |
+| **EVM fork** | Fusaka (all forks through Fusaka enabled from genesis) |
 
 #### Ethereum Fork Activation
 
-All Ethereum hard forks through Prague/Pectra are activated from genesis (block 0 / timestamp 0). Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention.
+All Ethereum hard forks through Fusaka are activated from genesis (block 0 / timestamp 0). Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention.
 
 | Fork | Genesis Key | Activation | Notable EIPs |
 |------|------------|------------|--------------|
@@ -647,6 +647,7 @@ All Ethereum hard forks through Prague/Pectra are activated from genesis (block 
 | **Shanghai** | `shanghaiTime: 0` | Timestamp 0 | PUSH0 (EIP-3855), warm COINBASE (EIP-3651), initcode limits (EIP-3860) |
 | **Cancun** | `cancunTime: 0` | Timestamp 0 | Transient storage TSTORE/TLOAD (EIP-1153), MCOPY (EIP-5656), SELFDESTRUCT neutered (EIP-6780) |
 | **Prague/Pectra** | `pragueTime: 0` | Timestamp 0 | EIP-7702 (EOA code delegation), EIP-7251 (max effective balance), EIP-7002 (execution layer withdrawals) |
+| **Fusaka** | `fusakaTime: 0` | Timestamp 0 | EIP-7594 (PeerDAS), EIP-7692 (EOF v1), EIP-7823 (set max blob count), EIP-7691 (blob throughput increase) |
 
 #### Alloc Entries (32,432 total)
 
@@ -1192,7 +1193,33 @@ python3 Tools/solc_compiler/compile.py
 Options:
 - `--clean-cache` — clear downloaded import cache
 - `--solc-version 0.8.34` — override compiler version
-- `--evm berlin` — override EVM target
+- `--evm prague` — override EVM target (default: `prague`)
+
+#### LF Normalization & Per-Contract Metadata
+
+The compiler normalizes all source files to Unix LF line endings (`\n`) before compilation. This is critical for deterministic, cross-platform builds: `solc` includes a `keccak256` hash of each source file in the IPFS metadata appended to the bytecode tail. Windows CRLF (`\r\n`) vs Unix LF (`\n`) produces different hashes, which changes the IPFS CID embedded in the final ~43 bytes of every contract's bytecode — even though the executable logic is identical.
+
+Normalization is applied at three points:
+
+| Stage | What happens |
+|-------|-------------|
+| **Local source copy** | `_copy_normalized()` strips `\r\n` → `\n` when copying `.sol` files into the build directory |
+| **Import downloads** | Remote files fetched from GitHub are normalized on download |
+| **All output writes** | ABI, artifact, metadata, and manifest files are written with `newline="\n"` |
+
+The compiler also exports each contract's **solc metadata JSON** (the JSON blob whose IPFS hash is embedded in the bytecode) as a `_metadata.json` file alongside the standard ABI and artifact outputs. This file can be published to IPFS or Sourcify for on-chain source verification:
+
+```
+compiled_output/
+  7702/
+    DakotaDelegation/
+      DakotaDelegation_abi.json
+      DakotaDelegation_artifact.json
+      DakotaDelegation_metadata.json    # solc metadata (IPFS-verifiable)
+      ...
+```
+
+As long as all parties compile from LF-normalized sources, the resulting bytecode — including the metadata tail — will be identical regardless of operating system.
 
 ---
 

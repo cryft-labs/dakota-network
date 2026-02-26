@@ -112,7 +112,7 @@ def _download_file(raw_url: str, local_path: Path) -> bool:
     print(f"  Downloading: {raw_url}")
     try:
         req = urllib.request.urlopen(raw_url, context=_ssl_context)
-        local_path.write_bytes(req.read())
+        local_path.write_bytes(req.read().replace(b"\r\n", b"\n"))
         return True
     except Exception as e:
         print(f"  Warning: Failed to download {raw_url}: {e}")
@@ -220,7 +220,7 @@ def resolve_imports_in_file(sol_file: Path, cache_dir: Path, _visited: set = Non
                     if _download_file(raw_url, resolved):
                         resolve_imports_in_file(resolved, cache_dir, _visited)
 
-    sol_file.write_text(content, encoding="utf-8")
+    sol_file.write_text(content, encoding="utf-8", newline="\n")
 
 
 def prepare_source(sol_path: str, cache_dir: Path) -> Path:
@@ -241,6 +241,18 @@ def prepare_source(sol_path: str, cache_dir: Path) -> Path:
     return dst
 
 
+def _copy_normalized(src: Path, dst: Path):
+    """Copy a source file, normalizing CRLF to LF for deterministic builds.
+
+    solc includes a keccak256 of each source file in the IPFS metadata hash
+    appended to the bytecode.  Windows CRLF vs Unix LF produces different
+    hashes, so we strip \\r\\n -> \\n before writing to the build directory."""
+    normalized = src.read_bytes().replace(b"\r\n", b"\n")
+    if dst.exists() and dst.read_bytes() == normalized:
+        return
+    dst.write_bytes(normalized)
+
+
 def copy_local_tree(src_file: Path, work_dir: Path, visited: set):
     """Recursively copy local import dependencies."""
     src_file = src_file.resolve()
@@ -249,8 +261,7 @@ def copy_local_tree(src_file: Path, work_dir: Path, visited: set):
     visited.add(src_file)
 
     dst = work_dir / src_file.name
-    if not dst.exists() or dst.read_text(encoding="utf-8", errors="replace") != src_file.read_text(encoding="utf-8", errors="replace"):
-        shutil.copy2(src_file, dst)
+    _copy_normalized(src_file, dst)
 
     content = src_file.read_text(encoding="utf-8", errors="replace")
     imports = re.findall(r'import\s+"([^"]+)";', content)
@@ -265,8 +276,7 @@ def copy_local_tree(src_file: Path, work_dir: Path, visited: set):
             rel = os.path.relpath(imp_path, src_file.parent)
             dest_path = work_dir / rel
             dest_path.parent.mkdir(parents=True, exist_ok=True)
-            if not dest_path.exists():
-                shutil.copy2(imp_path, dest_path)
+            _copy_normalized(imp_path, dest_path)
             copy_local_tree(imp_path, dest_path.parent, visited)
 
 
@@ -281,8 +291,8 @@ VALID_EVM_VERSIONS = [
     "prague",
 ]
 
-DEFAULT_SOLC_VERSION = "0.8.19"
-DEFAULT_EVM_VERSION = "cancun"
+DEFAULT_SOLC_VERSION = "0.8.34"
+DEFAULT_EVM_VERSION = "prague"
 
 # Maximum EVM version supported by each solc range
 _SOLC_EVM_CAPS = [
@@ -493,6 +503,7 @@ def compile_contract(
             "creation_bytecode": f"0x{creation}" if creation else "",
             "abi": contract_data.get("abi", []),
             "opcodes": contract_data.get("opcodes", ""),
+            "metadata": contract_data.get("metadata", ""),
             "runtime_size_bytes": len(bytes.fromhex(runtime)) if runtime else 0,
             "creation_size_bytes": len(bytes.fromhex(creation)) if creation else 0,
         }
@@ -541,13 +552,16 @@ def save_results(results: dict, output_dir: str):
 
     for name, data in results.items():
         # Runtime bytecode
-        (out / f"{name}_runtime.bin").write_text(data["runtime_bytecode"])
+        (out / f"{name}_runtime.bin").write_text(data["runtime_bytecode"], newline="\n")
         # Creation bytecode
-        (out / f"{name}_creation.bin").write_text(data["creation_bytecode"])
+        (out / f"{name}_creation.bin").write_text(data["creation_bytecode"], newline="\n")
         # ABI
-        (out / f"{name}_abi.json").write_text(json.dumps(data["abi"], indent=2))
+        (out / f"{name}_abi.json").write_text(json.dumps(data["abi"], indent=2), newline="\n")
         # Full artifact
-        (out / f"{name}_artifact.json").write_text(json.dumps(data, indent=2))
+        (out / f"{name}_artifact.json").write_text(json.dumps(data, indent=2), newline="\n")
+        # Solc metadata (the JSON whose IPFS hash is embedded in bytecode)
+        if data.get("metadata"):
+            (out / f"{name}_metadata.json").write_text(data["metadata"], newline="\n")
 
     print(f"Artifacts saved to: {out.resolve()}")
 
@@ -695,7 +709,7 @@ def compile_all(
 
     # Save manifest
     manifest_path = OUTPUT_DIR / "manifest.json"
-    manifest_path.write_text(json.dumps(summary, indent=2))
+    manifest_path.write_text(json.dumps(summary, indent=2), newline="\n")
 
     # Final summary
     print(f"\n{'='*60}")

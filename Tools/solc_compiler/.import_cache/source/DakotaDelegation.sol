@@ -42,8 +42,8 @@ pragma solidity >=0.8.2 <0.9.0;
   └──────────────────────────────────────────────────────┘
 */
 
-import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/security/ReentrancyGuardUpgradeable.sol";
-import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/proxy/utils/Initializable.sol";
+import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/proxy/utils/Initializable.sol";
 
 import "./interfaces/IDakotaDelegation.sol";
 

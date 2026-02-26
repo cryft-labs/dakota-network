@@ -204,11 +204,11 @@ pragma solidity >=0.8.2 <0.9.0;
   └───────────────────────────────────────────────────────┘
 */
 
-import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/token/ERC721/ERC721Upgradeable.sol";
-import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/access/OwnableUpgradeable.sol";
-import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/utils/StringsUpgradeable.sol";
-import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.0/contracts/proxy/utils/Initializable.sol";
+import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/token/ERC721/ERC721Upgradeable.sol";
+import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/token/ERC20/IERC20Upgradeable.sol";
+import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/access/OwnableUpgradeable.sol";
+import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/StringsUpgradeable.sol";
+import "../OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/proxy/utils/Initializable.sol";
 
 import "./interfaces/ICodeManager.sol";
 import "./interfaces/IRedeemable.sol";
