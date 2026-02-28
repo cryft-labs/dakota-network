@@ -80,7 +80,7 @@ All Ethereum hard forks through Osaka are activated from genesis (block 0 / time
 | **BPO1** | `bpo1Time: 0` | Timestamp 0 | Blob Parameter Only upgrade 1 — raises blob target from 6→10, max from 9→15 (Mainnet: 2025-12-09 14:21:11 UTC, epoch 412,672) |
 | **BPO2** | `bpo2Time: 0` | Timestamp 0 | Blob Parameter Only upgrade 2 — raises blob target from 10→14, max from 15→21 (Mainnet: 2026-01-07 01:01:11 UTC, epoch 419,072) |
 
-#### Alloc Entries (32,432 total)
+#### Alloc Entries (32,434 total)
 
 | Category | Count | Description |
 |----------|-------|-------------|
