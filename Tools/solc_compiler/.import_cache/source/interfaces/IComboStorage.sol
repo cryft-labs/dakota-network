@@ -12,7 +12,6 @@ pragma solidity >=0.8.2 <0.9.0;
  *         a Paladin Pente privacy group. All state is private to privacy
  *         group members.
  *
- *         Patent Reference: Claims 1–5, 13
  */
 interface IComboStorage {
     /// @notice Returns true if a verified redemption exists for this unique ID.

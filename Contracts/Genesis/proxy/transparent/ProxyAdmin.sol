@@ -3,6 +3,9 @@
 // Based on OpenZeppelin Contracts v4.9.0 (proxy/transparent/ProxyAdmin.sol).
 // Modified by Cryft Labs — guardian/overlord governance replaces single-owner pattern.
 // Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
+//
+// WARNING: This is a modified version of the original OpenZeppelin contract.
+// Do not assume it is stock or unmodified — review all changes before use.
 
 pragma solidity >=0.8.2 <0.9.0;
 

@@ -336,7 +336,7 @@ contract DakotaDelegation is Initializable, ReentrancyGuardUpgradeable, IDakotaD
     /// @dev Re-throw the revert reason from a failed low-level call.
     function _bubbleRevert(bytes memory returnData) internal pure {
         if (returnData.length > 0) {
-            assembly {
+            assembly ("memory-safe") {
                 revert(add(returnData, 32), mload(returnData))
             }
         }
@@ -350,7 +350,7 @@ contract DakotaDelegation is Initializable, ReentrancyGuardUpgradeable, IDakotaD
         returns (DelegationState storage s)
     {
         bytes32 slot = _STORAGE_SLOT;
-        assembly { s.slot := slot }
+        assembly ("memory-safe") { s.slot := slot }
     }
 
     /// @dev Compute the EIP-712 domain separator.
@@ -415,7 +415,7 @@ contract DakotaDelegation is Initializable, ReentrancyGuardUpgradeable, IDakotaD
         bytes32 r;
         bytes32 s;
         uint8   v;
-        assembly {
+        assembly ("memory-safe") {
             r := calldataload(sig.offset)
             s := calldataload(add(sig.offset, 0x20))
             v := byte(0, calldataload(add(sig.offset, 0x40)))

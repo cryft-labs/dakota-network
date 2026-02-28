@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.6.0) (proxy/Proxy.sol)
+//
+// Based on OpenZeppelin Contracts (last updated v4.6.0) (proxy/Proxy.sol).
+// Modified for the Dakota Network by Cryft Labs.
+//
+// WARNING: This is a modified version of the original OpenZeppelin contract.
+// Do not assume it is stock or unmodified — review all changes before use.
 
 pragma solidity >=0.8.2 <0.9.0;
 
@@ -20,7 +25,7 @@ abstract contract Proxy {
      * This function does not return to its internal call site, it will return directly to the external caller.
      */
     function _delegate(address implementation) internal virtual {
-        assembly {
+        assembly ("memory-safe") {
             // Copy msg.data. We take full control of memory in this inline assembly
             // block because it will not return to Solidity code. We overwrite the
             // Solidity scratch pad at memory position 0.

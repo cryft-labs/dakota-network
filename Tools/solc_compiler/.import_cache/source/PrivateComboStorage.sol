@@ -33,7 +33,6 @@ pragma solidity >=0.8.2 <0.9.0;
   │  ever touches the chain.                             │
   │                                                      │
   │  Patent: U.S. App. Ser. No. 18/930,857               │
-  │  Claims 1–5, 13                                      │
   └──────────────────────────────────────────────────────┘
 */
 
@@ -50,8 +49,6 @@ contract PrivateComboStorage is IComboStorage {
     //    encoded function call to the CodeManager contract on the base
     //    ledger.
     //
-    //    Patent Claim 5: privacy group verifies, then triggers public update.
-
     event PenteExternalCall(
         address indexed contractAddress,
         bytes encodedCall
@@ -85,8 +82,6 @@ contract PrivateComboStorage is IComboStorage {
     /// @dev PIN → codeHash → code metadata. The PIN acts as a bucket
     ///      index for efficient O(1) lookup. The codeHash is keccak256(giftCode)
     ///      where giftCode = pin + code, computed off-chain.
-    ///      Patent Claim 2: hash+salt combination for code representation.
-    ///      Patent Claim 3: PIN-based bucket routing for O(1) lookup.
     mapping(string => mapping(bytes32 => CodeMetadata)) public pinToHash;
 
     /// @dev Tracks how many hashes are currently stored under each PIN.
@@ -173,7 +168,7 @@ contract PrivateComboStorage is IComboStorage {
     // ── Batch Code Storage ────────────────────────────────
     //
     //    Store multiple pre-computed hashes in one transaction.
-    //    All stored codes default to frozen=true (Patent Claim 7, Spec [0049]).
+    //    All stored codes default to frozen=true.
     //    Codes that cannot be stored are skipped with status=false.
     //    The transaction always succeeds — partial storage is allowed.
 
@@ -210,7 +205,7 @@ contract PrivateComboStorage is IComboStorage {
                 continue;
             }
 
-            // Store with default frozen=true (Patent Claim 7)
+            // Store with default frozen=true
             pinToHash[pins[i]][codeHashes[i]] = CodeMetadata({
                 uniqueId: uniqueIds[i],
                 exists: true,
@@ -236,8 +231,6 @@ contract PrivateComboStorage is IComboStorage {
 
     /// @notice Set frozen status for a UID. Emits PenteExternalCall to
     ///         route through CodeManager → gift contract.
-    ///         Patent Claim 6: updating state by authorized manager.
-    ///         Patent Claim 10: freeze upon compromised notification.
     function setFrozen(string memory uniqueId, bool frozen) external onlyAuthorizedOrAdmin {
         _isFrozen[uniqueId] = frozen;
         emit FrozenStatusUpdated(uniqueId, frozen);
@@ -277,10 +270,6 @@ contract PrivateComboStorage is IComboStorage {
     //    private state, then emits PenteExternalCall to route the
     //    redemption through CodeManager → gift contract.
     //
-    //    Patent Claim 1: updating to reflect redemption.
-    //    Patent Claim 4: hash verification without exposing cleartext.
-    //    Patent Claim 5: privacy group verifies, then triggers public update.
-
     /// @notice Redeem a code by submitting its PIN and hash.
     ///         Off-chain: giftCode = pin + code, codeHash = keccak256(giftCode).
     ///         PIN routes to the correct bucket, hash verifies the code.

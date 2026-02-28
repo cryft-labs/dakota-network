@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.7.0) (proxy/ERC1967/ERC1967Proxy.sol)
+//
+// Based on OpenZeppelin Contracts (last updated v4.7.0) (proxy/ERC1967/ERC1967Proxy.sol).
+// Modified for the Dakota Network by Cryft Labs.
+//
+// WARNING: This is a modified version of the original OpenZeppelin contract.
+// Do not assume it is stock or unmodified — review all changes before use.
 
 pragma solidity >=0.8.2 <0.9.0;
 

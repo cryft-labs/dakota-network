@@ -288,11 +288,11 @@ VALID_EVM_VERSIONS = [
     "homestead", "tangerineWhistle", "spuriousDragon",
     "byzantium", "constantinople", "petersburg",
     "istanbul", "berlin", "london", "paris", "shanghai", "cancun",
-    "prague",
+    "prague", "osaka",
 ]
 
 DEFAULT_SOLC_VERSION = "0.8.34"
-DEFAULT_EVM_VERSION = "prague"
+DEFAULT_EVM_VERSION = "osaka"
 
 # Maximum EVM version supported by each solc range
 _SOLC_EVM_CAPS = [
@@ -300,7 +300,7 @@ _SOLC_EVM_CAPS = [
     ((0, 8, 20), "london"),    # solc <0.8.20 → max london
     ((0, 8, 24), "shanghai"),  # solc 0.8.20–0.8.23 → max shanghai
     ((0, 8, 28), "cancun"),    # solc 0.8.24–0.8.27 → max cancun
-    ((0, 9, 0),  "prague"),    # solc 0.8.28+ → prague
+    ((0, 9, 0),  "osaka"),     # solc 0.8.28+ → osaka
 ]
 
 def clamp_evm_version(solc_version: str, evm_version: str) -> str:

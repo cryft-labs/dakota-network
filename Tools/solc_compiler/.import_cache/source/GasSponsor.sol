@@ -270,7 +270,7 @@ contract GasSponsor is Initializable, ReentrancyGuardUpgradeable, IGasSponsor {
         (bool ok, bytes memory ret) = target.call{value: value}(data);
         if (!ok) {
             if (ret.length > 0) {
-                assembly { revert(add(ret, 32), mload(ret)) }
+                assembly ("memory-safe") { revert(add(ret, 32), mload(ret)) }
             }
             revert("GasSponsor: call reverted");
         }

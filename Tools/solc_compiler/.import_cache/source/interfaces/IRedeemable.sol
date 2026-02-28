@@ -30,9 +30,6 @@ pragma solidity >=0.8.2 <0.9.0;
  *         The gift contract SHOULD return frozen=true from isUniqueIdFrozen()
  *         for any UID that has not been explicitly unfrozen. This ensures
  *         UIDs have a default frozen state upon initial registration
- *         (Patent Claim 7, Spec [0049]).
- *
- *         Patent Reference: Claims 1, 6, 7, 8, 10
  */
 interface IRedeemable {
     // ── Read Functions ──────────────────────────────────────────

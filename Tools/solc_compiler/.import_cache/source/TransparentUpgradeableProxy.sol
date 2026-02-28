@@ -3,6 +3,9 @@
 // Based on OpenZeppelin Contracts v4.9.0 (proxy/transparent/TransparentUpgradeableProxy.sol).
 // Extended by Cryft Labs — overlord/guardian governance with threshold voting.
 // Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
+//
+// WARNING: This is a modified version of the original OpenZeppelin contract.
+// Do not assume it is stock or unmodified — review all changes before use.
 
 pragma solidity >=0.8.2 <0.9.0;
 
@@ -207,7 +210,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function proxy_getIsInit() public view returns (bool) {
         bool isInit;
         bytes32 slot = _proxy_isInitSlot;
-        assembly {
+        assembly ("memory-safe") {
             isInit := sload(slot)
         }
         return isInit;
@@ -215,7 +218,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function setIsInit(bool value) internal {
         bytes32 slot = _proxy_isInitSlot;
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, value)
         }
     }
@@ -225,7 +228,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _isRootRevoked() internal view returns (bool) {
         bool revoked;
         bytes32 slot = _proxy_rootRevokedSlot;
-        assembly {
+        assembly ("memory-safe") {
             revoked := sload(slot)
         }
         return revoked;
@@ -233,7 +236,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setRootRevoked(bool status) internal {
         bytes32 slot = _proxy_rootRevokedSlot;
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, status)
         }
     }
@@ -275,7 +278,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _isGuardian(address addr) internal view returns (bool) {
         bytes32 slot = _guardianSlot(addr);
         bool result;
-        assembly {
+        assembly ("memory-safe") {
             result := sload(slot)
         }
         return result;
@@ -283,7 +286,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setGuardian(address addr, bool status) internal {
         bytes32 slot = _guardianSlot(addr);
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, status)
         }
     }
@@ -291,7 +294,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function proxy_getGuardianCount() public view returns (uint256) {
         uint256 count;
         bytes32 slot = _proxy_guardianCountSlot;
-        assembly {
+        assembly ("memory-safe") {
             count := sload(slot)
         }
         return count;
@@ -299,7 +302,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setGuardianCount(uint256 count) internal {
         bytes32 slot = _proxy_guardianCountSlot;
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, count)
         }
     }
@@ -313,7 +316,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _getGuardianAt(uint256 index) internal view returns (address) {
         bytes32 slot = _guardianArrayElement(index);
         address addr;
-        assembly {
+        assembly ("memory-safe") {
             addr := sload(slot)
         }
         return addr;
@@ -321,7 +324,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setGuardianAt(uint256 index, address addr) internal {
         bytes32 slot = _guardianArrayElement(index);
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, addr)
         }
     }
@@ -334,7 +337,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _getGuardianIndex(address addr) internal view returns (uint256) {
         bytes32 slot = _guardianIndexSlot(addr);
         uint256 idx;
-        assembly {
+        assembly ("memory-safe") {
             idx := sload(slot)
         }
         return idx;
@@ -342,7 +345,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setGuardianIndex(address addr, uint256 indexPlusOne) internal {
         bytes32 slot = _guardianIndexSlot(addr);
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, indexPlusOne)
         }
     }
@@ -417,7 +420,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _isOverlord(address addr) internal view returns (bool) {
         bytes32 slot = _overlordSlot(addr);
         bool result;
-        assembly {
+        assembly ("memory-safe") {
             result := sload(slot)
         }
         return result;
@@ -425,7 +428,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setOverlord(address addr, bool status) internal {
         bytes32 slot = _overlordSlot(addr);
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, status)
         }
     }
@@ -434,7 +437,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _rawOverlordCount() internal view returns (uint256) {
         uint256 count;
         bytes32 slot = _proxy_overlordCountSlot;
-        assembly {
+        assembly ("memory-safe") {
             count := sload(slot)
         }
         return count;
@@ -451,7 +454,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setOverlordCount(uint256 count) internal {
         bytes32 slot = _proxy_overlordCountSlot;
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, count)
         }
     }
@@ -493,7 +496,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _getVoteEpoch() internal view returns (uint256) {
         uint256 epoch;
         bytes32 slot = _proxy_voteEpochSlot;
-        assembly {
+        assembly ("memory-safe") {
             epoch := sload(slot)
         }
         return epoch;
@@ -502,7 +505,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _incrementVoteEpoch() internal {
         bytes32 slot = _proxy_voteEpochSlot;
         uint256 epoch;
-        assembly {
+        assembly ("memory-safe") {
             epoch := sload(slot)
             epoch := add(epoch, 1)
             sstore(slot, epoch)
@@ -582,7 +585,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _getProposalVoteCount(bytes32 proposalId) internal view returns (uint256) {
         bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoteCountSlot, proposalId));
         uint256 count;
-        assembly {
+        assembly ("memory-safe") {
             count := sload(slot)
         }
         return count;
@@ -590,7 +593,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setProposalVoteCount(bytes32 proposalId, uint256 count) internal {
         bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoteCountSlot, proposalId));
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, count)
         }
     }
@@ -598,7 +601,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _hasVoted(bytes32 proposalId, address voter) internal view returns (bool) {
         bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoterSlot, proposalId, voter));
         bool voted;
-        assembly {
+        assembly ("memory-safe") {
             voted := sload(slot)
         }
         return voted;
@@ -606,7 +609,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setHasVoted(bytes32 proposalId, address voter, bool voted) internal {
         bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoterSlot, proposalId, voter));
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, voted)
         }
     }
@@ -616,7 +619,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _getProposalStartBlock(bytes32 proposalId) internal view returns (uint256) {
         bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalStartBlockSlot, proposalId));
         uint256 startBlock;
-        assembly {
+        assembly ("memory-safe") {
             startBlock := sload(slot)
         }
         return startBlock;
@@ -624,7 +627,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setProposalStartBlock(bytes32 proposalId, uint256 blockNum) internal {
         bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalStartBlockSlot, proposalId));
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, blockNum)
         }
     }
@@ -638,7 +641,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _getProposalRound(bytes32 proposalKey) internal view returns (uint256) {
         bytes32 slot = _proposalRoundKey(proposalKey);
         uint256 round;
-        assembly {
+        assembly ("memory-safe") {
             round := sload(slot)
         }
         return round;
@@ -647,7 +650,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _incrementProposalRound(bytes32 proposalKey) internal {
         bytes32 slot = _proposalRoundKey(proposalKey);
         uint256 round;
-        assembly {
+        assembly ("memory-safe") {
             round := sload(slot)
             round := add(round, 1)
             sstore(slot, round)
@@ -659,7 +662,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function proxy_getVoteExpiry() public view returns (uint256) {
         uint256 expiry;
         bytes32 slot = _proxy_voteExpirySlot;
-        assembly {
+        assembly ("memory-safe") {
             expiry := sload(slot)
         }
         return expiry == 0 ? DEFAULT_VOTE_EXPIRY : expiry;
@@ -667,7 +670,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setVoteExpiry(uint256 newExpiry) internal {
         bytes32 slot = _proxy_voteExpirySlot;
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, newExpiry)
         }
     }
@@ -677,7 +680,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _getActiveProposal() internal view returns (bytes32) {
         bytes32 result;
         bytes32 slot = _proxy_activeProposalSlot;
-        assembly {
+        assembly ("memory-safe") {
             result := sload(slot)
         }
         return result;
@@ -685,7 +688,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setActiveProposal(bytes32 proposalId) internal {
         bytes32 slot = _proxy_activeProposalSlot;
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, proposalId)
         }
     }
@@ -693,7 +696,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _getActiveProposalStart() internal view returns (uint256) {
         uint256 startBlock;
         bytes32 slot = _proxy_activeProposalStartSlot;
-        assembly {
+        assembly ("memory-safe") {
             startBlock := sload(slot)
         }
         return startBlock;
@@ -701,7 +704,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _setActiveProposalStart(uint256 blockNum) internal {
         bytes32 slot = _proxy_activeProposalStartSlot;
-        assembly {
+        assembly ("memory-safe") {
             sstore(slot, blockNum)
         }
     }
@@ -1279,7 +1282,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
                     "TransparentUpgradeableProxy: admin cannot fallback to proxy target"
                 );
             }
-            assembly {
+            assembly ("memory-safe") {
                 return(add(ret, 0x20), mload(ret))
             }
         } else {

@@ -21,8 +21,10 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 | Component | Version | Notes |
 |-----------|---------|-------|
 | **Besu** | 26.1.0 | Java 21, QBFT consensus |
-| **solc** | 0.8.34 | All contracts except ValidatorSmartContractAllowList |
-| **solc** | 0.8.19 | ValidatorSmartContractAllowList only (pragma `<0.8.20`) |
+| **solc** | 0.8.34 | All contracts except validator contracts |
+| **solc** | 0.8.19 | Validator contracts only (pragma `<0.8.20`) |
+| **EVM target** | Osaka | All contracts compiled with solc 0.8.34 |
+| **EVM target** | London | Validator contracts (solc 0.8.19 maximum) |
 | **Paladin** | latest | Pente privacy domain (replaces Tessera) |
 
 > **Full installation instructions** — Besu setup, Paladin deployment (Docker / build-from-source / k3s+Helm), genesis configuration, security notes, and documentation references — are in the **[Implementation Guide](IMPLEMENTATION.md#3-layer-1--besu-network-setup)**.
@@ -37,7 +39,7 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 |-----------|-------|-------|
 | **Block period** | 1 second | Time between blocks when transactions are pending |
 | **Empty block period** | 64 seconds | Time between blocks when no transactions are pending |
-| **Epoch length** | 64,000 blocks | Validator set checkpoint interval |
+| **Epoch length** | 86,000 blocks | Validator set checkpoint interval |
 | **Request timeout** | 86 seconds | QBFT round-change timeout |
 
 ### Genesis File Breakdown
@@ -108,10 +110,10 @@ All Ethereum hard forks through Osaka are activated from genesis (block 0 / time
 
 | Contract | Address | Runtime Size | Purpose |
 |----------|---------|-------------|---------|
-| **ValidatorSmartContractAllowList** | `0x0000...1111` | 20,565 B | QBFT validator, voter, and root overlord governance |
-| **GasManager** | Genesis beneficiary | 14,510 B | Voter-governed gas funding, token burns, and native coin burns |
-| **TransparentUpgradeableProxy** | Per-contract | 17,175 B | Multi-party overlord/guardian transparent proxy |
-| **ProxyAdmin** | Per-proxy | 3,296 B | Guardian-gated ERC1967 upgrade dispatch |
+| **ValidatorSmartContractAllowList** | `0x0000...1111` | 20,565 B | QBFT validator, voter, and root overlord governance (solc 0.8.19 / London) |
+| **GasManager** | Genesis beneficiary | 14,163 B | Voter-governed gas funding, token burns, and native coin burns |
+| **TransparentUpgradeableProxy** | Per-contract | 16,799 B | Multi-party overlord/guardian transparent proxy |
+| **ProxyAdmin** | Per-proxy | 3,200 B | Guardian-gated ERC1967 upgrade dispatch |
 
 ---
 
@@ -888,7 +890,13 @@ python3 Tools/solc_compiler/compile.py
 Options:
 - `--clean-cache` — clear downloaded import cache
 - `--solc-version 0.8.34` — override compiler version
-- `--evm prague` — override EVM target (default: `prague`)
+- `--evm osaka` — override EVM target (default: `osaka`)
+
+#### Memory-Safe Assembly
+
+All inline assembly blocks across the codebase are annotated for memory safety. Contracts targeting solc 0.8.34 (Osaka EVM) use the inline `assembly ("memory-safe") { ... }` syntax introduced in solc 0.8.13. Validator contracts targeting solc <0.8.20 (London EVM) use the NatSpec annotation `/// @solidity memory-safe-assembly` above each `assembly { ... }` block, which is the equivalent mechanism for older compiler versions.
+
+These annotations enable the Solidity optimizer's stack-to-memory variable relocation, producing more efficient bytecode. Every annotated block has been audited to confirm it either (a) only uses `sload`/`sstore` on namespaced storage slots, (b) reads from Solidity-allocated memory without writing, or (c) takes full control of memory but never returns to Solidity (e.g., the proxy `_delegate()` pattern that terminates via EVM `return`/`revert`).
 
 #### LF Normalization & Per-Contract Metadata
 

@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.9.0) (utils/Address.sol)
+//
+// Based on OpenZeppelin Contracts (last updated v4.9.0) (utils/Address.sol).
+// Modified for the Dakota Network by Cryft Labs.
+//
+// WARNING: This is a modified version of the original OpenZeppelin contract.
+// Do not assume it is stock or unmodified — review all changes before use.
 
 pragma solidity >=0.8.2 <0.9.0;
 
@@ -232,8 +237,7 @@ library Address {
         // Look for revert reason and bubble it up if present
         if (returndata.length > 0) {
             // The easiest way to bubble the revert reason is using memory via assembly
-            /// @solidity memory-safe-assembly
-            assembly {
+            assembly ("memory-safe") {
                 let returndata_size := mload(returndata)
                 revert(add(32, returndata), returndata_size)
             }
