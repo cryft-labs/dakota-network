@@ -561,7 +561,7 @@ sudo chmod 600 /var/lib/dakota/besu/data/key
 sudo chmod 644 /var/lib/dakota/besu/data/key.pub
 ```
 
-Alternatively, the `Tools/keywizard/dakota_keywizard.py` script can generate Besu node keys.
+Alternatively, the `Tools/KeyWizard/dakota_keywizard.py` script can generate Besu node keys.
 
 > **Never reuse keys across nodes.** Each validator and RPC node must have its own unique key pair.
 
@@ -1188,10 +1188,10 @@ Paladin replaces Tessera as the recommended privacy solution for Besu networks.
 Use the included compiler tool:
 
 ```bash
-python Tools/solc_compiler/compile.py
+python Tools/SolcCompiler/compile.py
 ```
 
-This auto-detects pragma versions, resolves imports (vendored OZ 4.9.6 for Genesis contracts, GitHub download for others), and outputs ABI + bytecode to `Tools/solc_compiler/compiled_output/`. The default EVM target is `osaka`; validator contracts (pragma `<0.8.20`) are automatically clamped to `london`.
+This auto-detects pragma versions, resolves imports (vendored OZ 4.9.6 for Genesis contracts, GitHub download for others), and outputs ABI + bytecode to `Tools/SolcCompiler/compiled_output/`. The default EVM target is `osaka`; validator contracts (pragma `<0.8.20`) are automatically clamped to `london`.
 
 ### 5.2 Deployment Order
 
@@ -2011,12 +2011,12 @@ GasSponsor is deployed at `0x...FEeD` and is upgradeable via TransparentUpgradea
 
 | File | Description |
 |------|-------------|
-| `Contracts/Genesis/besuGenesis.7z` | Besu genesis file (7z-compressed; extract before use) |
-| `Contracts/Genesis/CodeManagement/CodeManager.sol` | Public registry + Pente router (v3.0, upgradeable) |
-| `Contracts/Genesis/CodeManagement/PrivateComboStorage.sol` | Pente privacy group contract (v1.0) |
-| `Contracts/Genesis/CodeManagement/Interfaces/ICodeManager.sol` | Registry interface |
-| `Contracts/Genesis/CodeManagement/Interfaces/IRedeemable.sol` | Gift contract interface (6 functions) |
-| `Contracts/Genesis/CodeManagement/Interfaces/IComboStorage.sol` | Private storage interface (5 functions) |
+| `Contracts/Genesis/BesuGenesis.7z` | Besu genesis file (7z-compressed; extract before use) |
+| `Contracts/CodeManagement/CodeManager.sol` | Public registry + Pente router (v3.0, upgradeable) |
+| `Contracts/CodeManagement/PrivateComboStorage.sol` | Pente privacy group contract (v1.0) |
+| `Contracts/CodeManagement/Interfaces/ICodeManager.sol` | Registry interface |
+| `Contracts/CodeManagement/Interfaces/IRedeemable.sol` | Gift contract interface (6 functions) |
+| `Contracts/CodeManagement/Interfaces/IComboStorage.sol` | Private storage interface (5 functions) |
 | `Contracts/Genesis/7702/DakotaDelegation.sol` | EIP-7702 delegation target |
 | `Contracts/Genesis/7702/GasSponsor.sol` | Gas sponsorship treasury |
 | `Contracts/Genesis/7702/Interfaces/IDakotaDelegation.sol` | Delegation interface |
@@ -2028,7 +2028,7 @@ GasSponsor is deployed at `0x...FEeD` and is upgradeable via TransparentUpgradea
 | `Contracts/Genesis/Upgradeable/` | Vendored OpenZeppelin 4.9.6 upgradeable stack (MIT) |
 | `Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol` | Upgrade dispatch |
 | `Contracts/Tokens/GreetingCards.sol` | ERC-721 gift card implementation (implements IRedeemable) |
-| `Tools/solc_compiler/compile.py` | Solidity compiler with auto-detect + vendored/GitHub import resolution |
-| `Tools/bytecode_replacer/replace_bytecode.py` | Bulk bytecode replacer for genesis files |
-| `Tools/keywizard/dakota_keywizard.py` | EOA and Besu node key generator |
-| `Tools/tx_simulator/tx_simulator.py` | Block-paced ETH transfer loop (QBFT/PoA) |
+| `Tools/SolcCompiler/compile.py` | Solidity compiler with auto-detect + vendored/GitHub import resolution |
+| `Tools/BytecodeReplacer/replace_bytecode.py` | Bulk bytecode replacer for genesis files |
+| `Tools/KeyWizard/dakota_keywizard.py` | EOA and Besu node key generator |
+| `Tools/TxSimulator/tx_simulator.py` | Block-paced ETH transfer loop (QBFT/PoA) |

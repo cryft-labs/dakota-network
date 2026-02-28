@@ -144,7 +144,7 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 |---|---|---|---|
 | **DakotaDelegation** | `Contracts/Genesis/7702/DakotaDelegation.sol` | Yes (TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
 | **GasSponsor** | `Contracts/Genesis/7702/GasSponsor.sol` | Yes (TransparentUpgradeableProxy) | `0x...FEeD` (genesis) |
-| **CodeManager** | `Contracts/Genesis/CodeManagement/CodeManager.sol` | Yes | `<proxy_address>` |
+| **CodeManager** | `Contracts/CodeManagement/CodeManager.sol` | Yes | `<proxy_address>` |
 | **CryftGreetingCards** | `Contracts/Tokens/GreetingCards.sol` | Yes | `<proxy_address>` |
 | **GasManager** | `Contracts/Genesis/GasManager/GasManager.sol` | Yes | `0x...cafE` (genesis) |
 | **ValidatorSmartContractAllowList** | `Contracts/Genesis/ValidatorContracts/` | No | `0x...1111` (genesis) |

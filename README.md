@@ -44,7 +44,7 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ### Genesis File Breakdown
 
-The genesis file (`Contracts/Genesis/besuGenesis.7z`, compressed) contains the full initial state for the network. Extract with 7-Zip before use — the uncompressed JSON is ~1.07 GB.
+The genesis file (`Contracts/Genesis/BesuGenesis.7z`, compressed) contains the full initial state for the network. Extract with 7-Zip before use — the uncompressed JSON is ~1.07 GB.
 
 #### Chain Parameters
 
@@ -708,7 +708,7 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 
 ## Tools
 
-### `Tools/keywizard/dakota_keywizard.py`
+### `Tools/KeyWizard/dakota_keywizard.py`
 
 Interactive wizard for generating and distributing three types of cryptographic keys across your node network. No external Python packages required (stdlib only).
 
@@ -720,25 +720,25 @@ Interactive wizard for generating and distributing three types of cryptographic 
 
 **Interactive mode (default):**
 ```bash
-python3 Tools/keywizard/dakota_keywizard.py
+python3 Tools/KeyWizard/dakota_keywizard.py
 ```
 
 **CLI flags for scripted/batch use:**
 ```bash
 # Generate 4 Besu node keys, no EOA, with SCP step
-python3 Tools/keywizard/dakota_keywizard.py \
+python3 Tools/KeyWizard/dakota_keywizard.py \
   --besu-count 4 \
   --no-eoa \
   --scp
 
 # Generate 3 EOAs with keystore JSON, output to custom directory
-python3 Tools/keywizard/dakota_keywizard.py \
+python3 Tools/KeyWizard/dakota_keywizard.py \
   --eoa-count 3 \
   --eoa-keystore \
   --out /home/user/my-keys
 
 # Non-interactive batch (no SCP, uses defaults)
-python3 Tools/keywizard/dakota_keywizard.py \
+python3 Tools/KeyWizard/dakota_keywizard.py \
   --non-interactive \
   --besu-count 4
 ```
@@ -758,7 +758,7 @@ python3 Tools/keywizard/dakota_keywizard.py \
 | `--name-prefix-besu` | `besu-node-` | Folder prefix for Besu node keys |
 | `--scp` | off | Enable SCP distribution step |
 
-### `Tools/bytecode_replacer/replace_bytecode.py`
+### `Tools/BytecodeReplacer/replace_bytecode.py`
 
 Bulk bytecode replacer for genesis files. Finds all occurrences of one runtime bytecode string and replaces it with another — designed for large genesis files (hundreds of MB) with tens of thousands of identical pre-deployed contract entries.
 
@@ -768,7 +768,7 @@ Bulk bytecode replacer for genesis files. Finds all occurrences of one runtime b
 3. Run against the target file:
 
 ```bash
-python3 Tools/bytecode_replacer/replace_bytecode.py Contracts/Genesis/besuGenesis.json  # path to extracted genesis
+python3 Tools/BytecodeReplacer/replace_bytecode.py Contracts/Genesis/BesuGenesis.json  # path to extracted genesis
 ```
 
 **Options:**
@@ -782,7 +782,7 @@ python3 Tools/bytecode_replacer/replace_bytecode.py Contracts/Genesis/besuGenesi
 
 The tool automatically normalizes `0x` prefixes (strips them for matching, preserves them in the output), creates a backup by default, and verifies the replacement count after writing.
 
-### `Tools/tx_simulator/tx_simulator.py`
+### `Tools/TxSimulator/tx_simulator.py`
 
 Configurable transaction simulator for QBFT/PoA chains. Four independent knobs control traffic shape — **sender selection**, **recipient selection**, **amount distribution**, and **timing/rate** — with defaults that reproduce the original round-robin ring behavior. Automatically injects the PoA `extraData` middleware for web3.py compatibility.
 
@@ -802,12 +802,12 @@ pip install web3 eth-account
 **Usage:**
 ```bash
 # Original 3-account ring (all defaults)
-python3 Tools/tx_simulator/tx_simulator.py \
+python3 Tools/TxSimulator/tx_simulator.py \
   --rpc http://100.111.32.1:8545 \
   --prompt-mnemonic
 
 # 10 HD accounts, weighted senders, random recipients, Poisson timing
-python3 Tools/tx_simulator/tx_simulator.py \
+python3 Tools/TxSimulator/tx_simulator.py \
   --rpc http://100.111.32.1:8545 \
   --prompt-mnemonic --num-accounts 10 \
   --sender-mode weighted --sender-weights 50,20,10,5,5,3,3,2,1,1 \
@@ -816,7 +816,7 @@ python3 Tools/tx_simulator/tx_simulator.py \
   --timing-mode poisson --target-tps 5
 
 # Private keys from file, burst timing, star fan-out
-python3 Tools/tx_simulator/tx_simulator.py \
+python3 Tools/TxSimulator/tx_simulator.py \
   --rpc http://100.111.32.1:8545 \
   --private-keys-file keys.txt \
   --recipient-mode star-fan-out \
@@ -896,13 +896,13 @@ python3 Tools/tx_simulator/tx_simulator.py \
 | `--reserve-eth` | `0.001` | Reserve ETH kept per account |
 | `--max-inflight` | `64` | Max pending txs before pausing sends |
 
-### `Tools/solc_compiler/compile.py`
+### `Tools/SolcCompiler/compile.py`
 
 Local Solidity compiler using [py-solc-x](https://github.com/iamdefinitelyahuman/py-solc-x). Compiles all `.sol` files under `Contracts/`, resolves imports (vendored OZ 4.9.6 for Genesis contracts, GitHub download for others), and outputs ABI + bytecode artifacts to `compiled_output/`.
 
 ```bash
 pip install py-solc-x
-python3 Tools/solc_compiler/compile.py
+python3 Tools/SolcCompiler/compile.py
 ```
 
 Options:
@@ -952,7 +952,7 @@ dakota-network/
 ├── IMPLEMENTATION.md                  # Full deployment & operations guide
 ├── Contracts/
 │   ├── Genesis/
-│   │   ├── besuGenesis.7z             # Besu genesis file (7z-compressed; extract before use)
+│   │   ├── BesuGenesis.7z             # Besu genesis file (7z-compressed; extract before use)
 │   │   ├── 7702/
 │   │   │   ├── DakotaDelegation.sol  # EIP-7702 delegation target (session keys, EIP-1271)
 │   │   │   ├── EIP-7702-Instructions.md  # EIP-7702 deployment guide
@@ -960,13 +960,6 @@ dakota-network/
 │   │   │   └── Interfaces/
 │   │   │       ├── IDakotaDelegation.sol
 │   │   │       └── IGasSponsor.sol
-│   │   ├── CodeManagement/
-│   │   │   ├── CodeManager.sol       # Permissionless unique ID registry (fee-based)
-│   │   │   ├── PrivateComboStorage.sol # Pente privacy group (private redemption)
-│   │   │   └── Interfaces/
-│   │   │       ├── ICodeManager.sol
-│   │   │       ├── IComboStorage.sol
-│   │   │       └── IRedeemable.sol
 │   │   ├── GasManager/
 │   │   │   └── GasManager.sol        # Gas beneficiary — voter-governed funding & burns
 │   │   ├── ValidatorContracts/
@@ -980,6 +973,13 @@ dakota-network/
 │   │       ├── Interfaces/           # Proxy interfaces (IERC1967, IERC1822)
 │   │       └── Utils/                # Address, StorageSlot, StringsUpgradeable
 │   │           └── Math/             # MathUpgradeable, SignedMathUpgradeable
+│   ├── CodeManagement/
+│   │   ├── CodeManager.sol       # Permissionless unique ID registry (fee-based)
+│   │   ├── PrivateComboStorage.sol # Pente privacy group (private redemption)
+│   │   └── Interfaces/
+│   │       ├── ICodeManager.sol
+│   │       ├── IComboStorage.sol
+│   │       └── IRedeemable.sol
 │   └── Tokens/
 │       ├── GreetingCards.sol          # ERC-721 greeting card NFT (CryftGreetingCards)
 │       └── Interfaces/
@@ -987,15 +987,15 @@ dakota-network/
 │           ├── IComboStorage.sol
 │           └── IRedeemable.sol
 ├── Tools/
-│   ├── bytecode_replacer/
+│   ├── BytecodeReplacer/
 │   │   ├── replace_bytecode.py        # Bulk bytecode replacer for genesis files
 │   │   ├── old.txt                    # Old bytecode to find (paste here)
 │   │   └── new.txt                    # New bytecode to replace with (paste here)
-│   ├── keywizard/
+│   ├── KeyWizard/
 │   │   └── dakota_keywizard.py       # EOA and Besu node key generator
-│   ├── tx_simulator/
+│   ├── TxSimulator/
 │   │   └── tx_simulator.py            # Block-paced ETH transfer loop (QBFT/PoA)
-│   └── solc_compiler/
+│   └── SolcCompiler/
 │       ├── compile.py                # Local Solidity compiler (py-solc-x)
 │       └── compiled_output/          # ABI and artifact output
 └── README.md
