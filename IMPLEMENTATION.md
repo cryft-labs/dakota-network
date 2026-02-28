@@ -19,7 +19,7 @@
    - 3.2 [Genesis Configuration](#32-genesis-configuration)
    - 3.3 [Genesis Contract Allocation](#33-genesis-contract-allocation)
    - 3.4 [Start a Node](#34-start-a-node)
-   - 3.5 [Security Notes](#35-security-notes)
+   - 3.5 [Security & Permissions](#35-security--permissions)
 4. [Layer 2 — Paladin / Pente Privacy Setup](#4-layer-2--paladin--pente-privacy-setup)
    - 4.1 [Method A — Docker](#41-method-a--docker-no-kubernetes-required)
    - 4.2 [Method B — Build from Source](#42-method-b--build-from-source)
@@ -125,7 +125,28 @@ The patented system uses a three-layer architecture where no single layer holds 
 
 ### 3.1 Install Besu (Ubuntu)
 
-**Fresh install:**
+Besu is deployed as a **managed systemd service** under a dedicated non-root runtime user (`besurun`). All node-specific configuration is driven by an environment file — not by hardcoded command-line flags in the service unit.
+
+#### Service Architecture
+
+```text
+systemd (besu.service)
+  └─▶ /usr/local/lib/dakota/run-besu.sh   (wrapper script)
+        └─▶ sources /etc/dakota/besu-current.env   (node config)
+              └─▶ launches /usr/local/bin/besu   (Besu binary)
+```
+
+#### File Layout
+
+| Path | Purpose |
+|------|--------|
+| `/etc/dakota/besu-current.env` | Active runtime configuration for the node |
+| `/usr/local/lib/dakota/run-besu.sh` | Wrapper script used by systemd to launch Besu |
+| `/var/lib/dakota/besu/genesis.json` | Node genesis file |
+| `/var/lib/dakota/besu/data` | Besu data directory (chain DB, caches, runtime state) |
+
+#### Step 1 — Install Packages and Besu Binary
+
 ```bash
 sudo apt update
 sudo apt install -y curl unzip openjdk-21-jdk ca-certificates
@@ -146,9 +167,292 @@ besu --version
 de6356bf2db9e7a68dc3de391864dc373a0440f51fbf6d78d63d1e205091248e  besu-26.1.0.tar.gz
 ```
 
+#### Step 2 — Create the Runtime User and Directory Structure
+
+The target directory layout for a Dakota / Cryft Besu node is:
+
+```text
+/etc/dakota/
+└── besu-current.env              # active node configuration (sourced, not executed)
+
+/usr/local/lib/dakota/
+└── run-besu.sh                   # wrapper script launched by systemd
+
+/var/lib/dakota/besu/
+├── genesis.json                  # network genesis (root-owned, besurun-readable)
+└── data/
+    ├── key                       # Besu node private key  (besurun:600)
+    └── key.pub                   # Besu node public key   (besurun:644)
+```
+
+Create everything in one pass:
+
+```bash
+# Create the dedicated service account (no login shell, no home dir)
+sudo useradd --system --shell /usr/sbin/nologin --no-create-home besurun
+
+# Create the directory structure
+sudo mkdir -p /etc/dakota
+sudo mkdir -p /usr/local/lib/dakota
+sudo mkdir -p /var/lib/dakota/besu/data
+
+# Copy the genesis file into place
+sudo cp genesis.json /var/lib/dakota/besu/genesis.json
+```
+
+#### Step 3 — Create the Environment File
+
+Create `/etc/dakota/besu-current.env` with the node-specific configuration. This is the **canonical source** of all runtime values for the node:
+
+```bash
+sudo tee /etc/dakota/besu-current.env > /dev/null << 'ENVEOF'
+# ── Dakota / Cryft Besu Node Configuration ──────────────────────────
+# This file is sourced (not executed) by /usr/local/lib/dakota/run-besu.sh
+
+# ── Identity ─────────────────────────────────────────────────────────
+NODE_ID="node1"
+NODE_LABEL="Dakota Validator 1"
+RUN_USER="besurun"
+RUN_GROUP="besurun"
+
+# ── Paths ────────────────────────────────────────────────────────────
+BESU_BIN="/usr/local/bin/besu"
+GENESIS_FILE="/var/lib/dakota/besu/genesis.json"
+BESU_DATA_PATH="/var/lib/dakota/besu/data"
+
+# ── P2P ──────────────────────────────────────────────────────────────
+P2P_HOST="0.0.0.0"
+P2P_PORT="30303"
+NAT_METHOD="NONE"
+
+# ── HTTP RPC ─────────────────────────────────────────────────────────
+RPC_HTTP_ENABLED="true"
+RPC_HTTP_HOST="0.0.0.0"
+RPC_HTTP_PORT="8545"
+RPC_HTTP_API="ETH,NET,QBFT"
+HOST_ALLOWLIST="*"
+RPC_HTTP_CORS_ORIGINS="all"
+
+# ── WebSocket RPC ────────────────────────────────────────────────────
+RPC_WS_ENABLED="true"
+RPC_WS_HOST="0.0.0.0"
+RPC_WS_PORT="8546"
+RPC_WS_API="ETH,NET,QBFT"
+
+# ── Metrics ──────────────────────────────────────────────────────────
+METRICS_ENABLED="false"
+METRICS_HOST="0.0.0.0"
+METRICS_PORT="9545"
+
+# ── Logging ──────────────────────────────────────────────────────────
+LOGGING="INFO"
+MIN_GAS_PRICE="0"
+
+# ── Bootnodes ────────────────────────────────────────────────────────
+BOOTNODES_ENABLED="true"
+BOOTNODE_ENODE="enode://<PUBKEY>@<BOOTNODE_IP>:30303"
+
+# ── Extra Arguments ──────────────────────────────────────────────────
+EXTRA_BESU_ARGS="--sync-min-peers=3"
+
+# ── Data Reset (use with extreme caution) ────────────────────────────
+RESET_BESU_DATA_ON_START="false"
+RESET_BESU_DATA_KEEP_KEYS="true"
+RESET_BESU_DATA_CONFIRM="false"
+ENVEOF
+```
+
+> **Important:** Restrict `HOST_ALLOWLIST` and `RPC_HTTP_CORS_ORIGINS` for production. The values `*` and `all` are shown here for initial setup convenience.
+
+#### Step 4 — Create the Wrapper Script
+
+Create `/usr/local/lib/dakota/run-besu.sh`. This script is responsible for sourcing the env file, validating required variables, assembling the Besu command line, and optionally performing a controlled data reset:
+
+```bash
+sudo tee /usr/local/lib/dakota/run-besu.sh > /dev/null << 'WRAPEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Source the active configuration ──────────────────────────────────
+ENV_FILE="/etc/dakota/besu-current.env"
+if [[ ! -r "$ENV_FILE" ]]; then
+  echo "FATAL: cannot read $ENV_FILE" >&2
+  exit 1
+fi
+source "$ENV_FILE"
+
+# ── Validate required variables ──────────────────────────────────────
+for var in BESU_BIN GENESIS_FILE BESU_DATA_PATH P2P_HOST P2P_PORT \
+           RPC_HTTP_PORT RPC_WS_PORT; do
+  if [[ -z "${!var:-}" ]]; then
+    echo "FATAL: required variable $var is not set in $ENV_FILE" >&2
+    exit 1
+  fi
+done
+
+if [[ ! -x "$BESU_BIN" ]]; then
+  echo "FATAL: Besu binary not found or not executable: $BESU_BIN" >&2
+  exit 1
+fi
+
+# ── Optional: controlled data reset ──────────────────────────────────
+if [[ "${RESET_BESU_DATA_ON_START:-false}" == "true" \
+   && "${RESET_BESU_DATA_CONFIRM:-false}" == "true" ]]; then
+  echo "WARNING: resetting Besu data at $BESU_DATA_PATH"
+  if [[ "${RESET_BESU_DATA_KEEP_KEYS:-true}" == "true" ]]; then
+    find "$BESU_DATA_PATH" -mindepth 1 -not -name 'key' -not -name 'key.pub' -delete 2>/dev/null || true
+  else
+    rm -rf "${BESU_DATA_PATH:?}"/*
+  fi
+fi
+
+# ── Assemble the Besu command ────────────────────────────────────────
+CMD=(
+  "$BESU_BIN"
+  --genesis-file="$GENESIS_FILE"
+  --data-path="$BESU_DATA_PATH"
+  --p2p-host="$P2P_HOST"
+  --p2p-port="$P2P_PORT"
+  --nat-method="${NAT_METHOD:-NONE}"
+  --min-gas-price="${MIN_GAS_PRICE:-0}"
+  --logging="${LOGGING:-INFO}"
+)
+
+# HTTP RPC
+if [[ "${RPC_HTTP_ENABLED:-false}" == "true" ]]; then
+  CMD+=(
+    --rpc-http-enabled
+    --rpc-http-host="${RPC_HTTP_HOST:-127.0.0.1}"
+    --rpc-http-port="$RPC_HTTP_PORT"
+    --rpc-http-api="${RPC_HTTP_API:-ETH,NET}"
+    --host-allowlist="${HOST_ALLOWLIST:-localhost}"
+    --rpc-http-cors-origins="${RPC_HTTP_CORS_ORIGINS:-none}"
+  )
+fi
+
+# WebSocket RPC
+if [[ "${RPC_WS_ENABLED:-false}" == "true" ]]; then
+  CMD+=(
+    --rpc-ws-enabled
+    --rpc-ws-host="${RPC_WS_HOST:-127.0.0.1}"
+    --rpc-ws-port="$RPC_WS_PORT"
+    --rpc-ws-api="${RPC_WS_API:-ETH,NET}"
+  )
+fi
+
+# Metrics
+if [[ "${METRICS_ENABLED:-false}" == "true" ]]; then
+  CMD+=(
+    --metrics-enabled
+    --metrics-host="${METRICS_HOST:-127.0.0.1}"
+    --metrics-port="${METRICS_PORT:-9545}"
+  )
+fi
+
+# Bootnodes
+if [[ "${BOOTNODES_ENABLED:-false}" == "true" && -n "${BOOTNODE_ENODE:-}" ]]; then
+  CMD+=(--bootnodes="$BOOTNODE_ENODE")
+fi
+
+# Extra arguments (word-split intentionally)
+if [[ -n "${EXTRA_BESU_ARGS:-}" ]]; then
+  # shellcheck disable=SC2206
+  CMD+=($EXTRA_BESU_ARGS)
+fi
+
+echo "[run-besu] launching: ${CMD[*]}"
+exec "${CMD[@]}"
+WRAPEOF
+```
+
+#### Step 5 — Create the systemd Service Unit
+
+```bash
+sudo tee /etc/systemd/system/besu.service > /dev/null << 'UNITEOF'
+[Unit]
+Description=Hyperledger Besu (Dakota Network)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=besurun
+Group=besurun
+ExecStart=/usr/local/lib/dakota/run-besu.sh
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+LimitNPROC=65536
+
+# Hardening
+ProtectSystem=strict
+ReadWritePaths=/var/lib/dakota/besu
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+UNITEOF
+```
+
+#### Step 6 — Set Ownership and Permissions
+
+```bash
+# Configuration directory — root-owned, group-readable by besurun
+sudo chown root:besurun /etc/dakota
+sudo chmod 750 /etc/dakota
+
+# Environment file — root-owned, group-readable by besurun
+sudo chown root:besurun /etc/dakota/besu-current.env
+sudo chmod 640 /etc/dakota/besu-current.env
+
+# Wrapper script — root-owned, group-executable by besurun
+sudo chown root:besurun /usr/local/lib/dakota/run-besu.sh
+sudo chmod 750 /usr/local/lib/dakota/run-besu.sh
+
+# Besu runtime data — owned by besurun
+sudo chown -R besurun:besurun /var/lib/dakota/besu
+sudo find /var/lib/dakota/besu -type d -exec chmod 750 {} \;
+
+# Genesis file — root-owned, readable by besurun
+sudo chown root:besurun /var/lib/dakota/besu/genesis.json
+sudo chmod 640 /var/lib/dakota/besu/genesis.json
+
+# Restore SELinux contexts if applicable
+sudo restorecon -Rv /etc/dakota /usr/local/lib/dakota /var/lib/dakota/besu 2>/dev/null || true
+```
+
+#### Step 7 — Enable and Start the Service
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable besu
+sudo systemctl start besu
+```
+
+#### Step 8 — Validate
+
+```bash
+systemctl status besu
+systemctl cat besu
+systemctl show -p User -p Group besu
+journalctl -u besu -f -n 100
+
+# Verify file layout
+ls -ld /etc/dakota /usr/local/lib/dakota /var/lib/dakota/besu
+ls -l /etc/dakota/besu-current.env /usr/local/lib/dakota/run-besu.sh
+```
+
+Expected output from `systemctl show`:
+```
+User=besurun
+Group=besurun
+```
+
 #### Upgrading from an older Besu (and removing Tessera)
 
-Tessera is no longer used — Paladin/Pente replaces it for private transaction support. The following script stops services, removes Tessera completely (systemd, binaries, config), removes old Besu versions, and installs 26.1.0:
+Tessera is no longer used — Paladin/Pente replaces it for private transaction support. The following script stops services, removes Tessera completely (systemd, binaries, config), removes old Besu versions, installs 26.1.0, and preserves the systemd service model:
 
 ```bash
 (
@@ -170,7 +474,6 @@ Tessera is no longer used — Paladin/Pente replaces it for private transaction 
   sudo rm -f /usr/local/bin/tessera
   sudo rm -f /usr/bin/tessera
   sudo rm -rf /opt/tessera-*
-  sudo rm -rf ~/dakota-network/Node/Node/Tessera
   sudo systemctl daemon-reload 2>/dev/null || true
 
   echo "==[4] Remove old Besu =="
@@ -196,7 +499,25 @@ Tessera is no longer used — Paladin/Pente replaces it for private transaction 
 
   echo "==[9] Verify install =="
   /usr/local/bin/besu --version || /opt/besu-26.1.0/bin/besu --version
-) && echo "Besu 26.1.0 installed, Tessera removed from system/path/config dir."
+
+  echo "==[10] Restart service =="
+  sudo systemctl daemon-reload
+  sudo systemctl start besu
+) && echo "Besu 26.1.0 installed, Tessera removed. Service restarted."
+```
+
+> **Note:** After an upgrade, the existing `/etc/dakota/besu-current.env`, wrapper script, and `besu.service` unit remain in place. Only the `/opt/besu-26.1.0` binary is replaced.
+
+#### Legacy Cleanup
+
+Some hosts may still contain leftover service skeletons from an earlier approach. These are **not** part of the active deployment pattern and should be removed:
+
+```bash
+# Remove stale Paladin/Tessera service remnants
+sudo rm -f /etc/systemd/system/paladin.service
+sudo rm -f /etc/dakota/paladin-current.env
+sudo rm -f /etc/dakota/paladin-node*.env
+sudo systemctl daemon-reload 2>/dev/null || true
 ```
 
 #### Breaking Changes in 26.1.0
@@ -220,17 +541,33 @@ The Besu maintainers have announced the following features will be **removed** i
 
 > **Tessera has been sunset.** The Besu project officially recommends migrating to [Paladin](https://github.com/LFDT-Paladin/paladin) for programmable privacy on EVM.
 
-#### Copy Node Configuration
+#### Generate Node Keys
 
-The `Node/` directory contains a sample directory structure with node keys:
+Each node needs a unique P2P / validator signing key pair. Generate them with Besu and place them in the data directory:
 
 ```bash
-cp -r Node/Node /home/user/dakota-node
+# Generate a new key pair
+besu --data-path=/tmp/besu-keygen public-key export \
+  --to=/tmp/besu-keygen/key.pub
+
+# Move into the Besu data directory
+sudo mv /tmp/besu-keygen/key     /var/lib/dakota/besu/data/key
+sudo mv /tmp/besu-keygen/key.pub /var/lib/dakota/besu/data/key.pub
+rm -rf /tmp/besu-keygen
+
+# Set ownership and permissions
+sudo chown besurun:besurun /var/lib/dakota/besu/data/key /var/lib/dakota/besu/data/key.pub
+sudo chmod 600 /var/lib/dakota/besu/data/key
+sudo chmod 644 /var/lib/dakota/besu/data/key.pub
 ```
+
+Alternatively, the `Tools/keywizard/dakota_keywizard.py` script can generate Besu node keys.
+
+> **Never reuse keys across nodes.** Each validator and RPC node must have its own unique key pair.
 
 ### 3.2 Genesis Configuration
 
-The genesis file must activate all forks through Fusaka from block 0. Key parameters:
+The genesis file lives at `/var/lib/dakota/besu/genesis.json` and must activate all forks through Osaka from block 0. Key parameters:
 
 ```json
 {
@@ -279,34 +616,114 @@ The genesis `alloc` section must include pre-deployed system contracts:
 
 ### 3.4 Start a Node
 
-After installation, `besu` is on your PATH with Java 21 pinned automatically:
+Besu is managed entirely through systemd. **Do not run Besu as a root-owned ad-hoc process.** All node-specific configuration is in `/etc/dakota/besu-current.env`.
+
+#### Starting the Service
 
 ```bash
-besu \
-  --data-path=/home/user/dakota-node/data \
-  --genesis-file=/home/user/dakota-node/genesis.json \
-  --bootnodes=enode://<BOOTNODE_ENODE>@<BOOTNODE_IP>:30303 \
-  --p2p-port=30303 \
-  --rpc-http-enabled \
-  --rpc-http-api=ETH,NET,QBFT \
-  --rpc-ws-enabled \
-  --rpc-ws-api=ETH,NET,QBFT \
-  --rpc-ws-port=8546 \
-  --host-allowlist="*" \
-  --rpc-http-cors-origins="all" \
-  --rpc-http-port=8545 \
-  --p2p-host=<YOUR_IP> \
-  --sync-min-peers=3
+sudo systemctl start besu
 ```
 
-> **Note:** The `--rpc-ws-*` flags enable WebSocket RPC, required if connecting Paladin to this node.
+#### Stopping the Service
 
-### 3.5 Security Notes
+```bash
+sudo systemctl stop besu
+```
 
-- Replace the default keys in `Node/` before any production deployment.
+#### Checking Status
+
+```bash
+systemctl status besu
+journalctl -u besu -f -n 100
+```
+
+#### Changing Node Configuration
+
+All runtime configuration changes are made by editing the env file and restarting the service:
+
+```bash
+sudo nano /etc/dakota/besu-current.env    # edit the configuration
+sudo systemctl restart besu               # apply changes
+journalctl -u besu -f -n 50               # verify startup
+```
+
+> **Important:** Do not bypass the wrapper script or embed node-specific flags directly into the systemd unit. The env-driven design keeps configuration portable and auditable.
+
+> **Note:** The `RPC_WS_*` variables enable WebSocket RPC, required if connecting Paladin to this node.
+
+### 3.5 Security & Permissions
+
+#### Runtime Principle
+
+Besu runs as the dedicated service account `besurun:besurun`. Root is only used for package installation, file placement, ownership/permission correction, service registration, and controlled maintenance actions. **At runtime, Besu itself operates under `besurun`.**
+
+#### Ownership and Permission Model
+
+| Path | Owner | Group | Mode | Purpose |
+|------|-------|-------|------|---------|
+| `/etc/dakota` | `root` | `besurun` | `750` | Config directory — root controls, besurun traverses |
+| `/etc/dakota/besu-current.env` | `root` | `besurun` | `640` | Active config — root edits, besurun reads |
+| `/usr/local/lib/dakota/run-besu.sh` | `root` | `besurun` | `750` | Wrapper — root controls, besurun executes |
+| `/var/lib/dakota/besu` | `besurun` | `besurun` | `750` | Runtime base — besurun owns |
+| `/var/lib/dakota/besu/data` | `besurun` | `besurun` | `750` | Chain data — besurun writes |
+| `/var/lib/dakota/besu/genesis.json` | `root` | `besurun` | `640` | Genesis — root controls, besurun reads |
+| `/var/lib/dakota/besu/data/key` | `besurun` | `besurun` | `600` | Node private key — besurun only |
+
+#### Permission Repair Commands
+
+If the service fails with permission errors, run:
+
+```bash
+sudo chown root:besurun /etc/dakota
+sudo chmod 750 /etc/dakota
+
+sudo chown root:besurun /etc/dakota/besu-current.env
+sudo chmod 640 /etc/dakota/besu-current.env
+
+sudo chown root:besurun /usr/local/lib/dakota/run-besu.sh
+sudo chmod 750 /usr/local/lib/dakota/run-besu.sh
+
+sudo chown -R besurun:besurun /var/lib/dakota/besu
+sudo find /var/lib/dakota/besu -type d -exec chmod 750 {} \;
+
+sudo chown root:besurun /var/lib/dakota/besu/genesis.json
+sudo chmod 640 /var/lib/dakota/besu/genesis.json
+
+sudo restorecon -Rv /etc/dakota /usr/local/lib/dakota /var/lib/dakota/besu 2>/dev/null || true
+```
+
+#### Permission Validation Checklist
+
+```bash
+# Verify service runtime user
+systemctl show -p User -p Group besu
+# Expected: User=besurun  Group=besurun
+
+# Verify directory ownership and modes
+ls -ld /etc/dakota /usr/local/lib/dakota /var/lib/dakota/besu
+ls -l /etc/dakota/besu-current.env /usr/local/lib/dakota/run-besu.sh
+ls -l /var/lib/dakota/besu/genesis.json
+ls -la /var/lib/dakota/besu/data/key /var/lib/dakota/besu/data/key.pub
+
+# Verify service is starting correctly
+systemctl status besu
+journalctl -u besu --no-pager -n 30
+```
+
+#### Operational Rules
+
+1. **Preserve the `besurun` runtime model.** Do not switch execution back to root.
+2. **Preserve the env-driven design.** Do not replace the env file with scattered one-off shell edits.
+3. **Preserve the wrapper-based launch flow.** Do not bypass the wrapper — it contains required validation and optional reset logic.
+4. **The env file must be sourced, not executed.** The wrapper uses `source /etc/dakota/besu-current.env`. Attempting to execute the env file as a command causes permission and startup failures.
+5. **Treat `/etc/dakota/besu-current.env` as part of the live service contract.** Any implementation or repair guidance must account for this file and its readability.
+
+#### Network Security
+
 - Ensure your firewall allows port `30303` (P2P) and `8545` (HTTP-RPC).
-- Restrict `--rpc-http-api`, `--host-allowlist`, and `--rpc-http-cors-origins` for production.
-- Customize `genesis.json` if additional parameters are required.
+- Restrict `RPC_HTTP_API`, `HOST_ALLOWLIST`, and `RPC_HTTP_CORS_ORIGINS` in the env file for production — the defaults `*` / `all` are for initial setup only.
+- Node private keys (`/var/lib/dakota/besu/data/key`) must be mode `600` and owned by `besurun`.
+- If SELinux is enabled, verify contexts are valid after any file placement.
 
 ---
 
@@ -774,7 +1191,7 @@ Use the included compiler tool:
 python Tools/solc_compiler/compile.py
 ```
 
-This auto-detects pragma versions, resolves OZ imports, and outputs ABI + bytecode to `Tools/solc_compiler/compiled_output/`.
+This auto-detects pragma versions, resolves imports (vendored OZ 4.9.6 for Genesis contracts, GitHub download for others), and outputs ABI + bytecode to `Tools/solc_compiler/compiled_output/`. The default EVM target is `osaka`; validator contracts (pragma `<0.8.20`) are automatically clamped to `london`.
 
 ### 5.2 Deployment Order
 
@@ -1418,8 +1835,8 @@ The repository includes production contracts that licensees can use or extend:
 | Contract | Standard | Source | Purpose |
 |----------|----------|--------|---------|
 | **CryftGreetingCards** | ERC-721 | `Contracts/Tokens/GreetingCards.sol` | NFT gift cards with vault pattern — implements `IRedeemable` |
-| **DakotaDelegation** | EIP-7702 | `Contracts/7702/DakotaDelegation.sol` | Delegation target for EOA smart features |
-| **GasSponsor** | — | `Contracts/7702/GasSponsor.sol` | Gas sponsorship treasury |
+| **DakotaDelegation** | EIP-7702 | `Contracts/Genesis/7702/DakotaDelegation.sol` | Delegation target for EOA smart features |
+| **GasSponsor** | — | `Contracts/Genesis/7702/GasSponsor.sol` | Gas sponsorship treasury |
 
 Licensees should deploy their own ERC-6551 and ERC-1155 contracts using standard implementations (OpenZeppelin, thirdweb, etc.) or use thirdweb's deployment tooling.
 
@@ -1547,10 +1964,9 @@ GasSponsor is deployed at `0x...FEeD` and is upgradeable via TransparentUpgradea
 ## 13. Deployment Checklist
 
 ### Infrastructure
-- [ ] Besu 26.1.0 installed with `pragueTime: 0` in genesis
+- [ ] Besu 26.1.0 installed with all forks through Osaka enabled from genesis
 - [ ] All validator/RPC nodes running and synced
-- [ ] Kubernetes cluster ready (k3s / kind / microk8s)
-- [ ] Paladin operator deployed with Pente domain enabled
+- [ ] Paladin deployed (Docker or Kubernetes — see Section 4)
 - [ ] Pente privacy group created with `externalCallsEnabled: true`
 - [ ] Blockscout self-hosted and indexing chain 112311
 - [ ] RPC endpoints accessible to backend / thirdweb
@@ -1595,15 +2011,24 @@ GasSponsor is deployed at `0x...FEeD` and is upgradeable via TransparentUpgradea
 
 | File | Description |
 |------|-------------|
-| `Contracts/Code Management/CodeManager.sol` | Public registry + Pente router (v3.0, upgradeable) |
-| `Contracts/Code Management/ComboStorage.sol` | Legacy public combo storage (v1.0) |
-| `Contracts/Code Management/PrivateComboStorage.sol` | Pente privacy group contract (v1.0) |
-| `Contracts/Code Management/interfaces/ICodeManager.sol` | Registry interface |
-| `Contracts/Code Management/interfaces/IRedeemable.sol` | Gift contract interface (6 functions) |
-| `Contracts/Code Management/interfaces/IComboStorage.sol` | Private storage interface (5 functions) |
+| `Contracts/Genesis/besuGenesis.7z` | Besu genesis file (7z-compressed; extract before use) |
+| `Contracts/Genesis/CodeManagement/CodeManager.sol` | Public registry + Pente router (v3.0, upgradeable) |
+| `Contracts/Genesis/CodeManagement/PrivateComboStorage.sol` | Pente privacy group contract (v1.0) |
+| `Contracts/Genesis/CodeManagement/Interfaces/ICodeManager.sol` | Registry interface |
+| `Contracts/Genesis/CodeManagement/Interfaces/IRedeemable.sol` | Gift contract interface (6 functions) |
+| `Contracts/Genesis/CodeManagement/Interfaces/IComboStorage.sol` | Private storage interface (5 functions) |
+| `Contracts/Genesis/7702/DakotaDelegation.sol` | EIP-7702 delegation target |
+| `Contracts/Genesis/7702/GasSponsor.sol` | Gas sponsorship treasury |
+| `Contracts/Genesis/7702/Interfaces/IDakotaDelegation.sol` | Delegation interface |
+| `Contracts/Genesis/7702/Interfaces/IGasSponsor.sol` | Gas sponsor interface |
+| `Contracts/Genesis/7702/EIP-7702-Instructions.md` | EIP-7702 deployment guide |
+| `Contracts/Genesis/GasManager/GasManager.sol` | Block reward + gas funding governance |
+| `Contracts/Genesis/ValidatorContracts/ValidatorSmartContractAllowList.sol` | QBFT validator governance |
+| `Contracts/Genesis/ValidatorContracts/ValidatorSmartContractInterface.sol` | Validator interface |
+| `Contracts/Genesis/Upgradeable/` | Vendored OpenZeppelin 4.9.6 upgradeable stack (MIT) |
+| `Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol` | Upgrade dispatch |
 | `Contracts/Tokens/GreetingCards.sol` | ERC-721 gift card implementation (implements IRedeemable) |
-| `Contracts/7702/DakotaDelegation.sol` | EIP-7702 delegation target |
-| `Contracts/7702/GasSponsor.sol` | Gas sponsorship treasury |
-| `Contracts/Genesis/GasManager.sol` | Block reward + gas funding governance |
-| `Contracts/Genesis/proxy/transparent/ProxyAdmin.sol` | Upgrade dispatch |
-| `Tools/solc_compiler/compile.py` | Solidity compiler with auto-detect + OZ import resolution |
+| `Tools/solc_compiler/compile.py` | Solidity compiler with auto-detect + vendored/GitHub import resolution |
+| `Tools/bytecode_replacer/replace_bytecode.py` | Bulk bytecode replacer for genesis files |
+| `Tools/keywizard/dakota_keywizard.py` | EOA and Besu node key generator |
+| `Tools/tx_simulator/tx_simulator.py` | Block-paced ETH transfer loop (QBFT/PoA) |

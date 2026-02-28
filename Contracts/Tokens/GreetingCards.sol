@@ -210,9 +210,9 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/
 import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/utils/StringsUpgradeable.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/proxy/utils/Initializable.sol";
 
-import "./interfaces/ICodeManager.sol";
-import "./interfaces/IRedeemable.sol";
-import "./interfaces/IComboStorage.sol";
+import "./Interfaces/ICodeManager.sol";
+import "./Interfaces/IRedeemable.sol";
+import "./Interfaces/IComboStorage.sol";
 
 contract CryftGreetingCards is
     Initializable,

@@ -6,27 +6,28 @@
 Solidity Runtime Bytecode Compiler
 ===================================
 Compiles Solidity contracts locally and extracts runtime bytecode
-without deploying to a testnet. Uses Cancun/Prague EVM and Solidity 0.8.x+.
+without deploying to a testnet. Uses Osaka EVM and Solidity 0.8.x+.
 
-Directory layout (alongside this script):
-    solc_compiler/
-        compile.py              <-- this script
-        contracts/              <-- drop .sol files/folders here
-            MyContract.sol
-            subfolder/
-                Another.sol
-        compiled_output/        <-- artifacts appear here, mirroring structure
-            MyContract/
-                MyContract_runtime.bin
-                MyContract_abi.json
-                ...
-            subfolder/
-                Another/
-                    ...
+Directory layout:
+    dakota-network/
+        Contracts/              <-- source .sol files (recursive scan)
+            Genesis/
+                7702/
+                CodeManagement/
+                GasManager/
+                ValidatorContracts/
+                Upgradeable/    <-- vendored OZ 4.9.6 + proxy stack
+            Tokens/
+        Tools/
+            solc_compiler/
+                compile.py          <-- this script
+                compiled_output/    <-- artifacts appear here, mirroring structure
+                .import_cache/      <-- downloaded OZ imports (GitHub URLs)
 
 Usage:
-    python compile.py                          # compile all .sol in contracts/
+    python compile.py                          # compile all .sol in Contracts/
     python compile.py --clean-cache            # clear downloaded import cache
+    python compile.py --clean-output           # clear previous compiled output
     python compile.py --solc-version 0.8.0     # override compiler version
     python compile.py --evm berlin             # override EVM target
 """
@@ -224,16 +225,25 @@ def resolve_imports_in_file(sol_file: Path, cache_dir: Path, _visited: set = Non
 
 
 def prepare_source(sol_path: str, cache_dir: Path) -> Path:
-    """Copy source file to working dir and resolve all imports."""
+    """Copy source file to working dir and resolve all imports.
+
+    The local import tree is mirrored inside ``cache_dir/source/`` using
+    relative paths anchored at ``CONTRACTS_DIR`` so that ``../`` imports
+    never escape the ``source/`` directory.
+    """
     cache_dir.mkdir(parents=True, exist_ok=True)
     work_dir = cache_dir / "source"
     work_dir.mkdir(parents=True, exist_ok=True)
 
     src = Path(sol_path).resolve()
-    dst = work_dir / src.name
+    contracts_root = CONTRACTS_DIR.resolve()
 
-    # Copy the original and any local imports
-    copy_local_tree(src, work_dir, set())
+    # Copy the original and any local imports, mirroring the directory
+    # structure relative to CONTRACTS_DIR.
+    copy_local_tree(src, work_dir, contracts_root, set())
+
+    # Destination mirrors the original contract path inside source/
+    dst = work_dir / src.relative_to(contracts_root)
 
     # Resolve GitHub/HTTP imports
     resolve_imports_in_file(dst, cache_dir)
@@ -253,14 +263,22 @@ def _copy_normalized(src: Path, dst: Path):
     dst.write_bytes(normalized)
 
 
-def copy_local_tree(src_file: Path, work_dir: Path, visited: set):
-    """Recursively copy local import dependencies."""
+def copy_local_tree(src_file: Path, work_dir: Path,
+                    src_root: Path, visited: set):
+    """Recursively copy local import dependencies.
+
+    All files are placed at ``work_dir / relpath(file, src_root)`` so that
+    the directory hierarchy inside ``work_dir`` mirrors the original source
+    tree and ``../`` imports resolve correctly without escaping the boundary.
+    """
     src_file = src_file.resolve()
     if src_file in visited:
         return
     visited.add(src_file)
 
-    dst = work_dir / src_file.name
+    rel = src_file.relative_to(src_root)
+    dst = work_dir / rel
+    dst.parent.mkdir(parents=True, exist_ok=True)
     _copy_normalized(src_file, dst)
 
     content = src_file.read_text(encoding="utf-8", errors="replace")
@@ -272,12 +290,7 @@ def copy_local_tree(src_file: Path, work_dir: Path, visited: set):
             continue
         imp_path = (src_file.parent / imp).resolve()
         if imp_path.exists():
-            # For relative imports that are in subdirectories, maintain structure
-            rel = os.path.relpath(imp_path, src_file.parent)
-            dest_path = work_dir / rel
-            dest_path.parent.mkdir(parents=True, exist_ok=True)
-            _copy_normalized(imp_path, dest_path)
-            copy_local_tree(imp_path, dest_path.parent, visited)
+            copy_local_tree(imp_path, work_dir, src_root, visited)
 
 
 # ────────────────────────────────────────────

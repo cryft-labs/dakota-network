@@ -1,9 +1,0 @@
-{
-  "runtime_bytecode": "0x730000000000000000000000000000000000000000301460806040525f5ffdfea26469706673582212201b9eef01d2ee967d54c1306ac622590fcd6e18f9b530f797a19dc735d5d2c0d864736f6c63430008220033",
-  "creation_bytecode": "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea26469706673582212201b9eef01d2ee967d54c1306ac622590fcd6e18f9b530f797a19dc735d5d2c0d864736f6c63430008220033",
-  "abi": [],
-  "opcodes": "PUSH1 0x55 PUSH1 0x32 PUSH1 0xB DUP3 DUP3 DUP3 CODECOPY DUP1 MLOAD PUSH0 BYTE PUSH1 0x73 EQ PUSH1 0x26 JUMPI PUSH4 0x4E487B71 PUSH1 0xE0 SHL PUSH0 MSTORE PUSH0 PUSH1 0x4 MSTORE PUSH1 0x24 PUSH0 REVERT JUMPDEST ADDRESS PUSH0 MSTORE PUSH1 0x73 DUP2 MSTORE8 DUP3 DUP2 RETURN INVALID PUSH20 0x0 ADDRESS EQ PUSH1 0x80 PUSH1 0x40 MSTORE PUSH0 PUSH0 REVERT INVALID LOG2 PUSH5 0x6970667358 0x22 SLT KECCAK256 SHL SWAP15 0xEF ADD 0xD2 RETURNCONTRACT 0x96 PUSH30 0x54C1306AC622590FCD6E18F9B530F797A19DC735D5D2C0D864736F6C6343 STOP ADDMOD 0x22 STOP CALLER ",
-  "metadata": "{\"compiler\":{\"version\":\"0.8.34+commit.80d5c536\"},\"language\":\"Solidity\",\"output\":{\"abi\":[],\"devdoc\":{\"details\":\"Collection of functions related to the address type\",\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"utils/Address.sol\":\"Address\"},\"evmVersion\":\"osaka\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"utils/Address.sol\":{\"keccak256\":\"0xb29ec75d19fd8257f2cb4d38f96a69d61e14592f8472e6ee8382937c179f7887\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://2f2c7ba3680bb72117ac8a54f99be05e981fa0c37a7fe949831967e38a61f4f5\",\"dweb:/ipfs/QmNbTRr4XGx4ygqbaRAZx71NJttkZYa3Y4AqhWmD68vGbW\"]}},\"version\":1}",
-  "runtime_size_bytes": 85,
-  "creation_size_bytes": 135
-}

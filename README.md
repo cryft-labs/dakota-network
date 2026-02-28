@@ -44,7 +44,7 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ### Genesis File Breakdown
 
-The genesis file (`Contracts/Genesis/besuGenesis.json`, ~1.07 GB) contains the full initial state for the network.
+The genesis file (`Contracts/Genesis/besuGenesis.7z`, compressed) contains the full initial state for the network. Extract with 7-Zip before use — the uncompressed JSON is ~1.07 GB.
 
 #### Chain Parameters
 
@@ -105,6 +105,24 @@ All Ethereum hard forks through Osaka are activated from genesis (block 0 / time
 ---
 
 ## Contracts
+
+### Upgradeability & OpenZeppelin Compatibility
+
+Dakota genesis slots use **OpenZeppelin 4.9.6 TransparentUpgradeableProxy** contracts embedded directly in the genesis file. Vendored copies of the OZ 4.9.6 `Initializable`, `ReentrancyGuardUpgradeable`, and `AddressUpgradeable` contracts are provided under `Contracts/Genesis/Upgradeable/` with Osaka-level `assembly ("memory-safe")` annotations.
+
+> **For clients deploying implementation contracts behind a reserved genesis proxy slot:**
+>
+> | Scenario | Compatible? | Notes |
+> |----------|:-----------:|-------|
+> | Fresh implementation using **OZ 5.x** base contracts | **Yes** | The 4.9.6 proxy is a pure `delegatecall` forwarder — it has no knowledge of the implementation's imports or inheritance. OZ 5.x `OwnableUpgradeable`, `ERC721Upgradeable`, etc. work identically behind a 4.9.6 proxy. |
+> | Upgrade from a **4.9.6-based** impl to a **5.x-based** impl | **No** | OZ 5.x uses ERC-7201 namespaced storage (slots at `keccak256("openzeppelin.storage.<Name>") - 1`). OZ 4.9.6 uses sequential storage (slot 0, 1, 2…). Swapping base versions causes all existing state to appear zeroed — the old state becomes orphaned in unreachable slots. |
+> | Upgrading between two **5.x-based** implementations | **Yes** | As long as both share the same ERC-7201 namespaced layout, upgrades work normally through the existing `ProxyAdmin`. |
+> | Upgrading between two **4.9.6-based** implementations | **Yes** | Standard sequential-storage upgrade path. Use the vendored contracts under `Contracts/Genesis/Upgradeable/` for Osaka compatibility. |
+> | Replacing the 4.9.6 proxy itself with a 5.x proxy | **No** | Proxy bytecode is embedded in genesis. A proxy-level swap would require a network hard fork. |
+>
+> **Rule of thumb:** Pick one OZ version for your implementation's base contracts and stick with it for the lifetime of that proxy slot. The proxy shell version (4.9.6) does not constrain your choice — only consistency between upgrades matters.
+>
+> The 4.9.6 proxy reads the admin address from storage via SLOAD on every call (~2,100 gas cold per transaction). OZ 5.x proxies use an `immutable` admin (zero-cost read). On a private QBFT network this difference is negligible (<1% of a typical call), and the 4.9.6 proxy retains the ability to change the admin via overlord governance vote — a feature removed in 5.x.
 
 ### Genesis Contracts (deployed at network genesis)
 
@@ -306,7 +324,7 @@ The GasManager has its own local `votersArray[]` and pluggable `otherVoterContra
 
 #### Upgradeability
 
-GasManager inherits `Initializable` and `ReentrancyGuardUpgradeable` from OpenZeppelin v4.9.0. The constructor calls `_disableInitializers()` to prevent re-initialization of the implementation contract.
+GasManager inherits `Initializable` and `ReentrancyGuardUpgradeable` from OpenZeppelin v4.9.6. The constructor calls `_disableInitializers()` to prevent re-initialization of the implementation contract.
 
 ---
 
@@ -750,7 +768,7 @@ Bulk bytecode replacer for genesis files. Finds all occurrences of one runtime b
 3. Run against the target file:
 
 ```bash
-python3 Tools/bytecode_replacer/replace_bytecode.py Contracts/Genesis/besuGenesis.json
+python3 Tools/bytecode_replacer/replace_bytecode.py Contracts/Genesis/besuGenesis.json  # path to extracted genesis
 ```
 
 **Options:**
@@ -880,7 +898,7 @@ python3 Tools/tx_simulator/tx_simulator.py \
 
 ### `Tools/solc_compiler/compile.py`
 
-Local Solidity compiler using [py-solc-x](https://github.com/iamdefinitelyahuman/py-solc-x). Compiles all `.sol` files under `Contracts/`, resolves GitHub imports, and outputs ABI + bytecode artifacts to `compiled_output/`.
+Local Solidity compiler using [py-solc-x](https://github.com/iamdefinitelyahuman/py-solc-x). Compiles all `.sol` files under `Contracts/`, resolves imports (vendored OZ 4.9.6 for Genesis contracts, GitHub download for others), and outputs ABI + bytecode artifacts to `compiled_output/`.
 
 ```bash
 pip install py-solc-x
@@ -931,32 +949,40 @@ As long as all parties compile from LF-normalized sources, the resulting bytecod
 ```
 dakota-network/
 ├── LICENSE                            # Apache 2.0 + patent notice
+├── IMPLEMENTATION.md                  # Full deployment & operations guide
 ├── Contracts/
-│   ├── 7702/
-│   │   ├── DakotaDelegation.sol      # EIP-7702 delegation target (session keys, EIP-1271)
-│   │   ├── GasSponsor.sol            # On-chain gas sponsorship treasury
-│   │   └── interfaces/
-│   │       ├── IDakotaDelegation.sol
-│   │       └── IGasSponsor.sol
-│   ├── Code Management/
-│   │   ├── CodeManager.sol           # Permissionless unique ID registry (fee-based)
-│   │   ├── PrivateComboStorage.sol   # Pente privacy group (private redemption)
-│   │   └── interfaces/
-│   │       ├── ICodeManager.sol
-│   │       ├── IComboStorage.sol
-│   │       └── IRedeemable.sol
 │   ├── Genesis/
-│   │   ├── besuGenesis.json          # Besu genesis file with contract allocations
-│   │   ├── GasManager.sol            # Gas beneficiary — voter-governed funding & burns
-│   │   ├── validatorContracts/
+│   │   ├── besuGenesis.7z             # Besu genesis file (7z-compressed; extract before use)
+│   │   ├── 7702/
+│   │   │   ├── DakotaDelegation.sol  # EIP-7702 delegation target (session keys, EIP-1271)
+│   │   │   ├── EIP-7702-Instructions.md  # EIP-7702 deployment guide
+│   │   │   ├── GasSponsor.sol        # On-chain gas sponsorship treasury
+│   │   │   └── Interfaces/
+│   │   │       ├── IDakotaDelegation.sol
+│   │   │       └── IGasSponsor.sol
+│   │   ├── CodeManagement/
+│   │   │   ├── CodeManager.sol       # Permissionless unique ID registry (fee-based)
+│   │   │   ├── PrivateComboStorage.sol # Pente privacy group (private redemption)
+│   │   │   └── Interfaces/
+│   │   │       ├── ICodeManager.sol
+│   │   │       ├── IComboStorage.sol
+│   │   │       └── IRedeemable.sol
+│   │   ├── GasManager/
+│   │   │   └── GasManager.sol        # Gas beneficiary — voter-governed funding & burns
+│   │   ├── ValidatorContracts/
 │   │   │   ├── ValidatorSmartContractAllowList.sol  # QBFT validator governance
 │   │   │   └── ValidatorSmartContractInterface.sol  # Shared interface
-│   │   ├── proxy/                    # OpenZeppelin transparent proxy (MIT)
-│   │   ├── interfaces/               # OpenZeppelin proxy interfaces (MIT)
-│   │   └── utils/                    # OpenZeppelin utilities (MIT)
+│   │   └── Upgradeable/              # OpenZeppelin 4.9.6 upgradeable contracts (MIT)
+│   │       ├── AddressUpgradeable.sol
+│   │       ├── Initializable.sol
+│   │       ├── ReentrancyGuardUpgradeable.sol
+│   │       ├── Proxy/                # Transparent proxy, ERC1967, beacon
+│   │       ├── Interfaces/           # Proxy interfaces (IERC1967, IERC1822)
+│   │       └── Utils/                # Address, StorageSlot, StringsUpgradeable
+│   │           └── Math/             # MathUpgradeable, SignedMathUpgradeable
 │   └── Tokens/
 │       ├── GreetingCards.sol          # ERC-721 greeting card NFT (CryftGreetingCards)
-│       └── interfaces/
+│       └── Interfaces/
 │           ├── ICodeManager.sol
 │           ├── IComboStorage.sol
 │           └── IRedeemable.sol
@@ -972,12 +998,6 @@ dakota-network/
 │   └── solc_compiler/
 │       ├── compile.py                # Local Solidity compiler (py-solc-x)
 │       └── compiled_output/          # ABI and artifact output
-├── Node/                             # Sample node directory structure
-│   ├── genesisPalceholder.json       # Placeholder genesis (production file too large for repo)
-│   └── Node/
-│       └── data/
-│           ├── key                   # Besu node private key (P2P / validator signing)
-│           └── key.pub               # Besu node public key
 └── README.md
 ```
 
@@ -989,7 +1009,7 @@ All project-owned smart contracts and tools are licensed under the **Apache Lice
 
 This software is part of a patented system. See the [LICENSE](LICENSE) file for the full license text and patent notice, and <https://cryftlabs.org/licenses> for additional details.
 
-OpenZeppelin-derived contracts under `Contracts/Genesis/proxy/`, `Contracts/Genesis/utils/`, and `Contracts/Genesis/interfaces/` retain their original **MIT** license.
+OpenZeppelin-derived contracts under `Contracts/Genesis/Upgradeable/` retain their original **MIT** license.
 
 ### Patent Enforcement
 
