@@ -99,8 +99,13 @@ contract DakotaDelegation is Initializable, ReentrancyGuardUpgradeable, IDakotaD
     //  Initialization
     // ═══════════════════════════════════════════════════════
 
+    /// @dev Prevent the implementation contract from being initialised.
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initializes the reentrancy guard.  Called once by the proxy.
-    function initialize() external initializer {
+    function initialize() public virtual initializer {
         __ReentrancyGuard_init();
     }
 

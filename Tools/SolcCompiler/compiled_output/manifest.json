@@ -51,7 +51,7 @@
     "source": "Genesis\\7702\\DakotaDelegation.sol",
     "contract": "DakotaDelegation",
     "runtime_bytes": 6252,
-    "creation_bytes": 6280,
+    "creation_bytes": 6476,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\7702\\DakotaDelegation\\DakotaDelegation",
     "over_limit": false
   },
