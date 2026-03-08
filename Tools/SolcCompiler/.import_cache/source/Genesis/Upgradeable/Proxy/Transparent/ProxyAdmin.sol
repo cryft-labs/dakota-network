@@ -22,7 +22,6 @@ import "./TransparentUpgradeableProxy.sol";
   │                                                             │
   │  Access control:                                            │
   │    Guardian — upgrade proxy implementation                  │
-  │    Overlord — change admin via threshold vote on proxy      │
   │                                                             │
   │  Provides:                                                  │
   │    - upgrade() / upgradeAndCall() — guardian-gated          │

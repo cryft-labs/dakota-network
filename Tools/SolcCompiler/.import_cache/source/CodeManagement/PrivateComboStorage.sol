@@ -7,8 +7,8 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 /*
-   ___  ____           __       ______           __       ______
-  / _ \/ __(_)  _____ / /____  / ___/__  __ _  / /  ___ / __/ /____  _______ ____ ____
+   ___                 __       ______           __       ______
+  / _ \ __ (_)  _____ / /____  / ___/__  __ _  / /  ___ / __/ /____  _______ ____ ____
  / ___/ _// / |/ / _ `/ __/ -_) /__/ _ \/  ' \/ _ \/ _ \\ \/ __/ _ \/ __/ _ `/ _ `/ -_)
 /_/  /_/ /_/|___/\_,_/\__/\__/\___/\___/_/_/_/_.__/\___/___/\__/\___/_/ \_,_/\_, /\__/
                                                                             /___/ By: CryftCreator
@@ -59,7 +59,7 @@ contract PrivateComboStorage is IComboStorage {
     /// @dev The CodeManager address on the public chain.
     ///      PenteExternalCall events target this address.
     ///      Hard-code before deployment to match the deployed CodeManager proxy.
-    address public constant codeManager = address(0x0000000000000000000000000000000000000000);
+    address public constant CODE_MANAGER = address(0x0000000000000000000000000000000000000000);
 
     /// @dev Admin address — deployer of this private contract within the privacy group.
     address public admin;
@@ -237,7 +237,7 @@ contract PrivateComboStorage is IComboStorage {
 
         // Route to public chain via CodeManager
         emit PenteExternalCall(
-            codeManager,
+            CODE_MANAGER,
             abi.encodeWithSignature(
                 "setUidFrozen(string,bool)",
                 uniqueId,
@@ -255,7 +255,7 @@ contract PrivateComboStorage is IComboStorage {
 
         // Route to public chain via CodeManager
         emit PenteExternalCall(
-            codeManager,
+            CODE_MANAGER,
             abi.encodeWithSignature(
                 "setUidContent(string,string)",
                 uniqueId,
@@ -299,7 +299,7 @@ contract PrivateComboStorage is IComboStorage {
 
         // Route redemption to public chain via CodeManager → gift contract
         emit PenteExternalCall(
-            codeManager,
+            CODE_MANAGER,
             abi.encodeWithSignature(
                 "recordRedemption(string,address)",
                 redeemedUniqueId,

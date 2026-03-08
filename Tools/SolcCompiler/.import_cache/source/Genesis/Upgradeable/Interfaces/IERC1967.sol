@@ -20,11 +20,6 @@ interface IERC1967 {
     event Upgraded(address indexed implementation);
 
     /**
-     * @dev Emitted when the admin account has changed.
-     */
-    event AdminChanged(address previousAdmin, address newAdmin);
-
-    /**
      * @dev Emitted when the beacon is changed.
      */
     event BeaconUpgraded(address indexed beacon);

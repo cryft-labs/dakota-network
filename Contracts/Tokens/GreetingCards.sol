@@ -431,12 +431,12 @@ contract CryftGreetingCards is
     ///
     /// @param buyer    The address that owns the cards (can set greeting, receives attribution)
     /// @param quantity Number of cards to purchase (1 to MAX_BATCH_SIZE)
-    /// @param _redeemedURI  IPFS base URI for redeemed metadata of this batch
+    /// @param redeemedURI   IPFS base URI for redeemed metadata of this batch
     ///                      (e.g. birthday vs holiday cards).
-    function buy(address buyer, uint256 quantity, string calldata _redeemedURI) external payable whenNotPaused {
+    function buy(address buyer, uint256 quantity, string calldata redeemedURI) external payable whenNotPaused {
         require(buyer != address(0), "Invalid buyer address");
         require(quantity > 0 && quantity <= MAX_BATCH_SIZE, "Batch: 1-100");
-        require(bytes(_redeemedURI).length > 0, "Redeemed URI required");
+        require(bytes(redeemedURI).length > 0, "Redeemed URI required");
 
         // Calculate registration fee from CodeManager
         uint256 registrationFee = ICodeManager(codeManagerAddress).registrationFee() * quantity;
@@ -468,7 +468,7 @@ contract CryftGreetingCards is
         _purchaseSegments.push(PurchaseSegment({
             endTokenId: uint96(endTokenId),
             buyer: buyer,
-            redeemedBaseURI: _redeemedURI
+            redeemedBaseURI: redeemedURI
         }));
 
         _totalMinted = endTokenId;
@@ -740,8 +740,8 @@ contract CryftGreetingCards is
         emit SupplyRegistered(supply);
     }
 
-    function setPaused(bool _paused) external onlyOwner {
-        paused = _paused;
+    function setPaused(bool paused_) external onlyOwner {
+        paused = paused_;
     }
 
     /// @notice Freeze or unfreeze a token in the vault.

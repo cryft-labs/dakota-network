@@ -89,9 +89,9 @@ contract CodeManager is Initializable, ICodeManager {
     address public feeVault;
 
     mapping(address => bool) public isWhitelistedAddress;
-    mapping(string => uint256) private identifierCounter;
-    mapping(string => ContractData) private contractIdentifierToData;
-    mapping(VoteType => mapping(uint256 => VoteTally)) private voteTallies;
+    mapping(string => uint256) private _identifierCounter;
+    mapping(string => ContractData) private _contractIdentifierToData;
+    mapping(VoteType => mapping(uint256 => VoteTally)) private _voteTallies;
     mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
 
     /// @dev Authorized Pente privacy groups that can call router functions.
@@ -188,7 +188,7 @@ contract CodeManager is Initializable, ICodeManager {
             address[] memory votedAddresses
         )
     {
-        VoteTally memory tally = voteTallies[voteType][target];
+        VoteTally memory tally = _voteTallies[voteType][target];
         totalVotes = tally.totalVotes;
         startVoteBlock = tally.startVoteBlock;
         if (startVoteBlock != 0) {
@@ -211,7 +211,7 @@ contract CodeManager is Initializable, ICodeManager {
         require(target != 0, "Target should not be zero");
         // Caller validation is enforced by the onlyVoters modifier on all public entry points
 
-        VoteTally storage tally = voteTallies[voteType][target];
+        VoteTally storage tally = _voteTallies[voteType][target];
 
         // reset expired tallies based on startVoteBlock
         if (
@@ -305,7 +305,7 @@ contract CodeManager is Initializable, ICodeManager {
             for (uint256 i = 0; i < tally.voters.length; i++) {
                 hasVoted[voteType][target][tally.voters[i]] = false;
             }
-            delete voteTallies[voteType][target];
+            delete _voteTallies[voteType][target];
             activeVoteCount--;
         }
 
@@ -330,7 +330,7 @@ contract CodeManager is Initializable, ICodeManager {
     function voteToAddOtherVoterContract(address voterContract) external onlyVoters {
         require(voterContract != address(0), "Voter contract address should not be zero");
         require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
-        require(isContract(voterContract), "Provided address does not point to a valid contract");
+        require(_isContract(voterContract), "Provided address does not point to a valid contract");
         try IVoterChecker(voterContract).getVoters() {} catch {
             revert("Contract does not implement required getVoters function");
         }
@@ -364,9 +364,9 @@ contract CodeManager is Initializable, ICodeManager {
         _castVote(VoteType.UPDATE_FEE_VAULT, uint256(uint160(newFeeVault)));
     }
 
-    function voteToUpdateVoteTallyBlockThreshold(uint256 _blocks) external onlyVoters {
-        require(_blocks > 0 && _blocks <= 100000, "Invalid block threshold");
-        _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, _blocks);
+    function voteToUpdateVoteTallyBlockThreshold(uint256 newThreshold) external onlyVoters {
+        require(newThreshold > 0 && newThreshold <= 100000, "Invalid block threshold");
+        _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, newThreshold);
     }
 
     /// @notice Vote to authorize (or de-authorize) a Pente privacy group address.
@@ -433,39 +433,39 @@ contract CodeManager is Initializable, ICodeManager {
     // ── Unique ID Queries ─────────────────────────────────
 
     function getContractData(string memory contractIdentifier) public view returns (ContractData memory) {
-        return contractIdentifierToData[contractIdentifier];
+        return _contractIdentifierToData[contractIdentifier];
     }
 
     /// @notice Get the counter for a given giftContract + chainId, computed on the fly.
     function getIdentifierCounter(address giftContract, string memory chainId) public view returns (string memory contractIdentifier, uint256 counter) {
         bytes32 hash = keccak256(abi.encodePacked(address(this), giftContract, chainId));
         contractIdentifier = StringsUpgradeable.toHexString(uint256(hash), 32);
-        counter = identifierCounter[contractIdentifier];
+        counter = _identifierCounter[contractIdentifier];
     }
 
     function validateUniqueId(string memory uniqueId) public view returns (bool isValid) {
-        (string memory contractIdentifier, uint256 extractedCounter) = splitUniqueId(uniqueId);
+        (string memory contractIdentifier, uint256 extractedCounter) = _splitUniqueId(uniqueId);
 
-        if (identifierCounter[contractIdentifier] == 0) {
+        if (_identifierCounter[contractIdentifier] == 0) {
             return false;
         }
 
-        return extractedCounter > 0 && extractedCounter <= identifierCounter[contractIdentifier];
+        return extractedCounter > 0 && extractedCounter <= _identifierCounter[contractIdentifier];
     }
 
     function getUniqueIdDetails(string memory uniqueId) public view returns (address giftContract, string memory chainId, uint256 counter) {
-        (string memory contractIdentifier, uint256 extractedCounter) = splitUniqueId(uniqueId);
+        (string memory contractIdentifier, uint256 extractedCounter) = _splitUniqueId(uniqueId);
         ContractData memory data = getContractData(contractIdentifier);
 
         require(data.giftContract != address(0), "No matching uniqueId found.");
 
-        uint256 currentCounter = identifierCounter[contractIdentifier];
+        uint256 currentCounter = _identifierCounter[contractIdentifier];
         require(extractedCounter > 0 && extractedCounter <= currentCounter, "Invalid counter value");
 
         return (data.giftContract, data.chainId, extractedCounter);
     }
 
-    function splitUniqueId(string memory uniqueId) internal pure returns (string memory contractIdentifier, uint256 counter) {
+    function _splitUniqueId(string memory uniqueId) internal pure returns (string memory contractIdentifier, uint256 counter) {
         uint256 delimiterIndex = bytes(uniqueId).length;
         for (uint256 i = 0; i < bytes(uniqueId).length; i++) {
             if (bytes(uniqueId)[i] == "-") {
@@ -475,11 +475,11 @@ contract CodeManager is Initializable, ICodeManager {
         }
         require(delimiterIndex != bytes(uniqueId).length, "Invalid uniqueId format");
 
-        contractIdentifier = substring(uniqueId, 0, delimiterIndex);
-        counter = parseUint(substring(uniqueId, delimiterIndex + 1, bytes(uniqueId).length));
+        contractIdentifier = _substring(uniqueId, 0, delimiterIndex);
+        counter = _parseUint(_substring(uniqueId, delimiterIndex + 1, bytes(uniqueId).length));
     }
 
-    function parseUint(string memory s) internal pure returns (uint256) {
+    function _parseUint(string memory s) internal pure returns (uint256) {
         uint256 res = 0;
         for (uint256 i = 0; i < bytes(s).length; i++) {
             require(bytes(s)[i] >= "0" && bytes(s)[i] <= "9", "Non-numeric character");
@@ -488,7 +488,7 @@ contract CodeManager is Initializable, ICodeManager {
         return res;
     }
 
-    function substring(string memory str, uint256 startIndex, uint256 endIndex) internal pure returns (string memory) {
+    function _substring(string memory str, uint256 startIndex, uint256 endIndex) internal pure returns (string memory) {
         bytes memory strBytes = bytes(str);
         bytes memory result = new bytes(endIndex - startIndex);
         for (uint256 i = startIndex; i < endIndex; i++) {
@@ -513,7 +513,7 @@ contract CodeManager is Initializable, ICodeManager {
         // Forward fee to fee vault
         payable(feeVault).transfer(totalFee);
 
-        incrementCounter(giftContract, chainId, quantity);
+        _incrementCounter(giftContract, chainId, quantity);
 
         emit UniqueIdsRegistered(giftContract, chainId, quantity);
 
@@ -529,7 +529,7 @@ contract CodeManager is Initializable, ICodeManager {
     /// @notice Voter-only function to reset an expired tally and decrement the active vote counter.
     ///         Call this to clean up stale tallies that would otherwise block voter-pool changes.
     function resetExpiredTally(VoteType voteType, uint256 target) external onlyVoters {
-        VoteTally storage tally = voteTallies[voteType][target];
+        VoteTally storage tally = _voteTallies[voteType][target];
         require(tally.startVoteBlock != 0, "No active tally for this target");
         require(
             block.number > tally.startVoteBlock + voteTallyBlockThreshold,
@@ -538,30 +538,30 @@ contract CodeManager is Initializable, ICodeManager {
         for (uint256 i = 0; i < tally.voters.length; i++) {
             hasVoted[voteType][target][tally.voters[i]] = false;
         }
-        delete voteTallies[voteType][target];
+        delete _voteTallies[voteType][target];
         activeVoteCount--;
         emit VoteTallyReset(voteType, target);
     }
 
     // ── Utilities ─────────────────────────────────────
 
-    function isContract(address _addr) internal view returns (bool) {
+    function _isContract(address addr) internal view returns (bool) {
         uint32 size;
         assembly ("memory-safe") {
-            size := extcodesize(_addr)
+            size := extcodesize(addr)
         }
         return (size > 0);
     }
 
-    function incrementCounter(address giftContract, string memory chainId, uint256 quantity) internal {
+    function _incrementCounter(address giftContract, string memory chainId, uint256 quantity) internal {
         bytes32 hash = keccak256(abi.encodePacked(address(this), giftContract, chainId));
         string memory contractIdentifier = StringsUpgradeable.toHexString(uint256(hash), 32);
 
-        if (identifierCounter[contractIdentifier] == 0) {
-            contractIdentifierToData[contractIdentifier] = ContractData(giftContract, chainId);
+        if (_identifierCounter[contractIdentifier] == 0) {
+            _contractIdentifierToData[contractIdentifier] = ContractData(giftContract, chainId);
         }
 
-        identifierCounter[contractIdentifier] += quantity;
+        _identifierCounter[contractIdentifier] += quantity;
     }
 
 }

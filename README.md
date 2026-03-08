@@ -122,7 +122,7 @@ Dakota genesis slots use **OpenZeppelin 4.9.6 TransparentUpgradeableProxy** cont
 >
 > **Rule of thumb:** Pick one OZ version for your implementation's base contracts and stick with it for the lifetime of that proxy slot. The proxy shell version (4.9.6) does not constrain your choice — only consistency between upgrades matters.
 >
-> The 4.9.6 proxy reads the admin address from storage via SLOAD on every call (~2,100 gas cold per transaction). OZ 5.x proxies use an `immutable` admin (zero-cost read). On a private QBFT network this difference is negligible (<1% of a typical call), and the 4.9.6 proxy retains the ability to change the admin via overlord governance vote — a feature removed in 5.x.
+> The Dakota 4.9.6 proxy uses a **compile-time constant** admin address (`_PROXY_ADMIN`) embedded directly in the bytecode — reads cost 3 gas (`PUSH20`) instead of 2,100 gas (cold `SLOAD`). The admin **cannot be changed at runtime** — it is permanent. The `_changeAdmin` / `_setAdmin` / `_getAdmin` functions and `AdminChanged` event from stock OZ 4.9.6 have been removed as dead code.
 
 ### Genesis Contracts (deployed at network genesis)
 
@@ -130,7 +130,7 @@ Dakota genesis slots use **OpenZeppelin 4.9.6 TransparentUpgradeableProxy** cont
 |----------|---------|-------------|---------|
 | **ValidatorSmartContractAllowList** | `0x0000...1111` | 20,565 B | QBFT validator, voter, and root overlord governance (solc 0.8.19 / London) |
 | **GasManager** | Genesis beneficiary | 14,163 B | Voter-governed gas funding, token burns, and native coin burns |
-| **TransparentUpgradeableProxy** | Per-contract | 16,799 B | Multi-party overlord/guardian transparent proxy |
+| **TransparentUpgradeableProxy** | Per-contract | 15,246 B | Multi-party overlord/guardian transparent proxy |
 | **ProxyAdmin** | Per-proxy | 3,200 B | Guardian-gated ERC1967 upgrade dispatch |
 
 ---
@@ -339,7 +339,7 @@ Extended OpenZeppelin ERC1967 transparent proxy with multi-party overlord/guardi
 | **Root Overlord** | Read dynamically from validator contract at `0x0000...1111` via `getRootOverlords()` / `isRootOverlord()` | Add/remove non-root overlords directly (no vote needed) |
 | **Overlord** (non-root) | Added by root overlord or via 2/3 overlord vote | Propose and vote on governance actions (2/3 threshold) |
 | **Guardian** | Added via 2/3 overlord vote | Operational: `proxy_linkLogicAdmin()` (one-time), trigger upgrades via ProxyAdmin |
-| **Admin** (ProxyAdmin contract) | Set during `proxy_linkLogicAdmin()`, changeable via 2/3 overlord vote | ERC1967 upgrade dispatch (`upgradeTo`, `upgradeToAndCall`, `changeAdmin`) |
+| **Admin** (ProxyAdmin contract) | Immutable — baked into bytecode at compile/genesis time (3-gas reads) | ERC1967 upgrade dispatch (`upgradeTo`, `upgradeToAndCall`) |
 
 Root overlords are **not stored** in the proxy — they are read live from the validator contract via `try/catch`. If the validator contract is unreachable, root overlord calls return `false` / empty array (safe degradation).
 
@@ -363,7 +363,6 @@ A single overlord can pass any proposal unilaterally (threshold = 1).
 | Change vote expiry | `proxy_proposeExpiryChange(newExpiry)` | Minimum 100 blocks (~5 min at 3s blocks) |
 | Revoke root overlord | `proxy_proposeRevokeRootOverlord()` | Root not already revoked; at least 1 non-root overlord exists |
 | Restore root overlord | `proxy_proposeRestoreRootOverlord()` | Root must be revoked; only non-root overlords can propose (root is excluded) |
-| Change proxy admin | `proxy_proposeAdminChange(newAdmin)` | Not `address(0)`, not the current admin |
 
 #### Root Overlord Direct Actions (no vote)
 
@@ -388,7 +387,7 @@ All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., 
 
 #### Proxy Linkage (One-Time)
 
-`proxy_linkLogicAdmin(logic, admin, data)` — guardian-gated, can only be called once (`isInit` flag). Sets the implementation address, initializes it with `data`, and assigns the ERC1967 admin (typically a ProxyAdmin contract).
+`proxy_linkLogicAdmin(logic, data)` — guardian-gated, can only be called once (`isInit` flag). Sets the implementation address and initializes it with `data`. The admin is immutable (baked into bytecode at compile/genesis time), so no admin assignment occurs at link time.
 
 #### Lockout Prevention
 
@@ -397,8 +396,7 @@ All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., 
 | Remove last non-root overlord when root is inactive | `_rawOverlordCount() > 1 \|\| (rootCount > 0 && !revoked)` |
 | Voluntary root revoke with no non-root overlords | `_rawOverlordCount() > 0` |
 | Force-revoke root with no non-root overlords | Same check in `proxy_proposeRevokeRootOverlord()` |
-| Set admin to `address(0)` | `_setAdmin` in ERC1967Upgrade requires `newAdmin != address(0)` |
-| Link logic with `address(0)` admin/logic | Both checked `!= address(0)` in `proxy_linkLogicAdmin()` |
+| Link logic with `address(0)` logic | Checked `!= address(0)` in `proxy_linkLogicAdmin()` |
 | Overlord/guardian dual-role | Both `proxy_addOverlord` and `proxy_proposeGuardianChange` cross-check to prevent any address holding both roles |
 | Mid-vote membership manipulation | Every direct add/remove calls `_incrementVoteEpoch()`, invalidating all pending proposals |
 | Single overlord stuck (threshold too high) | Threshold formula: `(1*2+2)/3 = 1` — a single overlord passes anything |
@@ -408,7 +406,8 @@ All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., 
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| `_proxy_validatorContract` | `0x0000...1111` | Genesis validator contract address |
+| `_PROXY_ADMIN` | `0x0000...FacAdE` | Compile-time constant admin (3-gas read, immutable) |
+| `_PROXY_VALIDATOR_CONTRACT` | `0x0000...1111` | Genesis validator contract address |
 | `DEFAULT_VOTE_EXPIRY` | 60,000 blocks | ~1 week at 3s blocks |
 | `MAX_GUARDIANS` | 10 | Hard cap on guardian count per proxy |
 
@@ -423,7 +422,6 @@ Auxiliary contract assigned as the ERC1967 admin of `TransparentUpgradeableProxy
 | Action | Who | How |
 |--------|-----|-----|
 | Upgrade implementation | Guardian of the target proxy | `upgrade(proxy, impl)` or `upgradeAndCall(proxy, impl, data)` |
-| Change admin | Overlords of the target proxy | `proxy_proposeAdminChange()` on the proxy itself (2/3 vote) |
 
 The `onlyGuardianOf(proxy)` modifier queries the proxy's `proxy_isGuardian(msg.sender)` — which returns `true` for mapped guardians and for active root overlords (root overlords are implicit guardians).
 

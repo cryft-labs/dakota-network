@@ -5,56 +5,6 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "voter",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "newAdmin",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "currentVotes",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "threshold",
-        "type": "uint256"
-      }
-    ],
-    "name": "AdminChangeProposed",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "previousAdmin",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "newAdmin",
-        "type": "address"
-      }
-    ],
-    "name": "AdminChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
         "name": "beacon",
         "type": "address"
       }
@@ -418,25 +368,6 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newAdmin",
-        "type": "address"
-      }
-    ],
-    "name": "proxy_getAdminChangeProposalVotes",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "proxy_getClearGuardiansProposalVotes",
     "outputs": [
@@ -689,30 +620,6 @@
         "internalType": "address",
         "name": "voter",
         "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "newAdmin",
-        "type": "address"
-      }
-    ],
-    "name": "proxy_hasVotedOnAdminChange",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "voter",
-        "type": "address"
       }
     ],
     "name": "proxy_hasVotedOnClearGuardians",
@@ -918,11 +825,6 @@
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "admin_",
-        "type": "address"
-      },
-      {
         "internalType": "bytes",
         "name": "_data",
         "type": "bytes"
@@ -931,19 +833,6 @@
     "name": "proxy_linkLogicAdmin",
     "outputs": [],
     "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newAdmin",
-        "type": "address"
-      }
-    ],
-    "name": "proxy_proposeAdminChange",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

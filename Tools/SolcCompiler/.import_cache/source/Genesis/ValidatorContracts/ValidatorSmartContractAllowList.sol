@@ -125,7 +125,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
     address[] public rootOverlords;
     address[] public otherOverlordContracts;
 
-    uint256 public MAX_VALIDATORS;
+    uint256 public maxValidators;
     uint256 public voteTallyBlockThreshold;
     uint256 public activeVoteCount;
 
@@ -157,7 +157,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         votersArray.push(msg.sender);
 
         voteTallyBlockThreshold = 1000;
-        MAX_VALIDATORS = 11;
+        maxValidators = 11;
     }
 
     // ── Voter & Validator Queries ─────────────────────
@@ -232,7 +232,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
             emit StateChanged(voteType, target);
 
             if (voteType == VoteType.CHANGE_MAX_VALIDATORS) {
-                MAX_VALIDATORS = target;
+                maxValidators = target;
                 emit MaxValidatorsChanged(target);
             } else if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
                 require(
@@ -303,7 +303,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                         "Validator already in list"
                     );
                     require(
-                        validators.length < MAX_VALIDATORS,
+                        validators.length < maxValidators,
                         "Reached max validators"
                     );
                     validators.push(targetAddress);
@@ -506,7 +506,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
 
         // Check if provided address points to a contract
         require(
-            isContract(contractAddress),
+            _isContract(contractAddress),
             "Provided address does not point to a valid contract"
         );
 
@@ -552,7 +552,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
 
         // Check if provided address points to a contract
         require(
-            isContract(voterContract),
+            _isContract(voterContract),
             "Provided address does not point to a valid contract"
         );
 
@@ -616,7 +616,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
 
         // Check if provided address points to a contract
         require(
-            isContract(contractAddress),
+            _isContract(contractAddress),
             "Provided address does not point to a valid contract"
         );
 
@@ -891,11 +891,11 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
 
     // ── Utilities ─────────────────────────────────────
 
-    function isContract(address _addr) internal view returns (bool) {
+    function _isContract(address addr) internal view returns (bool) {
         uint32 size;
         /// @solidity memory-safe-assembly
         assembly {
-            size := extcodesize(_addr)
+            size := extcodesize(addr)
         }
         return (size > 0);
     }

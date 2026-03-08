@@ -31,7 +31,6 @@ import "../ERC1967/ERC1967Proxy.sol";
   │    - Change vote expiry window                              │
   │    - Clear all guardians                                    │
   │    - Revoke/restore root overlord privileges                │
-  │    - Change proxy admin contract                            │
   │                                                             │
   │  All proxy state is stored in namespaced keccak256          │
   │  slots to avoid collisions with implementation storage.     │
@@ -48,8 +47,6 @@ interface ITransparentUpgradeableProxy is IERC1967 {
     function admin() external view returns (address);
 
     function implementation() external view returns (address);
-
-    function changeAdmin(address) external;
 
     function upgradeTo(address) external;
 
@@ -77,8 +74,8 @@ interface IValidatorRootOverlord {
  * implementation. If the admin tries to call a function on the implementation it will fail with an error that says
  * "admin cannot fallback to proxy target".
  *
- * These properties mean that the admin account can only be used for admin actions like upgrading the proxy or changing
- * the admin, so it's best if it's a dedicated account that is not used for anything else. This will avoid headaches due
+ * These properties mean that the admin account can only be used for admin actions like upgrading the proxy,
+ * so it's best if it's a dedicated account that is not used for anything else. This will avoid headaches due
  * to sudden errors when trying to call a function from the proxy implementation.
  *
  * Our recommendation is for the dedicated account to be an instance of the {ProxyAdmin} contract. If set up this way,
@@ -96,51 +93,63 @@ interface IValidatorRootOverlord {
  * render the admin operations inaccessible, which could prevent upgradeability. Transparency may also be compromised.
  */
 contract TransparentUpgradeableProxy is ERC1967Proxy {
-    bytes32 private constant _proxy_isInitSlot =
+
+    // ── Constant Admin (ProxyAdmin facade) ─────────────────
+    //
+    //    The proxy admin is a compile-time constant embedded
+    //    directly in the bytecode.  Reads cost 3 gas (PUSH20)
+    //    instead of 2 100 gas (cold SLOAD).  No constructor
+    //    needed — the address is fixed at compilation.
+    //
+    //    The admin CANNOT be changed at runtime — it is permanent.
+    //
+    address private constant _PROXY_ADMIN = 0x0000000000000000000000000000000000FacAdE;
+    address private constant _PROXY_VALIDATOR_CONTRACT = 0x0000000000000000000000000000000000001111;
+
+    bytes32 private constant _PROXY_IS_INIT_SLOT =
         keccak256("TransparentUpgradeableProxy.isInit");
-    bytes32 private constant _proxy_guardianMapSlot =
+    bytes32 private constant _PROXY_GUARDIAN_MAP_SLOT =
         keccak256("TransparentUpgradeableProxy.guardianMap");
-    bytes32 private constant _proxy_guardianCountSlot =
+    bytes32 private constant _PROXY_GUARDIAN_COUNT_SLOT =
         keccak256("TransparentUpgradeableProxy.guardianCount");
-    bytes32 private constant _proxy_guardianArraySlot =
+    bytes32 private constant _PROXY_GUARDIAN_ARRAY_SLOT =
         keccak256("TransparentUpgradeableProxy.guardianArray");
-    bytes32 private constant _proxy_guardianArrayIndexSlot =
+    bytes32 private constant _PROXY_GUARDIAN_ARRAY_INDEX_SLOT =
         keccak256("TransparentUpgradeableProxy.guardianArrayIndex");
-    bytes32 private constant _proxy_overlordMapSlot =
+    bytes32 private constant _PROXY_OVERLORD_MAP_SLOT =
         keccak256("TransparentUpgradeableProxy.overlordMap");
-    bytes32 private constant _proxy_overlordCountSlot =
+    bytes32 private constant _PROXY_OVERLORD_COUNT_SLOT =
         keccak256("TransparentUpgradeableProxy.overlordCount");
-    bytes32 private constant _proxy_rootRevokedSlot =
+    bytes32 private constant _PROXY_ROOT_REVOKED_SLOT =
         keccak256("TransparentUpgradeableProxy.rootRevoked");
-    bytes32 private constant _proxy_voteEpochSlot =
+    bytes32 private constant _PROXY_VOTE_EPOCH_SLOT =
         keccak256("TransparentUpgradeableProxy.voteEpoch");
-    bytes32 private constant _proxy_proposalVoteCountSlot =
+    bytes32 private constant _PROXY_PROPOSAL_VOTE_COUNT_SLOT =
         keccak256("TransparentUpgradeableProxy.proposalVoteCount");
-    bytes32 private constant _proxy_proposalVoterSlot =
+    bytes32 private constant _PROXY_PROPOSAL_VOTER_SLOT =
         keccak256("TransparentUpgradeableProxy.proposalVoter");
-    bytes32 private constant _proxy_proposalStartBlockSlot =
+    bytes32 private constant _PROXY_PROPOSAL_START_BLOCK_SLOT =
         keccak256("TransparentUpgradeableProxy.proposalStartBlock");
-    bytes32 private constant _proxy_proposalRoundSlot =
+    bytes32 private constant _PROXY_PROPOSAL_ROUND_SLOT =
         keccak256("TransparentUpgradeableProxy.proposalRound");
-    bytes32 private constant _proxy_voteExpirySlot =
+    bytes32 private constant _PROXY_VOTE_EXPIRY_SLOT =
         keccak256("TransparentUpgradeableProxy.voteExpiry");
-    bytes32 private constant _proxy_activeProposalSlot =
+    bytes32 private constant _PROXY_ACTIVE_PROPOSAL_SLOT =
         keccak256("TransparentUpgradeableProxy.activeProposal");
-    bytes32 private constant _proxy_activeProposalStartSlot =
+    bytes32 private constant _PROXY_ACTIVE_PROPOSAL_START_SLOT =
         keccak256("TransparentUpgradeableProxy.activeProposalStart");
 
-    address private constant _proxy_validatorContract = 0x0000000000000000000000000000000000001111;
-    uint256 private constant DEFAULT_VOTE_EXPIRY = 60000; // ~1 week at 3s blocks
-    uint256 private constant MAX_GUARDIANS = 10;
+    uint256 private constant _DEFAULT_VOTE_EXPIRY = 60000; // ~1 week at 3s blocks
+    uint256 private constant _MAX_GUARDIANS = 10;
 
     /// @dev Returns the address of the genesis validator contract.
     function proxy_getValidatorContract() external pure returns (address) {
-        return _proxy_validatorContract;
+        return _PROXY_VALIDATOR_CONTRACT;
     }
 
     /// @dev Returns root overlords as reported by the validator contract (0x1111).
     function proxy_getRootOverlords() external view returns (address[] memory) {
-        try IValidatorRootOverlord(_proxy_validatorContract).getRootOverlords() returns (address[] memory overlords) {
+        try IValidatorRootOverlord(_PROXY_VALIDATOR_CONTRACT).getRootOverlords() returns (address[] memory overlords) {
             return overlords;
         } catch {
             return new address[](0);
@@ -150,7 +159,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     /// @dev Checks if an address is a root overlord via the validator contract (0x1111).
     function _isRootOverlordAddress(address addr) internal view returns (bool) {
         if (addr == address(0)) return false;
-        try IValidatorRootOverlord(_proxy_validatorContract).isRootOverlord(addr) returns (bool result) {
+        try IValidatorRootOverlord(_PROXY_VALIDATOR_CONTRACT).isRootOverlord(addr) returns (bool result) {
             return result;
         } catch {
             return false;
@@ -159,7 +168,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     /// @dev Returns the count of root overlords from the validator contract.
     function _getRootOverlordCount() internal view returns (uint256) {
-        try IValidatorRootOverlord(_proxy_validatorContract).getRootOverlords() returns (address[] memory overlords) {
+        try IValidatorRootOverlord(_PROXY_VALIDATOR_CONTRACT).getRootOverlords() returns (address[] memory overlords) {
             return overlords.length;
         } catch {
             return 0;
@@ -180,7 +189,6 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     event GuardianChangeProposed(address indexed voter, address indexed target, bool isAdd, uint256 currentVotes, uint256 threshold);
     event RestoreRootProposed(address indexed voter, uint256 currentVotes, uint256 threshold);
     event RevokeRootProposed(address indexed voter, uint256 currentVotes, uint256 threshold);
-    event AdminChangeProposed(address indexed voter, address indexed newAdmin, uint256 currentVotes, uint256 threshold);
     event ProposalRoundExpired(bytes32 indexed proposalKey, uint256 newRound);
 
     modifier onlyOverlord() {
@@ -209,15 +217,15 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function proxy_getIsInit() public view returns (bool) {
         bool isInit;
-        bytes32 slot = _proxy_isInitSlot;
+        bytes32 slot = _PROXY_IS_INIT_SLOT;
         assembly ("memory-safe") {
             isInit := sload(slot)
         }
         return isInit;
     }
 
-    function setIsInit(bool value) internal {
-        bytes32 slot = _proxy_isInitSlot;
+    function _setIsInit(bool value) internal {
+        bytes32 slot = _PROXY_IS_INIT_SLOT;
         assembly ("memory-safe") {
             sstore(slot, value)
         }
@@ -227,7 +235,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _isRootRevoked() internal view returns (bool) {
         bool revoked;
-        bytes32 slot = _proxy_rootRevokedSlot;
+        bytes32 slot = _PROXY_ROOT_REVOKED_SLOT;
         assembly ("memory-safe") {
             revoked := sload(slot)
         }
@@ -235,7 +243,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setRootRevoked(bool status) internal {
-        bytes32 slot = _proxy_rootRevokedSlot;
+        bytes32 slot = _PROXY_ROOT_REVOKED_SLOT;
         assembly ("memory-safe") {
             sstore(slot, status)
         }
@@ -272,7 +280,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Guardian management (proxy-safe slot storage) ──
 
     function _guardianSlot(address addr) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_proxy_guardianMapSlot, addr));
+        return keccak256(abi.encodePacked(_PROXY_GUARDIAN_MAP_SLOT, addr));
     }
 
     function _isGuardian(address addr) internal view returns (bool) {
@@ -293,7 +301,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function proxy_getGuardianCount() public view returns (uint256) {
         uint256 count;
-        bytes32 slot = _proxy_guardianCountSlot;
+        bytes32 slot = _PROXY_GUARDIAN_COUNT_SLOT;
         assembly ("memory-safe") {
             count := sload(slot)
         }
@@ -301,7 +309,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setGuardianCount(uint256 count) internal {
-        bytes32 slot = _proxy_guardianCountSlot;
+        bytes32 slot = _PROXY_GUARDIAN_COUNT_SLOT;
         assembly ("memory-safe") {
             sstore(slot, count)
         }
@@ -310,7 +318,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Guardian array (for enumeration / bulk clear) ──
 
     function _guardianArrayElement(uint256 index) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_proxy_guardianArraySlot, index));
+        return keccak256(abi.encodePacked(_PROXY_GUARDIAN_ARRAY_SLOT, index));
     }
 
     function _getGuardianAt(uint256 index) internal view returns (address) {
@@ -330,7 +338,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _guardianIndexSlot(address addr) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_proxy_guardianArrayIndexSlot, addr));
+        return keccak256(abi.encodePacked(_PROXY_GUARDIAN_ARRAY_INDEX_SLOT, addr));
     }
 
     /// @dev Returns stored index + 1 (0 means not in array).
@@ -385,14 +393,14 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         return result;
     }
 
-    function addGuardian(address newGuardian) internal {
+    function _addGuardian(address newGuardian) internal {
         _setGuardian(newGuardian, true);
         _pushGuardian(newGuardian);
         _setGuardianCount(proxy_getGuardianCount() + 1);
         emit GuardianAdded(newGuardian);
     }
 
-    function removeGuardian(address guardianToRemove) internal {
+    function _removeGuardian(address guardianToRemove) internal {
         _setGuardian(guardianToRemove, false);
         _removeGuardianFromArray(guardianToRemove);
         _setGuardianCount(proxy_getGuardianCount() - 1);
@@ -414,7 +422,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Overlord management (proxy-safe slot storage) ──
 
     function _overlordSlot(address addr) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_proxy_overlordMapSlot, addr));
+        return keccak256(abi.encodePacked(_PROXY_OVERLORD_MAP_SLOT, addr));
     }
 
     function _isOverlord(address addr) internal view returns (bool) {
@@ -436,7 +444,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     /// @dev Returns the raw (stored) overlord count, excluding root overlord.
     function _rawOverlordCount() internal view returns (uint256) {
         uint256 count;
-        bytes32 slot = _proxy_overlordCountSlot;
+        bytes32 slot = _PROXY_OVERLORD_COUNT_SLOT;
         assembly ("memory-safe") {
             count := sload(slot)
         }
@@ -453,7 +461,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setOverlordCount(uint256 count) internal {
-        bytes32 slot = _proxy_overlordCountSlot;
+        bytes32 slot = _PROXY_OVERLORD_COUNT_SLOT;
         assembly ("memory-safe") {
             sstore(slot, count)
         }
@@ -495,7 +503,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _getVoteEpoch() internal view returns (uint256) {
         uint256 epoch;
-        bytes32 slot = _proxy_voteEpochSlot;
+        bytes32 slot = _PROXY_VOTE_EPOCH_SLOT;
         assembly ("memory-safe") {
             epoch := sload(slot)
         }
@@ -503,7 +511,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _incrementVoteEpoch() internal {
-        bytes32 slot = _proxy_voteEpochSlot;
+        bytes32 slot = _PROXY_VOTE_EPOCH_SLOT;
         uint256 epoch;
         assembly ("memory-safe") {
             epoch := sload(slot)
@@ -572,18 +580,8 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         return keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
     }
 
-    /// @dev Proposal key for changing the proxy admin.
-    function _getAdminChangeProposalKey(address newAdmin) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(_getVoteEpoch(), "adminChange", newAdmin));
-    }
-
-    function _getAdminChangeProposalId(address newAdmin) internal view returns (bytes32) {
-        bytes32 proposalKey = _getAdminChangeProposalKey(newAdmin);
-        return keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
-    }
-
     function _getProposalVoteCount(bytes32 proposalId) internal view returns (uint256) {
-        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoteCountSlot, proposalId));
+        bytes32 slot = keccak256(abi.encodePacked(_PROXY_PROPOSAL_VOTE_COUNT_SLOT, proposalId));
         uint256 count;
         assembly ("memory-safe") {
             count := sload(slot)
@@ -592,14 +590,14 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setProposalVoteCount(bytes32 proposalId, uint256 count) internal {
-        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoteCountSlot, proposalId));
+        bytes32 slot = keccak256(abi.encodePacked(_PROXY_PROPOSAL_VOTE_COUNT_SLOT, proposalId));
         assembly ("memory-safe") {
             sstore(slot, count)
         }
     }
 
     function _hasVoted(bytes32 proposalId, address voter) internal view returns (bool) {
-        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoterSlot, proposalId, voter));
+        bytes32 slot = keccak256(abi.encodePacked(_PROXY_PROPOSAL_VOTER_SLOT, proposalId, voter));
         bool voted;
         assembly ("memory-safe") {
             voted := sload(slot)
@@ -608,7 +606,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setHasVoted(bytes32 proposalId, address voter, bool voted) internal {
-        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalVoterSlot, proposalId, voter));
+        bytes32 slot = keccak256(abi.encodePacked(_PROXY_PROPOSAL_VOTER_SLOT, proposalId, voter));
         assembly ("memory-safe") {
             sstore(slot, voted)
         }
@@ -617,7 +615,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Proposal start block tracking ──
 
     function _getProposalStartBlock(bytes32 proposalId) internal view returns (uint256) {
-        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalStartBlockSlot, proposalId));
+        bytes32 slot = keccak256(abi.encodePacked(_PROXY_PROPOSAL_START_BLOCK_SLOT, proposalId));
         uint256 startBlock;
         assembly ("memory-safe") {
             startBlock := sload(slot)
@@ -626,7 +624,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setProposalStartBlock(bytes32 proposalId, uint256 blockNum) internal {
-        bytes32 slot = keccak256(abi.encodePacked(_proxy_proposalStartBlockSlot, proposalId));
+        bytes32 slot = keccak256(abi.encodePacked(_PROXY_PROPOSAL_START_BLOCK_SLOT, proposalId));
         assembly ("memory-safe") {
             sstore(slot, blockNum)
         }
@@ -635,7 +633,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Proposal round tracking (increments on expiry to invalidate stale votes) ──
 
     function _proposalRoundKey(bytes32 proposalKey) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_proxy_proposalRoundSlot, proposalKey));
+        return keccak256(abi.encodePacked(_PROXY_PROPOSAL_ROUND_SLOT, proposalKey));
     }
 
     function _getProposalRound(bytes32 proposalKey) internal view returns (uint256) {
@@ -661,15 +659,15 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function proxy_getVoteExpiry() public view returns (uint256) {
         uint256 expiry;
-        bytes32 slot = _proxy_voteExpirySlot;
+        bytes32 slot = _PROXY_VOTE_EXPIRY_SLOT;
         assembly ("memory-safe") {
             expiry := sload(slot)
         }
-        return expiry == 0 ? DEFAULT_VOTE_EXPIRY : expiry;
+        return expiry == 0 ? _DEFAULT_VOTE_EXPIRY : expiry;
     }
 
     function _setVoteExpiry(uint256 newExpiry) internal {
-        bytes32 slot = _proxy_voteExpirySlot;
+        bytes32 slot = _PROXY_VOTE_EXPIRY_SLOT;
         assembly ("memory-safe") {
             sstore(slot, newExpiry)
         }
@@ -679,7 +677,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _getActiveProposal() internal view returns (bytes32) {
         bytes32 result;
-        bytes32 slot = _proxy_activeProposalSlot;
+        bytes32 slot = _PROXY_ACTIVE_PROPOSAL_SLOT;
         assembly ("memory-safe") {
             result := sload(slot)
         }
@@ -687,7 +685,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setActiveProposal(bytes32 proposalId) internal {
-        bytes32 slot = _proxy_activeProposalSlot;
+        bytes32 slot = _PROXY_ACTIVE_PROPOSAL_SLOT;
         assembly ("memory-safe") {
             sstore(slot, proposalId)
         }
@@ -695,7 +693,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     function _getActiveProposalStart() internal view returns (uint256) {
         uint256 startBlock;
-        bytes32 slot = _proxy_activeProposalStartSlot;
+        bytes32 slot = _PROXY_ACTIVE_PROPOSAL_START_SLOT;
         assembly ("memory-safe") {
             startBlock := sload(slot)
         }
@@ -703,7 +701,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setActiveProposalStart(uint256 blockNum) internal {
-        bytes32 slot = _proxy_activeProposalStartSlot;
+        bytes32 slot = _PROXY_ACTIVE_PROPOSAL_START_SLOT;
         assembly ("memory-safe") {
             sstore(slot, blockNum)
         }
@@ -948,16 +946,6 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         return _hasVoted(_getRevokeRootProposalId(), voter);
     }
 
-    /// @dev View: current votes for an admin change proposal.
-    function proxy_getAdminChangeProposalVotes(address newAdmin) external view returns (uint256) {
-        return _getProposalVoteCount(_getAdminChangeProposalId(newAdmin));
-    }
-
-    /// @dev View: has a specific overlord voted on an admin change proposal?
-    function proxy_hasVotedOnAdminChange(address voter, address newAdmin) external view returns (bool) {
-        return _hasVoted(_getAdminChangeProposalId(newAdmin), voter);
-    }
-
     /**
      * @dev View: returns the active proposal ID, the block it started, and
      *      whether it has expired. Returns bytes32(0) if no proposal is active.
@@ -1033,12 +1021,12 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      */
     function proxy_proposeGuardianChange(address target, bool isAdd) external onlyOverlord {
         require(target != address(0), "Target cannot be zero address");
-        require(target != _proxy_validatorContract, "Root overlords are implicit guardians, manage via validator contract");
+        require(target != _PROXY_VALIDATOR_CONTRACT, "Root overlords are implicit guardians, manage via validator contract");
         require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
         if (isAdd) {
             require(!_isGuardian(target), "Already a guardian");
-            require(proxy_getGuardianCount() < MAX_GUARDIANS, "Guardian limit reached (10)");
+            require(proxy_getGuardianCount() < _MAX_GUARDIANS, "Guardian limit reached (10)");
             require(
                 !_isOverlord(target) && !_isRootOverlordAddress(target),
                 "Address is an overlord and cannot also be a guardian"
@@ -1077,9 +1065,9 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         if (newVoteCount >= threshold) {
             if (isAdd) {
-                addGuardian(target);
+                _addGuardian(target);
             } else {
-                removeGuardian(target);
+                _removeGuardian(target);
             }
             _clearActiveProposal();
             _incrementVoteEpoch();
@@ -1178,63 +1166,15 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         }
     }
 
-    /**
-     * @dev Overlords vote to change the proxy admin (the ProxyAdmin contract).
-     *      This is a governance-level action — changing who controls upgrades.
-     *      Auto-executes at 2/3 threshold.
-     */
-    function proxy_proposeAdminChange(address newAdmin) external onlyOverlord {
-        require(newAdmin != address(0), "New admin cannot be zero address");
-        require(newAdmin != _getAdmin(), "Already the current admin");
-        require(proxy_getOverlordCount() > 0, "No overlords to vote");
-
-        bytes32 proposalKey = _getAdminChangeProposalKey(newAdmin);
-        bytes32 proposalId = _getAdminChangeProposalId(newAdmin);
-
-        // Check if current proposal has expired
-        uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
-            _incrementProposalRound(proposalKey);
-            proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
-            emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
-        }
-
-        // Enforce single-session voting
-        _enforceSession(proposalId);
-
-        // Record start block on first vote of this round
-        if (_getProposalStartBlock(proposalId) == 0) {
-            _setProposalStartBlock(proposalId, block.number);
-        }
-
-        require(!_hasVoted(proposalId, msg.sender), "Already voted on this proposal");
-
-        _setHasVoted(proposalId, msg.sender, true);
-        uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
-        _setProposalVoteCount(proposalId, newVoteCount);
-
-        uint256 threshold = proxy_getOverlordThreshold();
-        emit AdminChangeProposed(msg.sender, newAdmin, newVoteCount, threshold);
-
-        if (newVoteCount >= threshold) {
-            _changeAdmin(newAdmin);
-            _clearActiveProposal();
-            _incrementVoteEpoch();
-        }
-    }
-
     function proxy_linkLogicAdmin(
         address _logic,
-        address admin_,
         bytes memory _data
     ) external payable onlyGuardian {
         require(proxy_getIsInit() == false, "Already linked");
         require(_logic != address(0), "Logic address cannot be zero");
-        require(admin_ != address(0), "Admin address cannot be zero");
-        setIsInit(true);
+        _setIsInit(true);
 
-        _Initializing(_logic, _data); // Initialize the proxy logic
-        _changeAdmin(admin_); // Change the admin
+        _initializeProxy(_logic, _data); // Initialize the proxy logic
     }
 
     /**
@@ -1244,7 +1184,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      * implementation provides a function with the same selector.
      */
     modifier ifAdmin() {
-        if (msg.sender == _getAdmin()) {
+        if (msg.sender == _PROXY_ADMIN) {
             _;
         } else {
             _fallback();
@@ -1255,7 +1195,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      * @dev If caller is the admin process the call internally, otherwise transparently fallback to the proxy behavior
      */
     function _fallback() internal virtual override {
-        if (msg.sender == _getAdmin()) {
+        if (msg.sender == _PROXY_ADMIN) {
             bytes memory ret;
             bytes4 selector = msg.sig;
             if (selector == ITransparentUpgradeableProxy.upgradeTo.selector) {
@@ -1265,10 +1205,6 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
                 ITransparentUpgradeableProxy.upgradeToAndCall.selector
             ) {
                 ret = _dispatchUpgradeToAndCall();
-            } else if (
-                selector == ITransparentUpgradeableProxy.changeAdmin.selector
-            ) {
-                ret = _dispatchChangeAdmin();
             } else if (
                 selector == ITransparentUpgradeableProxy.admin.selector
             ) {
@@ -1300,7 +1236,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     function _dispatchAdmin() private returns (bytes memory) {
         _requireZeroValue();
 
-        address admin = _getAdmin();
+        address admin = _PROXY_ADMIN;
         return abi.encode(admin);
     }
 
@@ -1316,20 +1252,6 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         address implementation = _implementation();
         return abi.encode(implementation);
-    }
-
-    /**
-     * @dev Changes the admin of the proxy.
-     *
-     * Emits an {AdminChanged} event.
-     */
-    function _dispatchChangeAdmin() private returns (bytes memory) {
-        _requireZeroValue();
-
-        address newAdmin = abi.decode(msg.data[4:], (address));
-        _changeAdmin(newAdmin);
-
-        return "";
     }
 
     /**
@@ -1360,12 +1282,10 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     /**
-     * @dev Returns the current admin.
-     *
-     * CAUTION: This function is deprecated. Use {ERC1967Upgrade-_getAdmin} instead.
+     * @dev Returns the current admin (compile-time constant).
      */
     function _admin() internal view virtual returns (address) {
-        return _getAdmin();
+        return _PROXY_ADMIN;
     }
 
     /**

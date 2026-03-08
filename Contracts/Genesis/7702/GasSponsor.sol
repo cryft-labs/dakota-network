@@ -49,7 +49,7 @@ import "./Interfaces/IGasSponsor.sol";
 
 /// @dev Minimal interface to call GasManager.executeFundGas.
 interface IGasManager {
-    function executeFundGas(address payable _to, uint256 _amount) external;
+    function executeFundGas(address payable to, uint256 amount) external;
     function approvedFunds(bytes32 fundKey) external view returns (bool);
     function isGuardian(address) external view returns (bool);
 }

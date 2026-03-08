@@ -322,7 +322,7 @@
       },
       {
         "internalType": "string",
-        "name": "_redeemedURI",
+        "name": "redeemedURI",
         "type": "string"
       }
     ],
@@ -997,7 +997,7 @@
     "inputs": [
       {
         "internalType": "bool",
-        "name": "_paused",
+        "name": "paused_",
         "type": "bool"
       }
     ],

@@ -42,8 +42,8 @@
   {
     "source": "CodeManagement\\PrivateComboStorage.sol",
     "contract": "PrivateComboStorage",
-    "runtime_bytes": 6791,
-    "creation_bytes": 6836,
+    "runtime_bytes": 6795,
+    "creation_bytes": 6840,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage\\PrivateComboStorage",
     "over_limit": false
   },
@@ -114,8 +114,8 @@
   {
     "source": "Genesis\\Upgradeable\\Proxy\\Transparent\\ProxyAdmin.sol",
     "contract": "TransparentUpgradeableProxy",
-    "runtime_bytes": 16799,
-    "creation_bytes": 16827,
+    "runtime_bytes": 15246,
+    "creation_bytes": 15274,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Proxy\\Transparent\\ProxyAdmin\\TransparentUpgradeableProxy",
     "over_limit": false
   },
