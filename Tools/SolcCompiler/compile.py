@@ -501,9 +501,17 @@ def compile_contract(
         sys.exit(1)
 
     results = {}
+    source_base = (IMPORT_CACHE_DIR / "source").resolve()
     for key, contract_data in compiled.items():
         # key format: "path:ContractName"
         name = key.split(":")[-1]
+
+        # Determine source path relative to CONTRACTS_DIR
+        source_file = Path(key.rsplit(":", 1)[0]).resolve()
+        try:
+            source_rel = str(source_file.relative_to(source_base))
+        except ValueError:
+            source_rel = f"{name}.sol"
 
         # Skip interfaces and abstract contracts (empty bytecode)
         runtime = contract_data.get("bin-runtime", "")
@@ -519,6 +527,7 @@ def compile_contract(
             "metadata": contract_data.get("metadata", ""),
             "runtime_size_bytes": len(bytes.fromhex(runtime)) if runtime else 0,
             "creation_size_bytes": len(bytes.fromhex(creation)) if creation else 0,
+            "source_rel_path": source_rel,
         }
 
     return results
@@ -558,7 +567,7 @@ def print_results(results: dict, contract_name: str = None):
         print()
 
 
-def save_results(results: dict, output_dir: str):
+def save_results(results: dict, output_dir: str, quiet: bool = False):
     """Save compilation artifacts to files."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -576,7 +585,8 @@ def save_results(results: dict, output_dir: str):
         if data.get("metadata"):
             (out / f"{name}_metadata.json").write_text(data["metadata"], newline="\n")
 
-    print(f"Artifacts saved to: {out.resolve()}")
+    if not quiet:
+        print(f"Artifacts saved to: {out.resolve()}")
 
 
 # ────────────────────────────────────────────
@@ -675,8 +685,6 @@ def compile_all(
 
     for sol_file in root_files:
         rel_path = sol_file.relative_to(CONTRACTS_DIR)
-        # Output goes to: compiled_output/<relative_dir>/<filename_stem>/
-        out_subdir = OUTPUT_DIR / rel_path.parent / sol_file.stem
 
         print(f"\n{'─'*60}")
         print(f"  Compiling: {rel_path}")
@@ -693,15 +701,22 @@ def compile_all(
 
             if results:
                 print_results(results)
-                save_results(results, str(out_subdir))
+                # Save each contract to a directory mirroring its own source path
+                for cname, cdata in results.items():
+                    src_rel = Path(cdata.get("source_rel_path", f"{cname}.sol"))
+                    contract_out = OUTPUT_DIR / src_rel.parent / src_rel.stem
+                    save_results({cname: cdata}, str(contract_out), quiet=True)
+                print(f"Artifacts saved to: {OUTPUT_DIR.resolve()}")
                 total_compiled += len(results)
                 for name, data in results.items():
+                    src_rel = Path(data.get("source_rel_path", f"{name}.sol"))
+                    contract_out = OUTPUT_DIR / src_rel.parent / src_rel.stem
                     summary.append({
-                        "source": str(rel_path),
+                        "source": data.get("source_rel_path", str(rel_path)),
                         "contract": name,
                         "runtime_bytes": data["runtime_size_bytes"],
                         "creation_bytes": data["creation_size_bytes"],
-                        "output": str(out_subdir / name),
+                        "output": str(contract_out),
                         "over_limit": data["runtime_size_bytes"] > 24576,
                     })
             else:

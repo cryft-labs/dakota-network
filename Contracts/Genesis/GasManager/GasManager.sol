@@ -99,6 +99,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     event GuardiansCleared(uint256 count);
     event VoterUpdated(address indexed target, bool added);
     event OtherVoterContractUpdated(address indexed target, bool added);
+    event VoteTallyBlockThresholdUpdated(uint256 newThreshold);
     event TokenBurnApproved(address indexed tokenAddress, uint256 amount, bytes32 burnKey);
     event GasFundApproved(address indexed to, uint256 amount, bytes32 fundKey);
     event CoinBurnApproved(uint256 amount, bytes32 coinBurnKey);
@@ -158,7 +159,16 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         }
         return allVoters;
     }
-
+    /// @notice Returns the total number of voters (local + external).
+    function getVoterCount() public view returns (uint256) {
+        uint256 count = votersArray.length;
+        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
+                count += ext.length;
+            } catch {}
+        }
+        return count;
+    }
     // ── Vote Tally & Thresholds ───────────────────────────
 
     function getVoteTally(VoteType voteType, uint256 target)
@@ -183,7 +193,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     function getSupermajorityThreshold() public view returns (uint256) {
-        uint256 totalVoterCount = getVoters().length;
+        uint256 totalVoterCount = getVoterCount();
         require(totalVoterCount > 0, "No voters available");
         return (totalVoterCount * 2 + 2) / 3;
     }
@@ -246,7 +256,12 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             emit StateChanged(voteType, target);
 
             if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
+                require(
+                    target > 0 && target <= 100000,
+                    "Threshold must be 1 to 100000"
+                );
                 voteTallyBlockThreshold = target;
+                emit VoteTallyBlockThresholdUpdated(target);
             } else {
                 address targetAddress = address(uint160(target));
                 if (voteType == VoteType.ADD_GUARDIAN) {

@@ -213,6 +213,9 @@ Once all three are revoked, this contract's local lists are permanently frozen. 
 | `getVoters()` | `address[]` | All voters (local `votersArray` + external contracts) |
 | `getValidators()` | `address[]` | All validators (local + external contracts) |
 | `getRootOverlords()` | `address[]` | All root overlords (local + external contracts) |
+| `getVoterCount()` | `uint256` | Total voter count (local + external) without materializing the array |
+| `getValidatorCount()` | `uint256` | Total validator count (local + external) without materializing the array |
+| `getRootOverlordCount()` | `uint256` | Total root overlord count (local + external) without materializing the array |
 | `getSupermajorityThreshold()` | `uint256` | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
 | `getVoteTally(VoteType, target)` | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target |
 | `MAX_VALIDATORS` | `uint256` | Current validator cap |
@@ -239,14 +242,14 @@ Once all three are revoked, this contract's local lists are permanently frozen. 
 
 ### GasManager (Genesis Beneficiary)
 
-Receives all block rewards as the QBFT beneficiary address. Provides voter-governed gas funding, token burns, and native coin burns with a two-phase vote → approve → execute pattern. Uses its own independent voter pool, separate from the validator contract's voters.
+Receives all block rewards as the QBFT beneficiary address. Provides voter-governed gas funding, token burns, and native coin burns with a two-phase vote → approve → execute pattern. Uses its own independent voter pool, separate from the validator contract's voters. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`.
 
 #### Access Control
 
 | Role | How Assigned | Powers |
 |------|-------------|--------|
-| **Voter** | Supermajority vote of existing voters | Vote on all governance actions |
-| **Guardian** | Supermajority vote of voters | Execute approved funds/burns; execute token and native coin burns. Can be individually added/removed or bulk-cleared via `voteToClearGuardians()`. Enumerable via `getGuardians()` / `getGuardianCount()`. |
+| **Voter** | 2/3 supermajority vote of existing voters | Vote on all governance actions |
+| **Guardian** | 2/3 supermajority vote of voters | Execute approved funds/burns; execute token and native coin burns. Can be individually added/removed or bulk-cleared via `voteToClearGuardians()`. Enumerable via `getGuardians()` / `getGuardianCount()`. |
 
 #### Two-Phase Operations
 
@@ -287,7 +290,7 @@ Voters can burn any amount of the contract's native coin balance via `voteToBurn
 
 #### Voter Pool (Independent)
 
-The GasManager has its own local `votersArray[]` and pluggable `otherVoterContracts[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External voter contracts must implement `getVoters()` and `isVoter()`. Quorum is `(totalVoterCount * 2 + 2) / 3`.
+The GasManager has its own local `votersArray[]` and pluggable `otherVoterContracts[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External voter contracts must implement `getVoters()` and `isVoter()`. 2/3 supermajority quorum: `(totalVoterCount * 2 + 2) / 3`.
 
 #### Convenience View Functions
 
@@ -295,6 +298,7 @@ The GasManager has its own local `votersArray[]` and pluggable `otherVoterContra
 |----------|---------|-------------|
 | `isVoter(address)` | `bool` | Check if address is a voter (local + external contracts) |
 | `getVoters()` | `address[]` | All voters (local `votersArray` + external contracts) |
+| `getVoterCount()` | `uint256` | Total voter count (local + external) without materializing the array |
 | `getSupermajorityThreshold()` | `uint256` | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
 | `getVoteTally(VoteType, target)` | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target |
 | `getContractBalance()` | `uint256` | Native coin balance held by this contract |
@@ -337,19 +341,19 @@ Extended OpenZeppelin ERC1967 transparent proxy with multi-party overlord/guardi
 | Tier | Source | Powers |
 |------|--------|--------|
 | **Root Overlord** | Read dynamically from validator contract at `0x0000...1111` via `getRootOverlords()` / `isRootOverlord()` | Add/remove non-root overlords directly (no vote needed) |
-| **Overlord** (non-root) | Added by root overlord or via 2/3 overlord vote | Propose and vote on governance actions (2/3 threshold) |
-| **Guardian** | Added via 2/3 overlord vote | Operational: `proxy_linkLogicAdmin()` (one-time), trigger upgrades via ProxyAdmin |
+| **Overlord** (non-root) | Added by root overlord or via 2/3 supermajority overlord vote | Propose and vote on governance actions (2/3 supermajority) |
+| **Guardian** | Added via 2/3 supermajority overlord vote | Operational: `proxy_linkLogicAdmin()` (one-time), trigger upgrades via ProxyAdmin |
 | **Admin** (ProxyAdmin contract) | Immutable — baked into bytecode at compile/genesis time (3-gas reads) | ERC1967 upgrade dispatch (`upgradeTo`, `upgradeToAndCall`) |
 
 Root overlords are **not stored** in the proxy — they are read live from the validator contract via `try/catch`. If the validator contract is unreachable, root overlord calls return `false` / empty array (safe degradation).
 
-#### Overlord Count and Threshold
+#### Overlord Count and Supermajority Threshold
 
 - `proxy_getOverlordCount()` = non-root overlords + root overlord count (when active)
-- Threshold = `ceil(count × 2 / 3)` = `(count * 2 + 2) / 3`
+- 2/3 supermajority threshold = `ceil(count × 2 / 3)` = `(count * 2 + 2) / 3`
 - Examples: 1→1, 2→2, 3→2, 4→3, 5→4, 6→4
 
-A single overlord can pass any proposal unilaterally (threshold = 1).
+A single overlord can pass any proposal unilaterally (supermajority threshold = 1).
 
 #### Governance Actions (2/3 supermajority)
 
@@ -483,7 +487,7 @@ CodeManager (independent)
 
 ### CodeManager (Unique ID Registry + Pente Router)
 
-Permissionless unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`. Voter-pool changes are blocked while any tally is active (`activeVoteCount > 0`).
+Permissionless unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`. Voter-pool changes are blocked while any tally is active (`activeVoteCount > 0`).
 
 Also serves as the Pente router — authorized privacy groups call router functions (`recordRedemption`, `setUidFrozen`, `setUidContent`) which resolve the UID to its gift contract and forward via `IRedeemable`. CodeManager stores **no per-UID state** — it is a thin registry + router only. The gift contract is the **sole authority** on per-UID state.
 
@@ -523,6 +527,7 @@ Also serves as the Pente router — authorized privacy groups call router functi
 |----------|---------|-------------|
 | `isVoter(address)` | `bool` | Check if address is a voter (local + external contracts) |
 | `getVoters()` | `address[]` | All voters (local `votersArray` + external contracts) |
+| `getVoterCount()` | `uint256` | Total voter count (local + external) without materializing the array |
 | `getSupermajorityThreshold()` | `uint256` | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
 | `getVoteTally(VoteType, target)` | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target |
 | `validateUniqueId(uniqueId)` | `bool` | Check if a UID is valid (registered and within counter range) |

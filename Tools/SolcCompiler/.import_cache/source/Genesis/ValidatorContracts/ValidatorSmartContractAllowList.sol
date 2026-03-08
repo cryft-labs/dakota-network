@@ -99,7 +99,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         REMOVE_OTHER_VALIDATOR_CONTRACT,
         ADD_OTHER_VOTER_CONTRACT,
         REMOVE_OTHER_VOTER_CONTRACT,
-        CHANGE_MAX_VALIDATORS,
+        UPDATE_MAX_VALIDATORS,
         UPDATE_VOTE_TALLY_BLOCK_THRESHOLD,
         ADD_ROOT_OVERLORD,
         REMOVE_ROOT_OVERLORD,
@@ -231,7 +231,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         if (tally.totalVotes >= getSupermajorityThreshold()) {
             emit StateChanged(voteType, target);
 
-            if (voteType == VoteType.CHANGE_MAX_VALIDATORS) {
+            if (voteType == VoteType.UPDATE_MAX_VALIDATORS) {
                 maxValidators = target;
                 emit MaxValidatorsChanged(target);
             } else if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
@@ -362,7 +362,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
                             break;
                         }
                     }
-                    require(found, "Contract not found");
+                    require(found, "Validator contract not found");
                     emit OtherValidatorContractUpdated(targetAddress, false);
                 } else if (voteType == VoteType.ADD_OTHER_VOTER_CONTRACT) {
                     require(!voterManagementRevoked, "Voter management permanently revoked");
@@ -452,12 +452,12 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
 
     // ── Validator Governance ──────────────────────────
 
-    function voteToChangeMaxValidators(uint256 newMax) external onlyVoters {
+    function voteToUpdateMaxValidators(uint256 newMax) external onlyVoters {
         require(
             newMax > 0,
-            "New max validators must be within valid range"
+            "New max validators must be greater than zero"
         );
-        _castVote(VoteType.CHANGE_MAX_VALIDATORS, newMax);
+        _castVote(VoteType.UPDATE_MAX_VALIDATORS, newMax);
     }
 
     function voteToAddValidator(address validator) external onlyVoters {
@@ -740,8 +740,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
     }
 
     function getSupermajorityThreshold() public view returns (uint256) {
-        address[] memory allVoters = getVoters();
-        uint256 totalVoterCount = allVoters.length;
+        uint256 totalVoterCount = getVoterCount();
         require(totalVoterCount > 0, "No voters available");
         return (totalVoterCount * 2 + 2) / 3;
     }
@@ -752,10 +751,10 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         uint256 totalLength = validators.length;
 
         for (uint256 i = 0; i < otherValidatorContracts.length; i++) {
-            ValidatorSmartContractInterface otherContract = ValidatorSmartContractInterface(
+            address[] memory ext = ValidatorSmartContractInterface(
                     otherValidatorContracts[i]
-                );
-            totalLength += otherContract.getValidators().length;
+                ).getValidators();
+            totalLength += ext.length;
         }
 
         address[] memory allValidators = new address[](totalLength);
@@ -768,11 +767,9 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         }
 
         for (uint256 i = 0; i < otherValidatorContracts.length; i++) {
-            ValidatorSmartContractInterface otherContract = ValidatorSmartContractInterface(
+            address[] memory externalValidators = ValidatorSmartContractInterface(
                     otherValidatorContracts[i]
-                );
-            address[] memory externalValidators = otherContract.getValidators();
-
+                ).getValidators();
             for (uint256 j = 0; j < externalValidators.length; j++) {
                 allValidators[counter] = externalValidators[j];
                 counter++;
@@ -780,6 +777,18 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         }
 
         return allValidators;
+    }
+
+    /// @notice Returns the total number of validators (local + external).
+    function getValidatorCount() public view returns (uint256) {
+        uint256 count = validators.length;
+        for (uint256 i = 0; i < otherValidatorContracts.length; i++) {
+            address[] memory ext = ValidatorSmartContractInterface(
+                    otherValidatorContracts[i]
+                ).getValidators();
+            count += ext.length;
+        }
+        return count;
     }
 
     function getVoters() public view override returns (address[] memory) {
@@ -815,6 +824,19 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         return allVoters;
     }
 
+    /// @notice Returns the total number of voters (local + external).
+    function getVoterCount() public view returns (uint256) {
+        uint256 count = votersArray.length;
+        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+            try ValidatorSmartContractInterface(
+                    otherVoterContracts[i]
+                ).getVoters() returns (address[] memory ext) {
+                count += ext.length;
+            } catch {}
+        }
+        return count;
+    }
+
     // ── Root Overlord Queries ─────────────────────────
 
     function getRootOverlords() public view override returns (address[] memory) {
@@ -848,6 +870,19 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         }
 
         return allOverlords;
+    }
+
+    /// @notice Returns the total number of root overlords (local + external).
+    function getRootOverlordCount() public view returns (uint256) {
+        uint256 count = rootOverlords.length;
+        for (uint256 i = 0; i < otherOverlordContracts.length; i++) {
+            try ValidatorSmartContractInterface(
+                    otherOverlordContracts[i]
+                ).getRootOverlords() returns (address[] memory ext) {
+                count += ext.length;
+            } catch {}
+        }
+        return count;
     }
 
     function isRootOverlord(

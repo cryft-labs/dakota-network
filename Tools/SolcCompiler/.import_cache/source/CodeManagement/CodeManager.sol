@@ -44,6 +44,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "../Genesis/Upgradeable/Utils/StringsUpgradeable.sol";
 import "../Genesis/Upgradeable/Initializable.sol";
+import "../Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol";
 
 import "./Interfaces/ICodeManager.sol";
 import "./Interfaces/IRedeemable.sol";
@@ -53,7 +54,7 @@ interface IVoterChecker {
     function getVoters() external view returns (address[] memory);
 }
 
-contract CodeManager is Initializable, ICodeManager {
+contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager {
     using StringsUpgradeable for uint256;
 
     modifier onlyWhitelisted() {
@@ -104,6 +105,7 @@ contract CodeManager is Initializable, ICodeManager {
     event UniqueIdsRegistered(address indexed giftContract, string chainId, uint256 quantity);
     event VoterUpdated(address indexed target, bool added);
     event OtherVoterContractUpdated(address indexed target, bool added);
+    event VoteTallyBlockThresholdUpdated(uint256 newThreshold);
     event PrivacyGroupAuthorized(address indexed privacyGroup, bool authorized);
     event RedemptionRouted(string uniqueId, address indexed giftContract, address indexed redeemer);
     event FrozenStatusRouted(string uniqueId, address indexed giftContract, bool frozen);
@@ -127,6 +129,7 @@ contract CodeManager is Initializable, ICodeManager {
     }
 
     function initialize() public virtual initializer {
+        __ReentrancyGuard_init();
         votersArray.push(msg.sender);
         registrationFee = 10**15;
         voteTallyBlockThreshold = 1000;
@@ -172,7 +175,16 @@ contract CodeManager is Initializable, ICodeManager {
         }
         return allVoters;
     }
-
+    /// @notice Returns the total number of voters (local + external).
+    function getVoterCount() public view returns (uint256) {
+        uint256 count = votersArray.length;
+        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
+            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
+                count += ext.length;
+            } catch {}
+        }
+        return count;
+    }
     // ── Vote Tally & Thresholds ───────────────────────────
 
     function getVoteTally(
@@ -200,7 +212,7 @@ contract CodeManager is Initializable, ICodeManager {
     }
 
     function getSupermajorityThreshold() public view returns (uint256) {
-        uint256 totalVoterCount = getVoters().length;
+        uint256 totalVoterCount = getVoterCount();
         require(totalVoterCount > 0, "No voters available");
         return (totalVoterCount * 2 + 2) / 3;
     }
@@ -294,7 +306,12 @@ contract CodeManager is Initializable, ICodeManager {
                 require(found, "Voter contract not found");
                 emit OtherVoterContractUpdated(targetAddress, false);
             } else if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
+                require(
+                    target > 0 && target <= 100000,
+                    "Threshold must be 1 to 100000"
+                );
                 voteTallyBlockThreshold = target;
+                emit VoteTallyBlockThresholdUpdated(target);
             } else if (voteType == VoteType.AUTHORIZE_PRIVACY_GROUP) {
                 address targetAddress = address(uint160(target));
                 isAuthorizedPrivacyGroup[targetAddress] = !isAuthorizedPrivacyGroup[targetAddress];
@@ -349,10 +366,12 @@ contract CodeManager is Initializable, ICodeManager {
     // ── Governance Entry Points ───────────────────────────
 
     function voteToAddWhitelistedAddress(address newAddress) external onlyVoters {
+        require(newAddress != address(0), "Address should not be zero");
         _castVote(VoteType.ADD_WHITELISTED_ADDRESS, uint256(uint160(newAddress)));
     }
 
     function voteToRemoveWhitelistedAddress(address removeAddress) external onlyVoters {
+        require(removeAddress != address(0), "Address should not be zero");
         _castVote(VoteType.REMOVE_WHITELISTED_ADDRESS, uint256(uint160(removeAddress)));
     }
 
@@ -361,6 +380,7 @@ contract CodeManager is Initializable, ICodeManager {
     }
 
     function voteToUpdateFeeVault(address newFeeVault) external onlyVoters {
+        require(newFeeVault != address(0), "Fee vault address should not be zero");
         _castVote(VoteType.UPDATE_FEE_VAULT, uint256(uint160(newFeeVault)));
     }
 
