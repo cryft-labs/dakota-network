@@ -473,6 +473,21 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         return extractedCounter > 0 && extractedCounter <= _identifierCounter[contractIdentifier];
     }
 
+    function validateUniqueIdsOrRevert(
+        string[] calldata uniqueIds
+    ) external view onlyAuthorizedPrivacyGroup {
+        uint256 len = uniqueIds.length;
+        require(len > 0, "No uniqueIds provided");
+
+        for (uint256 i = 0; i < len; ) {
+            require(
+                validateUniqueId(uniqueIds[i]),
+                "Invalid uniqueId in batch"
+            );
+            unchecked { ++i; }
+        }
+    }
+
     function getUniqueIdDetails(string memory uniqueId) public view returns (address giftContract, string memory chainId, uint256 counter) {
         (string memory contractIdentifier, uint256 extractedCounter) = _splitUniqueId(uniqueId);
         ContractData memory data = getContractData(contractIdentifier);

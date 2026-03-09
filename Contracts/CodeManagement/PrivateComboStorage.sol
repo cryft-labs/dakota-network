@@ -169,8 +169,10 @@ contract PrivateComboStorage is IComboStorage {
     //
     //    Store multiple pre-computed hashes in one transaction.
     //    All stored codes default to frozen=true.
-    //    Codes that cannot be stored are skipped with status=false.
-    //    The transaction always succeeds — partial storage is allowed.
+    //    The batch is fully atomic: if any local validation fails,
+    //    any public uniqueId validation fails, or any duplicate/full
+    //    bucket is encountered during the batch, the entire
+    //    transition reverts.
 
     /// @notice Store multiple pre-computed hashes in one transaction.
     ///         Each stored code defaults to frozen=true.
@@ -189,23 +191,60 @@ contract PrivateComboStorage is IComboStorage {
             "Array length mismatch"
         );
 
+        require(len > 0, "Empty batch");
+
+        // ----------------------------------------------------
+        // Phase 1: local preflight against current private state
+        // ----------------------------------------------------
+
+        for (uint256 i = 0; i < len; ) {
+            require(bytes(uniqueIds[i]).length > 0, "Empty uniqueId");
+            require(bytes(pins[i]).length > 0, "Empty PIN");
+            require(codeHashes[i] != bytes32(0), "Zero code hash");
+            require(
+                !pinToHash[pins[i]][codeHashes[i]].exists,
+                "Code hash already stored for PIN"
+            );
+            require(
+                pinSlotCount[pins[i]] < MAX_PER_PIN,
+                "PIN slot full"
+            );
+
+            unchecked { ++i; }
+        }
+
+        // ----------------------------------------------------
+        // Phase 2: atomic public-registry validation
+        //
+        // This routes through CodeManager on the public chain.
+        // If any uniqueId is invalid, CodeManager reverts and
+        // the entire Pente transition rolls back.
+        // ----------------------------------------------------
+
+        emit PenteExternalCall(
+            CODE_MANAGER,
+            abi.encodeCall(ICodeManager.validateUniqueIdsOrRevert, (uniqueIds))
+        );
+
+        // ----------------------------------------------------
+        // Phase 3: store all entries
+        //
+        // Re-check state-sensitive conditions here so duplicates
+        // inside the same batch also revert the whole transaction.
+        // ----------------------------------------------------
+
         stored = new bool[](len);
 
         for (uint256 i = 0; i < len; ) {
-            // Local validation — skip on failure
-            if (
-                bytes(pins[i]).length == 0 ||
-                codeHashes[i] == bytes32(0) ||
-                bytes(uniqueIds[i]).length == 0 ||
-                pinToHash[pins[i]][codeHashes[i]].exists ||
-                pinSlotCount[pins[i]] >= MAX_PER_PIN
-            ) {
-                emit DataStoredStatus(uniqueIds[i], codeHashes[i], false);
-                unchecked { ++i; }
-                continue;
-            }
+            require(
+                !pinToHash[pins[i]][codeHashes[i]].exists,
+                "Duplicate code hash in batch"
+            );
+            require(
+                pinSlotCount[pins[i]] < MAX_PER_PIN,
+                "PIN slot full during batch store"
+            );
 
-            // Store with default frozen=true
             pinToHash[pins[i]][codeHashes[i]] = CodeMetadata({
                 uniqueId: uniqueIds[i],
                 exists: true,
