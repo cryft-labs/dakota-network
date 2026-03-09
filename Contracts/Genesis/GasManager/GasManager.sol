@@ -13,7 +13,7 @@ pragma solidity >=0.8.2 <0.9.0;
  \___/\_,_/___//_/  /_/\_,_/_//_/\_,_/\_, /\_ /_/
                                      /___/ By: CryftCreator
 
-  Version 2.0 — Production Gas Manager  [UPGRADEABLE]
+    Version 2.3 — Production Gas Manager  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
   │                                                      │
@@ -28,10 +28,32 @@ pragma solidity >=0.8.2 <0.9.0;
   │    Applies to: gas funding, token burns,             │
   │    native coin burns.                                │
   │                                                      │
+  │  Funding V1 (legacy):                                │
+  │    fundKey = keccak256(abi.encodePacked(to, amount)) │
+  │                                                      │
+  │  Funding V2:                                         │
+  │    Proposal identity = fundingId + nonce             │
+  │    fundKey = keccak256(abi.encode(fundingId, nonce)) │
+  │    Clear-text note emitted on proposal creation      │
+  │    noteHash stored on-chain                          │
+  │                                                      │
+  │  Shared approval expiry model:                       │
+  │    approvalBlock + thresholdAtApproval               │
+  │    Threshold changes affect only future approvals    │
+  │                                                      │
+  │  Expired funding cleanup:                            │
+  │    Voter authorizes sweep                            │
+  │    Guardian executes bounded cleanup batches         │
+  │                                                      │
   │  Guardian management:                                │
   │    Add/remove individual guardians, or clear all     │
-  │    via voteToClearGuardians().  Enumerable via       │
+  │    via voteToClearGuardians(). Enumerable via        │
   │    getGuardians() / getGuardianCount().              │
+  │                                                      │
+  │  Upgradeability notes:                               │
+  │    Existing storage order is preserved.              │
+  │    Old storage slots are not reordered.              │
+  │    approvedFunds safely serves both V1 and V2 keys.  │
   │                                                      │
   │  Uses .call{value:} for all ETH transfers.           │
   │  ReentrancyGuard on all execute functions.           │
@@ -64,10 +86,49 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     mapping(VoteType => mapping(uint256 => VoteTally)) private _voteTallies;
     mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
     mapping(bytes32 => bool) public approvedBurns;
+
+    // Existing storage slot retained in-place.
+    // Expanded safely to represent approval state for BOTH V1 and V2 funding keys.
     mapping(bytes32 => bool) public approvedFunds;
+
     mapping(bytes32 => bool) public approvedCoinBurns;
 
     address constant _DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+
+    // ── Appended Storage (safe append-only upgrade) ────────────────────────
+
+    struct FundProposal {
+        bytes32 fundingId;
+        bytes32 noteHash;
+        address payable to;
+        uint256 amount;
+        uint256 nonce;
+        bool executed;
+        bool exists;
+    }
+
+    // V2 proposals keyed by fundKey = keccak256(abi.encode(fundingId, nonce))
+    mapping(bytes32 => FundProposal) private _fundProposals;
+
+    // Last nonce used for each funding id.
+    // Storage slot retained in-place; preferred getter aliases are defined below.
+    mapping(bytes32 => uint256) private _lastFundingNonceByFundingId;
+
+    // Shared approval expiry model for BOTH V1 and V2
+    uint256 public fundApprovalBlockThreshold;
+    mapping(bytes32 => uint256) public fundApprovalBlock;
+    mapping(bytes32 => uint256) public fundApprovalThresholdAtApproval;
+
+    // Enumerable active approved fund keys for governed stale-expiry sweeps
+    bytes32[] private _activeApprovedFundKeys;
+    mapping(bytes32 => uint256) private _activeApprovedFundKeyIndexPlusOne;
+
+    // Governed cleanup authorization state
+    bool public expiredFundCleanupAuthorized;
+    uint256 public expiredFundCleanupCursor;
+
+    uint256 private constant _MAX_FUND_NOTE_LENGTH = 280;
+    uint256 private constant _MAX_CLEANUP_BATCH_SCAN = 500;
 
     enum VoteType {
         ADD_GUARDIAN,
@@ -80,7 +141,9 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         CLEAR_GUARDIANS,
         BURN_TOKENS,
         FUND_GAS,
-        BURN_NATIVE_COIN
+        BURN_NATIVE_COIN,
+        UPDATE_FUND_APPROVAL_BLOCK_THRESHOLD,
+        AUTHORIZE_EXPIRED_FUND_CLEANUP
     }
 
     struct VoteTally {
@@ -92,6 +155,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     event VoteCast(address indexed voter, VoteType voteType, uint256 target);
     event VoteTallyReset(VoteType voteType, uint256 target);
     event StateChanged(VoteType voteType, uint256 newValue);
+
     event GasFunded(address indexed to, uint256 amount);
     event TokenBurned(address indexed tokenAddress, uint256 amount);
     event NativeCoinBurned(uint256 amount);
@@ -100,9 +164,59 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     event VoterUpdated(address indexed target, bool added);
     event OtherVoterContractUpdated(address indexed target, bool added);
     event VoteTallyBlockThresholdUpdated(uint256 newThreshold);
+    event FundApprovalBlockThresholdUpdated(uint256 newThreshold);
+
     event TokenBurnApproved(address indexed tokenAddress, uint256 amount, bytes32 burnKey);
     event GasFundApproved(address indexed to, uint256 amount, bytes32 fundKey);
     event CoinBurnApproved(uint256 amount, bytes32 coinBurnKey);
+
+    event FundApprovalWindowSet(
+        bytes32 indexed fundKey,
+        uint256 approvalBlock,
+        uint256 thresholdAtApproval
+    );
+
+    event FundApprovalCleared(
+        bytes32 indexed fundKey,
+        bool expiredOrInvalid
+    );
+
+    event GasFundProposalCreated(
+        bytes32 indexed fundingId,
+        uint256 indexed nonce,
+        bytes32 indexed fundKey,
+        address to,
+        uint256 amount,
+        bytes32 noteHash,
+        string note
+    );
+
+    event GasFundProposalApproved(
+        bytes32 indexed fundingId,
+        uint256 indexed nonce,
+        bytes32 indexed fundKey,
+        address to,
+        uint256 amount,
+        bytes32 noteHash,
+        uint256 approvalBlock,
+        uint256 thresholdAtApproval
+    );
+
+    event GasFundProposalExecuted(
+        bytes32 indexed fundingId,
+        uint256 indexed nonce,
+        bytes32 indexed fundKey,
+        address to,
+        uint256 amount
+    );
+
+    event ExpiredFundCleanupAuthorized(uint256 activeApprovedFundCount);
+    event ExpiredFundCleanupExecuted(
+        uint256 scannedCount,
+        uint256 clearedCount,
+        uint256 nextCursor,
+        bool completed
+    );
 
     modifier onlyVoters() {
         require(isVoter(msg.sender), "Only voters can call this function");
@@ -117,6 +231,15 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         __ReentrancyGuard_init();
         votersArray.push(msg.sender);
         voteTallyBlockThreshold = 1000;
+        fundApprovalBlockThreshold = 1000;
+    }
+
+    /// @notice Upgrade initializer for already-deployed instances upgrading from older versions.
+    ///         Safe to call once after upgrade if `fundApprovalBlockThreshold` was never set.
+    function initializeV2() public reinitializer(2) {
+        if (fundApprovalBlockThreshold == 0) {
+            fundApprovalBlockThreshold = 1000;
+        }
     }
 
     // ── Voter Queries ─────────────────────────────────────
@@ -146,29 +269,35 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         address[] memory allVoters = new address[](totalLen);
         uint256 counter = 0;
         for (uint256 i = 0; i < votersArray.length; i++) {
-            allVoters[counter] = votersArray[i];
-            counter++;
+            if (!_containsAddress(allVoters, counter, votersArray[i])) {
+                allVoters[counter] = votersArray[i];
+                counter++;
+            }
         }
         for (uint256 i = 0; i < otherVoterContracts.length; i++) {
             try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
                 for (uint256 j = 0; j < ext.length; j++) {
-                    allVoters[counter] = ext[j];
-                    counter++;
+                    if (!_containsAddress(allVoters, counter, ext[j])) {
+                        allVoters[counter] = ext[j];
+                        counter++;
+                    }
                 }
             } catch {}
         }
-        return allVoters;
-    }
-    /// @notice Returns the total number of voters (local + external).
-    function getVoterCount() public view returns (uint256) {
-        uint256 count = votersArray.length;
-        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
-                count += ext.length;
-            } catch {}
+
+        address[] memory uniqueVoters = new address[](counter);
+        for (uint256 i = 0; i < counter; i++) {
+            uniqueVoters[i] = allVoters[i];
         }
-        return count;
+
+        return uniqueVoters;
     }
+
+    /// @notice Returns the total number of unique voters (local + external).
+    function getVoterCount() public view returns (uint256) {
+        return getVoters().length;
+    }
+
     // ── Vote Tally & Thresholds ───────────────────────────
 
     function getVoteTally(VoteType voteType, uint256 target)
@@ -213,6 +342,210 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         return token.balanceOf(address(this));
     }
 
+    // ── Shared Funding Approval Queries ───────────────────
+
+    function getFundApprovalStatus(bytes32 fundKey)
+        public
+        view
+        returns (
+            bool approved,
+            uint256 approvalBlockNumber,
+            uint256 thresholdAtApproval,
+            bool expiredOrInvalid,
+            bool inActiveSet
+        )
+    {
+        approved = approvedFunds[fundKey];
+        approvalBlockNumber = fundApprovalBlock[fundKey];
+        thresholdAtApproval = fundApprovalThresholdAtApproval[fundKey];
+        expiredOrInvalid = _isFundApprovalExpiredOrInvalid(fundKey);
+        inActiveSet = _activeApprovedFundKeyIndexPlusOne[fundKey] != 0;
+    }
+
+    function getActiveApprovedFundKeyCount() public view returns (uint256) {
+        return _activeApprovedFundKeys.length;
+    }
+
+    function getActiveApprovedFundKeys(uint256 start, uint256 count)
+        public
+        view
+        returns (bytes32[] memory keys)
+    {
+        require(start < _activeApprovedFundKeys.length || _activeApprovedFundKeys.length == 0, "Start out of range");
+
+        uint256 len = _activeApprovedFundKeys.length;
+        if (start >= len) {
+            return new bytes32[](0);
+        }
+
+        uint256 end = start + count;
+        if (end > len) {
+            end = len;
+        }
+
+        keys = new bytes32[](end - start);
+        uint256 out = 0;
+        for (uint256 i = start; i < end; i++) {
+            keys[out] = _activeApprovedFundKeys[i];
+            out++;
+        }
+    }
+
+    function lastFundingNonceByFundingId(bytes32 fundingId) public view returns (uint256) {
+        return _lastFundingNonceByFundingId[fundingId];
+    }
+
+    function lastFundingNonceByUserId(bytes32 fundingId) public view returns (uint256) {
+        return _lastFundingNonceByFundingId[fundingId];
+    }
+
+    // ── V1 Legacy Funding Queries ─────────────────────────
+
+    function getLegacyFundKey(address to, uint256 amount) public pure returns (bytes32) {
+        require(to != address(0), "Invalid recipient address");
+        require(amount > 0, "Amount must be greater than zero");
+        return keccak256(abi.encodePacked(to, amount));
+    }
+
+    function getLegacyFundApprovalStatus(address to, uint256 amount)
+        public
+        view
+        returns (
+            bytes32 fundKey,
+            bool approved,
+            uint256 approvalBlockNumber,
+            uint256 thresholdAtApproval,
+            bool expiredOrInvalid,
+            bool inActiveSet
+        )
+    {
+        fundKey = getLegacyFundKey(to, amount);
+        (
+            approved,
+            approvalBlockNumber,
+            thresholdAtApproval,
+            expiredOrInvalid,
+            inActiveSet
+        ) = getFundApprovalStatus(fundKey);
+    }
+
+    // ── V2 Funding Queries ────────────────────────────────
+
+    function getNextFundingNonce(bytes32 fundingId) public view returns (uint256) {
+        require(fundingId != bytes32(0), "Funding ID should not be zero");
+        return _lastFundingNonceByFundingId[fundingId] + 1;
+    }
+
+    function getFundKey(bytes32 fundingId, uint256 nonce) public pure returns (bytes32) {
+        require(fundingId != bytes32(0), "Funding ID should not be zero");
+        require(nonce > 0, "Nonce must be greater than zero");
+        return keccak256(abi.encode(fundingId, nonce));
+    }
+
+    function getFundProposal(bytes32 fundKey)
+        public
+        view
+        returns (
+            bytes32 fundingId,
+            uint256 nonce,
+            address to,
+            uint256 amount,
+            bytes32 noteHash,
+            bool executed,
+            bool exists,
+            bool approved,
+            uint256 approvalBlockNumber,
+            uint256 thresholdAtApproval,
+            bool expiredOrInvalid
+        )
+    {
+        FundProposal storage proposal = _fundProposals[fundKey];
+        bool inActiveSet;
+        (
+            approved,
+            approvalBlockNumber,
+            thresholdAtApproval,
+            expiredOrInvalid,
+            inActiveSet
+        ) = getFundApprovalStatus(fundKey);
+        inActiveSet;
+
+        return (
+            proposal.fundingId,
+            proposal.nonce,
+            proposal.to,
+            proposal.amount,
+            proposal.noteHash,
+            proposal.executed,
+            proposal.exists,
+            approved,
+            approvalBlockNumber,
+            thresholdAtApproval,
+            expiredOrInvalid
+        );
+    }
+
+    function getFundProposalByFundingId(bytes32 fundingId, uint256 nonce)
+        public
+        view
+        returns (
+            bytes32 fundKey,
+            address to,
+            uint256 amount,
+            bytes32 noteHash,
+            bool executed,
+            bool exists,
+            bool approved,
+            uint256 approvalBlockNumber,
+            uint256 thresholdAtApproval,
+            bool expiredOrInvalid
+        )
+    {
+        fundKey = getFundKey(fundingId, nonce);
+        FundProposal storage proposal = _fundProposals[fundKey];
+        bool inActiveSet;
+        (
+            approved,
+            approvalBlockNumber,
+            thresholdAtApproval,
+            expiredOrInvalid,
+            inActiveSet
+        ) = getFundApprovalStatus(fundKey);
+        inActiveSet;
+
+        return (
+            fundKey,
+            proposal.to,
+            proposal.amount,
+            proposal.noteHash,
+            proposal.executed,
+            proposal.exists,
+            approved,
+            approvalBlockNumber,
+            thresholdAtApproval,
+            expiredOrInvalid
+        );
+    }
+
+    function getFundProposalByUserId(bytes32 fundingId, uint256 nonce)
+        public
+        view
+        returns (
+            bytes32 fundKey,
+            address to,
+            uint256 amount,
+            bytes32 noteHash,
+            bool executed,
+            bool exists,
+            bool approved,
+            uint256 approvalBlockNumber,
+            uint256 thresholdAtApproval,
+            bool expiredOrInvalid
+        )
+    {
+        return getFundProposalByFundingId(fundingId, nonce);
+    }
+
     // ── Internal Vote Engine ──────────────────────────────
 
     function _castVote(VoteType voteType, uint256 target) internal {
@@ -220,16 +553,13 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
         VoteTally storage tally = _voteTallies[voteType][target];
 
-        // reset expired tallies
         if (
             tally.startVoteBlock != 0 &&
             block.number > tally.startVoteBlock + voteTallyBlockThreshold
         ) {
-            // clear hasVoted flags
             for (uint256 i = 0; i < tally.voters.length; i++) {
                 hasVoted[voteType][target][tally.voters[i]] = false;
             }
-            // clear the tally
             tally.totalVotes = 0;
             tally.voters = new address[](0);
             tally.startVoteBlock = 0;
@@ -242,16 +572,15 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             "Voter has already voted for this target"
         );
 
-        // record the vote
         if (tally.voters.length == 0) {
             tally.startVoteBlock = block.number;
             activeVoteCount++;
         }
+
         tally.totalVotes++;
         tally.voters.push(msg.sender);
         hasVoted[voteType][target][msg.sender] = true;
 
-        // check for supermajority (2/3)
         if (tally.totalVotes >= getSupermajorityThreshold()) {
             emit StateChanged(voteType, target);
 
@@ -262,8 +591,20 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                 );
                 voteTallyBlockThreshold = target;
                 emit VoteTallyBlockThresholdUpdated(target);
+            } else if (voteType == VoteType.UPDATE_FUND_APPROVAL_BLOCK_THRESHOLD) {
+                require(
+                    target > 0 && target <= 100000,
+                    "Funding approval threshold must be 1 to 100000"
+                );
+                fundApprovalBlockThreshold = target;
+                emit FundApprovalBlockThresholdUpdated(target);
+            } else if (voteType == VoteType.AUTHORIZE_EXPIRED_FUND_CLEANUP) {
+                expiredFundCleanupAuthorized = true;
+                expiredFundCleanupCursor = 0;
+                emit ExpiredFundCleanupAuthorized(_activeApprovedFundKeys.length);
             } else {
                 address targetAddress = address(uint160(target));
+
                 if (voteType == VoteType.ADD_GUARDIAN) {
                     require(!isGuardian[targetAddress], "Already a guardian");
                     isGuardian[targetAddress] = true;
@@ -305,7 +646,10 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                     emit VoterUpdated(targetAddress, false);
                 } else if (voteType == VoteType.ADD_OTHER_VOTER_CONTRACT) {
                     for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-                        require(otherVoterContracts[i] != targetAddress, "Voter contract already in list");
+                        require(
+                            otherVoterContracts[i] != targetAddress,
+                            "Voter contract already in list"
+                        );
                     }
                     otherVoterContracts.push(targetAddress);
                     emit OtherVoterContractUpdated(targetAddress, true);
@@ -331,14 +675,15 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             if (voteType == VoteType.BURN_TOKENS) {
                 approvedBurns[bytes32(target)] = true;
             }
+
             if (voteType == VoteType.FUND_GAS) {
-                approvedFunds[bytes32(target)] = true;
+                _approveFundKey(bytes32(target));
             }
+
             if (voteType == VoteType.BURN_NATIVE_COIN) {
                 approvedCoinBurns[bytes32(target)] = true;
             }
 
-            // clear votes
             for (uint256 i = 0; i < tally.voters.length; i++) {
                 hasVoted[voteType][target][tally.voters[i]] = false;
             }
@@ -359,7 +704,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     function voteToRemoveVoter(address voter) external onlyVoters {
         require(voter != address(0), "Voter address should not be zero");
-        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+        require(activeVoteCount == 0, "Cannot remove voter while votes are active");
         require(getVoters().length > 1, "Cannot remove the last voter");
         _castVote(VoteType.REMOVE_VOTER, uint256(uint160(voter)));
     }
@@ -397,7 +742,6 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     function voteToClearGuardians() external onlyVoters {
         require(guardiansArray.length > 0, "No guardians to clear");
-        // Use 1 as sentinel for this non-targeted vote
         _castVote(VoteType.CLEAR_GUARDIANS, 1);
     }
 
@@ -416,25 +760,44 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, newThreshold);
     }
 
-    // ── Gas Funding ───────────────────────────────────────
+    function voteToUpdateFundApprovalBlockThreshold(uint256 newThreshold) external onlyVoters {
+        require(newThreshold > 0 && newThreshold <= 100000, "Invalid funding approval threshold");
+        _castVote(VoteType.UPDATE_FUND_APPROVAL_BLOCK_THRESHOLD, newThreshold);
+    }
+
+    function voteToAuthorizeExpiredFundCleanup() external onlyVoters {
+        require(_activeApprovedFundKeys.length > 0, "No approved fundings to scan");
+        _castVote(VoteType.AUTHORIZE_EXPIRED_FUND_CLEANUP, 1);
+    }
+
+    // ── Gas Funding V1 (Legacy) ───────────────────────────
 
     function voteToFundGas(address to, uint256 amount) external onlyVoters {
         require(to != address(0), "Invalid recipient address");
         require(amount > 0, "Amount must be greater than zero");
-        bytes32 fundKey = keccak256(abi.encodePacked(to, amount));
-        uint256 target = uint256(fundKey);
-        _castVote(VoteType.FUND_GAS, target);
-        if (approvedFunds[bytes32(target)]) {
+
+        bytes32 fundKey = getLegacyFundKey(to, amount);
+
+        _clearFundApprovalIfExpiredOrInvalid(fundKey);
+        require(!approvedFunds[fundKey], "Fund already approved");
+
+        _castVote(VoteType.FUND_GAS, uint256(fundKey));
+
+        if (approvedFunds[fundKey]) {
             emit GasFundApproved(to, amount, fundKey);
         }
     }
 
-    /// @notice Execute a previously approved gas fund. Only callable by a guardian or the funded address.
+    /// @notice Execute a legacy V1 gas funding approval.
     function executeFundGas(address payable to, uint256 amount) public nonReentrant {
         require(isGuardian[msg.sender] || msg.sender == to, "Only guardian or funded address");
-        bytes32 fundKey = keccak256(abi.encodePacked(to, amount));
+
+        bytes32 fundKey = getLegacyFundKey(to, amount);
+
+        _clearFundApprovalIfExpiredOrInvalid(fundKey);
         require(approvedFunds[fundKey], "Fund not approved");
-        approvedFunds[fundKey] = false;
+
+        _consumeFundApproval(fundKey);
 
         require(address(this).balance >= amount, "Insufficient balance");
         require(to != address(0), "Invalid recipient address");
@@ -445,14 +808,186 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         require(success, "Transfer failed");
 
         uint256 balanceAfter = address(this).balance;
-        require(
-            balanceBefore - balanceAfter == amount,
-            "Exact amount not transferred"
-        );
+        require(balanceBefore - balanceAfter == amount, "Exact amount not transferred");
 
         totalGasFunded += amount;
 
         emit GasFunded(to, amount);
+    }
+
+    // ── Gas Funding V2 ────────────────────────────────────
+
+    function proposeFundGas(
+        bytes32 fundingId,
+        address payable to,
+        uint256 amount,
+        string calldata note
+    )
+        external
+        onlyVoters
+        returns (bytes32 fundKey, uint256 nonce)
+    {
+        require(fundingId != bytes32(0), "Funding ID should not be zero");
+        require(to != address(0), "Invalid recipient address");
+        require(amount > 0, "Amount must be greater than zero");
+        require(bytes(note).length <= _MAX_FUND_NOTE_LENGTH, "Note too long");
+
+        nonce = _lastFundingNonceByFundingId[fundingId] + 1;
+        fundKey = getFundKey(fundingId, nonce);
+
+        require(!_fundProposals[fundKey].exists, "Fund proposal already exists");
+
+        _lastFundingNonceByFundingId[fundingId] = nonce;
+
+        _fundProposals[fundKey] = FundProposal({
+            fundingId: fundingId,
+            noteHash: keccak256(bytes(note)),
+            to: to,
+            amount: amount,
+            nonce: nonce,
+            executed: false,
+            exists: true
+        });
+
+        emit GasFundProposalCreated(
+            fundingId,
+            nonce,
+            fundKey,
+            to,
+            amount,
+            _fundProposals[fundKey].noteHash,
+            note
+        );
+
+        _castVote(VoteType.FUND_GAS, uint256(fundKey));
+
+        if (approvedFunds[fundKey]) {
+            emit GasFundApproved(to, amount, fundKey);
+            emit GasFundProposalApproved(
+                fundingId,
+                nonce,
+                fundKey,
+                to,
+                amount,
+                _fundProposals[fundKey].noteHash,
+                fundApprovalBlock[fundKey],
+                fundApprovalThresholdAtApproval[fundKey]
+            );
+        }
+    }
+
+    function voteToFundGas(bytes32 fundKey) external onlyVoters {
+        FundProposal storage proposal = _fundProposals[fundKey];
+
+        require(proposal.exists, "Fund proposal not found");
+        require(!proposal.executed, "Fund proposal already executed");
+
+        _clearFundApprovalIfExpiredOrInvalid(fundKey);
+        require(!approvedFunds[fundKey], "Fund already approved");
+
+        _castVote(VoteType.FUND_GAS, uint256(fundKey));
+
+        if (approvedFunds[fundKey]) {
+            emit GasFundApproved(proposal.to, proposal.amount, fundKey);
+            emit GasFundProposalApproved(
+                proposal.fundingId,
+                proposal.nonce,
+                fundKey,
+                proposal.to,
+                proposal.amount,
+                proposal.noteHash,
+                fundApprovalBlock[fundKey],
+                fundApprovalThresholdAtApproval[fundKey]
+            );
+        }
+    }
+
+    /// @notice Execute a V2 funding approval by `fundKey` only.
+    function executeFundGas(bytes32 fundKey) public nonReentrant {
+        FundProposal storage proposal = _fundProposals[fundKey];
+
+        require(proposal.exists, "Fund proposal not found");
+        require(!proposal.executed, "Fund proposal already executed");
+        require(
+            isGuardian[msg.sender] || msg.sender == proposal.to,
+            "Only guardian or funded address"
+        );
+
+        _clearFundApprovalIfExpiredOrInvalid(fundKey);
+        require(approvedFunds[fundKey], "Fund not approved");
+
+        _consumeFundApproval(fundKey);
+        proposal.executed = true;
+
+        require(address(this).balance >= proposal.amount, "Insufficient balance");
+        require(proposal.to != address(0), "Invalid recipient address");
+
+        uint256 balanceBefore = address(this).balance;
+
+        (bool success, ) = proposal.to.call{value: proposal.amount}("");
+        require(success, "Transfer failed");
+
+        uint256 balanceAfter = address(this).balance;
+        require(
+            balanceBefore - balanceAfter == proposal.amount,
+            "Exact amount not transferred"
+        );
+
+        totalGasFunded += proposal.amount;
+
+        emit GasFunded(proposal.to, proposal.amount);
+        emit GasFundProposalExecuted(
+            proposal.fundingId,
+            proposal.nonce,
+            fundKey,
+            proposal.to,
+            proposal.amount
+        );
+    }
+
+    // ── Governed Expired Funding Cleanup ──────────────────
+
+    /// @notice Guardian executes a bounded sweep over active approved fund keys.
+    ///         Removes approvals that are expired or invalid.
+    ///         Cursor-based so cleanup can be chunked safely.
+    function executeExpiredFundCleanup(uint256 maxScans) external nonReentrant {
+        require(isGuardian[msg.sender], "Only guardian");
+        require(expiredFundCleanupAuthorized, "Expired fund cleanup not authorized");
+        require(
+            maxScans > 0 && maxScans <= _MAX_CLEANUP_BATCH_SCAN,
+            "Invalid cleanup batch size"
+        );
+
+        uint256 scannedCount = 0;
+        uint256 clearedCount = 0;
+
+        while (
+            expiredFundCleanupCursor < _activeApprovedFundKeys.length &&
+            scannedCount < maxScans
+        ) {
+            bytes32 fundKey = _activeApprovedFundKeys[expiredFundCleanupCursor];
+            scannedCount++;
+
+            if (_isFundApprovalExpiredOrInvalid(fundKey)) {
+                _clearFundApproval(fundKey, true);
+                clearedCount++;
+            } else {
+                expiredFundCleanupCursor++;
+            }
+        }
+
+        bool completed = expiredFundCleanupCursor >= _activeApprovedFundKeys.length;
+        if (completed) {
+            expiredFundCleanupAuthorized = false;
+            expiredFundCleanupCursor = 0;
+        }
+
+        emit ExpiredFundCleanupExecuted(
+            scannedCount,
+            clearedCount,
+            expiredFundCleanupCursor,
+            completed
+        );
     }
 
     // ── Token Burns ───────────────────────────────────────
@@ -460,17 +995,18 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     function voteToBurnTokens(address tokenAddress, uint256 amount) external onlyVoters {
         require(tokenAddress != address(0), "Invalid token address");
         require(amount > 0, "Amount must be greater than zero");
+
         bytes32 burnKey = keccak256(abi.encodePacked(tokenAddress, amount));
-        uint256 target = uint256(burnKey);
-        _castVote(VoteType.BURN_TOKENS, target);
-        if (approvedBurns[bytes32(target)]) {
+        _castVote(VoteType.BURN_TOKENS, uint256(burnKey));
+
+        if (approvedBurns[burnKey]) {
             emit TokenBurnApproved(tokenAddress, amount, burnKey);
         }
     }
 
-    /// @notice Execute a previously approved token burn. Only callable by a guardian.
     function executeTokenBurn(address tokenAddress, uint256 amount) public nonReentrant {
         require(isGuardian[msg.sender], "Only guardian");
+
         bytes32 burnKey = keccak256(abi.encodePacked(tokenAddress, amount));
         require(approvedBurns[burnKey], "Burn not approved");
         approvedBurns[burnKey] = false;
@@ -478,6 +1014,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         IERC20 token = IERC20(tokenAddress);
         require(token.balanceOf(address(this)) >= amount, "Insufficient balance");
         require(token.transfer(_DEAD_ADDRESS, amount), "Token burn failed");
+
         emit TokenBurned(tokenAddress, amount);
     }
 
@@ -485,31 +1022,32 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     function voteToBurnNativeCoin(uint256 amount) external onlyVoters {
         require(amount > 0, "Amount must be greater than zero");
+
         bytes32 coinBurnKey = keccak256(abi.encodePacked("nativeBurn", amount));
-        uint256 target = uint256(coinBurnKey);
-        _castVote(VoteType.BURN_NATIVE_COIN, target);
-        if (approvedCoinBurns[bytes32(target)]) {
+        _castVote(VoteType.BURN_NATIVE_COIN, uint256(coinBurnKey));
+
+        if (approvedCoinBurns[coinBurnKey]) {
             emit CoinBurnApproved(amount, coinBurnKey);
         }
     }
 
-    /// @notice Execute a previously approved native coin burn. Only callable by a guardian.
     function executeCoinBurn(uint256 amount) public nonReentrant {
         require(isGuardian[msg.sender], "Only guardian");
+
         bytes32 coinBurnKey = keccak256(abi.encodePacked("nativeBurn", amount));
         require(approvedCoinBurns[coinBurnKey], "Coin burn not approved");
         approvedCoinBurns[coinBurnKey] = false;
 
         require(address(this).balance >= amount, "Insufficient balance");
+
         (bool success, ) = payable(_DEAD_ADDRESS).call{value: amount}("");
         require(success, "Burn failed");
+
         emit NativeCoinBurned(amount);
     }
 
     // ── Expired Tally Cleanup ─────────────────────────────
 
-    /// @notice Voter-only function to reset an expired tally and decrement the active vote counter.
-    ///         Call this to clean up stale tallies that would otherwise block voter-pool changes.
     function resetExpiredTally(VoteType voteType, uint256 target) external onlyVoters {
         VoteTally storage tally = _voteTallies[voteType][target];
         require(tally.startVoteBlock != 0, "No active tally for this target");
@@ -517,17 +1055,120 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             block.number > tally.startVoteBlock + voteTallyBlockThreshold,
             "Tally has not expired yet"
         );
+
         for (uint256 i = 0; i < tally.voters.length; i++) {
             hasVoted[voteType][target][tally.voters[i]] = false;
         }
+
         delete _voteTallies[voteType][target];
         activeVoteCount--;
+
         emit VoteTallyReset(voteType, target);
     }
 
     receive() external payable {}
 
-    // ── Utilities ─────────────────────────────────────
+    // ── Internal Funding Approval Helpers ─────────────────
+
+    function _approveFundKey(bytes32 fundKey) internal {
+        approvedFunds[fundKey] = true;
+        fundApprovalBlock[fundKey] = block.number;
+        fundApprovalThresholdAtApproval[fundKey] = fundApprovalBlockThreshold;
+
+        _addActiveApprovedFundKey(fundKey);
+
+        emit FundApprovalWindowSet(
+            fundKey,
+            fundApprovalBlock[fundKey],
+            fundApprovalThresholdAtApproval[fundKey]
+        );
+    }
+
+    function _consumeFundApproval(bytes32 fundKey) internal {
+        approvedFunds[fundKey] = false;
+        fundApprovalBlock[fundKey] = 0;
+        fundApprovalThresholdAtApproval[fundKey] = 0;
+
+        _removeActiveApprovedFundKey(fundKey);
+
+        emit FundApprovalCleared(fundKey, false);
+    }
+
+    function _clearFundApproval(bytes32 fundKey, bool expiredOrInvalid) internal {
+        approvedFunds[fundKey] = false;
+        fundApprovalBlock[fundKey] = 0;
+        fundApprovalThresholdAtApproval[fundKey] = 0;
+
+        _removeActiveApprovedFundKey(fundKey);
+
+        emit FundApprovalCleared(fundKey, expiredOrInvalid);
+    }
+
+    function _clearFundApprovalIfExpiredOrInvalid(bytes32 fundKey) internal {
+        if (_isFundApprovalExpiredOrInvalid(fundKey)) {
+            _clearFundApproval(fundKey, true);
+        }
+    }
+
+    function _isFundApprovalExpiredOrInvalid(bytes32 fundKey) internal view returns (bool) {
+        if (!approvedFunds[fundKey]) {
+            return false;
+        }
+
+        uint256 approvalBlockNumber = fundApprovalBlock[fundKey];
+        uint256 thresholdAtApproval = fundApprovalThresholdAtApproval[fundKey];
+
+        if (approvalBlockNumber == 0 || thresholdAtApproval == 0) {
+            return true;
+        }
+
+        return block.number > approvalBlockNumber + thresholdAtApproval;
+    }
+
+    function _addActiveApprovedFundKey(bytes32 fundKey) internal {
+        if (_activeApprovedFundKeyIndexPlusOne[fundKey] == 0) {
+            _activeApprovedFundKeys.push(fundKey);
+            _activeApprovedFundKeyIndexPlusOne[fundKey] = _activeApprovedFundKeys.length;
+        }
+    }
+
+    function _removeActiveApprovedFundKey(bytes32 fundKey) internal {
+        uint256 indexPlusOne = _activeApprovedFundKeyIndexPlusOne[fundKey];
+        if (indexPlusOne == 0) {
+            return;
+        }
+
+        uint256 index = indexPlusOne - 1;
+        uint256 lastIndex = _activeApprovedFundKeys.length - 1;
+
+        if (index != lastIndex) {
+            bytes32 movedKey = _activeApprovedFundKeys[lastIndex];
+            _activeApprovedFundKeys[index] = movedKey;
+            _activeApprovedFundKeyIndexPlusOne[movedKey] = index + 1;
+        }
+
+        _activeApprovedFundKeys.pop();
+        delete _activeApprovedFundKeyIndexPlusOne[fundKey];
+
+        if (expiredFundCleanupCursor > _activeApprovedFundKeys.length) {
+            expiredFundCleanupCursor = _activeApprovedFundKeys.length;
+        }
+    }
+
+    // ── Utilities ─────────────────────────────────────────
+
+    function _containsAddress(
+        address[] memory addresses,
+        uint256 length,
+        address target
+    ) internal pure returns (bool) {
+        for (uint256 i = 0; i < length; i++) {
+            if (addresses[i] == target) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     function _isContract(address addr) internal view returns (bool) {
         uint32 size;
