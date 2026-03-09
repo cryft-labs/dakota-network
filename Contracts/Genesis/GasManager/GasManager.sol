@@ -13,7 +13,7 @@ pragma solidity >=0.8.2 <0.9.0;
  \___/\_,_/___//_/  /_/\_,_/_//_/\_,_/\_, /\_ /_/
                                      /___/ By: CryftCreator
 
-    Version 2.3 — Production Gas Manager  [UPGRADEABLE]
+    Version 2.4 — Production Gas Manager  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
   │                                                      │
@@ -49,6 +49,11 @@ pragma solidity >=0.8.2 <0.9.0;
   │    Add/remove individual guardians, or clear all     │
   │    via voteToClearGuardians(). Enumerable via        │
   │    getGuardians() / getGuardianCount().              │
+  │                                                      │
+  │  V2 public API uses string fundingId (≤ 32 bytes).   │
+  │    On-chain _stringToBytes32 conversion to bytes32.  │
+  │    Matches ethers.encodeBytes32String() encoding.    │
+  │    bytes32 fundingId logic is internal only.         │
   │                                                      │
   │  Upgradeability notes:                               │
   │    Existing storage order is preserved.              │
@@ -111,7 +116,6 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     mapping(bytes32 => FundProposal) private _fundProposals;
 
     // Last nonce used for each funding id.
-    // Storage slot retained in-place; preferred getter aliases are defined below.
     mapping(bytes32 => uint256) private _lastFundingNonceByFundingId;
 
     // Shared approval expiry model for BOTH V1 and V2
@@ -391,12 +395,8 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         }
     }
 
-    function lastFundingNonceByFundingId(bytes32 fundingId) public view returns (uint256) {
-        return _lastFundingNonceByFundingId[fundingId];
-    }
-
-    function lastFundingNonceByUserId(bytes32 fundingId) public view returns (uint256) {
-        return _lastFundingNonceByFundingId[fundingId];
+    function lastFundingNonceByFundingId(string calldata fundingId) public view returns (uint256) {
+        return _lastFundingNonceByFundingId[_stringToBytes32(fundingId)];
     }
 
     // ── V1 Legacy Funding Queries ─────────────────────────
@@ -431,12 +431,16 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     // ── V2 Funding Queries ────────────────────────────────
 
-    function getNextFundingNonce(bytes32 fundingId) public view returns (uint256) {
-        require(fundingId != bytes32(0), "Funding ID should not be zero");
-        return _lastFundingNonceByFundingId[fundingId] + 1;
+    function getNextFundingNonce(string calldata fundingId) public view returns (uint256) {
+        bytes32 fid = _stringToBytes32(fundingId);
+        return _lastFundingNonceByFundingId[fid] + 1;
     }
 
-    function getFundKey(bytes32 fundingId, uint256 nonce) public pure returns (bytes32) {
+    function getFundKey(string calldata fundingId, uint256 nonce) public pure returns (bytes32) {
+        return _getFundKey(_stringToBytes32(fundingId), nonce);
+    }
+
+    function _getFundKey(bytes32 fundingId, uint256 nonce) internal pure returns (bytes32) {
         require(fundingId != bytes32(0), "Funding ID should not be zero");
         require(nonce > 0, "Nonce must be greater than zero");
         return keccak256(abi.encode(fundingId, nonce));
@@ -460,15 +464,13 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         )
     {
         FundProposal storage proposal = _fundProposals[fundKey];
-        bool inActiveSet;
         (
             approved,
             approvalBlockNumber,
             thresholdAtApproval,
             expiredOrInvalid,
-            inActiveSet
+            /* inActiveSet */
         ) = getFundApprovalStatus(fundKey);
-        inActiveSet;
 
         return (
             proposal.fundingId,
@@ -485,8 +487,8 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         );
     }
 
-    function getFundProposalByFundingId(bytes32 fundingId, uint256 nonce)
-        public
+    function _getFundProposalByFundingId(bytes32 fundingId, uint256 nonce)
+        internal
         view
         returns (
             bytes32 fundKey,
@@ -501,17 +503,15 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             bool expiredOrInvalid
         )
     {
-        fundKey = getFundKey(fundingId, nonce);
+        fundKey = _getFundKey(fundingId, nonce);
         FundProposal storage proposal = _fundProposals[fundKey];
-        bool inActiveSet;
         (
             approved,
             approvalBlockNumber,
             thresholdAtApproval,
             expiredOrInvalid,
-            inActiveSet
+            /* inActiveSet */
         ) = getFundApprovalStatus(fundKey);
-        inActiveSet;
 
         return (
             fundKey,
@@ -527,7 +527,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         );
     }
 
-    function getFundProposalByUserId(bytes32 fundingId, uint256 nonce)
+    function getFundProposalByFundingId(string calldata fundingId, uint256 nonce)
         public
         view
         returns (
@@ -543,7 +543,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             bool expiredOrInvalid
         )
     {
-        return getFundProposalByFundingId(fundingId, nonce);
+        return _getFundProposalByFundingId(_stringToBytes32(fundingId), nonce);
     }
 
     // ── Internal Vote Engine ──────────────────────────────
@@ -772,7 +772,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     // ── Gas Funding V1 (Legacy) ───────────────────────────
 
-    function voteToFundGas(address to, uint256 amount) external onlyVoters {
+    function voteToFundGasV1(address to, uint256 amount) external onlyVoters {
         require(to != address(0), "Invalid recipient address");
         require(amount > 0, "Amount must be greater than zero");
 
@@ -789,7 +789,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     /// @notice Execute a legacy V1 gas funding approval.
-    function executeFundGas(address payable to, uint256 amount) public nonReentrant {
+    function executeFundGasV1(address payable to, uint256 amount) public nonReentrant {
         require(isGuardian[msg.sender] || msg.sender == to, "Only guardian or funded address");
 
         bytes32 fundKey = getLegacyFundKey(to, amount);
@@ -817,8 +817,8 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     // ── Gas Funding V2 ────────────────────────────────────
 
-    function proposeFundGas(
-        bytes32 fundingId,
+    function proposeFundGasV2(
+        string calldata fundingId,
         address payable to,
         uint256 amount,
         string calldata note
@@ -827,13 +827,25 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         onlyVoters
         returns (bytes32 fundKey, uint256 nonce)
     {
+        return _proposeFundGas(_stringToBytes32(fundingId), to, amount, note);
+    }
+
+    function _proposeFundGas(
+        bytes32 fundingId,
+        address payable to,
+        uint256 amount,
+        string calldata note
+    )
+        internal
+        returns (bytes32 fundKey, uint256 nonce)
+    {
         require(fundingId != bytes32(0), "Funding ID should not be zero");
         require(to != address(0), "Invalid recipient address");
         require(amount > 0, "Amount must be greater than zero");
         require(bytes(note).length <= _MAX_FUND_NOTE_LENGTH, "Note too long");
 
         nonce = _lastFundingNonceByFundingId[fundingId] + 1;
-        fundKey = getFundKey(fundingId, nonce);
+        fundKey = _getFundKey(fundingId, nonce);
 
         require(!_fundProposals[fundKey].exists, "Fund proposal already exists");
 
@@ -876,7 +888,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         }
     }
 
-    function voteToFundGas(bytes32 fundKey) external onlyVoters {
+    function voteToFundGasV2(bytes32 fundKey) external onlyVoters {
         FundProposal storage proposal = _fundProposals[fundKey];
 
         require(proposal.exists, "Fund proposal not found");
@@ -903,7 +915,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     /// @notice Execute a V2 funding approval by `fundKey` only.
-    function executeFundGas(bytes32 fundKey) public nonReentrant {
+    function executeFundGasV2(bytes32 fundKey) public nonReentrant {
         FundProposal storage proposal = _fundProposals[fundKey];
 
         require(proposal.exists, "Fund proposal not found");
@@ -1085,13 +1097,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     function _consumeFundApproval(bytes32 fundKey) internal {
-        approvedFunds[fundKey] = false;
-        fundApprovalBlock[fundKey] = 0;
-        fundApprovalThresholdAtApproval[fundKey] = 0;
-
-        _removeActiveApprovedFundKey(fundKey);
-
-        emit FundApprovalCleared(fundKey, false);
+        _clearFundApproval(fundKey, false);
     }
 
     function _clearFundApproval(bytes32 fundKey, bool expiredOrInvalid) internal {
@@ -1168,6 +1174,22 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             }
         }
         return false;
+    }
+
+    /// @dev Converts a short string (1-32 bytes) to a left-aligned bytes32.
+    ///      Encoding is identical to ethers.encodeBytes32String().
+    function _stringToBytes32(string calldata str) internal pure returns (bytes32 result) {
+        bytes calldata b = bytes(str);
+        require(b.length > 0 && b.length <= 32, "String must be 1-32 bytes");
+        // Left-align: copy bytes into the high-order end of a 32-byte word.
+        // Unused trailing bytes remain zero — matching ethers.encodeBytes32String().
+        assembly ("memory-safe") {
+            result := calldataload(b.offset)
+            // Mask off any garbage past the string length.
+            let shift := shl(3, sub(32, b.length))
+            result := and(result, shl(shift, shr(shift, not(0))))
+        }
+        return result;
     }
 
     function _isContract(address addr) internal view returns (bool) {
