@@ -2,8 +2,8 @@
   {
     "source": "CodeManagement\\CodeManager.sol",
     "contract": "CodeManager",
-    "runtime_bytes": 16197,
-    "creation_bytes": 16421,
+    "runtime_bytes": 16735,
+    "creation_bytes": 16959,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\CodeManager",
     "over_limit": false
   },
@@ -42,8 +42,8 @@
   {
     "source": "CodeManagement\\PrivateComboStorage.sol",
     "contract": "PrivateComboStorage",
-    "runtime_bytes": 6795,
-    "creation_bytes": 6840,
+    "runtime_bytes": 7678,
+    "creation_bytes": 7723,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage",
     "over_limit": false
   },
@@ -82,8 +82,8 @@
   {
     "source": "Genesis\\GasManager\\GasManager.sol",
     "contract": "GasManager",
-    "runtime_bytes": 14520,
-    "creation_bytes": 14744,
+    "runtime_bytes": 22337,
+    "creation_bytes": 22561,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\GasManager\\GasManager",
     "over_limit": false
   },

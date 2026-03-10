@@ -753,6 +753,19 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "string[]",
+        "name": "uniqueIds",
+        "type": "string[]"
+      }
+    ],
+    "name": "validateUniqueIdsOrRevert",
+    "outputs": [],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "voteTallyBlockThreshold",
     "outputs": [

@@ -307,6 +307,10 @@ VALID_EVM_VERSIONS = [
 DEFAULT_SOLC_VERSION = "0.8.34"
 DEFAULT_EVM_VERSION = "osaka"
 
+# Contracts whose filename matches these patterns (case-insensitive) are
+# compiled targeting Shanghai EVM instead of the global default.
+_SHANGHAI_FILENAME_PATTERNS = ["private"]
+
 # Maximum EVM version supported by each solc range
 _SOLC_EVM_CAPS = [
     # (max_solc_exclusive, max_evm)
@@ -691,10 +695,17 @@ def compile_all(
         print(f"{'─'*60}")
 
         try:
+            # Override EVM to shanghai for contracts with 'private' in the name
+            file_evm = evm_version
+            stem_lower = sol_file.stem.lower()
+            if any(pat in stem_lower for pat in _SHANGHAI_FILENAME_PATTERNS):
+                file_evm = "shanghai"
+                print(f"  ⚙  EVM override: {evm_version} → shanghai (filename contains 'private')")
+
             results = compile_contract(
                 str(sol_file),
                 solc_version=solc_version,
-                evm_version=evm_version,
+                evm_version=file_evm,
                 optimize=optimize,
                 optimize_runs=optimize_runs,
             )
