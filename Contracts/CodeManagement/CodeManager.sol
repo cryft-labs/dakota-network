@@ -31,8 +31,8 @@ pragma solidity >=0.8.2 <0.9.0;
   │                                                      │
   │  PENTE INTEGRATION:                                  │
   │  Authorized Pente privacy groups call router         │
-  │  functions (recordRedemption, setUidFrozen,          │
-  │  setUidContent) which resolve the UID to its gift    │
+  │  functions (recordRedemption, setUidFrozen) which    │
+  │  resolve the UID to its gift                         │
   │  contract and forward via IRedeemable. The gift      │
   │  contract is the SOLE AUTHORITY on per-UID state.    │
   │  CodeManager stores NO per-UID state — it is a       │
@@ -109,7 +109,7 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     event PrivacyGroupAuthorized(address indexed privacyGroup, bool authorized);
     event RedemptionRouted(string uniqueId, address indexed giftContract, address indexed redeemer);
     event FrozenStatusRouted(string uniqueId, address indexed giftContract, bool frozen);
-    event ContentChangeRouted(string uniqueId, address indexed giftContract, string contentId);
+
 
     constructor() {
         _disableInitializers();
@@ -420,13 +420,6 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         emit FrozenStatusRouted(uniqueId, giftContract, frozen);
     }
 
-    /// @notice Route a content change from the Pente privacy group to the gift contract.
-    function setUidContent(string memory uniqueId, string memory contentId) external onlyAuthorizedPrivacyGroup {
-        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
-        IRedeemable(giftContract).setContent(uniqueId, contentId);
-        emit ContentChangeRouted(uniqueId, giftContract, contentId);
-    }
-
     // ── UID View Functions (read from gift contract) ──────
     //
     //    These read per-UID state from the gift contract via IRedeemable.
@@ -442,12 +435,6 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     function isUniqueIdRedeemed(string memory uniqueId) external view returns (bool) {
         (address giftContract, , ) = getUniqueIdDetails(uniqueId);
         return IRedeemable(giftContract).isUniqueIdRedeemed(uniqueId);
-    }
-
-    /// @notice Returns the content identifier for a UID, as reported by its gift contract.
-    function getUniqueIdContent(string memory uniqueId) external view returns (string memory) {
-        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
-        return IRedeemable(giftContract).getUniqueIdContent(uniqueId);
     }
 
     // ── Unique ID Queries ─────────────────────────────────

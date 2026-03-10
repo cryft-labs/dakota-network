@@ -22,12 +22,15 @@ pragma solidity >=0.8.2 <0.9.0;
   │                                                      │
   │  Stores hash+salt pairs (secret representations of   │
   │  redeemable codes). Verifies submitted codes via     │
-  │  hash comparison. Manages per-UID state (frozen,     │
-  │  redeemed, content) privately.                       │
+  │  hash comparison.                                    │
   │                                                      │
-  │  On state changes, emits PenteExternalCall events    │
-  │  that atomically route through CodeManager to the    │
-  │  gift contract on the public chain.                  │
+  │  Frozen/redeemed status is NOT tracked here — the    │
+  │  gift contract on the public chain is the sole       │
+  │  authority. On redemption, emits PenteExternalCall   │
+  │  events that atomically route through CodeManager    │
+  │  to the gift contract. If the gift contract reverts  │
+  │  (e.g. frozen or already redeemed), the entire       │
+  │  Pente transition rolls back.                        │
   │                                                      │
   │  PIN-based O(1) bucket lookup. No cleartext code     │
   │  ever touches the chain.                             │
@@ -37,9 +40,8 @@ pragma solidity >=0.8.2 <0.9.0;
 */
 
 import "./Interfaces/ICodeManager.sol";
-import "./Interfaces/IComboStorage.sol";
 
-contract PrivateComboStorage is IComboStorage {
+contract PrivateComboStorage {
     // ── Pente External Call ───────────────────────────────
     //
     //    The PenteExternalCall event is the mechanism by which private
@@ -71,9 +73,6 @@ contract PrivateComboStorage is IComboStorage {
     struct CodeMetadata {
         string uniqueId;
         bool exists;
-        bool frozen;
-        bool redeemed;
-        string contentId;
     }
 
     /// @dev Maximum number of hash/uniqueId entries allowed per PIN slot.
@@ -86,15 +85,6 @@ contract PrivateComboStorage is IComboStorage {
 
     /// @dev Tracks how many hashes are currently stored under each PIN.
     mapping(string => uint256) public pinSlotCount;
-
-    /// @dev Redemption records (private tracking within privacy group).
-    mapping(string => bool) public override isRedemptionVerified;
-    mapping(string => address) public override redemptionRedeemer;
-
-    /// @dev Per-UID private state tracking.
-    mapping(string => bool) private _isFrozen;
-    mapping(string => bool) private _isRedeemed;
-    mapping(string => string) private _contentId;
 
     // ── Events ────────────────────────────────────────────
 
@@ -110,8 +100,6 @@ contract PrivateComboStorage is IComboStorage {
         bool status
     );
 
-    event FrozenStatusUpdated(string uniqueId, bool frozen);
-    event ContentUpdated(string uniqueId, string contentId);
     event AuthorizationUpdated(address indexed account, bool status);
 
     // ── Modifiers ─────────────────────────────────────────
@@ -148,34 +136,15 @@ contract PrivateComboStorage is IComboStorage {
         emit AuthorizationUpdated(account, false);
     }
 
-    // ── IComboStorage View Functions ──────────────────────
-
-    /// @inheritdoc IComboStorage
-    function isFrozen(string memory uniqueId) external view override returns (bool) {
-        return _isFrozen[uniqueId];
-    }
-
-    /// @inheritdoc IComboStorage
-    function isRedeemed(string memory uniqueId) external view override returns (bool) {
-        return _isRedeemed[uniqueId];
-    }
-
-    /// @inheritdoc IComboStorage
-    function getContentId(string memory uniqueId) external view override returns (string memory) {
-        return _contentId[uniqueId];
-    }
-
     // ── Batch Code Storage ────────────────────────────────
     //
     //    Store multiple pre-computed hashes in one transaction.
-    //    All stored codes default to frozen=true.
     //    The batch is fully atomic: if any local validation fails,
     //    any public uniqueId validation fails, or any duplicate/full
     //    bucket is encountered during the batch, the entire
     //    transition reverts.
 
     /// @notice Store multiple pre-computed hashes in one transaction.
-    ///         Each stored code defaults to frozen=true.
     /// @param uniqueIds Array of unique IDs (must be registered in CodeManager).
     /// @param pins      Array of PINs (bucket keys for O(1) lookup).
     /// @param codeHashes Array of keccak256(giftCode) hashes.
@@ -247,13 +216,9 @@ contract PrivateComboStorage is IComboStorage {
 
             pinToHash[pins[i]][codeHashes[i]] = CodeMetadata({
                 uniqueId: uniqueIds[i],
-                exists: true,
-                frozen: true,
-                redeemed: false,
-                contentId: ""
+                exists: true
             });
             pinSlotCount[pins[i]]++;
-            _isFrozen[uniqueIds[i]] = true;
             stored[i] = true;
 
             emit DataStoredStatus(uniqueIds[i], codeHashes[i], true);
@@ -261,88 +226,54 @@ contract PrivateComboStorage is IComboStorage {
         }
     }
 
-    // ── Freeze / Content Management ───────────────────────
-    //
-    //    These functions update private state AND emit PenteExternalCall
-    //    to route the change through CodeManager to the gift contract.
-    //    The gift contract is the SOLE AUTHORITY — if it reverts, the
-    //    entire Pente transition rolls back atomically.
-
-    /// @notice Set frozen status for a UID. Emits PenteExternalCall to
-    ///         route through CodeManager → gift contract.
-    function setFrozen(string memory uniqueId, bool frozen) external onlyAuthorizedOrAdmin {
-        _isFrozen[uniqueId] = frozen;
-        emit FrozenStatusUpdated(uniqueId, frozen);
-
-        // Route to public chain via CodeManager
-        emit PenteExternalCall(
-            CODE_MANAGER,
-            abi.encodeWithSignature(
-                "setUidFrozen(string,bool)",
-                uniqueId,
-                frozen
-            )
-        );
-    }
-
-    /// @notice Set content for a UID. Emits PenteExternalCall to
-    ///         route through CodeManager → gift contract.
-    ///         Spec [0067]: admin changes what code redeems to.
-    function setContent(string memory uniqueId, string memory contentId) external onlyAuthorizedOrAdmin {
-        _contentId[uniqueId] = contentId;
-        emit ContentUpdated(uniqueId, contentId);
-
-        // Route to public chain via CodeManager
-        emit PenteExternalCall(
-            CODE_MANAGER,
-            abi.encodeWithSignature(
-                "setUidContent(string,string)",
-                uniqueId,
-                contentId
-            )
-        );
-    }
-
     // ── Redemption ────────────────────────────────────────
     //
-    //    Verifies a submitted code against the stored hash, updates
-    //    private state, then emits PenteExternalCall to route the
-    //    redemption through CodeManager → gift contract.
+    //    Verifies a submitted code against the stored hash, then emits
+    //    PenteExternalCall to route the redemption through
+    //    CodeManager → gift contract. Frozen / redeemed validation
+    //    is handled entirely by the gift contract on the public chain.
     //
-    /// @notice Redeem a code by submitting its PIN and hash.
+    /// @notice Redeem a code by submitting its PIN, hash, and target redeemer address.
     ///         Off-chain: giftCode = pin + code, codeHash = keccak256(giftCode).
     ///         PIN routes to the correct bucket, hash verifies the code.
     ///         No cleartext code ever touches the chain. O(1) lookup.
-    function redeemCode(string memory pin, bytes32 codeHash) external onlyAuthorizedOrAdmin {
+    ///
+    ///         The redeemer address is NOT assumed to be msg.sender — it is an
+    ///         explicit parameter to support meta-transactions, sponsored calls,
+    ///         and user-supplied third-party wallet addresses. The frontend
+    ///         provides a predefined or user-selected redeemer address.
+    ///
+    ///         Frozen / redeemed status is NOT checked here — the gift contract
+    ///         on the public chain is the sole authority. If the token is frozen
+    ///         or already redeemed, the gift contract reverts and the entire
+    ///         Pente transition rolls back atomically, undoing all private state
+    ///         changes including the code deletion below.
+    function redeemCode(string memory pin, bytes32 codeHash, address redeemer) external onlyAuthorizedOrAdmin {
         require(bytes(pin).length > 0, "PIN cannot be empty");
         require(codeHash != bytes32(0), "Hash cannot be zero");
+        require(redeemer != address(0), "Redeemer cannot be zero address");
 
         CodeMetadata storage metadata = pinToHash[pin][codeHash];
         require(metadata.exists, "Invalid PIN or code hash");
-        require(!metadata.frozen, "Code is frozen and cannot be redeemed");
-        require(!metadata.redeemed, "Code has already been redeemed");
 
         string memory redeemedUniqueId = metadata.uniqueId;
-
-        // Update private state
-        metadata.redeemed = true;
-        _isRedeemed[redeemedUniqueId] = true;
-        isRedemptionVerified[redeemedUniqueId] = true;
-        redemptionRedeemer[redeemedUniqueId] = msg.sender;
 
         // Clear stored hash data and free the PIN slot
         delete pinToHash[pin][codeHash];
         pinSlotCount[pin]--;
 
-        emit RedeemStatus(redeemedUniqueId, msg.sender, true);
+        emit RedeemStatus(redeemedUniqueId, redeemer, true);
 
-        // Route redemption to public chain via CodeManager → gift contract
+        // Route redemption to public chain via CodeManager → gift contract.
+        // The gift contract validates frozen/redeemed state and transfers
+        // the NFT to the redeemer. If it reverts, the entire Pente
+        // transition rolls back — including the delete above.
         emit PenteExternalCall(
             CODE_MANAGER,
             abi.encodeWithSignature(
                 "recordRedemption(string,address)",
                 redeemedUniqueId,
-                msg.sender
+                redeemer
             )
         );
     }

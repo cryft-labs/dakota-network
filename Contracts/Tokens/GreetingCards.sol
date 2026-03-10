@@ -57,29 +57,35 @@ pragma solidity >=0.8.2 <0.9.0;
 
   ┌──────────────── Contract Architecture ───────────────┐
   │                                                       │
-  │  CodeManager   → unique ID registry        (read)     │
-  │  ComboStorage  → redemption verification   (read)     │
-  │  This Contract → NFT mint + vault + IRedeemable     │
+  │  CodeManager → unique ID registry + Pente router      │
+  │  This Contract → NFT mint + vault + IRedeemable       │
   │                                                       │
-  │  No contract writes to another's state.               │
-  │  Cross-contract calls are strictly view / read-only.  │
+  │  Redemption is atomic: ComboStorage (Pente private)   │
+  │  emits PenteExternalCall → CodeManager routes to      │
+  │  this contract's recordRedemption() → NFT transfers   │
+  │  from vault to redeemer. If this contract reverts      │
+  │  (e.g. frozen or already redeemed), the entire Pente  │
+  │  transition rolls back.                               │
   └───────────────────────────────────────────────────────┘
 
   ┌──────────────── Purchase Flow (mint on buy) ─────────┐
   │                                                       │
   │  Setup (admin, one-time):                             │
   │    1. Upload metadata to IPFS → set baseTokenURI      │
-  │    2. Store redemption codes on ComboStorage           │
-  │    3. setRegisteredSupply(quantity) on this contract   │
+  │    2. setRegisteredSupply(quantity) on this contract   │
   │                                                       │
   │  Purchase (user or sponsor):                          │
-  │    4. Call buy(buyer, quantity, redeemedBaseURI)       │
+  │    3. Call buy(buyer, quantity, redeemedBaseURI)       │
   │       → Pays pricePerCard + registrationFee per card  │
   │       → Registers counter range on CodeManager        │
   │       → Mints token(s) into vault                     │
   │       → Records purchase segment (buyer + URI)        │
   │       → Redeemed metadata locked in at purchase time  │
   │       → All atomic in one transaction                 │
+  │                                                       │
+  │  Post-purchase (admin):                               │
+  │    4. Store redemption codes on ComboStorage           │
+  │       (uniqueIds must exist on CodeManager first)     │
   │    5. Distribute codes to buyers                      │
   │                                                       │
   │  Token ID == uniqueId counter == IPFS JSON number     │
@@ -95,17 +101,21 @@ pragma solidity >=0.8.2 <0.9.0;
   │             OR explicitly frozen (lost/stolen code)   │
   │    Redeemed = token exists AND not in vault           │
   │                                                       │
-  │  1. Holder calls ComboStorage.redeemCode(giftCode)    │
-  │     → ComboStorage READs frozen/redeemed via          │
-  │       IRedeemable (view calls — no cross-contract     │
-  │       state writes)                                   │
-  │     → ComboStorage records verified redemption        │
-  │     → Emits RedeemStatus event                        │
-  │  2. Redeemer calls claimRedemption(uniqueId, recipient)│
-  │     → This contract READs ComboStorage verification   │
-  │     → Transfers NFT from vault to recipient           │
-  │     → recipient ≠ msg.sender (gift to another wallet) │
-  │     → tokenURI switches to redeemed metadata          │
+  │  1. ComboStorage.redeemCode(pin, hash, redeemer)      │
+  │     → Verifies code in private Pente state            │
+  │     → Emits PenteExternalCall (atomic)                │
+  │  2. CodeManager.recordRedemption(uniqueId, redeemer)  │
+  │     → Resolves uniqueId → gift contract               │
+  │     → Calls this contract's recordRedemption()        │
+  │  3. recordRedemption(uniqueId, redeemer)               │
+  │     → Validates: not frozen, in vault                  │
+  │     → Transfers NFT from vault to redeemer             │
+  │     → tokenURI switches to redeemed metadata           │
+  │     → If reverts → entire Pente transition rolls back │
+  │                                                       │
+  │  Redeemer address is supplied directly — NOT assumed  │
+  │  to be msg.sender. Supports meta-transactions and     │
+  │  user-specified recipient wallets.                    │
   │                                                       │
   │  Admin or buyer can call setFrozen(tokenId, true)     │
   │  to block redemption of a compromised code.           │
@@ -163,13 +173,6 @@ pragma solidity >=0.8.2 <0.9.0;
   │    Emits: BatchPurchased(buyer, startTokenId, qty)     │
   │    Emits: Transfer(0x0, contract, tokenId) per token   │
   │                                                       │
-  │  claimRedemption(uniqueId, recipient)                  │
-  │    Call after ComboStorage.redeemCode() succeeds.      │
-  │    msg.sender must be the verified redeemer.           │
-  │    recipient receives the NFT (≠ msg.sender).         │
-  │    Emits: CardRedeemed(tokenId, uniqueId, recipient)   │
-  │    Emits: Transfer(contract, recipient, tokenId)       │
-  │                                                       │
   │  setFrozen(tokenId, frozen)                           │
   │    Buyer or admin freezes/unfreezes a card.            │
   │    Use when a redemption code is lost or stolen.       │
@@ -197,8 +200,10 @@ pragma solidity >=0.8.2 <0.9.0;
   │  2. Backend listens for BatchPurchased event           │
   │  3. Backend distributes redemption codes to buyer      │
   │  4. Recipient enters code on frontend                  │
-  │  5. Frontend calls ComboStorage.redeemCode(giftCode)   │
-  │  6. Frontend calls claimRedemption(uniqueId, wallet)   │
+  │  5. Frontend calls ComboStorage.redeemCode(pin,        │
+  │     hash, redeemer) inside Pente privacy group         │
+  │  6. PenteExternalCall → CodeManager →                  │
+  │     recordRedemption() transfers NFT to redeemer       │
   │  7. tokenURI(tokenId) now returns redeemed metadata    │
   │  8. Marketplace auto-refreshes via Transfer event      │
   └───────────────────────────────────────────────────────┘
@@ -212,7 +217,6 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/
 
 import "./Interfaces/ICodeManager.sol";
 import "./Interfaces/IRedeemable.sol";
-import "./Interfaces/IComboStorage.sol";
 
 contract CryftGreetingCards is
     Initializable,
@@ -234,7 +238,6 @@ contract CryftGreetingCards is
 
     // ──────────────────── Service Addresses ────────────
     address public codeManagerAddress;
-    address public comboStorageAddress;
 
     // ──────────────────── Supply Tracking ──────────────
     /// @dev Plain uint256 instead of Counters library — saves ~2k gas per mint
@@ -305,7 +308,6 @@ contract CryftGreetingCards is
     /// @param symbol_        ERC721 token symbol
     /// @param baseURI_       IPFS base URI for unredeemed card metadata
     /// @param codeManager_   Address of the CodeManager registry contract
-    /// @param comboStorage_  Address of the ComboStorage redemption service
     /// @param creator_       The wallet that registered uniqueIds on CodeManager
     /// @param chainId_       The chain identifier matching CodeManager registration
     function initialize(
@@ -313,7 +315,6 @@ contract CryftGreetingCards is
         string memory symbol_,
         string memory baseURI_,
         address codeManager_,
-        address comboStorage_,
         address creator_,
         string memory chainId_
     ) public initializer {
@@ -322,7 +323,6 @@ contract CryftGreetingCards is
 
         baseTokenURI = baseURI_;
         codeManagerAddress = codeManager_;
-        comboStorageAddress = comboStorage_;
         cardCreator = creator_;
         chainId = chainId_;
         _contractIdentifier = _computeContractIdentifier(chainId_);
@@ -477,48 +477,6 @@ contract CryftGreetingCards is
     }
 
     // ════════════════════════════════════════════════════
-    //                    REDEMPTION
-    // ════════════════════════════════════════════════════
-
-    /// @notice Claim a verified redemption. Call this after ComboStorage
-    ///         has recorded a successful code match for the uniqueId.
-    ///
-    ///         Flow:
-    ///         1. ComboStorage.redeemCode() verifies code → records result
-    ///         2. This function reads ComboStorage state to confirm (view call)
-    ///         3. NFT is transferred from vault to the provided recipient
-    ///         4. ownerOf(tokenId) now returns recipient (on-chain ownership)
-    ///         5. tokenURI() now returns the batch's redeemed URI
-    ///
-    ///         The recipient is NOT msg.sender — this is a gift flow where the
-    ///         redeemer specifies which wallet receives the NFT.
-    ///
-    /// @param uniqueId  The unique ID whose redemption was verified by ComboStorage
-    /// @param recipient The wallet address that will receive the NFT (cannot be msg.sender)
-    function claimRedemption(string calldata uniqueId, address recipient) external whenNotPaused {
-        // Read ComboStorage verification state (view call — no cross-contract write)
-        IComboStorage combo = IComboStorage(comboStorageAddress);
-        require(combo.isRedemptionVerified(uniqueId), "Not verified by ComboStorage");
-
-        address redeemer = combo.redemptionRedeemer(uniqueId);
-        require(msg.sender == redeemer, "Not the verified redeemer");
-
-        require(recipient != address(0), "Zero recipient");
-        require(recipient != msg.sender, "Recipient cannot be caller");
-
-        (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
-        require(valid, "Unknown uniqueId");
-        require(ownerOf(tokenId) == address(this), "Not in vault");
-
-        unchecked { ++totalRedeems; }
-
-        // Transfer NFT from vault to the provided recipient
-        _transfer(address(this), recipient, tokenId);
-
-        emit CardRedeemed(tokenId, uniqueId, recipient);
-    }
-
-    // ════════════════════════════════════════════════════
     //        IRedeemable (gift contract authority)
     // ════════════════════════════════════════════════════
 
@@ -548,15 +506,6 @@ contract CryftGreetingCards is
     }
 
     /// @inheritdoc IRedeemable
-    /// @dev GreetingCards uses per-batch IPFS URIs as content, not per-UID content IDs.
-    ///      Returns empty string since content is managed via tokenURI / batch metadata.
-    function getUniqueIdContent(string memory)
-        public pure override returns (string memory)
-    {
-        return "";
-    }
-
-    /// @inheritdoc IRedeemable
     /// @dev GreetingCards derives frozen from explicit admin flags + vault state.
     ///      Only CodeManager (acting as Pente router) can call this.
     function setFrozen(string memory uniqueId, bool frozen) external override {
@@ -566,14 +515,6 @@ contract CryftGreetingCards is
         require(ownerOf(tokenId) == address(this), "Not in vault");
         _explicitlyFrozen[tokenId] = frozen;
         emit TokenFrozen(tokenId, frozen);
-    }
-
-    /// @inheritdoc IRedeemable
-    /// @dev GreetingCards uses batch-level IPFS URIs, not per-UID content.
-    ///      This is a no-op; content is managed via setRedeemedBaseURI / setBatchRedeemedURI.
-    function setContent(string memory, string memory) external view override {
-        require(msg.sender == codeManagerAddress, "Only CodeManager");
-        // No per-UID content in GreetingCards — content is batch-level IPFS metadata.
     }
 
     /// @inheritdoc IRedeemable
@@ -695,7 +636,7 @@ contract CryftGreetingCards is
     {
         bool valid;
         (valid, tokenId) = _parseTokenId(uniqueId);
-        frozen = !valid || !_exists(tokenId);
+        frozen = !valid || !_exists(tokenId) || _explicitlyFrozen[tokenId];
         redeemed = valid && _exists(tokenId) && ownerOf(tokenId) != address(this);
 
         if (valid && _exists(tokenId)) {
@@ -719,11 +660,6 @@ contract CryftGreetingCards is
     function setCodeManagerAddress(address addr) external onlyOwner {
         require(addr != address(0), "Zero address");
         codeManagerAddress = addr;
-    }
-
-    function setComboStorageAddress(address addr) external onlyOwner {
-        require(addr != address(0), "Zero address");
-        comboStorageAddress = addr;
     }
 
     function setPricePerCard(uint256 price) external onlyOwner {
