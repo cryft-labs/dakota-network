@@ -1,0 +1,13 @@
+{
+  "name": "Cryft Birthday Card #1 🎂",
+  "description": "Happy Birthday! This personalized Cryft Greeting Card has been revealed. A unique on-chain gift from someone who cares.",
+  "image": "ipfs://<REDEEMED_IMAGE_CID>/1.png",
+  "external_url": "https://cryft.io/cards/1",
+  "attributes": [
+    { "trait_type": "Status", "value": "Redeemed" },
+    { "trait_type": "Occasion", "value": "Birthday" },
+    { "trait_type": "Design", "value": "Starlight" },
+    { "trait_type": "Series", "value": "Genesis" },
+    { "display_type": "number", "trait_type": "Card Number", "value": 1 }
+  ]
+}

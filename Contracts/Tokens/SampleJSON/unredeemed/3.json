@@ -1,0 +1,11 @@
+{
+  "name": "Cryft Greeting Card #3",
+  "description": "A Cryft Greeting Card waiting to be revealed. Redeem your code to unveil the personalized message inside.",
+  "image": "ipfs://<UNREDEEMED_IMAGE_CID>/card-front.png",
+  "external_url": "https://cryft.io/cards/3",
+  "attributes": [
+    { "trait_type": "Status", "value": "Unredeemed" },
+    { "trait_type": "Series", "value": "Genesis" },
+    { "display_type": "number", "trait_type": "Card Number", "value": 3 }
+  ]
+}
