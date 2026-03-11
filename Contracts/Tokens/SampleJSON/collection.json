@@ -2,7 +2,7 @@
   "name": "Cryft Greeting Cards",
   "description": "On-chain greeting cards by Cryft Labs. Each card starts as a sealed envelope — redeem your code to reveal the personalized message inside. Powered by the Dakota Network.",
   "image": "ipfs://<COLLECTION_IMAGE_CID>/collection.png",
-  "external_link": "https://cryft.io",
+  "external_link": "https://cryftlabs.org",
   "seller_fee_basis_points": 0,
   "fee_recipient": ""
 }
