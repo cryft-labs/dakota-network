@@ -925,6 +925,18 @@ td {
   overflow: hidden;
 }
 
+.link-card-disabled {
+  opacity: 0.6;
+  background: rgba(13, 20, 29, 0.72);
+  border-color: rgba(185, 223, 221, 0.08);
+  box-shadow: none;
+}
+
+.link-card-disabled:hover,
+.link-card-disabled:focus-visible {
+  transform: none;
+}
+
 .link-card::after {
   content: "";
   position: absolute;
@@ -939,6 +951,16 @@ td {
   position: relative;
   z-index: 1;
   font-size: 1.1rem;
+}
+
+.link-status {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.76rem;
 }
 
 .site-footer {
