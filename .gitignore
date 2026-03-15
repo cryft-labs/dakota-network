@@ -6,6 +6,7 @@ __pycache__/
 
 # Solc Compiler build cache (regenerated on every compile)
 Tools/SolcCompiler/.import_cache/
+GREETING_CARDS_APP_PROMPT.md
 
 # OS / IDE
 .DS_Store

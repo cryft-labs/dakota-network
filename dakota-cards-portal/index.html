@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="description"
+    content="Dakota.Cards is the ecosystem portal for the Dakota Network, a Cryft Labs enterprise QBFT blockchain powered by Hyperledger Besu and Paladin privacy layers."
+  >
+  <title>Dakota.Cards | Dakota Network Portal</title>
+  <link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="Dakota.Cards home">
+        <span class="brand-mark">
+          <img src="assets/dakota-rabbit-logo.svg" alt="Dakota.Cards rabbit logo">
+        </span>
+        <span class="brand-copy">
+          <strong>Dakota.Cards</strong>
+          <span>Dakota Network portal</span>
+        </span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav id="site-nav" class="site-nav" aria-label="Primary">
+        <a href="#ecosystem">Ecosystem</a>
+        <a href="#network">Network</a>
+        <a href="#contracts">Contracts</a>
+        <a href="#reserved">Reserved</a>
+        <a href="#governance">Governance</a>
+        <a href="#service">Services</a>
+        <a href="#links">Links</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero reveal" id="home">
+        <div class="hero-copy">
+          <p class="eyebrow">Cryft Labs presents</p>
+          <h1>Dakota.Cards</h1>
+          <p class="hero-lead">
+            The parent portal for Dakota Network services, governance, smart-account tooling, and privacy-preserving application infrastructure.
+          </p>
+
+          <div class="hero-actions">
+            <a class="button button-primary" href="https://explore.dakota.cards" target="_blank" rel="noreferrer">Open Explorer</a>
+            <a class="button button-secondary" href="#service">View Services</a>
+            <a class="button button-tertiary" href="https://github.com/cryft-labs/dakota-network" target="_blank" rel="noreferrer">GitHub Repo</a>
+          </div>
+
+          <div class="signal-row">
+            <button class="signal-chip copy-chip" type="button" data-copy="112311">
+              <span>Chain ID</span>
+              <strong>112311</strong>
+            </button>
+            <div class="signal-chip">
+              <span>Consensus</span>
+              <strong>QBFT</strong>
+            </div>
+            <div class="signal-chip">
+              <span>Privacy</span>
+              <strong>Paladin Pente</strong>
+            </div>
+          </div>
+        </div>
+
+        <aside class="hero-panel">
+          <div class="panel-header">
+            <span class="panel-kicker">Network profile</span>
+            <strong>Dakota enterprise chain</strong>
+          </div>
+
+          <div class="panel-grid">
+            <article>
+              <span>Base client</span>
+              <strong>Besu 26.1.0</strong>
+            </article>
+            <article>
+              <span>Fork level</span>
+              <strong>Osaka + BPO2</strong>
+            </article>
+            <article>
+              <span>Block period</span>
+              <strong>1s active / 64s idle</strong>
+            </article>
+            <article>
+              <span>Gas limit</span>
+              <strong>64,000,000</strong>
+            </article>
+          </div>
+
+          <div class="panel-callout">
+            <span>Purpose</span>
+            <p>
+              Permissioned application infrastructure for redeemable-code workflows, governance-managed upgrades, and privacy-bound state transitions.
+            </p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="section reveal" id="ecosystem">
+        <div class="section-heading">
+          <p class="eyebrow">Ecosystem</p>
+          <h2>Network portal and service map</h2>
+          <p>
+            Dakota.Cards is the top-level public entry point for the Dakota Network and the services that run on it.
+          </p>
+        </div>
+
+        <div class="ecosystem-stack">
+          <div class="ecosystem-groups">
+            <section class="ecosystem-group" aria-labelledby="core-services-heading">
+              <div class="ecosystem-group-heading">
+                <p class="eyebrow">Core services</p>
+                <h3 id="core-services-heading">Network entry points</h3>
+                <p>These services are part of the Dakota.Cards network surface and act as the primary entry points for users and operators.</p>
+              </div>
+
+              <div class="ecosystem-grid ecosystem-grid-paired">
+                <article class="ecosystem-card ecosystem-parent">
+                  <h3>Dakota.Cards</h3>
+                  <p>Parent website and public portal for Dakota services, governance updates, and ecosystem orientation.</p>
+                </article>
+                <article class="ecosystem-card">
+                  <h3>explore.dakota.cards</h3>
+                  <p>Block explorer for chain state, transactions, token flows, governance events, and contract activity.</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="ecosystem-group" aria-labelledby="platform-services-heading">
+              <div class="ecosystem-group-heading">
+                <p class="eyebrow">Platform services</p>
+                <h3 id="platform-services-heading">Ecosystem applications</h3>
+                <p>These services run on Dakota infrastructure but are not part of the core portal layer. Greeting.Cards is the first live service in this application tier.</p>
+              </div>
+
+              <div class="ecosystem-grid ecosystem-grid-paired">
+                <article class="ecosystem-card ecosystem-platform">
+                  <h3>Greeting.Cards</h3>
+                  <p>Current beta service for testing the Cryft Labs redeemable-code stack while broader Dakota applications continue to roll out.</p>
+                </article>
+                <article class="ecosystem-card ecosystem-future">
+                  <h3>Future services</h3>
+                  <p>Additional Dakota applications can reuse the same governance, privacy, routing, and smart-account infrastructure as they launch.</p>
+                </article>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section class="section reveal" id="network">
+        <div class="section-heading">
+          <p class="eyebrow">Network</p>
+          <h2>Technical summary</h2>
+          <p>
+            Dakota Network is a Hyperledger Besu-based enterprise chain with QBFT consensus and Paladin privacy layers for permissioned environments.
+          </p>
+        </div>
+
+        <div class="live-stats-panel" aria-live="polite">
+          <div class="live-stats-header">
+            <div>
+              <p class="eyebrow">Live stats</p>
+              <h3>Direct network telemetry</h3>
+              <p class="live-stats-subtitle" id="rpc-mode-label">Preparing direct endpoint polling</p>
+            </div>
+            <div class="live-endpoint">
+              <span>Status source</span>
+              <strong id="rpc-endpoint">Connecting...</strong>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <article class="stat-card">
+              <span>Latest block</span>
+              <strong id="stat-block-number">--</strong>
+              <p id="stat-block-age">Waiting for chain data</p>
+            </article>
+            <article class="stat-card">
+              <span>Gas</span>
+              <strong id="stat-gas-price">--</strong>
+              <p id="stat-gas-usage">Fetching latest block</p>
+            </article>
+            <article class="stat-card">
+              <span>Sync status</span>
+              <strong id="stat-sync-status">--</strong>
+              <p id="stat-chain-id">Checking chain identity</p>
+            </article>
+            <article class="stat-card">
+              <span>Client</span>
+              <strong id="stat-client-name">--</strong>
+              <p id="stat-refresh-time">Not updated yet</p>
+            </article>
+          </div>
+
+          <div class="live-stats-footer">
+            <p id="rpc-status-text">Polling direct Dakota endpoints for live network status.</p>
+            <button class="button button-secondary" id="refresh-stats" type="button">Poll now</button>
+          </div>
+        </div>
+
+        <div class="network-layout">
+          <div class="table-card">
+            <table>
+              <tbody>
+                <tr><th>Blockchain</th><td>Hyperledger Besu 26.1.0 on Java 21</td></tr>
+                <tr><th>Consensus</th><td>QBFT (Istanbul BFT) with 2/3 supermajority</td></tr>
+                <tr><th>Chain ID</th><td>112311</td></tr>
+                <tr><th>Gas Limit</th><td>64,000,000</td></tr>
+                <tr><th>Block Period</th><td>1 second active, 64 seconds when idle</td></tr>
+                <tr><th>Block Reward</th><td>3.2 ETH per block</td></tr>
+                <tr><th>EVM Fork Level</th><td>All Ethereum forks through Osaka active from genesis</td></tr>
+                <tr><th>Contract Size Limit</th><td>32,768 bytes</td></tr>
+                <tr><th>Solidity</th><td>0.8.34 (Osaka), 0.8.19 for validator contracts</td></tr>
+                <tr><th>Privacy Layer</th><td>Paladin with Pente privacy domain</td></tr>
+                <tr><th>Explorer</th><td>explore.dakota.cards</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="summary-stack">
+            <article class="summary-card">
+              <span>Total genesis allocations</span>
+              <strong>32,434</strong>
+              <p>Pre-allocation model optimized for auctionable service capacity, optional registry expansion, and reserved infrastructure slots.</p>
+            </article>
+            <article class="summary-card accent">
+              <span>Auctionable service slots</span>
+              <strong>32,324</strong>
+              <p>Addresses ending in 323 are reserved for auction or private sale to fund ecosystem development, rollout, and long-term support.</p>
+            </article>
+            <article class="summary-card">
+              <span>Reserved contract slots</span>
+              <strong>4</strong>
+              <p>Repeating-pattern slots at 0x2222..., 0x2323..., 0x3232..., and 0x3333... are reserved and still pending use.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="allocation-strip">
+          <article>
+            <span>Auctionable 323 slots</span>
+            <strong>32,324</strong>
+          </article>
+          <article>
+            <span>Optional c0DE registries</span>
+            <strong>100</strong>
+          </article>
+          <article>
+            <span>Reserved system addresses</span>
+            <strong>7</strong>
+          </article>
+          <article>
+            <span>Deployer EOA balance</span>
+            <strong>32 ETH</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="section reveal" id="contracts">
+        <div class="section-heading section-heading-row">
+          <div>
+            <p class="eyebrow">Contracts</p>
+            <h2>Genesis, application, and reserved system contracts</h2>
+          </div>
+
+          <div class="filter-group" aria-label="Contract categories">
+            <button class="filter-button is-active" type="button" data-filter="all">All</button>
+            <button class="filter-button" type="button" data-filter="genesis">Genesis</button>
+            <button class="filter-button" type="button" data-filter="application">Application</button>
+            <button class="filter-button" type="button" data-filter="system">Reserved</button>
+          </div>
+        </div>
+
+        <div class="contracts-grid">
+          <article class="contract-card" data-group="genesis">
+            <span class="card-tag">Genesis</span>
+            <h3>ValidatorSmartContractAllowList</h3>
+            <div class="contract-address-row">
+              <p class="mono">0x0000...1111</p>
+              <div class="contract-actions">
+                <button class="copy-action" type="button" data-copy="0x0000...1111" aria-label="Copy ValidatorSmartContractAllowList address">
+                  <span data-copy-label>Copy</span>
+                </button>
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/Genesis/ValidatorContracts/ValidatorSmartContractAllowList.sol" target="_blank" rel="noreferrer" aria-label="View ValidatorSmartContractAllowList on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>Validator, voter, and root-overlord governance with federated expansion support and revocation paths.</p>
+          </article>
+
+          <article class="contract-card" data-group="genesis">
+            <span class="card-tag">Genesis</span>
+            <h3>GasManager</h3>
+            <div class="contract-address-row">
+              <p class="mono">0x0000...cafE</p>
+              <div class="contract-actions">
+                <button class="copy-action" type="button" data-copy="0x0000...cafE" aria-label="Copy GasManager address">
+                  <span data-copy-label>Copy</span>
+                </button>
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/Genesis/GasManager/GasManager.sol" target="_blank" rel="noreferrer" aria-label="View GasManager on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>Block reward recipient with voter-governed burn flows and guardian-executed funding operations.</p>
+          </article>
+
+          <article class="contract-card" data-group="genesis">
+            <span class="card-tag">Genesis</span>
+            <h3>TransparentUpgradeableProxy</h3>
+            <div class="contract-address-row">
+              <p class="mono">Per-contract proxy</p>
+              <div class="contract-actions">
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol" target="_blank" rel="noreferrer" aria-label="View TransparentUpgradeableProxy on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>OpenZeppelin 4.9.6 proxy with dynamic root-overlord reads and guardian-assisted upgrade routing.</p>
+          </article>
+
+          <article class="contract-card" data-group="genesis">
+            <span class="card-tag">Genesis</span>
+            <h3>ProxyAdmin</h3>
+            <div class="contract-address-row">
+              <p class="mono">0x0000...FacAdE</p>
+              <div class="contract-actions">
+                <button class="copy-action" type="button" data-copy="0x0000...FacAdE" aria-label="Copy ProxyAdmin address">
+                  <span data-copy-label>Copy</span>
+                </button>
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol" target="_blank" rel="noreferrer" aria-label="View ProxyAdmin on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>Guardian-gated ERC1967 upgrade dispatcher for per-proxy governance and one-time proxy linkage.</p>
+          </article>
+
+          <article class="contract-card" data-group="application system">
+            <div class="card-tag-row">
+              <span class="card-tag">Application</span>
+              <span class="card-tag card-tag-secondary">Reserved</span>
+            </div>
+            <h3>CodeManager</h3>
+            <div class="contract-address-row">
+              <p class="mono">0x0000...c0DE</p>
+              <div class="contract-actions">
+                <button class="copy-action" type="button" data-copy="0x0000...c0DE" aria-label="Copy CodeManager address">
+                  <span data-copy-label>Copy</span>
+                </button>
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/CodeManagement/CodeManager.sol" target="_blank" rel="noreferrer" aria-label="View CodeManager on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>Primary Dakota code registry at 0x0000...c0DE, handling privacy-group-triggered redemption, freeze, and content routing while the other 100 c0DE-ending slots remain optional registry capacity.</p>
+          </article>
+
+          <article class="contract-card" data-group="application">
+            <span class="card-tag">Application</span>
+            <h3>PrivateComboStorage</h3>
+            <div class="contract-address-row">
+              <p class="mono">Pente privacy group</p>
+              <div class="contract-actions">
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/CodeManagement/PrivateComboStorage.sol" target="_blank" rel="noreferrer" aria-label="View PrivateComboStorage on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>Private hash storage and redemption verification contract that emits PenteExternalCall events.</p>
+          </article>
+
+          <article class="contract-card" data-group="application">
+            <span class="card-tag">Application</span>
+            <h3>DakotaDelegation</h3>
+            <div class="contract-address-row">
+              <p class="mono">0x0000...de1E6A7E</p>
+              <div class="contract-actions">
+                <button class="copy-action" type="button" data-copy="0x0000...de1E6A7E" aria-label="Copy DakotaDelegation address">
+                  <span data-copy-label>Copy</span>
+                </button>
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/Genesis/7702/DakotaDelegation.sol" target="_blank" rel="noreferrer" aria-label="View DakotaDelegation on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>EIP-7702 delegation target with batch execution, session keys, sponsored execution, and EIP-1271 support.</p>
+          </article>
+
+          <article class="contract-card" data-group="application system">
+            <div class="card-tag-row">
+              <span class="card-tag">Application</span>
+              <span class="card-tag card-tag-secondary">Reserved</span>
+            </div>
+            <h3>GasSponsor</h3>
+            <div class="contract-address-row">
+              <p class="mono">0x0000...FEeD</p>
+              <div class="contract-actions">
+                <button class="copy-action" type="button" data-copy="0x0000...FEeD" aria-label="Copy GasSponsor address">
+                  <span data-copy-label>Copy</span>
+                </button>
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/Genesis/7702/GasSponsor.sol" target="_blank" rel="noreferrer" aria-label="View GasSponsor on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>Relayer-authorized gas reimbursement contract with spend limits and optional target allowlisting, deployed into its reserved infrastructure slot.</p>
+          </article>
+
+          <article class="contract-card" data-group="application">
+            <span class="card-tag">Application</span>
+            <h3>CryftGreetingCards</h3>
+            <div class="contract-address-row">
+              <p class="mono">Service deployment</p>
+              <div class="contract-actions">
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/Tokens/GreetingCards.sol" target="_blank" rel="noreferrer" aria-label="View CryftGreetingCards on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>ERC-721 card contract with atomic CodeManager registration, vault custody, and PurchaseSegment storage.</p>
+          </article>
+
+          <article class="contract-card" data-group="system">
+            <span class="card-tag">Reserved</span>
+            <h3>Agent Registry</h3>
+            <div class="contract-address-row">
+              <p class="mono">0x0000...Face</p>
+              <div class="contract-actions">
+                <button class="copy-action" type="button" data-copy="0x0000...Face" aria-label="Copy Agent Registry address">
+                  <span data-copy-label>Copy</span>
+                </button>
+                <a class="contract-source-link icon-action" href="https://github.com/cryft-labs/dakota-network/blob/main/Contracts/Genesis/7702/EIP-7702-Instructions.md" target="_blank" rel="noreferrer" aria-label="View Agent Registry reference on GitHub">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.57 7.57 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" fill="currentColor"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <p>Reserved system address for the ERC-8004 agent registry layer within the broader Dakota ecosystem.</p>
+          </article>
+
+        </div>
+      </section>
+
+      <section class="section reveal" id="reserved">
+        <div class="section-heading section-heading-row">
+          <div>
+            <p class="eyebrow">Reserved</p>
+            <h2>Reserved slot lookup and future reservation flow</h2>
+            <p>
+              Deployed contracts stay in the Contracts section. The abstract reserved pools, optional registry capacity, and pending fixed-pattern slots are indexed here so users can look them up before reservation and payment flows go live.
+            </p>
+          </div>
+
+          <div class="reservation-status-card">
+            <span>Reservation status</span>
+            <strong>Coming soon</strong>
+            <p>Checkout and payment are not active yet. Private sale and early reservation discussions can route through Cryft Labs until the public flow is enabled.</p>
+            <a class="button button-secondary" href="https://cryftlabs.org/licenses" target="_blank" rel="noreferrer">Ask about reservations</a>
+          </div>
+        </div>
+
+        <div class="reserved-grid">
+          <article class="reserved-card" data-reserved-search="auction 323 service slot slots ending 323 private sale reserve reservable">
+            <div class="card-tag-row">
+              <span class="card-tag">Auctionable</span>
+              <span class="card-tag card-tag-secondary">Service pool</span>
+            </div>
+            <h3>323-ending service slots</h3>
+            <p class="mono">Pattern: ...323</p>
+            <strong>32,324 slots</strong>
+            <p>These are the main auctionable service addresses intended for public sale or private placement to fund Dakota ecosystem growth, rollout, and support.</p>
+          </article>
+
+          <article class="reserved-card" data-reserved-search="primary code registry codemanager 0x0000 c0de official active reserved system address">
+            <div class="card-tag-row">
+              <span class="card-tag">Active</span>
+              <span class="card-tag card-tag-secondary">Primary registry</span>
+            </div>
+            <h3>Official CodeManager registry</h3>
+            <p class="mono">0x0000...c0DE</p>
+            <strong>Primary Dakota code registry</strong>
+            <p>The 0x0000...c0DE deployment is the live Dakota CodeManager. It is reserved to the network itself and is not part of the public reservation inventory.</p>
+          </article>
+
+          <article class="reserved-card" data-reserved-search="optional c0de registries registry pool code manager additional future capacity if needed">
+            <div class="card-tag-row">
+              <span class="card-tag">Reserved</span>
+              <span class="card-tag card-tag-secondary">Optional capacity</span>
+            </div>
+            <h3>Optional c0DE registry slots</h3>
+            <p class="mono">Pattern: ...c0DE</p>
+            <strong>100 optional registries</strong>
+            <p>These additional c0DE-ending slots are held back as optional registry capacity if Dakota ever needs more CodeManager-style deployments beyond the primary registry.</p>
+          </article>
+
+          <article class="reserved-card" data-reserved-search="pending contract slots 0x2222 0x2323 0x3232 0x3333 repeating pattern future contract pending use">
+            <div class="card-tag-row">
+              <span class="card-tag">Pending</span>
+              <span class="card-tag card-tag-secondary">Contract slots</span>
+            </div>
+            <h3>Repeating-pattern contract slots</h3>
+            <p class="mono">0x2222... · 0x2323... · 0x3232... · 0x3333...</p>
+            <strong>4 reserved contract slots</strong>
+            <p>These repeating-pattern addresses are reserved for future network coordination or fixed-address contract deployments and are still pending use.</p>
+          </article>
+        </div>
+
+      </section>
+
+      <section class="section reveal" id="governance">
+        <div class="section-heading">
+          <p class="eyebrow">Governance</p>
+          <h2>Three-tier access with 2/3 supermajority rules</h2>
+          <p>
+            Dakota governance separates structural authority, day-to-day operations, and root membership while preserving deterministic quorum logic.
+          </p>
+        </div>
+
+        <div class="governance-grid">
+          <article class="tier-card">
+            <span class="step">Tier 1</span>
+            <h3>Root Overlords</h3>
+            <p>Read dynamically from the validator contract and can add or remove non-root overlords directly.</p>
+          </article>
+          <article class="tier-card">
+            <span class="step">Tier 2</span>
+            <h3>Overlords</h3>
+            <p>Vote on structural network and contract changes under the 2/3 supermajority rule.</p>
+          </article>
+          <article class="tier-card">
+            <span class="step">Tier 3</span>
+            <h3>Guardians</h3>
+            <p>Handle operational upgrade triggers through ProxyAdmin and establish one-time proxy linkage.</p>
+          </article>
+        </div>
+
+        <div class="rules-panel">
+          <div>
+            <h3>Governance rules</h3>
+            <ul class="rules-list">
+              <li>Supermajority quorum: (totalVoterCount * 2 + 2) / 3</li>
+              <li>Vote tallies expire after a configurable threshold, defaulting to 1,000 blocks</li>
+              <li>Voter pool changes are blocked while any tally remains active</li>
+              <li>Permanent management revocation is possible in ordered phases</li>
+              <li>Each core contract maintains an independent voter pool with external contract support</li>
+            </ul>
+          </div>
+
+          <div class="formula-card">
+            <span>Quorum formula</span>
+            <strong>2/3 supermajority</strong>
+            <p>Governance is tuned for federation without sacrificing explicit consensus thresholds.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section reveal" id="service">
+        <div class="section-heading">
+          <p class="eyebrow">Services</p>
+          <h2>Ecosystem services overview</h2>
+          <p>
+            Dakota.Cards is where Cryft Labs can surface original innovations as ecosystem services. The portal is built to let new experiences sit on the same Dakota infrastructure while reusing shared governance, privacy, and redeemable-code building blocks, including Kota, the AI-assisted gifting layer named as a shorthand for Dakota.
+          </p>
+        </div>
+
+        <div class="service-layout">
+          <article class="service-card">
+            <h3>Cryft Labs service design</h3>
+            <ul class="stack-list">
+              <li>Dakota.Cards provides the ecosystem surface for original Cryft Labs innovations rather than acting as a single-product website</li>
+              <li>Kota is the Cryft Labs AI-assisted embeddable gifting tool, named as a shorthand for Dakota, and helps clients implement Dakota Network and the proprietary redeemable-code system more easily</li>
+              <li>Each service can inherit the same account model, governance posture, contract routing, and privacy architecture without rebuilding the full stack</li>
+              <li>Future management tools are planned to extend administration, lifecycle control, and service operations across the ecosystem</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <h3>Paladin privacy and redeemable-code invention</h3>
+            <ul class="stack-list">
+              <li>Paladin with the Pente privacy domain allows service flows to keep sensitive redemption data private while still coordinating with transparent onchain state</li>
+              <li>Cryft Labs uses a two-contract invention pair: CodeManager for public routing and lifecycle control, and PrivateComboStorage for private validation data inside the privacy domain</li>
+              <li>Together they create transparent but secure management of redeemable codes, so users and operators can trust the flow without exposing the private combination material</li>
+              <li>That pattern can be reused by additional Dakota services that need controlled redemption, privacy-aware issuance, or secure claim workflows</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="terminology-grid">
+          <article>
+            <span>Current beta service</span>
+            <strong>Greeting.Cards</strong>
+            <p>Current beta service for testing the Cryft Labs technology stack while additional ecosystem services are prepared.</p>
+          </article>
+          <article>
+            <span>Client tool</span>
+            <strong>Kota</strong>
+            <p>The Cryft Labs AI-assisted gifting tool, short for Dakota, designed as an embeddable layer for clients adopting the network and proprietary redeemable-code system.</p>
+          </article>
+          <article>
+            <span>Contract model</span>
+            <strong>CodeManager + PrivateComboStorage</strong>
+            <p>The public-private contract pair supports secure redeemable-code workflows across future Dakota services.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section reveal" id="patent">
+        <div class="patent-banner">
+          <div>
+            <p class="eyebrow">Patent notice</p>
+            <h2>Redeemable-code infrastructure is patent-noted</h2>
+            <p>
+              U.S. Patent Application Serial No. 18/930,857 covers the CodeManager plus PrivateComboStorage privacy integration pattern. Greeting.Cards is the first service client of that system, with room for additional ecosystem services to follow.
+            </p>
+          </div>
+          <a class="button button-primary" href="https://cryftlabs.org/licenses" target="_blank" rel="noreferrer">Licensing inquiries</a>
+        </div>
+      </section>
+
+      <section class="section reveal" id="links">
+        <div class="section-heading">
+          <p class="eyebrow">Links</p>
+          <h2>Network destinations</h2>
+        </div>
+
+        <div class="links-grid">
+          <a class="link-card" href="https://dakota.cards" target="_blank" rel="noreferrer">
+            <span>Portal</span>
+            <strong>dakota.cards</strong>
+          </a>
+          <a class="link-card" href="https://explore.dakota.cards" target="_blank" rel="noreferrer">
+            <span>Explorer</span>
+            <strong>explore.dakota.cards</strong>
+          </a>
+          <a class="link-card" href="https://greeting.cards" target="_blank" rel="noreferrer">
+            <span>Current beta service</span>
+            <strong>greeting.cards</strong>
+          </a>
+          <a class="link-card" href="https://cryftlabs.org" target="_blank" rel="noreferrer">
+            <span>Organization</span>
+            <strong>cryftlabs.org</strong>
+          </a>
+          <a class="link-card" href="https://cryftlabs.org/licenses" target="_blank" rel="noreferrer">
+            <span>Licensing</span>
+            <strong>cryftlabs.org/licenses</strong>
+          </a>
+          <a class="link-card" href="https://patents.google.com/patent/US20250139608A1/en" target="_blank" rel="noreferrer">
+            <span>Patent</span>
+            <strong>US20250139608A1</strong>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Dakota.Cards is the parent network website and ecosystem portal for the Dakota Network.</p>
+      <a href="#home" data-back-to-top>Back to top</a>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
