@@ -101,7 +101,21 @@ const rpcEndpoints = [
   'https://rpc2.dakota.cards',
 ];
 
-const selectedRpcEndpoint = rpcEndpoints[Math.floor(Math.random() * rpcEndpoints.length)];
+function getNextRpcEndpoint() {
+  try {
+    const storageKey = 'dakota-rpc-endpoint-index';
+    const storedValue = window.localStorage.getItem(storageKey);
+    const currentIndex = Number.parseInt(storedValue || '0', 10);
+    const normalizedIndex = Number.isNaN(currentIndex) ? 0 : Math.abs(currentIndex) % rpcEndpoints.length;
+
+    window.localStorage.setItem(storageKey, String((normalizedIndex + 1) % rpcEndpoints.length));
+    return rpcEndpoints[normalizedIndex];
+  } catch (error) {
+    return rpcEndpoints[0];
+  }
+}
+
+const selectedRpcEndpoint = getNextRpcEndpoint();
 
 const rpcConfig = {
   endpoint: selectedRpcEndpoint,
