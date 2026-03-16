@@ -335,7 +335,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.modeLabel) {
-    statsElements.modeLabel.textContent = `Direct polling through ${endpointHost} every ${Math.floor(rpcConfig.refreshMs / 1000)}s`;
+    statsElements.modeLabel.textContent = `Selected on page load: ${endpointHost}. Polling every ${Math.floor(rpcConfig.refreshMs / 1000)}s`;
   }
 
   if (statsElements.blockNumber) {
@@ -372,7 +372,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.statusText) {
-    statsElements.statusText.textContent = `Live stats are polling ${data.endpoint} directly for now. A central API and load-balancing layer can be introduced later without changing the UI contract.`;
+    statsElements.statusText.textContent = `Live stats are polling ${data.endpoint} for this page load. Reloading the page reselects between rpc1 and rpc2; a central API and load-balancing layer can be introduced later without changing the UI contract.`;
     setStatusTone(statsElements.statusText, 'rpc-good');
   }
 }
