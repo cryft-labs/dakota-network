@@ -96,14 +96,8 @@ const observer = new IntersectionObserver(
 
 reveals.forEach((section) => observer.observe(section));
 
-const isLocalPreview = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
-
 const rpcConfig = {
-  localEndpoint: 'http://100.111.32.1:8545',
-  publicEndpoints: [
-    'https://rpc1.dakota.cards',
-    'https://rpc2.dakota.cards',
-  ],
+  endpoint: 'https://rpc1.dakota.cards',
   refreshMs: 10000,
 };
 
@@ -126,14 +120,6 @@ const statsElements = {
   refreshTime: document.querySelector('#stat-refresh-time'),
   refreshButton: document.querySelector('#refresh-stats'),
 };
-
-function getRpcEndpoints() {
-  if (isLocalPreview) {
-    return [rpcConfig.localEndpoint, ...rpcConfig.publicEndpoints];
-  }
-
-  return rpcConfig.publicEndpoints;
-}
 
 function setStatusTone(element, tone) {
   if (!element) {
@@ -302,7 +288,6 @@ async function rpcBatchRequest(endpoint, requests) {
 }
 
 async function fetchLiveStats() {
-  let lastError = null;
   const requests = [
     { method: 'eth_chainId', params: [] },
     { method: 'eth_blockNumber', params: [] },
@@ -312,25 +297,17 @@ async function fetchLiveStats() {
     { method: 'eth_getBlockByNumber', params: ['latest', false] },
   ];
 
-  for (const endpoint of getRpcEndpoints()) {
-    try {
-      const [chainId, blockNumber, clientVersion, gasPrice, syncing, latestBlock] = await rpcBatchRequest(endpoint, requests);
+  const [chainId, blockNumber, clientVersion, gasPrice, syncing, latestBlock] = await rpcBatchRequest(rpcConfig.endpoint, requests);
 
-      return {
-        endpoint,
-        chainId,
-        blockNumber,
-        clientVersion,
-        gasPrice,
-        syncing,
-        latestBlock,
-      };
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError || new Error('No RPC endpoints available');
+  return {
+    endpoint: rpcConfig.endpoint,
+    chainId,
+    blockNumber,
+    clientVersion,
+    gasPrice,
+    syncing,
+    latestBlock,
+  };
 }
 
 function renderLiveStats(data) {
@@ -342,8 +319,6 @@ function renderLiveStats(data) {
   const blockTimestamp = formatHexNumber(data.latestBlock?.timestamp);
   const syncStatus = data.syncing ? 'Syncing' : 'Healthy';
   const usagePercent = gasLimit ? (((gasUsed || 0) / gasLimit) * 100).toFixed(2) : null;
-  const endpointMode = data.endpoint === rpcConfig.localEndpoint ? 'Local test RPC' : 'Public Dakota RPC';
-
   statsRuntime.latestBlockTimestamp = blockTimestamp;
   statsRuntime.lastRefreshAt = Date.now();
 
@@ -352,7 +327,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.modeLabel) {
-    statsElements.modeLabel.textContent = `${endpointMode} selected for direct polling every ${Math.floor(rpcConfig.refreshMs / 1000)}s`;
+    statsElements.modeLabel.textContent = `Direct polling through rpc1.dakota.cards every ${Math.floor(rpcConfig.refreshMs / 1000)}s`;
   }
 
   if (statsElements.blockNumber) {
@@ -389,9 +364,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.statusText) {
-    statsElements.statusText.textContent = data.endpoint === rpcConfig.localEndpoint
-      ? `Live stats are polling the local Dakota test RPC at ${data.endpoint}. A central API and load-balancing layer can sit in front of this later.`
-      : `Live stats are polling ${data.endpoint} directly for now. A central API and load-balancing layer can be introduced later without changing the UI contract.`;
+    statsElements.statusText.textContent = `Live stats are polling ${data.endpoint} directly for now. A central API and load-balancing layer can be introduced later without changing the UI contract.`;
     setStatusTone(statsElements.statusText, 'rpc-good');
   }
 }
@@ -406,7 +379,7 @@ function renderStatsError(error) {
   }
 
   if (statsElements.statusText) {
-    statsElements.statusText.textContent = `Live stats fetch failed: ${error.message}. Check local RPC reachability and CORS before switching to the public domains.`;
+    statsElements.statusText.textContent = `Live stats fetch failed from ${rpcConfig.endpoint}: ${error.message}. Check endpoint reachability and CORS before enabling a central API layer.`;
     setStatusTone(statsElements.statusText, 'rpc-bad');
   }
 
