@@ -96,8 +96,15 @@ const observer = new IntersectionObserver(
 
 reveals.forEach((section) => observer.observe(section));
 
+const rpcEndpoints = [
+  'https://rpc1.dakota.cards',
+  'https://rpc2.dakota.cards',
+];
+
+const selectedRpcEndpoint = rpcEndpoints[Math.floor(Math.random() * rpcEndpoints.length)];
+
 const rpcConfig = {
-  endpoint: 'https://rpc1.dakota.cards',
+  endpoint: selectedRpcEndpoint,
   refreshMs: 10000,
 };
 
@@ -319,6 +326,7 @@ function renderLiveStats(data) {
   const blockTimestamp = formatHexNumber(data.latestBlock?.timestamp);
   const syncStatus = data.syncing ? 'Syncing' : 'Healthy';
   const usagePercent = gasLimit ? (((gasUsed || 0) / gasLimit) * 100).toFixed(2) : null;
+  const endpointHost = new URL(data.endpoint).host;
   statsRuntime.latestBlockTimestamp = blockTimestamp;
   statsRuntime.lastRefreshAt = Date.now();
 
@@ -327,7 +335,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.modeLabel) {
-    statsElements.modeLabel.textContent = `Direct polling through rpc1.dakota.cards every ${Math.floor(rpcConfig.refreshMs / 1000)}s`;
+    statsElements.modeLabel.textContent = `Direct polling through ${endpointHost} every ${Math.floor(rpcConfig.refreshMs / 1000)}s`;
   }
 
   if (statsElements.blockNumber) {
