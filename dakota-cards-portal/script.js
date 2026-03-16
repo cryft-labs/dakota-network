@@ -386,7 +386,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.statusText) {
-    statsElements.statusText.textContent = `Live stats are polling ${data.endpoint} for this page load. Reloading the page reselects between rpc1 and rpc2; a central API and load-balancing layer can be introduced later without changing the UI contract.`;
+    statsElements.statusText.textContent = `Live stats are polling ${endpointHost} for this page load. Reloading the page reselects between rpc1 and rpc2; a central API and load-balancing layer can be introduced later without changing the UI contract.`;
     setStatusTone(statsElements.statusText, 'rpc-good');
   }
 }
@@ -401,7 +401,7 @@ function renderStatsError(error) {
   }
 
   if (statsElements.statusText) {
-    statsElements.statusText.textContent = `Live stats fetch failed from ${rpcConfig.endpoint}: ${error.message}. Check endpoint reachability and CORS before enabling a central API layer.`;
+    statsElements.statusText.textContent = `Live stats fetch failed from ${new URL(rpcConfig.endpoint).host}: ${error.message}. Check endpoint reachability and CORS before enabling a central API layer.`;
     setStatusTone(statsElements.statusText, 'rpc-bad');
   }
 
