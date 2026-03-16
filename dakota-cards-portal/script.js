@@ -374,7 +374,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.chainId) {
-    statsElements.chainId.textContent = chainId !== null ? `Chain ID ${formatNumber(chainId)}` : 'Chain ID unavailable';
+    statsElements.chainId.textContent = chainId !== null ? `Chain ID ${chainId}` : 'Chain ID unavailable';
   }
 
   if (statsElements.clientName) {
