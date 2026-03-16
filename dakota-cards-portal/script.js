@@ -240,22 +240,12 @@ function formatClientDisplay(clientVersion) {
 
 function formatObservedInterval(currentTimestamp, previousTimestamp) {
   if (!currentTimestamp || !previousTimestamp) {
-    return 'Cadence unavailable';
+    return 'Seconds unavailable';
   }
 
   const deltaSeconds = Math.max(0, currentTimestamp - previousTimestamp);
 
-  if (deltaSeconds <= 1) {
-    return '1s observed';
-  }
-
-  if (deltaSeconds < 60) {
-    return `${deltaSeconds}s observed`;
-  }
-
-  const minutes = Math.floor(deltaSeconds / 60);
-  const remainderSeconds = deltaSeconds % 60;
-  return remainderSeconds === 0 ? `${minutes}m observed` : `${minutes}m ${remainderSeconds}s observed`;
+  return `${deltaSeconds}s`;
 }
 
 async function rpcRequest(endpoint, method, params) {
@@ -453,7 +443,7 @@ function renderStatsError(error) {
   }
 
   if (statsElements.profileBlockPeriod) {
-    statsElements.profileBlockPeriod.textContent = 'Cadence unavailable';
+    statsElements.profileBlockPeriod.textContent = 'Seconds unavailable';
   }
 
   if (statsElements.profileGasLimit) {
