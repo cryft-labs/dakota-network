@@ -101,21 +101,7 @@ const rpcEndpoints = [
   'https://rpc2.dakota.cards',
 ];
 
-function getNextRpcEndpoint() {
-  try {
-    const storageKey = 'dakota-rpc-endpoint-index';
-    const storedValue = window.localStorage.getItem(storageKey);
-    const currentIndex = Number.parseInt(storedValue || '0', 10);
-    const normalizedIndex = Number.isNaN(currentIndex) ? 0 : Math.abs(currentIndex) % rpcEndpoints.length;
-
-    window.localStorage.setItem(storageKey, String((normalizedIndex + 1) % rpcEndpoints.length));
-    return rpcEndpoints[normalizedIndex];
-  } catch (error) {
-    return rpcEndpoints[0];
-  }
-}
-
-const selectedRpcEndpoint = getNextRpcEndpoint();
+const selectedRpcEndpoint = rpcEndpoints[Math.floor(Math.random() * rpcEndpoints.length)];
 
 const rpcConfig = {
   endpoint: selectedRpcEndpoint,
@@ -139,7 +125,6 @@ const statsElements = {
   chainId: document.querySelector('#stat-chain-id'),
   clientName: document.querySelector('#stat-client-name'),
   refreshTime: document.querySelector('#stat-refresh-time'),
-  refreshButton: document.querySelector('#refresh-stats'),
 };
 
 function setStatusTone(element, tone) {
@@ -349,7 +334,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.modeLabel) {
-    statsElements.modeLabel.textContent = `Selected on page load: ${endpointHost}. Polling every ${Math.floor(rpcConfig.refreshMs / 1000)}s`;
+    statsElements.modeLabel.textContent = `Randomly selected on page load: ${endpointHost}. Polling every ${Math.floor(rpcConfig.refreshMs / 1000)}s`;
   }
 
   if (statsElements.blockNumber) {
@@ -386,7 +371,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.statusText) {
-    statsElements.statusText.textContent = `Live stats are polling ${endpointHost} for this page load. Reloading the page reselects between rpc1 and rpc2; a central API and load-balancing layer can be introduced later without changing the UI contract.`;
+    statsElements.statusText.textContent = `Live stats are polling ${endpointHost} for this page load. Reloading the page randomly reselects between rpc1 and rpc2; a central API and load-balancing layer can be introduced later without changing the UI contract.`;
     setStatusTone(statsElements.statusText, 'rpc-good');
   }
 }
@@ -426,11 +411,6 @@ async function refreshLiveStats() {
 
   statsRequestInFlight = true;
 
-  if (statsElements.refreshButton) {
-    statsElements.refreshButton.disabled = true;
-    statsElements.refreshButton.textContent = 'Polling...';
-  }
-
   try {
     const liveStats = await fetchLiveStats();
     renderLiveStats(liveStats);
@@ -438,20 +418,12 @@ async function refreshLiveStats() {
     renderStatsError(error);
   } finally {
     statsRequestInFlight = false;
-
-    if (statsElements.refreshButton) {
-      statsElements.refreshButton.disabled = false;
-      statsElements.refreshButton.textContent = 'Poll now';
-    }
   }
 }
 
-if (statsElements.refreshButton) {
-  statsElements.refreshButton.addEventListener('click', refreshLiveStats);
-  refreshLiveStats();
-  window.setInterval(refreshLiveStats, rpcConfig.refreshMs);
-  window.setInterval(updateLiveStatTimers, 1000);
-}
+refreshLiveStats();
+window.setInterval(refreshLiveStats, rpcConfig.refreshMs);
+window.setInterval(updateLiveStatTimers, 1000);
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
