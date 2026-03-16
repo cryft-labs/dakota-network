@@ -118,7 +118,6 @@ const statsElements = {
   modeLabel: document.querySelector('#rpc-mode-label'),
   statusText: document.querySelector('#rpc-status-text'),
   profileBaseClient: document.querySelector('#profile-base-client'),
-  profileBlockPeriod: document.querySelector('#profile-block-period'),
   profileGasLimit: document.querySelector('#profile-gas-limit'),
   blockNumber: document.querySelector('#stat-block-number'),
   blockAge: document.querySelector('#stat-block-age'),
@@ -238,16 +237,6 @@ function formatClientDisplay(clientVersion) {
   return versionMatch ? `${normalizedName} ${versionMatch[1]}` : normalizedName;
 }
 
-function formatObservedInterval(currentTimestamp, previousTimestamp) {
-  if (!currentTimestamp || !previousTimestamp) {
-    return 'Seconds unavailable';
-  }
-
-  const deltaSeconds = Math.max(0, currentTimestamp - previousTimestamp);
-
-  return `${deltaSeconds}s`;
-}
-
 async function rpcRequest(endpoint, method, params) {
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -329,13 +318,6 @@ async function fetchLiveStats() {
   ];
 
   const [chainId, blockNumber, clientVersion, gasPrice, syncing, latestBlock] = await rpcBatchRequest(rpcConfig.endpoint, requests);
-  const latestBlockNumber = formatHexNumber(blockNumber);
-  let previousBlock = null;
-
-  if (latestBlockNumber && latestBlockNumber > 0) {
-    const previousBlockHex = `0x${(latestBlockNumber - 1).toString(16)}`;
-    previousBlock = await rpcRequest(rpcConfig.endpoint, 'eth_getBlockByNumber', [previousBlockHex, false]);
-  }
 
   return {
     endpoint: rpcConfig.endpoint,
@@ -345,7 +327,6 @@ async function fetchLiveStats() {
     gasPrice,
     syncing,
     latestBlock,
-    previousBlock,
   };
 }
 
@@ -357,11 +338,9 @@ function renderLiveStats(data) {
   const clientName = formatClientName(data.clientVersion);
   const profileClient = formatClientDisplay(data.clientVersion);
   const blockTimestamp = formatHexNumber(data.latestBlock?.timestamp);
-  const previousBlockTimestamp = formatHexNumber(data.previousBlock?.timestamp);
   const syncStatus = data.syncing ? 'Syncing' : 'Healthy';
   const usagePercent = gasLimit ? (((gasUsed || 0) / gasLimit) * 100).toFixed(2) : null;
   const endpointHost = new URL(data.endpoint).host;
-  const observedInterval = formatObservedInterval(blockTimestamp, previousBlockTimestamp);
   statsRuntime.latestBlockTimestamp = blockTimestamp;
   statsRuntime.lastRefreshAt = Date.now();
 
@@ -375,10 +354,6 @@ function renderLiveStats(data) {
 
   if (statsElements.profileBaseClient) {
     statsElements.profileBaseClient.textContent = profileClient;
-  }
-
-  if (statsElements.profileBlockPeriod) {
-    statsElements.profileBlockPeriod.textContent = observedInterval;
   }
 
   if (statsElements.profileGasLimit) {
@@ -440,10 +415,6 @@ function renderStatsError(error) {
 
   if (statsElements.profileBaseClient) {
     statsElements.profileBaseClient.textContent = 'Client unavailable';
-  }
-
-  if (statsElements.profileBlockPeriod) {
-    statsElements.profileBlockPeriod.textContent = 'Seconds unavailable';
   }
 
   if (statsElements.profileGasLimit) {
