@@ -345,7 +345,7 @@ function renderLiveStats(data) {
   statsRuntime.lastRefreshAt = Date.now();
 
   if (statsElements.endpoint) {
-    statsElements.endpoint.textContent = data.endpoint;
+    statsElements.endpoint.textContent = endpointHost;
   }
 
   if (statsElements.modeLabel) {
