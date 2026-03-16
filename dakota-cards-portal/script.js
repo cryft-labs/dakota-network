@@ -365,7 +365,7 @@ function renderLiveStats(data) {
   }
 
   if (statsElements.gasUsage) {
-    statsElements.gasUsage.textContent = gasLimit ? `${formatNumber(gasUsed || 0)} / ${formatNumber(gasLimit)} gas (${usagePercent}% used)` : 'Latest gas window unavailable';
+    statsElements.gasUsage.textContent = gasLimit ? `${usagePercent}% used` : 'Latest gas window unavailable';
   }
 
   if (statsElements.syncStatus) {
