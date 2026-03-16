@@ -438,10 +438,17 @@ button {
 }
 
 .panel-grid article {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
   padding: 1rem;
   border-radius: var(--radius-md);
   background: rgba(11, 17, 24, 0.55);
   border: 1px solid rgba(117, 209, 195, 0.1);
+}
+
+.panel-grid strong {
+  display: block;
 }
 
 .section-heading {
