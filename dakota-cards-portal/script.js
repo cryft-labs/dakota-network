@@ -169,7 +169,7 @@ function formatGwei(hexValue) {
     return '--';
   }
 
-  return `${(wei / 1e9).toFixed(9)} gwei`;
+  return (wei / 1e9).toFixed(9);
 }
 
 function formatNumber(value) {
