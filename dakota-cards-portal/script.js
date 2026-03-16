@@ -117,6 +117,9 @@ const statsElements = {
   endpoint: document.querySelector('#rpc-endpoint'),
   modeLabel: document.querySelector('#rpc-mode-label'),
   statusText: document.querySelector('#rpc-status-text'),
+  profileBaseClient: document.querySelector('#profile-base-client'),
+  profileBlockPeriod: document.querySelector('#profile-block-period'),
+  profileGasLimit: document.querySelector('#profile-gas-limit'),
   blockNumber: document.querySelector('#stat-block-number'),
   blockAge: document.querySelector('#stat-block-age'),
   gasPrice: document.querySelector('#stat-gas-price'),
@@ -223,6 +226,38 @@ function formatClientName(clientVersion) {
   return clientName;
 }
 
+function formatClientDisplay(clientVersion) {
+  if (!clientVersion) {
+    return 'Client unavailable';
+  }
+
+  const [clientName] = clientVersion.split('/');
+  const versionMatch = clientVersion.match(/(\d+\.\d+\.\d+)/);
+  const normalizedName = clientName.toLowerCase() === 'besu' ? 'Besu' : clientName;
+
+  return versionMatch ? `${normalizedName} ${versionMatch[1]}` : normalizedName;
+}
+
+function formatObservedInterval(currentTimestamp, previousTimestamp) {
+  if (!currentTimestamp || !previousTimestamp) {
+    return 'Cadence unavailable';
+  }
+
+  const deltaSeconds = Math.max(0, currentTimestamp - previousTimestamp);
+
+  if (deltaSeconds <= 1) {
+    return '1s observed';
+  }
+
+  if (deltaSeconds < 60) {
+    return `${deltaSeconds}s observed`;
+  }
+
+  const minutes = Math.floor(deltaSeconds / 60);
+  const remainderSeconds = deltaSeconds % 60;
+  return remainderSeconds === 0 ? `${minutes}m observed` : `${minutes}m ${remainderSeconds}s observed`;
+}
+
 async function rpcRequest(endpoint, method, params) {
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -304,6 +339,13 @@ async function fetchLiveStats() {
   ];
 
   const [chainId, blockNumber, clientVersion, gasPrice, syncing, latestBlock] = await rpcBatchRequest(rpcConfig.endpoint, requests);
+  const latestBlockNumber = formatHexNumber(blockNumber);
+  let previousBlock = null;
+
+  if (latestBlockNumber && latestBlockNumber > 0) {
+    const previousBlockHex = `0x${(latestBlockNumber - 1).toString(16)}`;
+    previousBlock = await rpcRequest(rpcConfig.endpoint, 'eth_getBlockByNumber', [previousBlockHex, false]);
+  }
 
   return {
     endpoint: rpcConfig.endpoint,
@@ -313,6 +355,7 @@ async function fetchLiveStats() {
     gasPrice,
     syncing,
     latestBlock,
+    previousBlock,
   };
 }
 
@@ -322,10 +365,13 @@ function renderLiveStats(data) {
   const gasLimit = formatHexNumber(data.latestBlock?.gasLimit);
   const chainId = formatHexNumber(data.chainId);
   const clientName = formatClientName(data.clientVersion);
+  const profileClient = formatClientDisplay(data.clientVersion);
   const blockTimestamp = formatHexNumber(data.latestBlock?.timestamp);
+  const previousBlockTimestamp = formatHexNumber(data.previousBlock?.timestamp);
   const syncStatus = data.syncing ? 'Syncing' : 'Healthy';
   const usagePercent = gasLimit ? (((gasUsed || 0) / gasLimit) * 100).toFixed(2) : null;
   const endpointHost = new URL(data.endpoint).host;
+  const observedInterval = formatObservedInterval(blockTimestamp, previousBlockTimestamp);
   statsRuntime.latestBlockTimestamp = blockTimestamp;
   statsRuntime.lastRefreshAt = Date.now();
 
@@ -335,6 +381,18 @@ function renderLiveStats(data) {
 
   if (statsElements.modeLabel) {
     statsElements.modeLabel.textContent = `Randomly selected on page load: ${endpointHost}. Polling every ${Math.floor(rpcConfig.refreshMs / 1000)}s`;
+  }
+
+  if (statsElements.profileBaseClient) {
+    statsElements.profileBaseClient.textContent = profileClient;
+  }
+
+  if (statsElements.profileBlockPeriod) {
+    statsElements.profileBlockPeriod.textContent = observedInterval;
+  }
+
+  if (statsElements.profileGasLimit) {
+    statsElements.profileGasLimit.textContent = gasLimit ? formatNumber(gasLimit) : 'Gas limit unavailable';
   }
 
   if (statsElements.blockNumber) {
@@ -388,6 +446,18 @@ function renderStatsError(error) {
   if (statsElements.statusText) {
     statsElements.statusText.textContent = `Live stats fetch failed from ${new URL(rpcConfig.endpoint).host}: ${error.message}. Check endpoint reachability and CORS before enabling a central API layer.`;
     setStatusTone(statsElements.statusText, 'rpc-bad');
+  }
+
+  if (statsElements.profileBaseClient) {
+    statsElements.profileBaseClient.textContent = 'Client unavailable';
+  }
+
+  if (statsElements.profileBlockPeriod) {
+    statsElements.profileBlockPeriod.textContent = 'Cadence unavailable';
+  }
+
+  if (statsElements.profileGasLimit) {
+    statsElements.profileGasLimit.textContent = 'Gas limit unavailable';
   }
 
   if (statsElements.syncStatus) {
