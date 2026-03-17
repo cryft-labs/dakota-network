@@ -72,7 +72,7 @@ pragma solidity >=0.8.2 <0.9.0;
   │                                                       │
   │  Setup (admin, one-time):                             │
   │    1. Upload metadata to IPFS → set baseTokenURI      │
-  │    2. setRegisteredSupply(quantity) on this contract   │
+  │    2. setMaxSaleSupply(quantity) on this contract      │
   │                                                       │
   │  Purchase (user or sponsor):                          │
   │    3. Call buy(buyer, quantity, redeemedBaseURI)       │
@@ -255,8 +255,8 @@ contract CryftGreetingCards is
     // ──────────────────── Purchase / Supply ────────────
     /// @notice Price per card in native currency (wei). Set to 0 for free claims.
     uint256 public pricePerCard;
-    /// @notice Number of cards available for purchase (set by admin, must match CodeManager).
-    uint256 public registeredSupply;
+    /// @notice Maximum number of cards available for purchase (set by admin).
+    uint256 public maxSaleSupply;
 
     // ──────────────────── Pause ─────────────────────────
     bool public paused;
@@ -416,11 +416,12 @@ contract CryftGreetingCards is
     /// @notice Purchase greeting cards. Tokens are minted into the vault and
     ///         registered on CodeManager atomically at purchase time.
     ///
-    ///         Prerequisite: admin must call `setRegisteredSupply(quantity)` and
+    ///         Prerequisite: admin must call `setMaxSaleSupply(quantity)` and
     ///         store redemption codes on ComboStorage.
     ///
-    ///         Registration fee (`registrationFee * quantity`) is paid to CodeManager
-    ///         from the buyer's payment and forwarded to the rewards contract.
+    ///         Registration on CodeManager happens atomically at purchase time.
+    ///         After registration, the CodeManager counter is verified against
+    ///         the expected value to detect any counter drift.
     ///
     ///         Token IDs and uniqueId counters are kept in 1:1 sync:
     ///           Token 1 → contractIdentifier-1 → baseTokenURI/1.json
@@ -442,7 +443,15 @@ contract CryftGreetingCards is
         require(msg.value == totalCost, "Payment must equal price + registration fee");
 
         uint256 currentTotal = _totalMinted;
-        require(currentTotal + quantity <= registeredSupply, "Exceeds registered supply");
+        require(currentTotal + quantity <= maxSaleSupply, "Exceeds max sale supply");
+
+        // Verify CodeManager counter matches our internal mint count before registration.
+        // This ensures no external registration has drifted the counter out of sync.
+        (, uint256 counterBefore) = ICodeManager(codeManagerAddress).getIdentifierCounter(
+            address(this),
+            chainId
+        );
+        require(counterBefore == currentTotal, "Counter drift: CodeManager out of sync");
 
         // Register the counter range on CodeManager atomically with minting.
         // This ensures uniqueIds are valid on CodeManager the moment they're minted.
@@ -595,9 +604,9 @@ contract CryftGreetingCards is
         return _buyerOf(tokenId);
     }
 
-    /// @notice Number of cards registered but not yet purchased.
+    /// @notice Number of cards still available for purchase.
     function availableSupply() external view returns (uint256) {
-        return registeredSupply - _totalMinted;
+        return maxSaleSupply - _totalMinted;
     }
 
     /// @notice Validate a uniqueId against the CodeManager registry (read-only).
@@ -662,12 +671,11 @@ contract CryftGreetingCards is
         emit PriceUpdated(price);
     }
 
-    /// @notice Register the number of cards available for purchase.
-    ///         Must match the quantity registered on CodeManager.
-    function setRegisteredSupply(uint256 supply) external onlyOwner {
+    /// @notice Set the maximum number of cards available for purchase.
+    function setMaxSaleSupply(uint256 supply) external onlyOwner {
         require(supply >= _totalMinted, "Below already minted");
         require(supply <= MAX_SUPPLY, "Exceeds MAX_SUPPLY");
-        registeredSupply = supply;
+        maxSaleSupply = supply;
         emit SupplyRegistered(supply);
     }
 

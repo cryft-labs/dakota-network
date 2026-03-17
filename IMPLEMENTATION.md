@@ -1,4 +1,4 @@
-# Implementation Guide — Patented Redeemable Code Architecture
+# Operational Runbook — Patented Redeemable Code Architecture
 
 > **PATENT & LICENSING NOTICE**
 >
@@ -13,42 +13,29 @@
 ## Table of Contents
 
 1. [Architecture Overview](#1-architecture-overview)
-2. [Prerequisites](#2-prerequisites)
-3. [Layer 1 — Besu Network Setup](#3-layer-1--besu-network-setup)
-   - 3.1 [Install Besu (Ubuntu)](#31-install-besu-ubuntu)
-   - 3.2 [Genesis Configuration](#32-genesis-configuration)
-   - 3.3 [Genesis Contract Allocation](#33-genesis-contract-allocation)
-   - 3.4 [Start a Node](#34-start-a-node)
-   - 3.5 [Security & Permissions](#35-security--permissions)
-4. [Layer 2 — Paladin / Pente Privacy Setup](#4-layer-2--paladin--pente-privacy-setup)
-   - 4.1 [Method A — Docker](#41-method-a--docker-no-kubernetes-required)
-   - 4.2 [Method B — Build from Source](#42-method-b--build-from-source)
-   - 4.3 [Method C — k3s + Helm](#43-method-c--k3s--helm-kubernetes-operator)
-   - 4.4 [Paladin Privacy Domains](#44-paladin-privacy-domains)
-   - 4.5 [Paladin UI](#45-paladin-ui)
-   - 4.6 [Paladin Resources](#46-paladin-resources)
-   - 4.7 [Create a Pente Privacy Group](#47-create-a-pente-privacy-group)
-   - 4.8 [Authorize Privacy Group on CodeManager](#48-authorize-the-privacy-group-on-codemanager)
-   - 4.9 [Documentation & References](#49-documentation--references)
-5. [Layer 3 — Contract Deployment](#5-layer-3--contract-deployment)
-6. [Standardized Interfaces for Gift Contracts](#6-standardized-interfaces-for-gift-contracts)
-7. [Implementing a Custom Gift Contract](#7-implementing-a-custom-gift-contract)
-8. [Bulk Code Storage via Pente](#8-bulk-code-storage-via-pente)
-9. [Redemption Flow (End to End)](#9-redemption-flow-end-to-end)
-10. [Web Application Integration (thirdweb + Paladin API)](#10-web-application-integration-thirdweb--paladin-api)
-11. [ERC-721 / ERC-6551 / ERC-1155 Token Patterns](#11-erc-721--erc-6551--erc-1155-token-patterns)
-12. [Gas Sponsorship](#12-gas-sponsorship)
-13. [Deployment Checklist](#13-deployment-checklist)
+2. [Identity & Address Taxonomy](#2-identity--address-taxonomy)
+3. [Public Bootstrap Procedure](#3-public-bootstrap-procedure)
+4. [Node Registration Procedure](#4-node-registration-procedure)
+5. [Creating a Normal Pente Privacy Group](#5-creating-a-normal-pente-privacy-group)
+6. [Creating an External-Calls-Enabled Privacy Group](#6-creating-an-external-calls-enabled-privacy-group)
+7. [Funding Strategy](#7-funding-strategy)
+8. [Deploying the Private Contract](#8-deploying-the-private-contract)
+9. [Verifying the Private Contract](#9-verifying-the-private-contract)
+10. [Authorization & Whitelisting Strategy](#10-authorization--whitelisting-strategy)
+11. [Store Flow — storeDataBatch](#11-store-flow--storedatabatch)
+12. [Redeem Flow — redeemCode + External Call](#12-redeem-flow--redeemcode--external-call)
+13. [Troubleshooting Matrix](#13-troubleshooting-matrix)
+14. [Operational Best Practices & Key Lessons](#14-operational-best-practices--key-lessons)
 
 ---
 
 ## 1. Architecture Overview
 
-The patented system uses a three-layer architecture where no single layer holds all the data needed to compromise a redeemable code:
+The patented system uses a three-layer architecture. No single layer holds all the data needed to compromise a redeemable code. Private contract state transitions atomically trigger public-chain actions via `PenteExternalCall` events routed through CodeManager.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        PUBLIC CHAIN (Besu)                          │
+│                      PUBLIC CHAIN (Besu)                            │
 │                                                                     │
 │  ┌──────────────────┐              ┌────────────────────────────┐   │
 │  │   CodeManager    │─── resolve ─▶│      Gift Contract         │   │
@@ -57,12 +44,11 @@ The patented system uses a three-layer architecture where no single layer holds 
 │  │                  │◀── forward ──│                             │   │
 │  │  • UID registry  │   calls via  │  • frozen / unfrozen state │   │
 │  │  • Governance    │  IRedeemable │  • redeemed tracking       │   │
-│  │  • Fee vault     │              │  • content assignment      │   │
-│  │  • Privacy group │              │  • redemption behavior     │   │
-│  │    authorization │              │    (NFT transfer, mint,    │   │
-│  └────────┬─────────┘              │     counter, etc.)         │   │
-│           │ ▲                      └────────────────────────────┘   │
-│           │ │                                                       │
+│  │  • Fee vault     │              │  • redemption behavior     │   │
+│  │  • Privacy group │              │    (NFT transfer, mint,    │   │
+│  │    authorization │              │     counter, etc.)         │   │
+│  └────────┬─────────┘              └────────────────────────────┘   │
+│           │ ▲                                                       │
 │           │ │ PenteExternalCall (atomic routing)                    │
 │           │ │                                                       │
 │  ┌────────▼─┴───────────────────────────────────────────────────┐   │
@@ -70,7 +56,6 @@ The patented system uses a three-layer architecture where no single layer holds 
 │  │  ┌──────────────────────┐                                    │   │
 │  │  │ PrivateComboStorage  │  • Hash+salt code pairs (private)  │   │
 │  │  │                      │  • PIN-based O(1) bucket lookup    │   │
-│  │  │                      │  • Private frozen/redeemed state   │   │
 │  │  │                      │  • Batch code storage              │   │
 │  │  │                      │  • Hash verification (no cleartext)│   │
 │  │  └──────────────────────┘                                    │   │
@@ -83,1157 +68,277 @@ The patented system uses a three-layer architecture where no single layer holds 
 | Layer | Contract | Responsibility |
 |-------|----------|----------------|
 | **Public Registry** | CodeManager | UID registration, deterministic ID generation, governance (2/3 supermajority), Pente router — forwards calls to gift contracts. Stores **no** per-UID state. |
-| **Public Authority** | Gift Contract (IRedeemable) | Sole authority on per-UID state: frozen status, content assignment, redemption behavior. Decides how redemption works (single-use, multi-use, NFT transfer, etc.). |
+| **Public Authority** | Gift Contract (IRedeemable) | Sole authority on per-UID state: frozen status, redemption behavior. Decides how redemption works (single-use, multi-use, NFT transfer, etc.). If it reverts, the Pente transition rolls back. |
 | **Private Storage** | PrivateComboStorage | Hash+salt code storage within a Pente privacy group. Verifies codes via hash comparison. Emits `PenteExternalCall` events to atomically route state changes through CodeManager to the gift contract. |
 
 ### Key Design Principles
 
 - **No cleartext codes on-chain.** Codes are represented as `keccak256(pin + code)` hashes. The PIN acts as a bucket key for O(1) lookup.
 - **Gift contract authority.** CodeManager delegates all per-UID state management. If the gift contract reverts, the entire Pente transition rolls back atomically.
-- **Default frozen state.** New UIDs default to frozen=true until explicitly unfrozen, preventing premature redemption.
+- **Default frozen state.** New UIDs default to frozen until explicitly unfrozen, preventing premature redemption.
 - **Privacy-preserving verification.** The Pente privacy group verifies codes privately, then triggers public state updates via `PenteExternalCall`.
+- **External calls.** The privacy group must be created with `externalCallsEnabled: "true"` (string, not boolean) so that `PenteExternalCall` events are processed by Paladin and forwarded to the base ledger.
+- **EVM version.** Pente privacy groups run `shanghai` EVM. Public chain may run a later EVM version. Private contracts must compile with `--evm-version shanghai`.
 
 ---
 
-## 2. Prerequisites
+## 2. Identity & Address Taxonomy
 
-### Software
+Understanding which address is which is critical. Paladin, Pente, and Besu each surface different addresses in different contexts. Confusing them is the #1 source of failed transactions.
 
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| **Hyperledger Besu** | 26.1.0 | EVM blockchain client (QBFT consensus) |
-| **Java** | 21 | Besu runtime |
-| **Paladin** | Latest | Privacy manager (Pente privacy groups) |
-| **Docker** | 24+ | Paladin container runtime (no Kubernetes required) |
-| **solc** | 0.8.34 | Solidity compiler |
-| **Node.js** | 18+ | Web application / thirdweb SDK |
-| **Python** | 3.10+ | Compilation tooling |
+### Address Types
 
-> **Note:** Paladin can also be deployed via Kubernetes (k3s + Helm) for multi-node production environments. See [Method C in the README](README.md) for the Kubernetes approach. Prepackaged Paladin binaries for licensed parties are planned once the system is established.
+| # | Address Type | Example | Where It Appears | Purpose |
+|---|-------------|---------|-------------------|---------|
+| 1 | **Root Signer** | `0x01d5...` | Besu node's coinbase; Paladin `signer` field | The Besu node's secp256k1 key. Signs all base-ledger transactions. Must be funded with native currency for gas. |
+| 2 | **Paladin Verifier (Node Identity)** | (returned by `ptx_resolveVerifier`) | Paladin identity resolution | The verifier string for a Paladin identity (e.g., `node1@node1`). Used in privacy group member lists. |
+| 3 | **Privacy Group Address** | `0xe89c...` | Pente group creation receipt | The on-chain address of the Pente privacy group contract. This is what gets authorized on CodeManager via `voteToAuthorizePrivacyGroup()`. |
+| 4 | **Private Contract Address** | `0xb202...` | `pente_deploy` receipt | The address of `PrivateComboStorage` inside the privacy group's private state trie. Referenced as `to` in all `pente_invoke` calls. |
+| 5 | **Derived Submitter** | (appears in `insufficient funds` errors) | Besu error logs during Pente transitions | A deterministic address derived by Pente from the privacy group + member identity. Must be funded because it submits the base-ledger transaction that carries the `PenteExternalCall` payload. |
+| 6 | **CodeManager (Public)** | deployed proxy address | Public chain | The `TransparentUpgradeableProxy` address of CodeManager. Hardcoded into `PrivateComboStorage` as `CODE_MANAGER`. |
+| 7 | **Gift Contract (Public)** | deployed proxy address | Public chain | The `TransparentUpgradeableProxy` address of the ERC-721 (or other IRedeemable) contract. Registered on CodeManager via `registerUniqueIds`. |
 
-### Accounts & Services
+### Critical Rule
 
-| Service | Purpose |
-|---------|---------|
-| **thirdweb** | In-app wallets, gas sponsorship, contract interaction API |
-| **IPFS provider** (Pinata / web3.storage) | NFT metadata hosting |
-| **Blockscout** (self-hosted) | Chain explorer for ERC-721/1155/6551 display |
+> **When you see `insufficient funds for gas` in Pente operations, the address in the error is the derived submitter.** Fund that exact address. Do not guess. Copy the address from the error message and send native currency to it.
 
 ---
 
-## 3. Layer 1 — Besu Network Setup
+## 3. Public Bootstrap Procedure
 
-### 3.1 Install Besu (Ubuntu)
+Before any privacy group or private contract work, the public chain contracts must be deployed and configured.
 
-Besu is deployed as a **managed systemd service** under a dedicated non-root runtime user (`besurun`). All node-specific configuration is driven by an environment file — not by hardcoded command-line flags in the service unit.
+### 3.1 Deploy CodeManager (Upgradeable Proxy)
 
-#### Service Architecture
-
-```text
-systemd (besu.service)
-  └─▶ /usr/local/lib/dakota/run-besu.sh   (wrapper script)
-        └─▶ sources /etc/dakota/besu-current.env   (node config)
-              └─▶ launches /usr/local/bin/besu   (Besu binary)
+```
+1. Deploy ProxyAdmin
+2. Deploy CodeManager implementation
+3. Deploy TransparentUpgradeableProxy pointing to CodeManager implementation
+4. Call initialize() on the proxy
+   → Sets deployer as first voter
+   → Sets registrationFee = 10^15 (0.001 native)
+   → Sets voteTallyBlockThreshold = 1000
 ```
 
-#### File Layout
+### 3.2 Configure CodeManager
 
-| Path | Purpose |
-|------|--------|
-| `/etc/dakota/besu-current.env` | Active runtime configuration for the node |
-| `/usr/local/lib/dakota/run-besu.sh` | Wrapper script used by systemd to launch Besu |
-| `/var/lib/dakota/besu/genesis.json` | Node genesis file |
-| `/var/lib/dakota/besu/data` | Besu data directory (chain DB, caches, runtime state) |
+After initialization, the deployer (sole voter) can configure in one vote:
 
-#### Step 1 — Install Packages and Besu Binary
-
-```bash
-sudo apt update
-sudo apt install -y curl unzip openjdk-21-jdk ca-certificates
-
-cd /tmp
-curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
-  -o besu-26.1.0.zip \
-  https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
-unzip -t /tmp/besu-26.1.0.zip >/dev/null   # verify integrity
-sudo unzip -q -o besu-26.1.0.zip -d /opt
-sudo ln -sfn /opt/besu-26.1.0/bin/besu /usr/local/bin/besu
-besu --version
+```
+voteToUpdateFeeVault(feeVaultAddress)     → Where registration fees go
+voteToUpdateRegistrationFee(newFee)       → Fee per UID registration (default 10^15)
 ```
 
-**SHA-256 checksums (26.1.0):**
+### 3.3 Deploy Gift Contract (Upgradeable Proxy)
+
 ```
-356bae18a4c08a2135aa006e62a550b52428e1d613c08aa97c40ec8b908ae6cf  besu-26.1.0.zip
-de6356bf2db9e7a68dc3de391864dc373a0440f51fbf6d78d63d1e205091248e  besu-26.1.0.tar.gz
-```
-
-#### Step 2 — Create the Runtime User and Directory Structure
-
-The target directory layout for a Dakota / Cryft Besu node is:
-
-```text
-/etc/dakota/
-└── besu-current.env              # active node configuration (sourced, not executed)
-
-/usr/local/lib/dakota/
-└── run-besu.sh                   # wrapper script launched by systemd
-
-/var/lib/dakota/besu/
-├── genesis.json                  # network genesis (root-owned, besurun-readable)
-└── data/
-    ├── key                       # Besu node private key  (besurun:600)
-    └── key.pub                   # Besu node public key   (besurun:644)
+1. Deploy gift contract implementation (e.g., CryftGreetingCards)
+2. Deploy TransparentUpgradeableProxy
+3. Call initialize(name, symbol, baseURI, codeManagerProxyAddress, chainId)
+   → Sets owner to msg.sender
+   → Computes _contractIdentifier = toHexString(keccak256(codeManagerAddress, this, chainId))
 ```
 
-Create everything in one pass:
+### 3.4 Configure Gift Contract
 
-```bash
-# Create the dedicated service account (no login shell, no home dir)
-sudo useradd --system --shell /usr/sbin/nologin --no-create-home besurun
-
-# Create the directory structure
-sudo mkdir -p /etc/dakota
-sudo mkdir -p /usr/local/lib/dakota
-sudo mkdir -p /var/lib/dakota/besu/data
-
-# Copy the genesis file into place
-sudo cp genesis.json /var/lib/dakota/besu/genesis.json
+```
+setMaxSaleSupply(quantity)     → Maximum cards available for purchase
+setPricePerCard(priceInWei)    → Price per card in native currency (0 = free)
+setBaseTokenURI(ipfsURI)       → IPFS base URI for unredeemed card metadata
+setContractURI(ipfsURI)        → Collection-level metadata for marketplaces
 ```
 
-#### Step 3 — Create the Environment File
-
-Create `/etc/dakota/besu-current.env` with the node-specific configuration. This is the **canonical source** of all runtime values for the node:
-
-```bash
-sudo tee /etc/dakota/besu-current.env > /dev/null << 'ENVEOF'
-# ── Dakota / Cryft Besu Node Configuration ──────────────────────────
-# This file is sourced (not executed) by /usr/local/lib/dakota/run-besu.sh
-
-# ── Identity ─────────────────────────────────────────────────────────
-NODE_ID="node1"
-NODE_LABEL="Dakota Validator 1"
-RUN_USER="besurun"
-RUN_GROUP="besurun"
-
-# ── Paths ────────────────────────────────────────────────────────────
-BESU_BIN="/usr/local/bin/besu"
-GENESIS_FILE="/var/lib/dakota/besu/genesis.json"
-BESU_DATA_PATH="/var/lib/dakota/besu/data"
-
-# ── P2P ──────────────────────────────────────────────────────────────
-P2P_HOST="0.0.0.0"
-P2P_PORT="30303"
-NAT_METHOD="NONE"
-
-# ── HTTP RPC ─────────────────────────────────────────────────────────
-RPC_HTTP_ENABLED="true"
-RPC_HTTP_HOST="0.0.0.0"
-RPC_HTTP_PORT="8545"
-RPC_HTTP_API="ETH,NET,QBFT"
-HOST_ALLOWLIST="*"
-RPC_HTTP_CORS_ORIGINS="all"
-
-# ── WebSocket RPC ────────────────────────────────────────────────────
-RPC_WS_ENABLED="true"
-RPC_WS_HOST="0.0.0.0"
-RPC_WS_PORT="8546"
-RPC_WS_API="ETH,NET,QBFT"
-
-# ── Metrics ──────────────────────────────────────────────────────────
-METRICS_ENABLED="false"
-METRICS_HOST="0.0.0.0"
-METRICS_PORT="9545"
-
-# ── Logging ──────────────────────────────────────────────────────────
-LOGGING="INFO"
-MIN_GAS_PRICE="0"
-
-# ── Bootnodes ────────────────────────────────────────────────────────
-BOOTNODES_ENABLED="true"
-BOOTNODE_ENODE="enode://<PUBKEY>@<BOOTNODE_IP>:30303"
-
-# ── Extra Arguments ──────────────────────────────────────────────────
-EXTRA_BESU_ARGS="--sync-min-peers=3"
-
-# ── Data Reset (use with extreme caution) ────────────────────────────
-RESET_BESU_DATA_ON_START="false"
-RESET_BESU_DATA_KEEP_KEYS="true"
-RESET_BESU_DATA_CONFIRM="false"
-ENVEOF
-```
-
-> **Important:** Restrict `HOST_ALLOWLIST` and `RPC_HTTP_CORS_ORIGINS` for production. The values `*` and `all` are shown here for initial setup convenience.
-
-#### Step 4 — Create the Wrapper Script
-
-Create `/usr/local/lib/dakota/run-besu.sh`. This script is responsible for sourcing the env file, validating required variables, assembling the Besu command line, and optionally performing a controlled data reset:
-
-```bash
-sudo tee /usr/local/lib/dakota/run-besu.sh > /dev/null << 'WRAPEOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-# ── Source the active configuration ──────────────────────────────────
-ENV_FILE="/etc/dakota/besu-current.env"
-if [[ ! -r "$ENV_FILE" ]]; then
-  echo "FATAL: cannot read $ENV_FILE" >&2
-  exit 1
-fi
-source "$ENV_FILE"
-
-# ── Validate required variables ──────────────────────────────────────
-for var in BESU_BIN GENESIS_FILE BESU_DATA_PATH P2P_HOST P2P_PORT \
-           RPC_HTTP_PORT RPC_WS_PORT; do
-  if [[ -z "${!var:-}" ]]; then
-    echo "FATAL: required variable $var is not set in $ENV_FILE" >&2
-    exit 1
-  fi
-done
-
-if [[ ! -x "$BESU_BIN" ]]; then
-  echo "FATAL: Besu binary not found or not executable: $BESU_BIN" >&2
-  exit 1
-fi
-
-# ── Optional: controlled data reset ──────────────────────────────────
-if [[ "${RESET_BESU_DATA_ON_START:-false}" == "true" \
-   && "${RESET_BESU_DATA_CONFIRM:-false}" == "true" ]]; then
-  echo "WARNING: resetting Besu data at $BESU_DATA_PATH"
-  if [[ "${RESET_BESU_DATA_KEEP_KEYS:-true}" == "true" ]]; then
-    find "$BESU_DATA_PATH" -mindepth 1 -not -name 'key' -not -name 'key.pub' -delete 2>/dev/null || true
-  else
-    rm -rf "${BESU_DATA_PATH:?}"/*
-  fi
-fi
-
-# ── Assemble the Besu command ────────────────────────────────────────
-CMD=(
-  "$BESU_BIN"
-  --genesis-file="$GENESIS_FILE"
-  --data-path="$BESU_DATA_PATH"
-  --p2p-host="$P2P_HOST"
-  --p2p-port="$P2P_PORT"
-  --nat-method="${NAT_METHOD:-NONE}"
-  --min-gas-price="${MIN_GAS_PRICE:-0}"
-  --logging="${LOGGING:-INFO}"
-)
-
-# HTTP RPC
-if [[ "${RPC_HTTP_ENABLED:-false}" == "true" ]]; then
-  CMD+=(
-    --rpc-http-enabled
-    --rpc-http-host="${RPC_HTTP_HOST:-127.0.0.1}"
-    --rpc-http-port="$RPC_HTTP_PORT"
-    --rpc-http-api="${RPC_HTTP_API:-ETH,NET}"
-    --host-allowlist="${HOST_ALLOWLIST:-localhost}"
-    --rpc-http-cors-origins="${RPC_HTTP_CORS_ORIGINS:-none}"
-  )
-fi
-
-# WebSocket RPC
-if [[ "${RPC_WS_ENABLED:-false}" == "true" ]]; then
-  CMD+=(
-    --rpc-ws-enabled
-    --rpc-ws-host="${RPC_WS_HOST:-127.0.0.1}"
-    --rpc-ws-port="$RPC_WS_PORT"
-    --rpc-ws-api="${RPC_WS_API:-ETH,NET}"
-  )
-fi
-
-# Metrics
-if [[ "${METRICS_ENABLED:-false}" == "true" ]]; then
-  CMD+=(
-    --metrics-enabled
-    --metrics-host="${METRICS_HOST:-127.0.0.1}"
-    --metrics-port="${METRICS_PORT:-9545}"
-  )
-fi
-
-# Bootnodes
-if [[ "${BOOTNODES_ENABLED:-false}" == "true" && -n "${BOOTNODE_ENODE:-}" ]]; then
-  CMD+=(--bootnodes="$BOOTNODE_ENODE")
-fi
-
-# Extra arguments (word-split intentionally)
-if [[ -n "${EXTRA_BESU_ARGS:-}" ]]; then
-  # shellcheck disable=SC2206
-  CMD+=($EXTRA_BESU_ARGS)
-fi
-
-echo "[run-besu] launching: ${CMD[*]}"
-exec "${CMD[@]}"
-WRAPEOF
-```
-
-#### Step 5 — Create the systemd Service Unit
-
-```bash
-sudo tee /etc/systemd/system/besu.service > /dev/null << 'UNITEOF'
-[Unit]
-Description=Hyperledger Besu (Dakota Network)
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=besurun
-Group=besurun
-ExecStart=/usr/local/lib/dakota/run-besu.sh
-Restart=on-failure
-RestartSec=10
-LimitNOFILE=65536
-LimitNPROC=65536
-
-# Hardening
-ProtectSystem=strict
-ReadWritePaths=/var/lib/dakota/besu
-ProtectHome=true
-PrivateTmp=true
-NoNewPrivileges=true
-
-[Install]
-WantedBy=multi-user.target
-UNITEOF
-```
-
-#### Step 6 — Set Ownership and Permissions
-
-```bash
-# Configuration directory — root-owned, group-readable by besurun
-sudo chown root:besurun /etc/dakota
-sudo chmod 750 /etc/dakota
-
-# Environment file — root-owned, group-readable by besurun
-sudo chown root:besurun /etc/dakota/besu-current.env
-sudo chmod 640 /etc/dakota/besu-current.env
-
-# Wrapper script — root-owned, group-executable by besurun
-sudo chown root:besurun /usr/local/lib/dakota/run-besu.sh
-sudo chmod 750 /usr/local/lib/dakota/run-besu.sh
-
-# Besu runtime data — owned by besurun
-sudo chown -R besurun:besurun /var/lib/dakota/besu
-sudo find /var/lib/dakota/besu -type d -exec chmod 750 {} \;
-
-# Genesis file — root-owned, readable by besurun
-sudo chown root:besurun /var/lib/dakota/besu/genesis.json
-sudo chmod 640 /var/lib/dakota/besu/genesis.json
-
-# Restore SELinux contexts if applicable
-sudo restorecon -Rv /etc/dakota /usr/local/lib/dakota /var/lib/dakota/besu 2>/dev/null || true
-```
-
-#### Step 7 — Enable and Start the Service
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable besu
-sudo systemctl start besu
-```
-
-#### Step 8 — Validate
-
-```bash
-systemctl status besu
-systemctl cat besu
-systemctl show -p User -p Group besu
-journalctl -u besu -f -n 100
-
-# Verify file layout
-ls -ld /etc/dakota /usr/local/lib/dakota /var/lib/dakota/besu
-ls -l /etc/dakota/besu-current.env /usr/local/lib/dakota/run-besu.sh
-```
-
-Expected output from `systemctl show`:
-```
-User=besurun
-Group=besurun
-```
-
-#### Upgrading from an older Besu (and removing Tessera)
-
-Tessera is no longer used — Paladin/Pente replaces it for private transaction support. The following script stops services, removes Tessera completely (systemd, binaries, config), removes old Besu versions, installs 26.1.0, and preserves the systemd service model:
-
-```bash
-(
-  set -euo pipefail
-
-  echo "==[1] Packages =="
-  sudo apt update
-  sudo apt install -y curl unzip openjdk-21-jdk ca-certificates
-
-  echo "==[2] Stop services =="
-  sudo systemctl stop besu 2>/dev/null || true
-  sudo systemctl stop tessera 2>/dev/null || true
-
-  echo "==[3] Remove Tessera (system + path + local config dir) =="
-  sudo systemctl disable tessera 2>/dev/null || true
-  sudo systemctl reset-failed tessera 2>/dev/null || true
-  sudo rm -f /etc/systemd/system/tessera.service
-  sudo rm -f /lib/systemd/system/tessera.service
-  sudo rm -f /usr/local/bin/tessera
-  sudo rm -f /usr/bin/tessera
-  sudo rm -rf /opt/tessera-*
-  sudo systemctl daemon-reload 2>/dev/null || true
-
-  echo "==[4] Remove old Besu =="
-  sudo rm -rf /opt/besu-24.10.0
-  sudo rm -rf /opt/besu-26.1.0
-
-  echo "==[5] Download Besu 26.1.0 =="
-  builtin cd /tmp
-  rm -f besu-26.1.0.zip
-  curl -fL --retry 3 --retry-all-errors --connect-timeout 20 \
-    -o besu-26.1.0.zip \
-    https://github.com/hyperledger/besu/releases/download/26.1.0/besu-26.1.0.zip
-
-  echo "==[6] Verify zip file =="
-  ls -lh /tmp/besu-26.1.0.zip
-  unzip -t /tmp/besu-26.1.0.zip >/dev/null
-
-  echo "==[7] Install Besu =="
-  sudo unzip -q -o /tmp/besu-26.1.0.zip -d /opt
-
-  echo "==[8] Symlink =="
-  sudo ln -sfn /opt/besu-26.1.0/bin/besu /usr/local/bin/besu
-
-  echo "==[9] Verify install =="
-  /usr/local/bin/besu --version || /opt/besu-26.1.0/bin/besu --version
-
-  echo "==[10] Restart service =="
-  sudo systemctl daemon-reload
-  sudo systemctl start besu
-) && echo "Besu 26.1.0 installed, Tessera removed. Service restarted."
-```
-
-> **Note:** After an upgrade, the existing `/etc/dakota/besu-current.env`, wrapper script, and `besu.service` unit remain in place. Only the `/opt/besu-26.1.0` binary is replaced.
-
-#### Legacy Cleanup
-
-Some hosts may still contain leftover service skeletons from an earlier approach. These are **not** part of the active deployment pattern and should be removed:
-
-```bash
-# Remove stale Paladin/Tessera service remnants
-sudo rm -f /etc/systemd/system/paladin.service
-sudo rm -f /etc/dakota/paladin-current.env
-sudo rm -f /etc/dakota/paladin-node*.env
-sudo systemctl daemon-reload 2>/dev/null || true
-```
-
-#### Breaking Changes in 26.1.0
-
-- The experimental CLI flag `--Xenable-extra-debug-tracers` has been **removed**. The call tracer (`callTracer`) is now always available for `debug_trace*` methods.
-- `eth_getLogs` and `trace_filter` now return an **error** (instead of an empty list) if `fromBlock > toBlock` or `toBlock` extends beyond chain head.
-- Plugin API changes: `BlockHeader`, `Log`, `TransactionProcessingResult`, and `TransactionReceipt` now use specific types for `LogsBloomFilter`, `LogTopic`, and `Log`.
-
-#### Upcoming Deprecations (post-26.1.0)
-
-The Besu maintainers have announced the following features will be **removed** in future releases ([details](https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu)):
-
-| Feature | Status | Replacement |
-|---------|--------|-------------|
-| **Tessera privacy** | **Deprecated & removed** | [Paladin](https://github.com/LFDT-Paladin/paladin) |
-| Smart-contract-based permissioning | Deprecated | Plugin API |
-| Proof of Work consensus | Deprecated | Plugin API |
-| Fast Sync | Deprecated | Snap Sync (direct migration) |
-| ETC / Mordor / Holesky networks | Deprecated | — |
-| Decimal block number parameters | Deprecated | Hex-only block numbers |
-
-> **Tessera has been sunset.** The Besu project officially recommends migrating to [Paladin](https://github.com/LFDT-Paladin/paladin) for programmable privacy on EVM.
-
-#### Generate Node Keys
-
-Each node needs a unique P2P / validator signing key pair. Generate them with Besu and place them in the data directory:
-
-```bash
-# Generate a new key pair
-besu --data-path=/tmp/besu-keygen public-key export \
-  --to=/tmp/besu-keygen/key.pub
-
-# Move into the Besu data directory
-sudo mv /tmp/besu-keygen/key     /var/lib/dakota/besu/data/key
-sudo mv /tmp/besu-keygen/key.pub /var/lib/dakota/besu/data/key.pub
-rm -rf /tmp/besu-keygen
-
-# Set ownership and permissions
-sudo chown besurun:besurun /var/lib/dakota/besu/data/key /var/lib/dakota/besu/data/key.pub
-sudo chmod 600 /var/lib/dakota/besu/data/key
-sudo chmod 644 /var/lib/dakota/besu/data/key.pub
-```
-
-Alternatively, the `Tools/KeyWizard/dakota_keywizard.py` script can generate Besu node keys.
-
-> **Never reuse keys across nodes.** Each validator and RPC node must have its own unique key pair.
-
-### 3.2 Genesis Configuration
-
-The genesis file lives at `/var/lib/dakota/besu/genesis.json` and must activate all forks through Osaka from block 0. Key parameters:
-
-```json
-{
-  "config": {
-    "chainId": 112311,
-    "homesteadBlock": 0,
-    "eip150Block": 0,
-    "eip155Block": 0,
-    "eip158Block": 0,
-    "byzantiumBlock": 0,
-    "constantinopleBlock": 0,
-    "petersburgBlock": 0,
-    "istanbulBlock": 0,
-    "berlinBlock": 0,
-    "londonBlock": 0,
-    "shanghaiTime": 0,
-    "cancunTime": 0,
-    "pragueTime": 0,
-    "osakaTime": 0,
-    "bpo1Time": 0,
-    "bpo2Time": 0,
-    "qbft": {
-      "blockperiodseconds": 1,
-      "emptyblockperiodseconds": 64,
-      "epochlength": 64000,
-      "requesttimeoutseconds": 86
-    }
-  }
-}
-```
-
-> **`pragueTime: 0`** is required for EIP-7702 delegation and Pente privacy group support.
-
-### 3.3 Genesis Contract Allocation
-
-The genesis `alloc` section must include pre-deployed system contracts:
-
-| Address | Contract | Purpose |
-|---------|----------|---------|
-| `0x...1111` | ValidatorSmartContractAllowList | QBFT validator governance |
-| `0x...cafE` | GasManager | Block reward distribution, gas funding |
-| `0x...c0DE` | CodeManager (proxy) | UID registry + Pente router |
-| `0x...FacAdE` | ProxyAdmin | Upgrade dispatch for all proxies |
-| `0x...de1E6A7E` | DakotaDelegation (proxy) | EIP-7702 delegation target |
-| `0x...FEeD` | GasSponsor (proxy) | Gas sponsorship treasury |
-
-### 3.4 Start a Node
-
-Besu is managed entirely through systemd. **Do not run Besu as a root-owned ad-hoc process.** All node-specific configuration is in `/etc/dakota/besu-current.env`.
-
-#### Starting the Service
-
-```bash
-sudo systemctl start besu
-```
-
-#### Stopping the Service
-
-```bash
-sudo systemctl stop besu
-```
-
-#### Checking Status
-
-```bash
-systemctl status besu
-journalctl -u besu -f -n 100
-```
-
-#### Changing Node Configuration
-
-All runtime configuration changes are made by editing the env file and restarting the service:
-
-```bash
-sudo nano /etc/dakota/besu-current.env    # edit the configuration
-sudo systemctl restart besu               # apply changes
-journalctl -u besu -f -n 50               # verify startup
-```
-
-> **Important:** Do not bypass the wrapper script or embed node-specific flags directly into the systemd unit. The env-driven design keeps configuration portable and auditable.
-
-> **Note:** The `RPC_WS_*` variables enable WebSocket RPC, required if connecting Paladin to this node.
-
-### 3.5 Security & Permissions
-
-#### Runtime Principle
-
-Besu runs as the dedicated service account `besurun:besurun`. Root is only used for package installation, file placement, ownership/permission correction, service registration, and controlled maintenance actions. **At runtime, Besu itself operates under `besurun`.**
-
-#### Ownership and Permission Model
-
-| Path | Owner | Group | Mode | Purpose |
-|------|-------|-------|------|---------|
-| `/etc/dakota` | `root` | `besurun` | `750` | Config directory — root controls, besurun traverses |
-| `/etc/dakota/besu-current.env` | `root` | `besurun` | `640` | Active config — root edits, besurun reads |
-| `/usr/local/lib/dakota/run-besu.sh` | `root` | `besurun` | `750` | Wrapper — root controls, besurun executes |
-| `/var/lib/dakota/besu` | `besurun` | `besurun` | `750` | Runtime base — besurun owns |
-| `/var/lib/dakota/besu/data` | `besurun` | `besurun` | `750` | Chain data — besurun writes |
-| `/var/lib/dakota/besu/genesis.json` | `root` | `besurun` | `640` | Genesis — root controls, besurun reads |
-| `/var/lib/dakota/besu/data/key` | `besurun` | `besurun` | `600` | Node private key — besurun only |
-
-#### Permission Repair Commands
-
-If the service fails with permission errors, run:
-
-```bash
-sudo chown root:besurun /etc/dakota
-sudo chmod 750 /etc/dakota
-
-sudo chown root:besurun /etc/dakota/besu-current.env
-sudo chmod 640 /etc/dakota/besu-current.env
-
-sudo chown root:besurun /usr/local/lib/dakota/run-besu.sh
-sudo chmod 750 /usr/local/lib/dakota/run-besu.sh
-
-sudo chown -R besurun:besurun /var/lib/dakota/besu
-sudo find /var/lib/dakota/besu -type d -exec chmod 750 {} \;
-
-sudo chown root:besurun /var/lib/dakota/besu/genesis.json
-sudo chmod 640 /var/lib/dakota/besu/genesis.json
-
-sudo restorecon -Rv /etc/dakota /usr/local/lib/dakota /var/lib/dakota/besu 2>/dev/null || true
-```
-
-#### Permission Validation Checklist
-
-```bash
-# Verify service runtime user
-systemctl show -p User -p Group besu
-# Expected: User=besurun  Group=besurun
-
-# Verify directory ownership and modes
-ls -ld /etc/dakota /usr/local/lib/dakota /var/lib/dakota/besu
-ls -l /etc/dakota/besu-current.env /usr/local/lib/dakota/run-besu.sh
-ls -l /var/lib/dakota/besu/genesis.json
-ls -la /var/lib/dakota/besu/data/key /var/lib/dakota/besu/data/key.pub
-
-# Verify service is starting correctly
-systemctl status besu
-journalctl -u besu --no-pager -n 30
-```
-
-#### Operational Rules
-
-1. **Preserve the `besurun` runtime model.** Do not switch execution back to root.
-2. **Preserve the env-driven design.** Do not replace the env file with scattered one-off shell edits.
-3. **Preserve the wrapper-based launch flow.** Do not bypass the wrapper — it contains required validation and optional reset logic.
-4. **The env file must be sourced, not executed.** The wrapper uses `source /etc/dakota/besu-current.env`. Attempting to execute the env file as a command causes permission and startup failures.
-5. **Treat `/etc/dakota/besu-current.env` as part of the live service contract.** Any implementation or repair guidance must account for this file and its readability.
-
-#### Network Security
-
-- Ensure your firewall allows port `30303` (P2P) and `8545` (HTTP-RPC).
-- Restrict `RPC_HTTP_API`, `HOST_ALLOWLIST`, and `RPC_HTTP_CORS_ORIGINS` in the env file for production — the defaults `*` / `all` are for initial setup only.
-- Node private keys (`/var/lib/dakota/besu/data/key`) must be mode `600` and owned by `besurun`.
-- If SELinux is enabled, verify contexts are valid after any file placement.
+### 3.5 Public Chain Readiness Checklist
+
+Before proceeding to Pente setup:
+
+- [ ] CodeManager proxy deployed and `initialize()` called
+- [ ] `feeVault` set (non-zero)
+- [ ] Gift contract proxy deployed and `initialize()` called
+- [ ] `maxSaleSupply` set
+- [ ] `codeManagerAddress` on gift contract matches the CodeManager proxy
+- [ ] Root signer funded with native currency
 
 ---
 
-## 4. Layer 2 — Paladin / Pente Privacy Setup
+## 4. Node Registration Procedure
 
-[Paladin](https://github.com/LFDT-Paladin/paladin) is the recommended replacement for Tessera. It provides programmable privacy-preserving tokens on EVM, including ZKP tokens, notarized tokens, and private smart contracts (Pente privacy groups). Paladin connects to your Besu node via HTTP + WebSocket RPC. **Kubernetes is not required** — Paladin can run as a standalone Docker container.
+Each Paladin node must be registered and its identity resolved before it can participate in privacy groups.
 
-> **Why Paladin?** Tessera has been officially sunset by the Besu maintainers. Paladin provides a modern, app-layer privacy solution that doesn't require modifications to the Besu client itself. See the [announcement](https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu).
+### 4.1 Start Paladin
 
-> **Prepackaged distributions:** Cryft Labs plans to provide prepackaged Paladin binaries and turnkey installation scripts for licensed parties once the system is established. Until then, use one of the installation methods below.
+Paladin connects to a running Besu node. Each Paladin node has one or more registered identities (e.g., `node1@node1`).
 
-#### Prerequisites (all methods)
+### 4.2 Resolve Node Identity
 
-| Component | Required |
-|-----------|----------|
-| **Besu node** | Running with HTTP (`8545`) + WebSocket (`8546`) RPC enabled |
-| **Docker** | Required for Docker method; optional for build-from-source |
-| **Go 1.22+** | Required only for build-from-source |
-| **PostgreSQL 15+** or **SQLite** | Paladin state store (Postgres recommended for production; SQLite for development) |
-
----
-
-### 4.1 Method A — Docker (No Kubernetes Required)
-
-This is the simplest approach. Run the Paladin container directly on any machine with Docker installed — no Kubernetes, Helm, or kubectl needed.
-
-**Step 1 — Create a config file:**
-
-```yaml
-# paladin-config.yaml
-log:
-  level: info
-db:
-  type: sqlite                          # or "postgres" for production
-  sqlite:
-    dsn: /data/paladin.db
-    autoMigrate: true
-  # postgres:
-  #   dsn: "postgres://paladin:password@localhost:5432/paladin?sslmode=disable"
-  #   autoMigrate: true
-blockchain:
-  http:
-    url: http://host.docker.internal:8545    # or <BESU_IP>:8545
-  ws:
-    url: ws://host.docker.internal:8546      # or <BESU_IP>:8546
-signer:
-  keyStore:
-    type: static
-    static:
-      keys:
-        signer1:
-          encoding: hex
-          inline: "<YOUR_PRIVATE_KEY_HEX>"   # operator signing key
-publicTxManager:
-  gasLimit:
-    gasEstimateFactor: 2.0
-```
-
-> **Connecting to local Besu:** Use `host.docker.internal` (Docker Desktop on Mac/Windows) or your machine's LAN IP (Linux). On Linux without Docker Desktop, add `--add-host=host.docker.internal:host-gateway` to the docker run command.
-
-**Step 2 — Create a data directory:**
+Every Paladin identity has a verifier that maps to a specific key. Resolve it before creating groups:
 
 ```bash
-mkdir -p ~/paladin-data
-cp paladin-config.yaml ~/paladin-data/config.yaml
-```
-
-**Step 3 — Run Paladin:**
-
-```bash
-docker run -d \
-  --name paladin \
-  --restart unless-stopped \
-  -p 8548:8548 \
-  -p 8549:8549 \
-  -p 9000:9000 \
-  -v ~/paladin-data:/data \
-  ghcr.io/lfdt-paladin/paladin:latest \
-  paladin -c /data/config.yaml
-```
-
-**Step 4 — Verify:**
-
-```bash
-# Check the container is running
-docker logs paladin --tail=30
-
-# Test the JSON-RPC endpoint
-curl -s http://localhost:8548/rpc \
+curl -X POST http://localhost:31548/rpc \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"ptx_queryTransactions","params":[{}]}'
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "ptx_resolveVerifier",
+    "params": [
+      "node1@node1",
+      "pente",
+      "secp256k1"
+    ]
+  }'
 ```
 
-**Step 5 — Access the UI:**
+The response contains the verifier string used in privacy group member lists. Record it.
 
-Open `http://localhost:8548/ui` in your browser.
+### 4.3 Multi-Node Setup
 
-**Managing the container:**
-
-```bash
-docker stop paladin          # stop
-docker start paladin         # restart
-docker logs -f paladin       # follow logs
-docker rm -f paladin         # remove (data persists in ~/paladin-data)
-```
-
-**Using Postgres instead of SQLite (recommended for production):**
-
-```bash
-# Start Postgres alongside Paladin
-docker run -d --name paladin-db \
-  -e POSTGRES_USER=paladin \
-  -e POSTGRES_PASSWORD=paladin \
-  -e POSTGRES_DB=paladin \
-  -p 5432:5432 \
-  postgres:15
-
-# Update paladin-config.yaml to use postgres:
-#   db:
-#     type: postgres
-#     postgres:
-#       dsn: "postgres://paladin:paladin@host.docker.internal:5432/paladin?sslmode=disable"
-#       autoMigrate: true
-```
+For multi-node privacy groups, repeat identity resolution on each Paladin node. Exchange verifier strings between operators. All members must be resolved before group creation.
 
 ---
 
-### 4.2 Method B — Build from Source
+## 5. Creating a Normal Pente Privacy Group
 
-For developers, air-gapped environments, or custom builds. Paladin is a Go project (85% Go) with Gradle orchestrating the full build.
-
-**Prerequisites:**
-- Go 1.22+ (`go version`)
-- JDK 17+ (`java -version`)
-- Node.js 18+ (`node --version`)
-- Protoc (`protoc --version`) — [install](https://grpc.io/docs/protoc-installation/)
-- Docker (for building domain plugins)
-- PostgreSQL or SQLite
-
-**Build:**
+A normal privacy group (without external calls) is useful for testing private contract logic in isolation. It cannot trigger `PenteExternalCall` events on the base ledger.
 
 ```bash
-git clone https://github.com/LFDT-Paladin/paladin.git
-cd paladin
-./gradlew build
-```
-
-This produces the `paladin` binary and domain plugin shared libraries (`.so` files for Noto, Pente, Zeto).
-
-**Run:**
-
-```bash
-# Create config (same format as Method A, but with local file paths for domain plugins)
-./paladin -c /path/to/paladin-config.yaml
-```
-
-> See the [Paladin configuration reference](https://lfdt-paladin.github.io/paladin/head/administration/configuration/) for the full set of config options.
-
----
-
-### 4.3 Method C — k3s + Helm (Kubernetes Operator)
-
-For multi-node production deployments, the Kubernetes operator provides managed lifecycle, auto-scaling, and declarative configuration. k3s is a lightweight single-binary Kubernetes distribution — it adds minimal overhead on a single server.
-
-**Step 1 — Install k3s + Helm:**
-```bash
-curl -sfL https://get.k3s.io | sh -
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-kubectl get nodes
-```
-
-For local development, [kind](https://kind.sigs.k8s.io/) is an alternative:
-```bash
-curl https://raw.githubusercontent.com/LFDT-Paladin/paladin/refs/heads/main/operator/paladin-kind.yaml -L -O
-kind create cluster --name paladin --config paladin-kind.yaml
-```
-
-**Step 2 — Install Paladin Operator CRDs:**
-
-```bash
-helm repo add paladin https://LFDT-Paladin.github.io/paladin --force-update
-helm upgrade --install paladin-crds paladin/paladin-operator-crd
-```
-
-**Step 3 — Install cert-manager:**
-
-```bash
-helm repo add jetstack https://charts.jetstack.io --force-update
-helm install cert-manager --namespace cert-manager --version v1.16.1 \
-  jetstack/cert-manager --create-namespace --set crds.enabled=true
-```
-
-**Step 4 — Deploy Paladin (single node, attached to Besu):**
-
-Create a values file:
-
-```yaml
-# values-dakota.yaml
-mode: customnet
-paladinNodes:
-  - name: dakota-node1
-    baseLedgerEndpoint:
-      type: endpoint
-      endpoint:
-        # --- Local Besu (same machine) ---
-        jsonrpc: http://host.docker.internal:8545
-        ws: ws://host.docker.internal:8546
-        # --- OR Remote Besu ---
-        # jsonrpc: http://<BESU_NODE_IP>:8545
-        # ws: ws://<BESU_NODE_IP>:8546
-        auth:
-          enabled: false
-    domains:
-      - noto
-      - zeto
-      - pente
-    registries:
-      - evm-registry
-    transports:
-      - name: grpc
-        plugin:
-          type: c-shared
-          library: /app/transports/libgrpc.so
-        config:
-          port: 9000
-          address: 0.0.0.0
-        ports:
-          transportGrpc:
-            port: 9000
-            targetPort: 9000
-    service:
-      type: NodePort
-      ports:
-        rpcHttp:
-          port: 8548
-          nodePort: 31548
-        rpcWs:
-          port: 8549
-          nodePort: 31549
-    database:
-      mode: sidecarPostgres
-      migrationMode: auto
-    secretBackedSigners:
-      - name: signer-auto-wallet
-        secret: dakota-node1.keys
-        type: autoHDWallet
-        keySelector: ".*"
-    paladinRegistration:
-      registryAdminNode: dakota-node1
-      registryAdminKey: registry.operator
-      registry: evm-registry
-    config: |
-      log:
-        level: info
-      publicTxManager:
-        gasLimit:
-          gasEstimateFactor: 2.0
-```
-
-> **Connecting to local Besu:** Use the machine's actual IP for k3s (not `localhost`). For kind, use `host.docker.internal`.
->
-> **Connecting to remote Besu:** Replace with the remote node's IP/hostname. Ensure ports `8545` and `8546` are reachable from the Kubernetes pod network.
-
-Deploy:
-```bash
-helm install paladin paladin/paladin-operator -n paladin --create-namespace \
-  -f values-dakota.yaml
-```
-
-**Step 5 — Verify:**
-
-```bash
-kubectl -n paladin get pods             # Paladin pod + Postgres sidecar should be Running
-kubectl -n paladin get scd              # Smart contract deployments (noto, pente, zeto factories)
-kubectl -n paladin get reg              # Node registration status
-kubectl -n paladin logs deploy/dakota-node1 --tail=50
-```
-
-**Adding Paladin nodes on other machines:**
-
-Use `attach` mode with the contract addresses from the primary node:
-
-```bash
-kubectl -n paladin get paladindomains,paladinregistries
-```
-
-Then on the new machine, create a values file with `mode: attach` and the contract addresses:
-
-```yaml
-# values-attach.yaml
-mode: attach
-smartContractsReferences:
-  notoFactory:
-    address: "0x..."    # from primary node output
-  zetoFactory:
-    address: "0x..."
-  penteFactory:
-    address: "0x..."
-  registry:
-    address: "0x..."
-paladinNodes:
-  - name: dakota-node2
-    baseLedgerEndpoint:
-      type: endpoint
-      endpoint:
-        jsonrpc: http://<BESU_NODE_IP>:8545
-        ws: ws://<BESU_NODE_IP>:8546
-        auth:
-          enabled: false
-    domains: [noto, zeto, pente]
-    registries: [evm-registry]
-    transports:
-      - name: grpc
-        plugin:
-          type: c-shared
-          library: /app/transports/libgrpc.so
-        config:
-          port: 9000
-          address: 0.0.0.0
-        ports:
-          transportGrpc:
-            port: 9000
-            targetPort: 9000
-    service:
-      type: NodePort
-      ports:
-        rpcHttp:
-          port: 8548
-          nodePort: 31548
-        rpcWs:
-          port: 8549
-          nodePort: 31549
-    database:
-      mode: sidecarPostgres
-      migrationMode: auto
-    secretBackedSigners:
-      - name: signer-auto-wallet
-        secret: dakota-node2.keys
-        type: autoHDWallet
-        keySelector: ".*"
-    paladinRegistration:
-      registryAdminNode: dakota-node1
-      registryAdminKey: registry.operator
-      registry: evm-registry
-    config: |
-      log:
-        level: info
-```
-
-```bash
-helm install paladin paladin/paladin-operator -n paladin --create-namespace \
-  -f values-attach.yaml
-```
-
-**Uninstall:**
-
-```bash
-helm uninstall paladin -n paladin
-helm uninstall paladin-crds
-kubectl delete namespace paladin
-helm uninstall cert-manager -n cert-manager
-kubectl delete namespace cert-manager
-```
-
----
-
-### 4.4 Paladin Privacy Domains
-
-| Domain | Description |
-|--------|-------------|
-| **Noto** | Notarized tokens — issuer-backed private token transfers |
-| **Zeto** | ZKP tokens — zero-knowledge proof backed private transfers |
-| **Pente** | Private EVM smart contracts — privacy groups with private state |
-
-### 4.5 Paladin UI
-
-The Paladin node runs a web UI at `/ui`:
-- **Docker:** `http://localhost:8548/ui`
-- **k3s:** `http://<MACHINE_IP>:31548/ui`
-- **kind:** `http://localhost:31548/ui`
-
-### 4.6 Paladin Resources
-
-- **Documentation:** <https://lfdt-paladin.github.io/paladin/head>
-- **GitHub:** <https://github.com/LFDT-Paladin/paladin>
-- **Latest release:** v0.15.0
-- **Configuration reference:** <https://lfdt-paladin.github.io/paladin/head/administration/configuration/>
-- **Tutorials:** <https://lfdt-paladin.github.io/paladin/head/tutorials/>
-- **Advanced installation (Helm):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
-- **Manual installation (Helm CRDs):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-manual/>
-- **Docker image:** `ghcr.io/lfdt-paladin/paladin:latest`
-- **Discord:** [paladin channel on LFDT Discord](https://discord.com/channels/905194001349627914/1303371167020879903)
-- **Tessera sunset announcement:** <https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu>
-
-### 4.7 Create a Pente Privacy Group
-
-Use the Paladin JSON-RPC API to create a privacy group for code storage:
-
-```bash
-# Docker: use port 8548
-# Kubernetes: use port 31548
-curl -X POST http://localhost:8548/rpc \
+curl -X POST http://localhost:31548/rpc \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
     "id": 1,
     "method": "pente_createPrivacyGroup",
     "params": [{
-      "name": "code-storage-group",
-      "members": ["dakota-node1"],
+      "domain": "pente",
+      "members": ["node1@node1"],
       "evmVersion": "shanghai",
       "endorsementType": "group_scoped_identities",
-      "externalCallsEnabled": true
+      "externalCallsEnabled": "false"
     }]
   }'
 ```
 
-> **`externalCallsEnabled: true`** is critical — this allows PrivateComboStorage to emit `PenteExternalCall` events that route to CodeManager on the public chain.
+The response contains a `privacyGroupAddress`. This group is private-only — `PenteExternalCall` events emitted inside it will not be relayed to the base ledger.
 
-The response contains a `privacyGroupAddress` — record this for PrivateComboStorage deployment.
-
-### 4.8 Authorize the Privacy Group on CodeManager
-
-After creating the privacy group, the CodeManager voters must authorize it:
-
-```javascript
-// Each voter calls voteToAuthorizePrivacyGroup
-// Requires 2/3 supermajority to pass
-await codeManager.voteToAuthorizePrivacyGroup(privacyGroupAddress);
-```
-
-Once the supermajority is reached, `isAuthorizedPrivacyGroup[privacyGroupAddress]` becomes `true`, allowing PrivateComboStorage's `PenteExternalCall` events to be accepted by CodeManager's router functions.
-
-### 4.9 Documentation & References
-
-#### Besu
-
-Besu documentation has moved to a self-hosted versioned model.
-
-- **Versioned documentation index:** <https://lf-hyperledger.atlassian.net/wiki/spaces/BESU/pages/22156555/Versioned+documentation>
-- **Besu GitHub releases:** <https://github.com/hyperledger/besu/releases/tag/26.1.0>
-- **Besu 26.1.0 release notes:** <https://github.com/hyperledger/besu/releases/tag/26.1.0>
-
-#### Paladin (Privacy Manager)
-
-Paladin replaces Tessera as the recommended privacy solution for Besu networks.
-
-- **Paladin docs:** <https://lfdt-paladin.github.io/paladin/head>
-- **Paladin GitHub:** <https://github.com/LFDT-Paladin/paladin>
-- **Docker image:** `ghcr.io/lfdt-paladin/paladin:latest`
-- **Configuration reference:** <https://lfdt-paladin.github.io/paladin/head/administration/configuration/>
-- **Installation guide (Helm):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation>
-- **Advanced installation (Helm):** <https://lfdt-paladin.github.io/paladin/head/getting-started/installation-advanced/>
-- **Tessera sunset announcement:** <https://www.lfdecentralizedtrust.org/blog/sunsetting-tessera-and-simplifying-hyperledger-besu>
+**Use for:** testing `storeDataBatch` and `redeemCode` logic without affecting the public chain.
 
 ---
 
-## 5. Layer 3 — Contract Deployment
+## 6. Creating an External-Calls-Enabled Privacy Group
 
-### 5.1 Compilation
-
-Use the included compiler tool:
+This is the production configuration. The privacy group processes `PenteExternalCall` events and submits them as real base-ledger transactions.
 
 ```bash
-python Tools/SolcCompiler/compile.py
+curl -X POST http://localhost:31548/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "pente_createPrivacyGroup",
+    "params": [{
+      "domain": "pente",
+      "members": ["node1@node1"],
+      "evmVersion": "shanghai",
+      "endorsementType": "group_scoped_identities",
+      "externalCallsEnabled": "true"
+    }]
+  }'
 ```
 
-This auto-detects pragma versions, resolves imports (vendored OZ 4.9.6 for Genesis contracts, GitHub download for others), and outputs ABI + bytecode to `Tools/SolcCompiler/compiled_output/`. The default EVM target is `osaka`; validator contracts (pragma `<0.8.20`) are automatically clamped to `london`.
+### Critical: `externalCallsEnabled` Must Be a String
 
-### 5.2 Deployment Order
-
-Contracts must be deployed in this order due to address dependencies:
-
-| Step | Contract | Network | Upgradeable | Notes |
-|------|----------|---------|-------------|-------|
-| 1 | **ProxyAdmin** | Public | No | Guardian-gated upgrade dispatch |
-| 2 | **CodeManager** | Public | Yes (TransparentUpgradeableProxy) | Set `registrationFee`, `feeVault`, initial voters |
-| 3 | **Gift Contract** | Public | Yes (recommended) | Implements `IRedeemable` — your ERC-721, ERC-1155, or custom contract |
-| 4 | Create **Pente Privacy Group** | Paladin | — | `externalCallsEnabled: true` |
-| 5 | Authorize privacy group | Public | — | `voteToAuthorizePrivacyGroup()` (2/3 supermajority) |
-| 6 | **PrivateComboStorage** | Pente | No | Set `codeManager` address before deployment |
-| 7 | **DakotaDelegation** | Public | Yes | EIP-7702 delegation target |
-| 8 | **GasSponsor** | Public | Yes | Gas sponsorship treasury |
-| 9 | **ERC-6551 Registry** | Public | No | Canonical address or deploy via CREATE2 |
-| 10 | **ERC-6551 Account Impl** | Public | No | Smart account logic for TBAs |
-| 11 | **ERC-1155 Traits** | Public | Optional | Multi-token trait collection |
-
-### 5.3 CodeManager Initialization
-
-After proxy deployment:
-
-```javascript
-// Initialize (called once via proxy)
-await codeManager.initialize();
-
-// Configure governance
-await codeManager.voteToUpdateRegistrationFee(ethers.parseEther("0.001"));
-await codeManager.voteToUpdateFeeVault(feeVaultAddress);
+```json
+"externalCallsEnabled": "true"     ← CORRECT (string)
+"externalCallsEnabled": true       ← WRONG (boolean — silently ignored)
 ```
 
-### 5.4 PrivateComboStorage Deployment
+If you pass a boolean, the group will be created successfully but `PenteExternalCall` events will never be relayed. Calls to `storeDataBatch` (which emits `validateUniqueIdsOrRevert` via external call) and `redeemCode` (which emits `recordRedemption` via external call) will appear to succeed in private state but will never reach the public chain. This is the most common silent misconfiguration.
 
-Before compiling PrivateComboStorage, update the `codeManager` constant to match your deployed CodeManager proxy address:
+### EVM Version
 
-```solidity
-// In PrivateComboStorage.sol — update before deployment
-address public constant codeManager = address(0x000000000000000000000000000000000000c0DE);
+Pente privacy groups must use `"evmVersion": "shanghai"`. The Pente EVM does not yet support later hard forks. Contracts deployed inside the group must be compiled with `--evm-version shanghai`.
+
+### After Creation
+
+Record the `privacyGroupAddress` from the response. You will need it for:
+1. `pente_deploy` — deploying the private contract
+2. `pente_invoke` — calling functions on the private contract
+3. `voteToAuthorizePrivacyGroup` — authorizing this group on CodeManager
+
+---
+
+## 7. Funding Strategy
+
+Pente operations that emit `PenteExternalCall` events require the **derived submitter** address to have gas funds. This is not the root signer — it is a deterministic address computed from the privacy group and member identity.
+
+### 7.1 When Funding Is Required
+
+Gas is needed for any Pente operation that triggers a base-ledger transaction:
+- `storeDataBatch` → emits `PenteExternalCall(CODE_MANAGER, validateUniqueIdsOrRevert(...))`
+- `redeemCode` → emits `PenteExternalCall(CODE_MANAGER, recordRedemption(...))`
+- `setFrozen` (via Pente) → emits `PenteExternalCall(CODE_MANAGER, setUidFrozen(...))`
+
+Operations that are purely private (e.g., `admin()`, `authorize()` in a non-ext-calls group) do not require gas on the derived submitter.
+
+### 7.2 How to Identify the Derived Submitter
+
+You cannot predict the derived submitter address in advance. The workflow is:
+
+1. Attempt the Pente operation (e.g., `storeDataBatch`)
+2. It will fail with an error containing the derived address:
+   ```
+   insufficient funds for gas * price + value: address 0xABCD...1234
+   balance wanted 100000000000000
+   ```
+3. Copy `0xABCD...1234` from the error
+4. Send native currency to that address from a funded account
+5. Retry the Pente operation — it will succeed
+
+### 7.3 Funding Amount
+
+Send enough to cover gas for the expected operations. The exact amount depends on the operation complexity, but 0.1 native currency is typically sufficient for initial testing. Monitor the balance and top up as needed.
+
+### 7.4 Common Mistake
+
+Do not confuse the derived submitter with:
+- The root signer / coinbase address
+- The privacy group address
+- The `from` identity in `pente_invoke` calls
+
+The derived submitter is a unique address that only appears in error messages when funding is insufficient.
+
+---
+
+## 8. Deploying the Private Contract
+
+### 8.1 Prerequisites
+
+Before deploying `PrivateComboStorage` into the privacy group:
+
+1. **CodeManager is deployed** on the public chain and its proxy address is known
+2. **Privacy group is created** with `externalCallsEnabled: "true"` and `evmVersion: "shanghai"`
+3. **Derived submitter is funded** (attempt a simple operation first to discover the address)
+4. **`CODE_MANAGER` constant is set** in the `PrivateComboStorage` source to the CodeManager proxy address before compilation
+
+### 8.2 Compile for Shanghai EVM
+
+PrivateComboStorage must be compiled with `--evm-version shanghai` because Pente runs shanghai EVM:
+
+```bash
+python compile.py PrivateComboStorage.sol --evm-version shanghai
 ```
 
-Deploy into the Pente privacy group via Paladin:
+### 8.3 Use Deployment Bytecode, Not Runtime Bytecode
+
+When deploying via `pente_deploy`, you must provide the **deployment bytecode** (also called "creation bytecode" or "init bytecode"), not the runtime bytecode.
+
+- **Deployment bytecode** = constructor + runtime code. Starts with the constructor logic.
+- **Runtime bytecode** = what remains on-chain after deployment. Does NOT include the constructor.
+
+The compiled output from `compile.py` includes both in the artifact JSON. Use the `bytecode` field (deployment), not the `deployedBytecode` field (runtime).
+
+The `PrivateComboStorage` constructor sets `admin = msg.sender`. If you use runtime bytecode, the constructor never runs and `admin` will be `address(0)` — all `onlyAdmin` calls will revert.
+
+### 8.4 Deploy
 
 ```bash
 curl -X POST http://localhost:31548/rpc \
@@ -1243,291 +348,193 @@ curl -X POST http://localhost:31548/rpc \
     "id": 1,
     "method": "pente_deploy",
     "params": [{
-      "privacyGroupAddress": "<PRIVACY_GROUP_ADDRESS>",
-      "from": "dakota-node1",
-      "bytecode": "<PRIVATE_COMBO_STORAGE_BYTECODE>",
+      "group": {
+        "salt": "<PRIVACY_GROUP_SALT>",
+        "members": ["node1@node1"]
+      },
+      "from": "node1@node1",
+      "bytecode": "<DEPLOYMENT_BYTECODE>",
       "abi": <PRIVATE_COMBO_STORAGE_ABI>
     }]
   }'
 ```
 
----
-
-## 6. Standardized Interfaces for Gift Contracts
-
-Gift contracts **must** implement the `IRedeemable` interface. This is the standardized contract boundary through which CodeManager routes all per-UID state management.
-
-### 6.1 IRedeemable — Required Interface
-
-Every gift contract deployed on the public chain must implement these 6 functions:
-
-```solidity
-interface IRedeemable {
-    // ── Read Functions ──────────────────────────────────
-
-    /// @notice Returns true if the unique ID is currently frozen.
-    function isUniqueIdFrozen(string memory uniqueId) external view returns (bool);
-
-    /// @notice Returns true if the unique ID has already been redeemed.
-    function isUniqueIdRedeemed(string memory uniqueId) external view returns (bool);
-
-    /// @notice Returns the content identifier associated with a unique ID.
-    function getUniqueIdContent(string memory uniqueId) external view returns (string memory);
-
-    // ── Management Functions (called by CodeManager) ────
-
-    /// @notice Set frozen status for a unique ID.
-    function setFrozen(string memory uniqueId, bool frozen) external;
-
-    /// @notice Set the redeemable content for a unique ID.
-    function setContent(string memory uniqueId, string memory contentId) external;
-
-    /// @notice Record a redemption for a unique ID.
-    function recordRedemption(string memory uniqueId, address redeemer) external;
-}
-```
-
-### 6.2 Interface Behavior Requirements
-
-| Function | Behavior Requirement |
-|----------|---------------------|
-| `isUniqueIdFrozen` | **Must return `true` for any UID that has not been explicitly unfrozen.** This ensures codes default to a frozen/non-redeemable state upon registration. |
-| `isUniqueIdRedeemed` | Return whether the UID has been consumed. Semantics are contract-specific (e.g., "NFT left the vault", "counter > 0", "boolean flag"). |
-| `getUniqueIdContent` | Return the content identifier (IPFS CID, URL, token ID, etc.) associated with the UID. May return empty string if content is managed at batch level. |
-| `setFrozen` | **Must restrict caller to CodeManager only** (`require(msg.sender == codeManagerAddress)`). Freeze/unfreeze the UID. |
-| `setContent` | **Must restrict caller to CodeManager only.** Update the content association. May be a no-op if content is batch-managed. |
-| `recordRedemption` | **Must restrict caller to CodeManager only.** Execute the redemption action (transfer NFT, increment counter, mint token, etc.). **Must revert** if the redemption is not allowed — this causes the entire Pente transition to roll back atomically. |
-
-### 6.3 ICodeManager — Registry Interface
-
-Used by gift contracts to register UIDs and query registration data:
-
-```solidity
-interface ICodeManager {
-    struct ContractData {
-        address giftContract;
-        string chainId;
-    }
-
-    function getUniqueIdDetails(string memory uniqueId)
-        external view returns (address giftContract, string memory chainId, uint256 counter);
-
-    function validateUniqueId(string memory uniqueId) external view returns (bool isValid);
-
-    function getContractData(string memory contractIdentifier)
-        external view returns (ContractData memory);
-
-    function getIdentifierCounter(address giftContract, string memory chainId)
-        external view returns (string memory contractIdentifier, uint256 counter);
-
-    function isWhitelistedAddress(address addr) external view returns (bool);
-
-    function registrationFee() external view returns (uint256);
-
-    function registerUniqueIds(
-        address giftContract, string memory chainId, uint256 quantity
-    ) external payable;
-}
-```
-
-### 6.4 IComboStorage — Private Storage Interface
-
-The interface for the private contract running inside the Pente privacy group:
-
-```solidity
-interface IComboStorage {
-    function isRedemptionVerified(string memory uniqueId) external view returns (bool);
-    function redemptionRedeemer(string memory uniqueId) external view returns (address);
-    function isFrozen(string memory uniqueId) external view returns (bool);
-    function isRedeemed(string memory uniqueId) external view returns (bool);
-    function getContentId(string memory uniqueId) external view returns (string memory);
-}
-```
+The response contains the private contract address (e.g., `0xb202...`). Record it for all subsequent `pente_invoke` calls.
 
 ---
 
-## 7. Implementing a Custom Gift Contract
+## 9. Verifying the Private Contract
 
-Licensees can implement custom gift contracts using the provided ERC-721, ERC-6551, and ERC-1155 patterns. The gift contract is where licensees have the most creative freedom — the interface is standardized, but the internal logic is entirely up to you.
+After deployment, verify the contract is working correctly before proceeding to storage and redemption.
 
-### 7.1 ERC-721 Gift Contract (NFT Transfer on Redemption)
+### 9.1 Check admin()
 
-This is the pattern used by `CryftGreetingCards`. The contract holds NFTs in a "vault" (itself). Redemption transfers the NFT to the redeemer.
-
-```solidity
-contract MyGiftCards is ERC721Upgradeable, IRedeemable {
-    address public codeManagerAddress;
-    mapping(uint256 => bool) private _frozen;
-
-    // Required: restrict management calls to CodeManager
-    modifier onlyCodeManager() {
-        require(msg.sender == codeManagerAddress, "Only CodeManager");
-        _;
-    }
-
-    // ── IRedeemable Read Functions ──────────────────────
-
-    function isUniqueIdFrozen(string memory uniqueId) public view override returns (bool) {
-        (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
-        if (!valid || !_exists(tokenId)) return true;  // default frozen
-        return _frozen[tokenId];
-    }
-
-    function isUniqueIdRedeemed(string memory uniqueId) public view override returns (bool) {
-        (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
-        if (!valid || !_exists(tokenId)) return false;
-        return ownerOf(tokenId) != address(this);  // redeemed = left the vault
-    }
-
-    function getUniqueIdContent(string memory) public pure override returns (string memory) {
-        return "";  // content managed via tokenURI / batch metadata
-    }
-
-    // ── IRedeemable Management Functions ────────────────
-
-    function setFrozen(string memory uniqueId, bool frozen) external override onlyCodeManager {
-        (, uint256 tokenId) = _parseTokenId(uniqueId);
-        _frozen[tokenId] = frozen;
-    }
-
-    function setContent(string memory, string memory) external view override onlyCodeManager {
-        // No-op: content is batch-level IPFS metadata
-    }
-
-    function recordRedemption(string memory uniqueId, address redeemer) external override onlyCodeManager {
-        (, uint256 tokenId) = _parseTokenId(uniqueId);
-        require(ownerOf(tokenId) == address(this), "Not in vault");
-        require(!_frozen[tokenId], "Token is frozen");
-        _transfer(address(this), redeemer, tokenId);
-    }
-}
+```bash
+curl -X POST http://localhost:31548/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "pente_call",
+    "params": [{
+      "group": {
+        "salt": "<PRIVACY_GROUP_SALT>",
+        "members": ["node1@node1"]
+      },
+      "from": "node1@node1",
+      "to": "<PRIVATE_CONTRACT_ADDRESS>",
+      "function": "admin()",
+      "inputs": []
+    }]
+  }'
 ```
 
-### 7.2 ERC-1155 Gift Contract (Multi-Token Redemption)
+**Expected:** Returns a non-zero address (the deployer's derived address within the privacy group).
 
-For codes that award fungible or semi-fungible tokens (trait tokens, consumables, currency bundles):
+**If it returns `0x0000...0000`:** You deployed with runtime bytecode instead of deployment bytecode. The constructor never ran. Redeploy using the correct bytecode.
 
-```solidity
-contract TraitRedemption is ERC1155Upgradeable, IRedeemable {
-    address public codeManagerAddress;
-    mapping(string => bool) private _frozen;
-    mapping(string => bool) private _redeemed;
-    mapping(string => string) private _contentId;
-    mapping(string => uint256) private _traitId;        // UID → ERC-1155 token ID
-    mapping(string => uint256) private _traitAmount;     // UID → quantity
+### 9.2 Check CODE_MANAGER()
 
-    modifier onlyCodeManager() {
-        require(msg.sender == codeManagerAddress, "Only CodeManager");
-        _;
-    }
-
-    function isUniqueIdFrozen(string memory uid) public view override returns (bool) {
-        return _frozen[uid];  // defaults to false; set true on registration
-    }
-
-    function isUniqueIdRedeemed(string memory uid) public view override returns (bool) {
-        return _redeemed[uid];
-    }
-
-    function getUniqueIdContent(string memory uid) public view override returns (string memory) {
-        return _contentId[uid];
-    }
-
-    function setFrozen(string memory uid, bool frozen) external override onlyCodeManager {
-        _frozen[uid] = frozen;
-    }
-
-    function setContent(string memory uid, string memory contentId) external override onlyCodeManager {
-        _contentId[uid] = contentId;
-    }
-
-    function recordRedemption(string memory uid, address redeemer) external override onlyCodeManager {
-        require(!_redeemed[uid], "Already redeemed");
-        require(!_frozen[uid], "Frozen");
-        _redeemed[uid] = true;
-        _mint(redeemer, _traitId[uid], _traitAmount[uid], "");
-    }
-}
+```bash
+curl -X POST http://localhost:31548/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "pente_call",
+    "params": [{
+      "group": {
+        "salt": "<PRIVACY_GROUP_SALT>",
+        "members": ["node1@node1"]
+      },
+      "from": "node1@node1",
+      "to": "<PRIVATE_CONTRACT_ADDRESS>",
+      "function": "CODE_MANAGER()",
+      "inputs": []
+    }]
+  }'
 ```
 
-### 7.3 ERC-6551 TBA Gift Contract (Redeem Traits into NFT's Account)
+**Expected:** Returns the CodeManager proxy address that was hardcoded into the contract before compilation.
 
-For codes that award ERC-1155 traits directly into an ERC-721 token's Token Bound Account:
+**If it returns the placeholder `0x...c0DE`:** You compiled `PrivateComboStorage` without updating the `CODE_MANAGER` constant. Recompile and redeploy.
 
-```solidity
-contract TBATraitRedemption is IRedeemable {
-    IERC1155 public traitContract;
-    IERC6551Registry public registry;
-    address public accountImplementation;
-    address public codeManagerAddress;
+### 9.3 Verification Checklist
 
-    mapping(string => bool) private _frozen;
-    mapping(string => bool) private _redeemed;
-    mapping(string => uint256) private _traitId;
-    mapping(string => uint256) private _targetTokenId;  // UID → parent NFT tokenId
-
-    function recordRedemption(string memory uid, address) external override {
-        require(msg.sender == codeManagerAddress, "Only CodeManager");
-        require(!_redeemed[uid] && !_frozen[uid], "Cannot redeem");
-        _redeemed[uid] = true;
-
-        // Compute the TBA address for the parent NFT
-        address tba = registry.account(
-            accountImplementation, bytes32(0), block.chainid,
-            address(this), _targetTokenId[uid]
-        );
-
-        // Mint trait directly into the TBA
-        traitContract.mint(tba, _traitId[uid], 1, "");
-    }
-
-    // ... remaining IRedeemable functions ...
-}
-```
+- [ ] `admin()` returns non-zero address (confirms constructor ran → deployment bytecode used)
+- [ ] `CODE_MANAGER()` returns the correct CodeManager proxy address
+- [ ] Privacy group has `externalCallsEnabled: "true"` (string)
+- [ ] Derived submitter is funded
 
 ---
 
-## 8. Bulk Code Storage via Pente
+## 10. Authorization & Whitelisting Strategy
 
-### 8.1 Off-Chain Code Generation
+### 10.1 Authorize the Privacy Group on CodeManager
 
-Codes are generated off-chain and never stored in cleartext on any chain:
-
-```
-For each code:
-  1. Generate random code string (e.g., "FIRE-SWORD-2026-X7K9")
-  2. Extract PIN prefix (e.g., first 4 chars: "FIRE")
-  3. Compute giftCode = PIN + code = "FIRE" + "FIRE-SWORD-2026-X7K9"
-  4. Compute codeHash = keccak256(giftCode)
-  5. Store: { uniqueId, pin: "FIRE", codeHash }
-```
-
-### 8.2 Register UIDs on CodeManager
-
-Before storing codes in the privacy group, register the UID range on CodeManager:
+The privacy group must be authorized on CodeManager before its `PenteExternalCall` events will be accepted. Without authorization, calls to `recordRedemption`, `setUidFrozen`, and `validateUniqueIdsOrRevert` from the privacy group will revert with `"Caller is not an authorized privacy group"`.
 
 ```javascript
-// Register 1000 UIDs for your gift contract
-const quantity = 1000;
+// Single voter — takes effect immediately
+await codeManager.voteToAuthorizePrivacyGroup(privacyGroupAddress);
+```
+
+For multi-voter governance:
+```javascript
+// Requires 2/3 supermajority
+await codeManager.connect(voter1).voteToAuthorizePrivacyGroup(privacyGroupAddress);
+await codeManager.connect(voter2).voteToAuthorizePrivacyGroup(privacyGroupAddress);
+// If 2/3 reached, authorization takes effect
+```
+
+### 10.2 Authorize Callers on PrivateComboStorage
+
+Inside the privacy group, `PrivateComboStorage` has its own authorization. The `admin` (deployer) can authorize additional addresses:
+
+```bash
+curl -X POST http://localhost:31548/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "pente_invoke",
+    "params": [{
+      "group": {
+        "salt": "<PRIVACY_GROUP_SALT>",
+        "members": ["node1@node1"]
+      },
+      "from": "node1@node1",
+      "to": "<PRIVATE_CONTRACT_ADDRESS>",
+      "function": "authorize(address)",
+      "inputs": ["<ADDRESS_TO_AUTHORIZE>"]
+    }]
+  }'
+```
+
+Only `admin` and authorized addresses can call `storeDataBatch` and `redeemCode`.
+
+### 10.3 Register UIDs on CodeManager
+
+Before storing codes in the privacy group, the UID range must exist on CodeManager. Registration is permissionless — anyone can call it as long as they pay the registration fee.
+
+```javascript
+const quantity = 10;
 const fee = await codeManager.registrationFee();
 const totalFee = fee * BigInt(quantity);
 
 await codeManager.registerUniqueIds(
     giftContractAddress,
-    "112311",            // chainId
+    chainId,
     quantity,
     { value: totalFee }
 );
 ```
 
-This creates deterministic UIDs in the format `<contractIdentifier>-<counter>` where:
+This creates deterministic UIDs: `<contractIdentifier>-1`, `<contractIdentifier>-2`, ..., `<contractIdentifier>-N` where:
 ```
 contractIdentifier = toHexString(keccak256(codeManagerAddress, giftContractAddress, chainId))
 ```
 
-### 8.3 Batch Store in PrivateComboStorage
+The gift contract can also register UIDs atomically at purchase time via its `buy()` function, which calls `registerUniqueIds` internally and verifies counter sync.
 
-Store the hashed codes into the Pente privacy group:
+### 10.4 Authorization Order
+
+The complete authorization sequence:
+
+```
+1. Deploy CodeManager + Gift Contract on public chain
+2. Create ext-calls privacy group
+3. Fund derived submitter
+4. Deploy PrivateComboStorage in privacy group
+5. Verify admin() and CODE_MANAGER()
+6. Authorize privacy group on CodeManager:
+     voteToAuthorizePrivacyGroup(privacyGroupAddress)
+7. Register UIDs on CodeManager (or let buy() do it)
+8. Authorize callers on PrivateComboStorage (optional — admin can call directly)
+9. Store codes → storeDataBatch
+10. Redeem codes → redeemCode
+```
+
+---
+
+## 11. Store Flow — storeDataBatch
+
+### 11.1 Off-Chain Code Generation
+
+Codes are generated off-chain. No cleartext ever touches any chain:
+
+```
+For each code:
+  1. Generate random code string (e.g., "HappyBirthday2026")
+  2. Choose a PIN (e.g., "OsF") — this is the bucket key
+  3. Compute giftCode = PIN + code = "OsF" + "HappyBirthday2026"
+  4. Compute codeHash = keccak256(abi.encodePacked(giftCode))
+  5. Record: { uniqueId, pin: "OsF", codeHash: 0x... }
+```
+
+The PIN is shared with the end user (e.g., printed on the card). The full code is the secret. Both are needed to redeem.
+
+### 11.2 Calling storeDataBatch
 
 ```bash
 curl -X POST http://localhost:31548/rpc \
@@ -1537,28 +544,96 @@ curl -X POST http://localhost:31548/rpc \
     "id": 1,
     "method": "pente_invoke",
     "params": [{
-      "privacyGroupAddress": "<PRIVACY_GROUP_ADDRESS>",
-      "from": "dakota-node1",
-      "to": "<PRIVATE_COMBO_STORAGE_ADDRESS>",
+      "group": {
+        "salt": "<PRIVACY_GROUP_SALT>",
+        "members": ["node1@node1"]
+      },
+      "from": "node1@node1",
+      "to": "<PRIVATE_CONTRACT_ADDRESS>",
       "function": "storeDataBatch(string[],string[],bytes32[])",
       "inputs": [
-        ["uid-1", "uid-2", "uid-3"],
-        ["FIRE", "ICE9", "GOLD"],
-        ["0xabc123...", "0xdef456...", "0x789012..."]
+        ["<UNIQUE_ID_1>", "<UNIQUE_ID_2>"],
+        ["OsF", "OsF"],
+        ["0xabc123...", "0xdef456..."]
       ]
     }]
   }'
 ```
 
-Key behaviors:
-- All stored codes **default to `frozen=true`** — they cannot be redeemed until explicitly unfrozen
-- Duplicate hashes, full PIN slots (max 32 per PIN), and invalid UIDs are skipped with `status=false`
-- The transaction always succeeds — partial storage is allowed
-- Maximum 32 hashes per PIN bucket (configurable via `MAX_PER_PIN`)
+### 11.3 What Happens Inside
 
-### 8.4 Unfreeze Codes for Redemption
+`storeDataBatch` executes three phases atomically:
 
-After storing, unfreeze the codes you want to make redeemable:
+1. **Phase 1 — Local preflight:** Validates arrays, checks for empty values, verifies no duplicate hashes in current state, confirms PIN slots are not full (max 32 per PIN).
+
+2. **Phase 2 — Public registry validation:** Emits `PenteExternalCall` → `CodeManager.validateUniqueIdsOrRevert(uniqueIds)`. If any uniqueId is not registered on CodeManager, the entire Pente transition reverts.
+
+3. **Phase 3 — Store entries:** Stores each `(pin, codeHash) → CodeMetadata{ uniqueId, exists: true }` mapping. Re-checks for duplicates within the same batch. Emits `DataStoredStatus(uniqueId, codeHash, true)` per entry.
+
+### 11.4 Failure Modes
+
+| Failure | Cause | Fix |
+|---------|-------|-----|
+| `"Array length mismatch"` | `uniqueIds`, `pins`, and `codeHashes` arrays have different lengths | Ensure all three arrays are the same length |
+| `"Empty uniqueId"` | One of the uniqueIds is an empty string | Check your UID generation |
+| `"Empty PIN"` | One of the PINs is an empty string | Ensure PINs are non-empty |
+| `"Zero code hash"` | A codeHash is `bytes32(0)` | Check your hash computation |
+| `"Code hash already stored for PIN"` | This exact `(pin, hash)` pair already exists in private state | Skip duplicates or use a new batch |
+| `"PIN slot full"` | A PIN already has 32 hashes stored | Use a different PIN |
+| `"Invalid uniqueId in batch"` | The uniqueId is not registered on CodeManager | Register UIDs first via `registerUniqueIds` |
+| `"Caller is not an authorized privacy group"` | The privacy group is not authorized on CodeManager | Call `voteToAuthorizePrivacyGroup` |
+| `"Caller is not authorized"` | The `from` identity is not admin or authorized on PrivateComboStorage | Call `authorize(address)` as admin |
+| `insufficient funds for gas` | The derived submitter has no gas | Fund the address shown in the error |
+
+---
+
+## 12. Redeem Flow — redeemCode + External Call
+
+### 12.1 End-to-End Data Flow
+
+```
+User enters PIN + code
+         │
+         ▼
+Client computes codeHash = keccak256(abi.encodePacked(pin + code))
+         │
+         ▼
+Client calls Paladin RPC → PrivateComboStorage.redeemCode(pin, codeHash, redeemer)
+         │
+         ▼
+PrivateComboStorage (inside Pente privacy group):
+  1. Looks up pinToHash[pin][codeHash] → CodeMetadata
+  2. Requires: exists == true
+  3. Reads uniqueId from the metadata
+  4. Deletes the hash entry (code is consumed)
+  5. Decrements pinSlotCount[pin]
+  6. Emits RedeemStatus(uniqueId, redeemer, true)
+  7. Emits PenteExternalCall(CODE_MANAGER,
+       abi.encodeWithSignature("recordRedemption(string,address)", uniqueId, redeemer))
+         │
+         ▼
+Pente processes the transition, sees PenteExternalCall:
+  → Submits base-ledger tx to CODE_MANAGER from the derived submitter
+         │
+         ▼
+CodeManager.recordRedemption(uniqueId, redeemer) [onlyAuthorizedPrivacyGroup]:
+  1. Calls getUniqueIdDetails(uniqueId) → resolves to gift contract
+  2. Calls IRedeemable(giftContract).recordRedemption(uniqueId, redeemer)
+  3. Emits RedemptionRouted(uniqueId, giftContract, redeemer)
+         │
+         ▼
+Gift Contract.recordRedemption(uniqueId, redeemer) [onlyCodeManager]:
+  1. Parses uniqueId → tokenId
+  2. Requires: valid, minted, in vault, not frozen
+  3. Transfers NFT from vault (contract) to redeemer
+  4. Increments totalRedeems
+  5. Emits CardRedeemed(tokenId, uniqueId, redeemer)
+  6. If any require fails → revert → entire Pente transition rolls back
+     → the delete in PrivateComboStorage is undone
+     → code remains usable
+```
+
+### 12.2 Calling redeemCode
 
 ```bash
 curl -X POST http://localhost:31548/rpc \
@@ -1568,467 +643,150 @@ curl -X POST http://localhost:31548/rpc \
     "id": 1,
     "method": "pente_invoke",
     "params": [{
-      "privacyGroupAddress": "<PRIVACY_GROUP_ADDRESS>",
-      "from": "dakota-node1",
-      "to": "<PRIVATE_COMBO_STORAGE_ADDRESS>",
-      "function": "setFrozen(string,bool)",
-      "inputs": ["uid-1", false]
+      "group": {
+        "salt": "<PRIVACY_GROUP_SALT>",
+        "members": ["node1@node1"]
+      },
+      "from": "node1@node1",
+      "to": "<PRIVATE_CONTRACT_ADDRESS>",
+      "function": "redeemCode(string,bytes32,address)",
+      "inputs": [
+        "<PIN>",
+        "<CODE_HASH>",
+        "<REDEEMER_ADDRESS>"
+      ]
     }]
   }'
 ```
 
-This emits a `PenteExternalCall` that atomically calls `CodeManager.setUidFrozen(uid, false)`, which forwards to `giftContract.setFrozen(uid, false)`.
+### 12.3 Atomicity Guarantee
+
+The key property: **if the gift contract reverts, the entire Pente transition rolls back.** This means:
+- The `delete` of the hash entry in PrivateComboStorage is undone
+- The `pinSlotCount` decrement is undone
+- The code remains usable for a future redemption attempt
+- No partial state changes on either chain
+
+### 12.4 Redeemer Address
+
+The redeemer address is an explicit parameter, **not** `msg.sender`. This supports:
+- Meta-transactions (someone else pays gas)
+- User-specified recipient wallets (redeem to a different address)
+- Sponsored/delegated redemptions
+
+### 12.5 Failure Modes
+
+| Failure | Cause | Fix |
+|---------|-------|-----|
+| `"PIN cannot be empty"` | Empty PIN string | Provide the PIN |
+| `"Hash cannot be zero"` | `codeHash` is `bytes32(0)` | Check hash computation |
+| `"Redeemer cannot be zero address"` | `redeemer` is `address(0)` | Provide valid redeemer |
+| `"Invalid PIN or code hash"` | No matching entry in private state | Wrong PIN, wrong code, or already redeemed |
+| `"Only CodeManager"` (on gift contract) | CodeManager is not the caller | Privacy group not authorized, or CODE_MANAGER constant is wrong |
+| `"Invalid uniqueId"` (on gift contract) | Token was never minted / uniqueId doesn't parse | UID registered but token not yet minted via `buy()` |
+| `"Not in vault"` (on gift contract) | Token already redeemed (left the vault) | Code was already used |
+| `"Token is frozen"` (on gift contract) | Admin froze the token | Unfreeze via `setFrozen(tokenId, false)` if appropriate |
+| `insufficient funds for gas` | Derived submitter out of gas | Fund the address in the error |
 
 ---
 
-## 9. Redemption Flow (End to End)
+## 13. Troubleshooting Matrix
 
-### 9.1 Complete Data Flow
+### Quick Reference
 
-```
-User enters PIN + code in web app
-         │
-         ▼
-Web app computes codeHash = keccak256(pin + code)
-         │
-         ▼
-Web app calls backend API with { pin, codeHash }
-         │
-         ▼
-Backend calls Paladin RPC → PrivateComboStorage.redeemCode(pin, codeHash)
-         │
-         ▼
-PrivateComboStorage (inside Pente privacy group):
-  1. Looks up pinToHash[pin][codeHash] → finds CodeMetadata
-  2. Checks: exists? not frozen? not redeemed?
-  3. Updates private state: redeemed = true
-  4. Deletes hash entry, decrements PIN slot count
-  5. Emits PenteExternalCall(codeManager, abi.encode("recordRedemption(uid, redeemer)"))
-         │
-         ▼
-Pente endorsement: privacy group members endorse the transition
-         │
-         ▼
-Paladin submits PenteExternalCall to public chain
-         │
-         ▼
-CodeManager.recordRedemption(uniqueId, redeemer):
-  1. Requires msg.sender is authorized privacy group
-  2. Resolves UID → gift contract via getUniqueIdDetails()
-  3. Calls giftContract.recordRedemption(uniqueId, redeemer)
-  4. Emits RedemptionRouted event
-         │
-         ▼
-Gift Contract.recordRedemption(uniqueId, redeemer):
-  • ERC-721: transfers NFT from vault to redeemer
-  • ERC-1155: mints tokens to redeemer
-  • Custom: whatever the licensee implements
-  • If not allowed → REVERTS → entire Pente transition rolls back
-         │
-         ▼
-Transaction confirmed. User receives their redeemed content.
-```
+| Symptom | Root Cause | Diagnostic | Fix |
+|---------|-----------|------------|-----|
+| `insufficient funds for gas * price + value: address 0xABC...` | Derived submitter unfunded | The address in the error is the derived submitter | Send native currency to that exact address |
+| `storeDataBatch` succeeds but public state unchanged | `externalCallsEnabled` passed as boolean `true` instead of string `"true"` | Recreate group and check the field is a string | Create new group with `"externalCallsEnabled": "true"` (string) |
+| `admin()` returns `0x0000...0000` | Deployed with runtime bytecode instead of deployment bytecode | Constructor never ran | Redeploy with deployment bytecode (includes constructor) |
+| `CODE_MANAGER()` returns `0x...c0DE` | Did not update the constant before compiling | Placeholder value still in contract | Update `CODE_MANAGER` in source, recompile, redeploy |
+| `"Caller is not an authorized privacy group"` | Privacy group address not authorized on CodeManager | Check `isAuthorizedPrivacyGroup(groupAddr)` | Call `voteToAuthorizePrivacyGroup(groupAddr)` |
+| `"Invalid uniqueId in batch"` during `storeDataBatch` | UIDs not registered on CodeManager | Check `validateUniqueId(uid)` on CodeManager | Call `registerUniqueIds` or `buy()` first |
+| `"No matching uniqueId found."` during redemption | UID not registered on CodeManager | Call `getUniqueIdDetails(uid)` — should revert | Register UIDs first |
+| `"Not in vault"` during redemption | Token already redeemed | Check `ownerOf(tokenId)` — not the contract address | Code was already used; cannot re-redeem |
+| `"Token is frozen"` during redemption | Admin explicitly froze the token | Check `isUniqueIdFrozen(uid)` | Unfreeze if appropriate |
+| `"Counter drift: CodeManager out of sync"` during `buy()` | External registration changed the counter | Check `getIdentifierCounter` on CodeManager | Ensure only `buy()` registers UIDs for this contract, or adjust `maxSaleSupply` |
+| `"Payment must equal price + registration fee"` during `buy()` | Incorrect `msg.value` | Calculate: `(pricePerCard * qty) + (registrationFee * qty)` | Send exact amount |
+| Pente invoke returns success but no event on public chain | Group not ext-calls-enabled, or gas insufficient | Check group config; check derived submitter balance | Recreate group with string `"true"` or fund submitter |
+| Private contract call reverts with no useful message | Wrong ABI or function signature | Verify function signature matches contract exactly | Re-check ABI |
 
-### 9.2 Redemption Code (Backend)
+### Diagnostic Commands
 
+**Check if a UID is registered:**
 ```javascript
-async function redeemCode(pin, code, redeemerAddress) {
-    // Compute hash off-chain — no cleartext on-chain
-    const giftCode = pin + code;
-    const codeHash = ethers.keccak256(ethers.toUtf8Bytes(giftCode));
+const isValid = await codeManager.validateUniqueId("0xabc...-1");
+```
 
-    // Call PrivateComboStorage via Paladin RPC
-    const result = await fetch("http://localhost:31548/rpc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            jsonrpc: "2.0",
-            id: 1,
-            method: "pente_invoke",
-            params: [{
-                privacyGroupAddress: PRIVACY_GROUP_ADDRESS,
-                from: "dakota-node1",
-                to: PRIVATE_COMBO_STORAGE_ADDRESS,
-                function: "redeemCode(string,bytes32)",
-                inputs: [pin, codeHash]
-            }]
-        })
-    });
+**Check UID details:**
+```javascript
+const [giftContract, chainId, counter] = await codeManager.getUniqueIdDetails("0xabc...-1");
+```
 
-    return await result.json();
-}
+**Check privacy group authorization:**
+```javascript
+const isAuth = await codeManager.isAuthorizedPrivacyGroup(privacyGroupAddress);
+```
+
+**Check card status (single call):**
+```javascript
+const [tokenId, holder, frozen, redeemed] = await giftContract.getCardStatus("0xabc...-1");
+```
+
+**Check identifier counter:**
+```javascript
+const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(giftContractAddress, chainId);
 ```
 
 ---
 
-## 10. Web Application Integration (thirdweb + Paladin API)
+## 14. Operational Best Practices & Key Lessons
 
-### 10.1 Architecture
+### Lessons from Production Deployment
 
-```
-┌─────────────────────┐     ┌─────────────────────┐     ┌──────────────────────┐
-│   Frontend          │     │   Backend (Node.js)  │     │   Infrastructure     │
-│   React + thirdweb  │────▶│                      │────▶│                      │
-│                     │     │ • thirdweb server     │     │ • Besu (8545/8546)   │
-│ • User auth         │     │   wallet             │     │ • Paladin (31548)    │
-│ • Code entry UI     │     │ • Paladin RPC client │     │ • Blockscout         │
-│ • NFT gallery       │     │ • Code generation    │     │                      │
-│ • TBA explorer      │     │ • Redemption flow    │     │ CodeManager (c0DE)   │
-│ • Trait viewer      │     │ • Admin operations   │     │ Gift Contract        │
-│                     │     │                      │     │ PrivateComboStorage  │
-│ defineChain(112311) │     │ x-secret-key auth    │     │ DakotaDelegation     │
-└─────────────────────┘     └─────────────────────┘     └──────────────────────┘
-```
+1. **`externalCallsEnabled` is a string, not a boolean.** This is the single most common silent failure. The privacy group will create successfully with a boolean, but external calls will never fire.
 
-### 10.2 Frontend — Define Custom Chain
+2. **Use deployment bytecode, not runtime bytecode.** If `admin()` returns `address(0)`, the constructor never ran. Always use the `bytecode` field from the compiler output, not `deployedBytecode`.
 
-```typescript
-import { defineChain } from "thirdweb";
+3. **Fund the derived submitter, not the root signer.** The address in the `insufficient funds` error is the one that needs funding. It is a deterministic address you cannot predict — you must attempt an operation and read it from the error message.
 
-const dakotaChain = defineChain({
-    id: 112311,
-    rpc: "https://your-rpc-endpoint:8545",
-    nativeCurrency: { name: "Cryft", symbol: "CRYFT", decimals: 18 },
-    blockExplorers: [{ name: "Blockscout", url: "https://your-blockscout.com" }],
-});
-```
+4. **`CODE_MANAGER` is a compile-time constant.** It cannot be changed after deployment. If it's wrong, you must recompile and redeploy.
 
-### 10.3 Frontend — User Authentication
+5. **Pente runs shanghai EVM.** Private contracts must be compiled with `--evm-version shanghai`. Public contracts can use a later EVM version.
 
-thirdweb in-app wallets provide embedded EOA wallets with social/email auth:
+6. **Register UIDs before storing codes.** `storeDataBatch` emits a `PenteExternalCall` to `validateUniqueIdsOrRevert`. If UIDs aren't registered, the entire batch reverts atomically.
 
-```typescript
-import { ThirdwebProvider, ConnectWallet } from "@thirdweb-dev/react";
+7. **Counter sync matters.** The GreetingCards `buy()` function verifies `getIdentifierCounter` matches `_totalMinted` before registering new UIDs. If any other caller has registered UIDs for the same contract+chainId pair, `buy()` will revert with `"Counter drift: CodeManager out of sync"`.
 
-function App() {
-    return (
-        <ThirdwebProvider clientId="<your-client-id>" activeChain={dakotaChain}>
-            <ConnectWallet />
-        </ThirdwebProvider>
-    );
-}
-```
+8. **Frozen state is derived.** In CryftGreetingCards, a card is frozen if: (a) the token doesn't exist yet (not purchased), OR (b) it's explicitly frozen by admin. There is no separate frozen mapping for UIDs — it's computed from on-chain state.
 
-Supported auth methods: email OTP, phone OTP, Google, Apple, Discord, passkeys, SIWE, guest wallets, custom JWT.
+9. **Redeemed state is derived.** A card is redeemed if the token exists AND is not held by the vault (the contract itself). Once transferred out, the transfer guard prevents returning it.
 
-### 10.4 Backend — Contract Writes via thirdweb API
+10. **Atomicity is the safety net.** If the gift contract reverts during `recordRedemption` (frozen, already redeemed, invalid UID), the entire Pente transition rolls back. The code hash deletion in PrivateComboStorage is undone. No manual cleanup needed.
 
-All public-chain writes can go through the thirdweb API. EIP-7702 is the default execution mode — gas is sponsored automatically:
-
-```javascript
-// Write to any contract on chain 112311
-const response = await fetch("https://api.thirdweb.com/v1/contracts/write", {
-    method: "POST",
-    headers: {
-        "x-secret-key": process.env.THIRDWEB_SECRET_KEY,
-        "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-        calls: [{
-            contractAddress: "<contract-address>",
-            method: "function methodName(uint256 param1, address param2)",
-            params: [42, "0x..."],
-        }],
-        chainId: 112311,
-        from: "<wallet-address>",
-    }),
-});
-```
-
-### 10.5 Backend — Paladin RPC for Private Operations
-
-Private operations (code storage, redemption verification) go through the Paladin JSON-RPC API:
-
-```javascript
-async function paladinInvoke(contractAddress, functionSig, inputs) {
-    const response = await fetch("http://localhost:31548/rpc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            jsonrpc: "2.0",
-            id: Date.now(),
-            method: "pente_invoke",
-            params: [{
-                privacyGroupAddress: PRIVACY_GROUP_ADDRESS,
-                from: "dakota-node1",
-                to: contractAddress,
-                function: functionSig,
-                inputs: inputs,
-            }],
-        }),
-    });
-    return await response.json();
-}
-
-// Store codes (private)
-await paladinInvoke(COMBO_STORAGE, "storeDataBatch(string[],string[],bytes32[])", [uids, pins, hashes]);
-
-// Unfreeze codes (private → triggers public via PenteExternalCall)
-await paladinInvoke(COMBO_STORAGE, "setFrozen(string,bool)", [uid, false]);
-
-// Redeem code (private → triggers public via PenteExternalCall)
-await paladinInvoke(COMBO_STORAGE, "redeemCode(string,bytes32)", [pin, codeHash]);
-```
-
-### 10.6 Backend — Query Public State
-
-Public state can be queried via thirdweb SDK or direct Besu RPC:
-
-```javascript
-// Check if a UID is frozen (reads from gift contract via CodeManager pass-through)
-const frozen = await codeManager.isUniqueIdFrozen(uniqueId);
-
-// Check if redeemed
-const redeemed = await codeManager.isUniqueIdRedeemed(uniqueId);
-
-// Get content
-const content = await codeManager.getUniqueIdContent(uniqueId);
-
-// Validate a UID
-const valid = await codeManager.validateUniqueId(uniqueId);
-
-// Get UID details
-const { giftContract, chainId, counter } = await codeManager.getUniqueIdDetails(uniqueId);
-```
-
-### 10.7 Full Redemption API Endpoint
-
-```javascript
-// POST /api/redeem
-export async function POST(req) {
-    const { pin, code, userWallet } = await req.json();
-
-    // 1. Compute hash off-chain
-    const codeHash = ethers.keccak256(ethers.toUtf8Bytes(pin + code));
-
-    // 2. Redeem via Pente (private verification + public state update)
-    const paladinResult = await paladinInvoke(
-        COMBO_STORAGE,
-        "redeemCode(string,bytes32)",
-        [pin, codeHash]
-    );
-
-    if (paladinResult.error) {
-        return Response.json({ error: paladinResult.error.message }, { status: 400 });
-    }
-
-    // 3. The PenteExternalCall atomically:
-    //    - calls CodeManager.recordRedemption(uid, redeemer)
-    //    - which calls giftContract.recordRedemption(uid, redeemer)
-    //    - gift contract executes the redemption action
-
-    return Response.json({
-        success: true,
-        transactionId: paladinResult.result,
-    });
-}
-```
-
----
-
-## 11. ERC-721 / ERC-6551 / ERC-1155 Token Patterns
-
-The repository includes production contracts that licensees can use or extend:
-
-### 11.1 Provided Contracts
-
-| Contract | Standard | Source | Purpose |
-|----------|----------|--------|---------|
-| **CryftGreetingCards** | ERC-721 | `Contracts/Tokens/GreetingCards.sol` | NFT gift cards with vault pattern — implements `IRedeemable` |
-| **DakotaDelegation** | EIP-7702 | `Contracts/Genesis/7702/DakotaDelegation.sol` | Delegation target for EOA smart features |
-| **GasSponsor** | — | `Contracts/Genesis/7702/GasSponsor.sol` | Gas sponsorship treasury |
-
-Licensees should deploy their own ERC-6551 and ERC-1155 contracts using standard implementations (OpenZeppelin, thirdweb, etc.) or use thirdweb's deployment tooling.
-
-### 11.2 ERC-6551 Token Bound Accounts
-
-Each ERC-721 NFT gets its own smart contract wallet (TBA) via ERC-6551. When the NFT is sold or transferred, the TBA and all its contents travel with it.
-
-**Canonical ERC-6551 Registry:** `0x000000006551c19487814612e58FE06813775758`
-
-```typescript
-// Create a TBA for NFT #42
-const tx = await registry.createAccount(
-    accountImplementation,    // your deployed account impl
-    "0x" + "00".repeat(32),   // salt
-    112311n,                  // chainId
-    nftCollectionAddress,     // ERC-721 contract
-    42n                       // tokenId
-);
-
-// Compute TBA address (deterministic — same every time)
-const tbaAddress = await registry.account(
-    accountImplementation, "0x" + "00".repeat(32), 112311n, nftCollectionAddress, 42n
-);
-```
-
-### 11.3 ERC-1155 Trait Tokens
-
-Multi-token traits (hats, weapons, skins, attributes, abilities) are minted into TBAs:
-
-```javascript
-// Mint trait token #7 (Gold Helmet) into NFT #42's TBA
-await traitContract.mint(tbaAddress, 7, 1, "0x");
-
-// Read TBA contents
-const balance = await traitContract.balanceOf(tbaAddress, 7);
-// balance = 1n
-```
-
-### 11.4 Combined Flow: Code Redemption → NFT → TBA → Traits
+### Operational Checklist — End-to-End Verification
 
 ```
-1. User purchases NFT from gift contract (ERC-721)
-   → UIDs registered on CodeManager
-   → Codes stored in PrivateComboStorage
-
-2. User creates TBA for their NFT (ERC-6551)
-   → TBA address is deterministic
-
-3. User redeems code
-   → PrivateComboStorage verifies
-   → PenteExternalCall → CodeManager → gift contract
-   → Gift contract mints ERC-1155 trait into user's TBA
-
-4. User sells NFT on marketplace
-   → TBA and all traits transfer automatically with the NFT
+□ CodeManager deployed and initialized
+□ Fee vault set
+□ Gift contract deployed and initialized
+□ maxSaleSupply set
+□ Privacy group created with externalCallsEnabled: "true" (STRING)
+□ Derived submitter funded
+□ PrivateComboStorage deployed with correct CODE_MANAGER constant
+□ admin() returns non-zero → constructor ran
+□ CODE_MANAGER() returns correct address
+□ Privacy group authorized on CodeManager
+□ UIDs registered (via buy() or registerUniqueIds)
+□ Codes generated off-chain: PIN + code → codeHash
+□ storeDataBatch succeeds and validateUniqueIdsOrRevert passes
+□ redeemCode succeeds → recordRedemption routes to gift contract → NFT transferred
+□ tokenURI switches from unredeemed to redeemed metadata
 ```
 
-### 11.5 Batch Transactions via EIP-7702
+### Contract Versions
 
-EIP-7702 natively supports batching multiple calls in one transaction. This enables atomic operations like "redeem code + mint trait into TBA" in one transaction:
-
-```javascript
-const response = await fetch("https://api.thirdweb.com/v1/contracts/write", {
-    method: "POST",
-    headers: {
-        "x-secret-key": process.env.THIRDWEB_SECRET_KEY,
-        "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-        calls: [
-            {
-                contractAddress: ERC1155_TRAITS_ADDRESS,
-                method: "function mint(address to, uint256 id, uint256 amount, bytes data)",
-                params: [tbaAddress, 7, 1, "0x"],
-            },
-            {
-                contractAddress: ERC1155_TRAITS_ADDRESS,
-                method: "function mint(address to, uint256 id, uint256 amount, bytes data)",
-                params: [tbaAddress, 12, 3, "0x"],
-            },
-        ],
-        chainId: 112311,
-        from: userWalletAddress,
-    }),
-});
-```
-
----
-
-## 12. Gas Sponsorship
-
-### 12.1 thirdweb Hosted Sponsorship
-
-Every `POST /v1/contracts/write` call is automatically gas-sponsored by your thirdweb project. Configure policies in the thirdweb dashboard:
-
-- Global spend limits (daily/monthly caps)
-- Chain restrictions (only chain 112311)
-- Contract restrictions (only your deployed contracts)
-- Wallet allowlists/blocklists
-
-### 12.2 Self-Hosted Sponsorship (GasSponsor Contract)
-
-For independent gas sponsorship without thirdweb dependency:
-
-```javascript
-// Deposit CRYFT as a sponsor
-await gasSponsor.deposit({ value: ethers.parseEther("100") });
-
-// Authorize a relayer to claim gas reimbursement
-await gasSponsor.authorizeRelayer(relayerAddress);
-
-// Set limits
-await gasSponsor.setMaxClaimPerTx(ethers.parseEther("0.01"));
-await gasSponsor.setDailyLimit(ethers.parseEther("10"));
-
-// Restrict to specific contracts
-await gasSponsor.addAllowedTarget(codeManagerAddress);
-await gasSponsor.addAllowedTarget(giftContractAddress);
-```
-
-GasSponsor is deployed at `0x...FEeD` and is upgradeable via TransparentUpgradeableProxy.
-
----
-
-## 13. Deployment Checklist
-
-### Infrastructure
-- [ ] Besu 26.1.0 installed with all forks through Osaka enabled from genesis
-- [ ] All validator/RPC nodes running and synced
-- [ ] Paladin deployed (Docker or Kubernetes — see Section 4)
-- [ ] Pente privacy group created with `externalCallsEnabled: true`
-- [ ] Blockscout self-hosted and indexing chain 112311
-- [ ] RPC endpoints accessible to backend / thirdweb
-
-### thirdweb
-- [ ] Project created with API keys (`x-client-id`, `x-secret-key`)
-- [ ] Custom chain defined (`defineChain({ id: 112311, ... })`)
-- [ ] Gas sponsorship policies configured
-- [ ] Server wallet created for backend operations
-
-### Contract Deployment
-- [ ] ProxyAdmin deployed
-- [ ] CodeManager deployed via proxy, initialized, voters configured
-- [ ] Gift contract deployed, implements `IRedeemable`
-- [ ] Privacy group authorized on CodeManager (`voteToAuthorizePrivacyGroup`)
-- [ ] PrivateComboStorage deployed in Pente privacy group
-- [ ] DakotaDelegation deployed via proxy (EIP-7702 target)
-- [ ] GasSponsor deployed via proxy, funded
-- [ ] ERC-6551 Registry deployed or verified at canonical address
-- [ ] ERC-6551 Account Implementation deployed
-- [ ] ERC-1155 Trait collection deployed (if using TBA traits)
-
-### Code Lifecycle
-- [ ] UID range registered on CodeManager (`registerUniqueIds`)
-- [ ] Codes generated off-chain (PIN + code → hash)
-- [ ] Hashes batch-stored in PrivateComboStorage (`storeDataBatch`)
-- [ ] Codes unfrozen for redemption (`setFrozen(uid, false)`)
-- [ ] Redemption tested end-to-end (PIN+hash → Pente → CodeManager → gift contract)
-
-### Integration
-- [ ] Frontend connects to chain 112311 via thirdweb SDK
-- [ ] User authentication working (email / social / passkey)
-- [ ] Code redemption UI working
-- [ ] NFT gallery displaying tokens from gift contract
-- [ ] TBA creation and trait minting working (if applicable)
-- [ ] Blockscout showing NFTs, TBAs, and trait holdings
-- [ ] Gas sponsorship verified (users pay nothing)
-
----
-
-## Source Files Reference
-
-| File | Description |
-|------|-------------|
-| `Contracts/Genesis/BesuGenesis.7z` | Besu genesis file (7z-compressed; extract before use) |
-| `Contracts/CodeManagement/CodeManager.sol` | Public registry + Pente router (v3.0, upgradeable) |
-| `Contracts/CodeManagement/PrivateComboStorage.sol` | Pente privacy group contract (v1.0) |
-| `Contracts/CodeManagement/Interfaces/ICodeManager.sol` | Registry interface |
-| `Contracts/CodeManagement/Interfaces/IRedeemable.sol` | Gift contract interface (6 functions) |
-| `Contracts/CodeManagement/Interfaces/IComboStorage.sol` | Private storage interface (5 functions) |
-| `Contracts/Genesis/7702/DakotaDelegation.sol` | EIP-7702 delegation target |
-| `Contracts/Genesis/7702/GasSponsor.sol` | Gas sponsorship treasury |
-| `Contracts/Genesis/7702/Interfaces/IDakotaDelegation.sol` | Delegation interface |
-| `Contracts/Genesis/7702/Interfaces/IGasSponsor.sol` | Gas sponsor interface |
-| `Contracts/Genesis/7702/EIP-7702-Instructions.md` | EIP-7702 deployment guide |
-| `Contracts/Genesis/GasManager/GasManager.sol` | Block reward + gas funding governance |
-| `Contracts/Genesis/ValidatorContracts/ValidatorSmartContractAllowList.sol` | QBFT validator governance |
-| `Contracts/Genesis/ValidatorContracts/ValidatorSmartContractInterface.sol` | Validator interface |
-| `Contracts/Genesis/Upgradeable/` | Vendored OpenZeppelin 4.9.6 upgradeable stack (MIT) |
-| `Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol` | Upgrade dispatch |
-| `Contracts/Tokens/GreetingCards.sol` | ERC-721 gift card implementation (implements IRedeemable) |
-| `Tools/SolcCompiler/compile.py` | Solidity compiler with auto-detect + vendored/GitHub import resolution |
-| `Tools/BytecodeReplacer/replace_bytecode.py` | Bulk bytecode replacer for genesis files |
-| `Tools/KeyWizard/dakota_keywizard.py` | EOA and Besu node key generator |
-| `Tools/TxSimulator/tx_simulator.py` | Block-paced ETH transfer loop (QBFT/PoA) |
+| Contract | Solidity | EVM Target | Framework |
+|----------|----------|-----------|-----------|
+| CodeManager | >=0.8.2 <0.9.0 | Public chain default | Genesis Upgradeable (custom) |
+| CryftGreetingCards | >=0.8.2 <0.9.0 | Public chain default | OpenZeppelin v5.2.0 Upgradeable |
+| PrivateComboStorage | >=0.8.2 <0.9.0 | shanghai | None (standalone) |
