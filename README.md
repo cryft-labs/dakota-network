@@ -913,6 +913,25 @@ Options:
 - `--solc-version 0.8.34` — override compiler version
 - `--evm osaka` — override EVM target (default: `osaka`)
 
+### `Tools/RedeemableCodeGenerator/generate_redeemable_codes.py`
+
+Generates case-sensitive PIN/code pairs for `PrivateComboStorage` and computes the exact lookup hash format required on-chain: `keccak256(bytes(pin + code))`.
+
+Each run writes the generated output into `Tools/RedeemableCodeGenerator/results/` and also prints the same data to stdout.
+
+```bash
+python3 Tools/RedeemableCodeGenerator/generate_redeemable_codes.py --pin-length 6 --code-length 14
+python3 Tools/RedeemableCodeGenerator/generate_redeemable_codes.py --pin-length 6 --code-length 14 --count 10 --format json
+```
+
+Options:
+- `--pin-length` — required PIN length
+- `--code-length` — required redeemable code length
+- `--count` — number of records to generate (default: `1`)
+- `--pin-alphabet` — optional character set for PIN generation
+- `--code-alphabet` — optional character set for code generation
+- `--format text|json|csv` — choose stdout and saved file format
+
 #### Memory-Safe Assembly
 
 All inline assembly blocks across the codebase are annotated for memory safety. Contracts targeting solc 0.8.34 (Osaka EVM) use the inline `assembly ("memory-safe") { ... }` syntax introduced in solc 0.8.13. Validator contracts targeting solc <0.8.20 (London EVM) use the NatSpec annotation `/// @solidity memory-safe-assembly` above each `assembly { ... }` block, which is the equivalent mechanism for older compiler versions.
@@ -996,6 +1015,9 @@ dakota-network/
 │   │   └── new.txt                    # New bytecode to replace with (paste here)
 │   ├── KeyWizard/
 │   │   └── dakota_keywizard.py       # EOA and Besu node key generator
+│   ├── RedeemableCodeGenerator/
+│   │   ├── generate_redeemable_codes.py # PIN/code/hash generator for PrivateComboStorage
+│   │   └── results/                   # Generated redeemable code output files
 │   ├── TxSimulator/
 │   │   └── tx_simulator.py            # Block-paced ETH transfer loop (QBFT/PoA)
 │   └── SolcCompiler/
