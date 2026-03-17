@@ -39,8 +39,6 @@ pragma solidity >=0.8.2 <0.9.0;
   └──────────────────────────────────────────────────────┘
 */
 
-import "./Interfaces/ICodeManager.sol";
-
 contract PrivateComboStorage {
     // ── Pente External Call ───────────────────────────────
     //
@@ -197,7 +195,10 @@ contract PrivateComboStorage {
 
         emit PenteExternalCall(
             CODE_MANAGER,
-            abi.encodeCall(ICodeManager.validateUniqueIdsOrRevert, (uniqueIds))
+            abi.encodeWithSignature(
+                "validateUniqueIdsOrRevert(string[])",
+                uniqueIds
+            )
         );
 
         // ----------------------------------------------------

@@ -31,9 +31,6 @@ interface ICodeManager {
     /// @notice Returns whether a unique ID was validly registered (valid counter, valid contract identifier).
     function validateUniqueId(string memory uniqueId) external view returns (bool isValid);
 
-    /// @notice Reverts if any provided unique ID is invalid.
-    function validateUniqueIdsOrRevert(string[] calldata uniqueIds) external view;
-
     /// @notice Returns the contract data (giftContract, chainId) for a given contract identifier.
     function getContractData(string memory contractIdentifier)
         external
