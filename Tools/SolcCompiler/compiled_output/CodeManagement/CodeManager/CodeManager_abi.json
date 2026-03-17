@@ -772,6 +772,19 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "privacyGroup",
+        "type": "address"
+      }
+    ],
+    "name": "voteToDeauthorizePrivacyGroup",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "voterContract",
         "type": "address"
       }

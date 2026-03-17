@@ -136,6 +136,11 @@ contract PrivateComboStorage {
         emit AuthorizationUpdated(account, false);
     }
 
+    function transferAdmin(address newAdmin) external onlyAdmin {
+        require(newAdmin != address(0), "Cannot set zero address as admin");
+        admin = newAdmin;
+    }
+
     // ── Batch Code Storage ────────────────────────────────
     //
     //    Store multiple pre-computed hashes in one transaction.

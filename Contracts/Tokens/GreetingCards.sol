@@ -214,6 +214,7 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/
 import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/access/OwnableUpgradeable.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/utils/StringsUpgradeable.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/proxy/utils/Initializable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 import "./Interfaces/ICodeManager.sol";
 import "./Interfaces/IRedeemable.sol";
@@ -222,6 +223,7 @@ contract CryftGreetingCards is
     Initializable,
     OwnableUpgradeable,
     ERC721Upgradeable,
+    ReentrancyGuardUpgradeable,
     IRedeemable
 {
     using StringsUpgradeable for uint256;
@@ -320,6 +322,7 @@ contract CryftGreetingCards is
     ) public initializer {
         __ERC721_init(name_, symbol_);
         __Ownable_init();
+        __ReentrancyGuard_init();
 
         baseTokenURI = baseURI_;
         codeManagerAddress = codeManager_;
@@ -433,7 +436,7 @@ contract CryftGreetingCards is
     /// @param quantity Number of cards to purchase (1 to MAX_BATCH_SIZE)
     /// @param redeemedURI   IPFS base URI for redeemed metadata of this batch
     ///                      (e.g. birthday vs holiday cards).
-    function buy(address buyer, uint256 quantity, string calldata redeemedURI) external payable whenNotPaused {
+    function buy(address buyer, uint256 quantity, string calldata redeemedURI) external payable whenNotPaused nonReentrant {
         require(buyer != address(0), "Invalid buyer address");
         require(quantity > 0 && quantity <= MAX_BATCH_SIZE, "Batch: 1-100");
         require(bytes(redeemedURI).length > 0, "Redeemed URI required");

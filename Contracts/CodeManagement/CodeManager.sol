@@ -57,11 +57,6 @@ interface IVoterChecker {
 contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager {
     using StringsUpgradeable for uint256;
 
-    modifier onlyWhitelisted() {
-        require(isWhitelistedAddress[msg.sender], "Caller is not whitelisted");
-        _;
-    }
-
     enum VoteType {
         ADD_WHITELISTED_ADDRESS,
         REMOVE_WHITELISTED_ADDRESS,
@@ -72,7 +67,8 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         ADD_OTHER_VOTER_CONTRACT,
         REMOVE_OTHER_VOTER_CONTRACT,
         UPDATE_VOTE_TALLY_BLOCK_THRESHOLD,
-        AUTHORIZE_PRIVACY_GROUP
+        AUTHORIZE_PRIVACY_GROUP,
+        DEAUTHORIZE_PRIVACY_GROUP
     }
 
     struct VoteTally {
@@ -152,38 +148,45 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     }
 
     function getVoters() public view returns (address[] memory) {
-        uint256 totalLen = votersArray.length;
+        uint256 maxLen = votersArray.length;
         for (uint256 i = 0; i < otherVoterContracts.length; i++) {
             try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
-                totalLen += ext.length;
+                maxLen += ext.length;
             } catch {}
         }
 
-        address[] memory allVoters = new address[](totalLen);
-        uint256 counter = 0;
+        address[] memory temp = new address[](maxLen);
+        uint256 count = 0;
+
         for (uint256 i = 0; i < votersArray.length; i++) {
-            allVoters[counter] = votersArray[i];
-            counter++;
+            temp[count] = votersArray[i];
+            count++;
         }
+
         for (uint256 i = 0; i < otherVoterContracts.length; i++) {
             try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
                 for (uint256 j = 0; j < ext.length; j++) {
-                    allVoters[counter] = ext[j];
-                    counter++;
+                    bool dup = false;
+                    for (uint256 k = 0; k < count; k++) {
+                        if (temp[k] == ext[j]) { dup = true; break; }
+                    }
+                    if (!dup) {
+                        temp[count] = ext[j];
+                        count++;
+                    }
                 }
             } catch {}
         }
-        return allVoters;
+
+        address[] memory result = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = temp[i];
+        }
+        return result;
     }
     /// @notice Returns the total number of voters (local + external).
     function getVoterCount() public view returns (uint256) {
-        uint256 count = votersArray.length;
-        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
-                count += ext.length;
-            } catch {}
-        }
-        return count;
+        return getVoters().length;
     }
     // ── Vote Tally & Thresholds ───────────────────────────
 
@@ -220,7 +223,7 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     // ── Internal Vote Engine ──────────────────────────────
 
     function _castVote(VoteType voteType, uint256 target) internal {
-        require(target != 0, "Target should not be zero");
+        require(target != 0 || voteType == VoteType.UPDATE_REGISTRATION_FEE, "Target should not be zero");
         // Caller validation is enforced by the onlyVoters modifier on all public entry points
 
         VoteTally storage tally = _voteTallies[voteType][target];
@@ -314,8 +317,12 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
                 emit VoteTallyBlockThresholdUpdated(target);
             } else if (voteType == VoteType.AUTHORIZE_PRIVACY_GROUP) {
                 address targetAddress = address(uint160(target));
-                isAuthorizedPrivacyGroup[targetAddress] = !isAuthorizedPrivacyGroup[targetAddress];
-                emit PrivacyGroupAuthorized(targetAddress, isAuthorizedPrivacyGroup[targetAddress]);
+                isAuthorizedPrivacyGroup[targetAddress] = true;
+                emit PrivacyGroupAuthorized(targetAddress, true);
+            } else if (voteType == VoteType.DEAUTHORIZE_PRIVACY_GROUP) {
+                address targetAddress = address(uint160(target));
+                isAuthorizedPrivacyGroup[targetAddress] = false;
+                emit PrivacyGroupAuthorized(targetAddress, false);
             }
 
             // clear votes
@@ -394,6 +401,12 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     function voteToAuthorizePrivacyGroup(address privacyGroup) external onlyVoters {
         require(privacyGroup != address(0), "Privacy group address cannot be zero");
         _castVote(VoteType.AUTHORIZE_PRIVACY_GROUP, uint256(uint160(privacyGroup)));
+    }
+
+    /// @notice Vote to de-authorize a Pente privacy group address.
+    function voteToDeauthorizePrivacyGroup(address privacyGroup) external onlyVoters {
+        require(privacyGroup != address(0), "Privacy group address cannot be zero");
+        _castVote(VoteType.DEAUTHORIZE_PRIVACY_GROUP, uint256(uint160(privacyGroup)));
     }
 
     // ── Pente Router Functions ────────────────────────────
