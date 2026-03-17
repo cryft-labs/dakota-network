@@ -21,31 +21,6 @@
       },
       {
         "indexed": false,
-        "internalType": "string",
-        "name": "contentId",
-        "type": "string"
-      }
-    ],
-    "name": "ContentChangeRouted",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "giftContract",
-        "type": "address"
-      },
-      {
-        "indexed": false,
         "internalType": "bool",
         "name": "frozen",
         "type": "bool"
@@ -370,25 +345,6 @@
         "type": "string"
       }
     ],
-    "name": "getUniqueIdContent",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      }
-    ],
     "name": "getUniqueIdDetails",
     "outputs": [
       {
@@ -693,24 +649,6 @@
       }
     ],
     "name": "resetExpiredTally",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "contentId",
-        "type": "string"
-      }
-    ],
-    "name": "setUidContent",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

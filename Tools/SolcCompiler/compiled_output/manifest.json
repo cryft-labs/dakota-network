@@ -2,8 +2,8 @@
   {
     "source": "CodeManagement\\CodeManager.sol",
     "contract": "CodeManager",
-    "runtime_bytes": 16735,
-    "creation_bytes": 16959,
+    "runtime_bytes": 16361,
+    "creation_bytes": 16585,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\CodeManager",
     "over_limit": false
   },
@@ -37,110 +37,6 @@
     "runtime_bytes": 85,
     "creation_bytes": 135,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Utils\\StringsUpgradeable",
-    "over_limit": false
-  },
-  {
-    "source": "CodeManagement\\PrivateComboStorage.sol",
-    "contract": "PrivateComboStorage",
-    "runtime_bytes": 7678,
-    "creation_bytes": 7723,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\7702\\DakotaDelegation.sol",
-    "contract": "DakotaDelegation",
-    "runtime_bytes": 6252,
-    "creation_bytes": 6476,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\7702\\DakotaDelegation",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\Upgradeable\\AddressUpgradeable.sol",
-    "contract": "AddressUpgradeable",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\AddressUpgradeable",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\7702\\GasSponsor.sol",
-    "contract": "GasSponsor",
-    "runtime_bytes": 6466,
-    "creation_bytes": 6690,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\7702\\GasSponsor",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\Upgradeable\\AddressUpgradeable.sol",
-    "contract": "AddressUpgradeable",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\AddressUpgradeable",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\GasManager\\GasManager.sol",
-    "contract": "GasManager",
-    "runtime_bytes": 22337,
-    "creation_bytes": 22561,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\GasManager\\GasManager",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\Upgradeable\\AddressUpgradeable.sol",
-    "contract": "AddressUpgradeable",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\AddressUpgradeable",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\Upgradeable\\Proxy\\ERC1967\\ERC1967Proxy.sol",
-    "contract": "ERC1967Proxy",
-    "runtime_bytes": 170,
-    "creation_bytes": 196,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Proxy\\ERC1967\\ERC1967Proxy",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\Upgradeable\\Proxy\\Transparent\\ProxyAdmin.sol",
-    "contract": "ProxyAdmin",
-    "runtime_bytes": 3200,
-    "creation_bytes": 3228,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Proxy\\Transparent\\ProxyAdmin",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\Upgradeable\\Proxy\\Transparent\\TransparentUpgradeableProxy.sol",
-    "contract": "TransparentUpgradeableProxy",
-    "runtime_bytes": 15246,
-    "creation_bytes": 15274,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Proxy\\Transparent\\TransparentUpgradeableProxy",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\Upgradeable\\Utils\\Address.sol",
-    "contract": "Address",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Utils\\Address",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\Upgradeable\\Utils\\StorageSlot.sol",
-    "contract": "StorageSlot",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Utils\\StorageSlot",
-    "over_limit": false
-  },
-  {
-    "source": "Genesis\\ValidatorContracts\\ValidatorSmartContractAllowList.sol",
-    "contract": "ValidatorSmartContractAllowList",
-    "runtime_bytes": 21179,
-    "creation_bytes": 21211,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\ValidatorContracts\\ValidatorSmartContractAllowList",
     "over_limit": false
   },
   {
@@ -186,8 +82,8 @@
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "CryftGreetingCards",
-    "runtime_bytes": 16639,
-    "creation_bytes": 16863,
+    "runtime_bytes": 15471,
+    "creation_bytes": 15695,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Tokens\\GreetingCards",
     "over_limit": false
   }

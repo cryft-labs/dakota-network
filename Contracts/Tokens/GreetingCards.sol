@@ -441,7 +441,7 @@ contract CryftGreetingCards is
         // Calculate registration fee from CodeManager
         uint256 registrationFee = ICodeManager(codeManagerAddress).registrationFee() * quantity;
         uint256 totalCost = (pricePerCard * quantity) + registrationFee;
-        require(msg.value >= totalCost, "Insufficient payment (price + registration fee)");
+        require(msg.value == totalCost, "Payment must equal price + registration fee");
 
         uint256 currentTotal = _totalMinted;
         require(currentTotal + quantity <= registeredSupply, "Exceeds registered supply");
@@ -659,7 +659,9 @@ contract CryftGreetingCards is
 
     function setCodeManagerAddress(address addr) external onlyOwner {
         require(addr != address(0), "Zero address");
+        require(_totalMinted == 0, "Cannot change manager after minting");
         codeManagerAddress = addr;
+        _contractIdentifier = _computeContractIdentifier(chainId);
     }
 
     function setPricePerCard(uint256 price) external onlyOwner {
@@ -706,13 +708,14 @@ contract CryftGreetingCards is
         uint256 balance = address(this).balance;
         require(balance > 0, "No balance");
         (bool ok, ) = payable(owner()).call{value: balance}("");
-        require(ok, "Transfer failed");
+        require(ok, "ETH transfer failed");
     }
 
     /// @notice Withdraw ERC20 tokens accidentally sent to the contract.
     function withdrawTokens(address token, uint256 amount) external onlyOwner {
         require(token != address(0), "Zero address");
-        IERC20Upgradeable(token).transfer(owner(), amount);
+        bool ok = IERC20Upgradeable(token).transfer(owner(), amount);
+        require(ok, "ERC20 transfer failed");
     }
 
     /// @notice Accept ETH payments.

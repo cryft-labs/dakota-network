@@ -779,13 +779,153 @@ def compile_all(
     print()
 
 
+def compile_selected(
+    file_paths: list[str],
+    solc_version: str = None,
+    evm_version: str = DEFAULT_EVM_VERSION,
+    optimize: bool = True,
+    optimize_runs: int = 200,
+):
+    """Compile only the specified Solidity files and output artifacts."""
+    CONTRACTS_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    selected_files = []
+    for file_path in file_paths:
+        resolved = Path(file_path).expanduser()
+        if not resolved.is_absolute():
+            resolved = (APP_DIR.parent.parent / resolved).resolve()
+        else:
+            resolved = resolved.resolve()
+
+        if not resolved.exists() or not resolved.is_file():
+            raise FileNotFoundError(f"File not found: {resolved}")
+        if resolved.suffix.lower() != ".sol":
+            raise ValueError(f"Not a Solidity file: {resolved}")
+        selected_files.append(resolved)
+
+    print("\n" + "=" * 60)
+    print("  Solidity Runtime Bytecode Compiler")
+    print("=" * 60)
+    print(f"\n  Output dir:     {OUTPUT_DIR}")
+    print(f"  Solidity:       {solc_version or 'auto-detect'}")
+    print(f"  EVM:            {evm_version}")
+    print(f"  Optimize:       {optimize} (runs={optimize_runs})")
+    print(f"\n  Selected {len(selected_files)} file(s):\n")
+    for sol_file in selected_files:
+        try:
+            rel = sol_file.relative_to(APP_DIR.parent.parent)
+        except ValueError:
+            rel = sol_file
+        print(f"    {rel}")
+    print()
+
+    total_compiled = 0
+    total_failed = 0
+    summary = []
+
+    for sol_file in selected_files:
+        try:
+            rel_path = sol_file.relative_to(APP_DIR.parent.parent)
+        except ValueError:
+            rel_path = sol_file
+
+        print(f"\n{'─'*60}")
+        print(f"  Compiling: {rel_path}")
+        print(f"{'─'*60}")
+
+        try:
+            file_evm = evm_version
+            stem_lower = sol_file.stem.lower()
+            if any(pat in stem_lower for pat in _SHANGHAI_FILENAME_PATTERNS):
+                file_evm = "shanghai"
+                print(f"  ⚙  EVM override: {evm_version} → shanghai (filename contains 'private')")
+
+            results = compile_contract(
+                str(sol_file),
+                solc_version=solc_version,
+                evm_version=file_evm,
+                optimize=optimize,
+                optimize_runs=optimize_runs,
+            )
+
+            if results:
+                print_results(results)
+                for cname, cdata in results.items():
+                    src_rel = Path(cdata.get("source_rel_path", f"{cname}.sol"))
+                    contract_out = OUTPUT_DIR / src_rel.parent / src_rel.stem
+                    save_results({cname: cdata}, str(contract_out), quiet=True)
+                print(f"Artifacts saved to: {OUTPUT_DIR.resolve()}")
+                total_compiled += len(results)
+                for name, data in results.items():
+                    src_rel = Path(data.get("source_rel_path", f"{name}.sol"))
+                    contract_out = OUTPUT_DIR / src_rel.parent / src_rel.stem
+                    summary.append({
+                        "source": data.get("source_rel_path", str(rel_path)),
+                        "contract": name,
+                        "runtime_bytes": data["runtime_size_bytes"],
+                        "creation_bytes": data["creation_size_bytes"],
+                        "output": str(contract_out),
+                        "over_limit": data["runtime_size_bytes"] > 24576,
+                    })
+            else:
+                print(f"  No concrete contracts found in {rel_path}")
+
+        except Exception as e:
+            print(f"  FAILED: {e}")
+            total_failed += 1
+            summary.append({
+                "source": str(rel_path),
+                "contract": "ERROR",
+                "runtime_bytes": 0,
+                "creation_bytes": 0,
+                "output": "",
+                "over_limit": False,
+                "error": str(e),
+            })
+
+    manifest_path = OUTPUT_DIR / "manifest.json"
+    manifest_path.write_text(json.dumps(summary, indent=2), newline="\n")
+
+    print(f"\n{'='*60}")
+    print(f"  COMPILATION SUMMARY")
+    print(f"{'='*60}")
+    print(f"  Selected files:     {len(selected_files)}")
+    print(f"  Contracts compiled: {total_compiled}")
+    print(f"  Failed:             {total_failed}")
+    print()
+
+    if summary:
+        print(f"  {'Contract':<40} {'Runtime':>10} {'Status':>10}")
+        print(f"  {'─'*40} {'─'*10} {'─'*10}")
+        for item in summary:
+            if item.get("error"):
+                status = "FAILED"
+            elif item["over_limit"]:
+                status = "OVER 24KB"
+            else:
+                status = "OK"
+            size_str = f"{item['runtime_bytes']:,} B" if item['runtime_bytes'] else "—"
+            print(f"  {item['contract']:<40} {size_str:>10} {status:>10}")
+
+    print(f"\n  Artifacts: {OUTPUT_DIR}")
+    print(f"  Manifest:  {manifest_path}")
+    print()
+
+
 # ────────────────────────────────────────────
 # Main
 # ────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compile all Solidity contracts in the contracts/ directory"
+        description="Compile Solidity contracts from the contracts directory or a selected file list"
+    )
+    parser.add_argument(
+        "--file",
+        action="append",
+        default=[],
+        help="Relative or absolute path to a Solidity file to compile. Repeat for multiple files.",
     )
     parser.add_argument("--solc-version", default=None, help=f"Solidity compiler version (default: auto-detect, fallback: {DEFAULT_SOLC_VERSION})")
     parser.add_argument("--evm", default=DEFAULT_EVM_VERSION, help=f"EVM version (default: {DEFAULT_EVM_VERSION})")
@@ -810,12 +950,21 @@ def main():
         if args.clean_cache:
             return
 
-    compile_all(
-        solc_version=args.solc_version,
-        evm_version=args.evm,
-        optimize=not args.no_optimize,
-        optimize_runs=args.runs,
-    )
+    if args.file:
+        compile_selected(
+            file_paths=args.file,
+            solc_version=args.solc_version,
+            evm_version=args.evm,
+            optimize=not args.no_optimize,
+            optimize_runs=args.runs,
+        )
+    else:
+        compile_all(
+            solc_version=args.solc_version,
+            evm_version=args.evm,
+            optimize=not args.no_optimize,
+            optimize_runs=args.runs,
+        )
 
 
 if __name__ == "__main__":

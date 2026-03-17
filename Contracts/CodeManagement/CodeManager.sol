@@ -523,7 +523,7 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     ///         Permissionless — anyone can call as long as they pay `registrationFee * quantity`.
     ///         Works for both direct EOA calls and calls from external contracts.
     ///         Payment is forwarded to the feeVault.
-    function registerUniqueIds(address giftContract, string memory chainId, uint256 quantity) external payable {
+    function registerUniqueIds(address giftContract, string memory chainId, uint256 quantity) external payable nonReentrant {
         require(giftContract != address(0), "Gift contract address cannot be zero");
         require(quantity > 0, "Quantity must be greater than zero");
         require(bytes(chainId).length > 0, "Chain ID cannot be empty");
@@ -533,7 +533,8 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         require(feeVault != address(0), "Fee vault not set");
 
         // Forward fee to fee vault
-        payable(feeVault).transfer(totalFee);
+        (bool feePaid, ) = payable(feeVault).call{value: totalFee}("");
+        require(feePaid, "Fee transfer failed");
 
         _incrementCounter(giftContract, chainId, quantity);
 
@@ -542,7 +543,8 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         // Refund excess payment
         uint256 refund = msg.value - totalFee;
         if (refund > 0) {
-            payable(msg.sender).transfer(refund);
+            (bool refunded, ) = payable(msg.sender).call{value: refund}("");
+            require(refunded, "Refund failed");
         }
     }
 
