@@ -61,7 +61,7 @@ contract PrivateComboStorage {
     /// @dev The CodeManager address on the public chain.
     ///      PenteExternalCall events target this address.
     ///      Hard-code before deployment to match the deployed CodeManager proxy.
-    address public constant CODE_MANAGER = address(0x0000000000000000000000000000000000000000);
+    address public constant CODE_MANAGER = address(0x000000000000000000000000000000000000c0DE);
 
     /// @dev Admin address — deployer of this private contract within the privacy group.
     address public admin;

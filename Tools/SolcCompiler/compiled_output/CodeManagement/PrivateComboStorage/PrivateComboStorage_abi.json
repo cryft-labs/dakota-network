@@ -34,25 +34,6 @@
       },
       {
         "indexed": false,
-        "internalType": "string",
-        "name": "contentId",
-        "type": "string"
-      }
-    ],
-    "name": "ContentUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      },
-      {
-        "indexed": false,
         "internalType": "bytes32",
         "name": "codeHash",
         "type": "bytes32"
@@ -65,25 +46,6 @@
       }
     ],
     "name": "DataStoredStatus",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "frozen",
-        "type": "bool"
-      }
-    ],
-    "name": "FrozenStatusUpdated",
     "type": "event"
   },
   {
@@ -198,88 +160,12 @@
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      }
-    ],
-    "name": "getContentId",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "",
         "type": "address"
       }
     ],
     "name": "isAuthorized",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      }
-    ],
-    "name": "isFrozen",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      }
-    ],
-    "name": "isRedeemed",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "name": "isRedemptionVerified",
     "outputs": [
       {
         "internalType": "bool",
@@ -333,21 +219,6 @@
         "internalType": "bool",
         "name": "exists",
         "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "frozen",
-        "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "redeemed",
-        "type": "bool"
-      },
-      {
-        "internalType": "string",
-        "name": "contentId",
-        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -364,64 +235,14 @@
         "internalType": "bytes32",
         "name": "codeHash",
         "type": "bytes32"
-      }
-    ],
-    "name": "redeemCode",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "name": "redemptionRedeemer",
-    "outputs": [
+      },
       {
         "internalType": "address",
-        "name": "",
+        "name": "redeemer",
         "type": "address"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "contentId",
-        "type": "string"
-      }
-    ],
-    "name": "setContent",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
-      },
-      {
-        "internalType": "bool",
-        "name": "frozen",
-        "type": "bool"
-      }
-    ],
-    "name": "setFrozen",
+    "name": "redeemCode",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
