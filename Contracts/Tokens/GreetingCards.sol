@@ -209,12 +209,12 @@ pragma solidity >=0.8.2 <0.9.0;
   └───────────────────────────────────────────────────────┘
 */
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/token/ERC721/ERC721Upgradeable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/access/OwnableUpgradeable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/utils/StringsUpgradeable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/proxy/utils/Initializable.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v4.9.6/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v5.2.0/contracts/token/ERC721/ERC721Upgradeable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.2.0/contracts/token/ERC20/IERC20.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v5.2.0/contracts/access/OwnableUpgradeable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.2.0/contracts/utils/Strings.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v5.2.0/contracts/proxy/utils/Initializable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v5.2.0/contracts/utils/ReentrancyGuardUpgradeable.sol";
 
 import "./Interfaces/ICodeManager.sol";
 import "./Interfaces/IRedeemable.sol";
@@ -226,7 +226,7 @@ contract CryftGreetingCards is
     ReentrancyGuardUpgradeable,
     IRedeemable
 {
-    using StringsUpgradeable for uint256;
+    using Strings for uint256;
 
     // ──────────────────── Constants ────────────────────
     uint256 public constant MAX_SUPPLY = 10000;
@@ -246,12 +246,10 @@ contract CryftGreetingCards is
     uint256 private _totalMinted;
     uint256 public totalRedeems;
 
-    // ──────────────────── Card Creator ─────────────────
-    /// @notice The creator who registered the uniqueIds on CodeManager.
-    address public cardCreator;
+    // ──────────────────── Chain & ID ───────────────────
     /// @notice The chain identifier matching CodeManager registration.
     string public chainId;
-    /// @notice Pre-computed contractIdentifier = toHexString(keccak256(creator, this, chainId)).
+    /// @notice Pre-computed contractIdentifier = toHexString(keccak256(codeManagerAddress, this, chainId)).
     string private _contractIdentifier;
 
     // ──────────────────── Purchase / Supply ────────────
@@ -310,23 +308,20 @@ contract CryftGreetingCards is
     /// @param symbol_        ERC721 token symbol
     /// @param baseURI_       IPFS base URI for unredeemed card metadata
     /// @param codeManager_   Address of the CodeManager registry contract
-    /// @param creator_       The wallet that registered uniqueIds on CodeManager
     /// @param chainId_       The chain identifier matching CodeManager registration
     function initialize(
         string memory name_,
         string memory symbol_,
         string memory baseURI_,
         address codeManager_,
-        address creator_,
         string memory chainId_
     ) public initializer {
         __ERC721_init(name_, symbol_);
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __ReentrancyGuard_init();
 
         baseTokenURI = baseURI_;
         codeManagerAddress = codeManager_;
-        cardCreator = creator_;
         chainId = chainId_;
         _contractIdentifier = _computeContractIdentifier(chainId_);
     }
@@ -337,7 +332,7 @@ contract CryftGreetingCards is
         string memory cid
     ) internal view returns (string memory) {
         bytes32 hash = keccak256(abi.encodePacked(codeManagerAddress, address(this), cid));
-        return StringsUpgradeable.toHexString(uint256(hash), 32);
+        return Strings.toHexString(uint256(hash), 32);
     }
 
     // ════════════════════════════════════════════════════
@@ -493,18 +488,18 @@ contract CryftGreetingCards is
         public view override returns (bool)
     {
         (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
-        if (!valid || !_exists(tokenId)) return true;
+        if (!valid || _ownerOf(tokenId) == address(0)) return true;
         return _explicitlyFrozen[tokenId];
     }
 
     /// @inheritdoc IRedeemable
     /// @dev Redeemed = the token exists but is no longer held by the vault.
-    ///      Once transferred out, it can never return (enforced by _beforeTokenTransfer).
+    ///      Once transferred out, it can never return (enforced by _update).
     function isUniqueIdRedeemed(string memory uniqueId)
         public view override returns (bool)
     {
         (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
-        if (!valid || !_exists(tokenId)) return false;
+        if (!valid || _ownerOf(tokenId) == address(0)) return false;
         return ownerOf(tokenId) != address(this);
     }
 
@@ -514,7 +509,7 @@ contract CryftGreetingCards is
     function setFrozen(string memory uniqueId, bool frozen) external override {
         require(msg.sender == codeManagerAddress, "Only CodeManager");
         (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
-        require(valid && _exists(tokenId), "Invalid uniqueId");
+        require(valid && _ownerOf(tokenId) != address(0), "Invalid uniqueId");
         require(ownerOf(tokenId) == address(this), "Not in vault");
         _explicitlyFrozen[tokenId] = frozen;
         emit TokenFrozen(tokenId, frozen);
@@ -528,7 +523,7 @@ contract CryftGreetingCards is
     function recordRedemption(string memory uniqueId, address redeemer) external override {
         require(msg.sender == codeManagerAddress, "Only CodeManager");
         (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
-        require(valid && _exists(tokenId), "Invalid uniqueId");
+        require(valid && _ownerOf(tokenId) != address(0), "Invalid uniqueId");
         require(ownerOf(tokenId) == address(this), "Not in vault");
         require(!_explicitlyFrozen[tokenId], "Token is frozen");
 
@@ -551,7 +546,7 @@ contract CryftGreetingCards is
     function tokenURI(uint256 tokenId)
         public view override returns (string memory)
     {
-        require(_exists(tokenId), "Nonexistent token");
+        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
 
         // Redeemed = no longer in vault
         bool redeemed = ownerOf(tokenId) != address(this);
@@ -584,7 +579,7 @@ contract CryftGreetingCards is
 
     /// @notice Get the uniqueId for a given token (computed, no storage).
     function getUniqueIdForToken(uint256 tokenId) external view returns (string memory) {
-        require(_exists(tokenId), "Nonexistent token");
+        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
         return _computeUniqueId(tokenId);
     }
 
@@ -598,11 +593,6 @@ contract CryftGreetingCards is
     /// @notice Get the buyer of a token (looked up from purchase segments).
     function cardBuyer(uint256 tokenId) external view returns (address) {
         return _buyerOf(tokenId);
-    }
-
-    /// @notice Get the original creator of this card collection.
-    function getCardCreator() external view returns (address) {
-        return cardCreator;
     }
 
     /// @notice Number of cards registered but not yet purchased.
@@ -639,10 +629,10 @@ contract CryftGreetingCards is
     {
         bool valid;
         (valid, tokenId) = _parseTokenId(uniqueId);
-        frozen = !valid || !_exists(tokenId) || _explicitlyFrozen[tokenId];
-        redeemed = valid && _exists(tokenId) && ownerOf(tokenId) != address(this);
+        frozen = !valid || _ownerOf(tokenId) == address(0) || _explicitlyFrozen[tokenId];
+        redeemed = valid && _ownerOf(tokenId) != address(0) && ownerOf(tokenId) != address(this);
 
-        if (valid && _exists(tokenId)) {
+        if (valid && _ownerOf(tokenId) != address(0)) {
             nftHolder = ownerOf(tokenId);
         }
     }
@@ -692,7 +682,7 @@ contract CryftGreetingCards is
     /// @param tokenId  The token to freeze/unfreeze
     /// @param frozen   true = frozen (blocked), false = active (redeemable)
     function setFrozen(uint256 tokenId, bool frozen) external {
-        require(_exists(tokenId), "Nonexistent token");
+        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
         require(
             msg.sender == _buyerOf(tokenId) || msg.sender == owner(),
             "Only buyer or owner"
@@ -717,7 +707,7 @@ contract CryftGreetingCards is
     /// @notice Withdraw ERC20 tokens accidentally sent to the contract.
     function withdrawTokens(address token, uint256 amount) external onlyOwner {
         require(token != address(0), "Zero address");
-        bool ok = IERC20Upgradeable(token).transfer(owner(), amount);
+        bool ok = IERC20(token).transfer(owner(), amount);
         require(ok, "ERC20 transfer failed");
     }
 
@@ -729,19 +719,13 @@ contract CryftGreetingCards is
     // ════════════════════════════════════════════════════
 
     /// @dev Prevent tokens from being transferred back into the vault.
-    ///      Minting (from == address(0)) is allowed, all other transfers TO
-    ///      address(this) are blocked. This ensures redeemed status (derived
+    ///      Minting (_ownerOf returns address(0)) is allowed, all other transfers
+    ///      TO address(this) are blocked. This ensures redeemed status (derived
     ///      from "not in vault") can never be falsified.
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 firstTokenId,
-        uint256 batchSize
-    ) internal override {
-        require(
-            to != address(this) || from == address(0),
-            "Cannot transfer to vault"
-        );
-        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+        if (to == address(this)) {
+            require(_ownerOf(tokenId) == address(0), "Cannot transfer to vault");
+        }
+        return super._update(to, tokenId, auth);
     }
 }

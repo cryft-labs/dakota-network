@@ -184,6 +184,44 @@ def _infer_github_url(cached_file: Path, relative_import: str, cache_dir: Path) 
     return f"https://raw.githubusercontent.com/{owner}/{repo_name}/{ref}/{file_path}"
 
 
+def _extract_version_from_cache_path(file_path: Path, cache_dir: Path) -> str:
+    """Extract the OZ version tag (e.g. 'v5.0.0') from a cached file's path."""
+    try:
+        rel = file_path.resolve().relative_to(cache_dir.resolve())
+        parts = rel.parts
+        # Expected layout: parts[0] = repo slug, parts[1] = version tag
+        if len(parts) >= 2 and parts[1].startswith("v"):
+            return parts[1]
+    except ValueError:
+        pass
+    return None
+
+
+def _resolve_openzeppelin_import(import_path: str, importing_file: Path, cache_dir: Path) -> Path:
+    """
+    Resolve @openzeppelin/... imports by downloading from the correct GitHub repo.
+
+    Maps:
+      @openzeppelin/contracts/X        → OpenZeppelin/openzeppelin-contracts,          contracts/X
+      @openzeppelin/contracts-upgradeable/X → OpenZeppelin/openzeppelin-contracts-upgradeable, contracts/X
+    """
+    version = _extract_version_from_cache_path(importing_file, cache_dir)
+    if not version:
+        version = "v5.0.0"  # sensible default for OZ v5
+
+    if import_path.startswith("@openzeppelin/contracts-upgradeable/"):
+        suffix = import_path[len("@openzeppelin/contracts-upgradeable/"):]
+        repo = "OpenZeppelin/openzeppelin-contracts-upgradeable"
+    elif import_path.startswith("@openzeppelin/contracts/"):
+        suffix = import_path[len("@openzeppelin/contracts/"):]
+        repo = "OpenZeppelin/openzeppelin-contracts"
+    else:
+        return None
+
+    github_url = f"https://github.com/{repo}/blob/{version}/contracts/{suffix}"
+    return resolve_github_import(github_url, cache_dir)
+
+
 def resolve_imports_in_file(sol_file: Path, cache_dir: Path, _visited: set = None):
     """Read a .sol file, download any GitHub imports, and rewrite them to local paths.
     Also resolves relative imports in cached GitHub files by reconstructing URLs."""
@@ -206,8 +244,14 @@ def resolve_imports_in_file(sol_file: Path, cache_dir: Path, _visited: set = Non
             if local:
                 rel = os.path.relpath(str(local), str(sol_file.parent)).replace("\\", "/")
                 content = content.replace(imp, rel)
+        elif imp.startswith("@openzeppelin/"):
+            # Resolve @openzeppelin package imports by downloading from GitHub
+            local = _resolve_openzeppelin_import(imp, sol_file, cache_dir)
+            if local:
+                rel = os.path.relpath(str(local), str(sol_file.parent)).replace("\\", "/")
+                content = content.replace(imp, rel)
         elif imp.startswith("@"):
-            continue  # package imports handled elsewhere
+            continue  # other package imports not handled
         else:
             # Relative import — check if it already exists locally
             resolved = (sol_file.parent / imp).resolve()
