@@ -72,6 +72,9 @@ contract PrivateComboStorage is Initializable {
     /// @dev Admin address — deployer of this private contract within the privacy group.
     address public admin;
 
+    /// @dev Pending admin for two-step transfer. Must call acceptAdmin() to complete.
+    address public pendingAdmin;
+
     /// @dev Authorized callers within the privacy group (e.g., redemption service).
     mapping(address => bool) public isAuthorized;
 
@@ -107,6 +110,12 @@ contract PrivateComboStorage is Initializable {
     );
 
     event AuthorizationUpdated(address indexed account, bool status);
+
+    event AdminTransferProposed(address indexed currentAdmin, address indexed proposedAdmin);
+
+    event AdminTransferCancelled(address indexed currentAdmin, address indexed cancelledAdmin);
+
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 
     // ── Modifiers ─────────────────────────────────────────
 
@@ -151,7 +160,22 @@ contract PrivateComboStorage is Initializable {
 
     function transferAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "Cannot set zero address as admin");
-        admin = newAdmin;
+        require(newAdmin != admin, "Already admin");
+        pendingAdmin = newAdmin;
+        emit AdminTransferProposed(admin, newAdmin);
+    }
+
+    function acceptAdmin() external {
+        require(msg.sender == pendingAdmin, "Caller is not pending admin");
+        emit AdminTransferred(admin, msg.sender);
+        admin = msg.sender;
+        pendingAdmin = address(0);
+    }
+
+    function cancelTransferAdmin() external onlyAdmin {
+        require(pendingAdmin != address(0), "No pending transfer");
+        emit AdminTransferCancelled(admin, pendingAdmin);
+        pendingAdmin = address(0);
     }
 
     // ── Batch Code Storage ────────────────────────────────
