@@ -45,9 +45,7 @@ pragma solidity >=0.8.2 <0.9.0;
   └──────────────────────────────────────────────────────┘
 */
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v5.2.0/contracts/proxy/utils/Initializable.sol";
-
-contract PrivateComboStorage is Initializable {
+contract PrivateComboStorage {
     // ── Pente External Call ───────────────────────────────
     //
     //    The PenteExternalCall event is the mechanism by which private
@@ -66,8 +64,8 @@ contract PrivateComboStorage is Initializable {
     //
     //    All configuration is compile-time constant. To change
     //    addresses, limits, or access control, deploy a new
-    //    implementation and upgrade the proxy. This eliminates
-    //    SLOAD overhead on every call (~2,100 gas per read).
+    //    implementation and upgrade the proxy. Constants are
+    //    embedded in bytecode — no state trie lookups needed.
     //
 
     /// @dev The CodeManager address on the public chain.
@@ -75,12 +73,12 @@ contract PrivateComboStorage is Initializable {
     ///      Update via contract upgrade if CodeManager is redeployed.
     address public constant CODE_MANAGER = address(0x000000000000000000000000000000000000c0DE);
 
-    /// @dev Admin — authorized to call storeDataBatch and redeemCode.
+    /// @dev Admin — authorized to call storeDataBatch and redeemCodeBatch.
     ///      Update via contract upgrade.
     address public constant ADMIN = address(0x000000000000000000000000000000000000AD01);
 
     /// @dev Authorized service account — also authorized to call
-    ///      storeDataBatch and redeemCode (e.g., redemption service).
+    ///      storeDataBatch and redeemCodeBatch (e.g., redemption service).
     ///      Update via contract upgrade.
     address public constant AUTHORIZED = address(0x000000000000000000000000000000000000Ad02);
 
@@ -112,8 +110,7 @@ contract PrivateComboStorage is Initializable {
 
     event RedeemStatus(
         string uniqueId,
-        address redeemer,
-        bool status
+        address redeemer
     );
 
     // ── Modifiers ─────────────────────────────────────────
@@ -128,10 +125,8 @@ contract PrivateComboStorage is Initializable {
 
     // ── Constructor ───────────────────────────────────────
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
+    /// @dev No constructor logic needed. All configuration is
+    ///      compile-time constant. Upgrades are handled via proxy.
 
     // ── Batch Code Storage ────────────────────────────────
     //
@@ -289,7 +284,7 @@ contract PrivateComboStorage is Initializable {
             delete pinToHash[pins[i]][codeHashes[i]];
             pinSlotCount[pins[i]]--;
 
-            emit RedeemStatus(redeemedUniqueId, redeemers[i], true);
+            emit RedeemStatus(redeemedUniqueId, redeemers[i]);
 
             // Route redemption to public chain via CodeManager → gift contract.
             // The gift contract validates frozen/redeemed state and transfers

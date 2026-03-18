@@ -478,7 +478,7 @@ CodeManager (independent)
 | Contract | Purpose |
 |----------|---------|
 | **CodeManager** | **Patent-covered.** Permissionless unique ID registry. Own independent voter pool with pluggable `otherVoterContracts[]`, 2/3 supermajority quorum, voter-pool freeze while tallies are active. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`. |
-| **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores hash+salt pairs privately, verifies redemption codes, emits `PenteExternalCall` events to route state changes through CodeManager to the gift contract on the public chain. |
+| **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, emits `PenteExternalCall` events to route state changes through CodeManager to the gift contract on the public chain. All configuration (admin, authorized caller, CodeManager address, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
 | **DakotaDelegation** | EIP-7702 delegation target. EOAs delegate to this contract for smart-account capabilities: single/batch execution, sponsored execution (EIP-712), session keys, EIP-1271 signature validation. |
 | **GasSponsor** | On-chain gas sponsorship treasury. Per-sponsor deposits, authorized relayer management, daily/per-claim spending limits, optional target allowlisting, and integrated `sponsoredCall` forwarding with automatic gas metering and reimbursement. |
 | **CryftGreetingCards** | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase with atomic CodeManager registration. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Explicit freeze for lost/stolen codes. Interfacing with the redeemable-code service is permitted with proper fees or license. |
@@ -549,40 +549,35 @@ Also serves as the Pente router — authorized privacy groups call router functi
 
 ### PrivateComboStorage (Pente Privacy Group)
 
-Deployed inside a Paladin Pente privacy group. All state is private to privacy group members. Stores hash+salt pairs, verifies codes via hash comparison, and manages per-UID state (frozen, redeemed, content) privately. On state changes, emits `PenteExternalCall` events that atomically route through CodeManager to the gift contract on the public chain.
+Deployed inside a Paladin Pente privacy group. All state is private to privacy group members. Stores code hashes with contract-assigned PINs, verifies codes via hash comparison. On redemption, emits `PenteExternalCall` events that atomically route through CodeManager to the gift contract on the public chain.
 
-#### Access Control
+All configuration is embedded as **compile-time constants** — no constructor, no initializer, no storage-based admin. Changes require recompilation and redeployment via proxy upgrade.
 
-| Role | How Assigned | Powers |
-|------|-------------|--------|
-| **Admin** | Deployer (constructor `msg.sender`) | Authorize/deauthorize callers, all storage and redemption operations |
-| **Authorized** | Added by admin | Store code hashes, redeem codes, set frozen/content |
+#### Constants (set at compile time)
+
+| Constant | Type | Description |
+|----------|------|-------------|
+| `ADMIN` | `address` | Primary authorized caller |
+| `AUTHORIZED` | `address` | Secondary authorized caller |
+| `CODE_MANAGER` | `address` | CodeManager address on the public chain |
+| `MAX_PER_PIN` | `uint256` | Maximum entries per PIN slot (32) |
 
 #### Write Functions
 
 | Function | Description |
 |----------|-------------|
-| `storeDataBatch(uniqueIds[], pins[], codeHashes[])` | Bulk store hashes. Each entry defaults to `frozen=true`. Partial success allowed. |
-| `redeemCode(pin, codeHash)` | Verify code, update private state, emit `PenteExternalCall` to route `recordRedemption` through CodeManager. |
-| `setFrozen(uniqueId, frozen)` | Update private frozen state + emit `PenteExternalCall` to route `setUidFrozen` through CodeManager. |
-| `setContent(uniqueId, contentId)` | Update private content + emit `PenteExternalCall` to route `setUidContent` through CodeManager. |
-| `authorize(address)` | Admin-only. Add authorized caller. |
-| `deauthorize(address)` | Admin-only. Remove authorized caller. |
+| `storeDataBatch(uniqueIds[], codeHashes[], pinLength, useSpecialChars, entropy)` | Bulk store code hashes. Contract assigns a PIN per entry from caller-supplied entropy, using either alphanumeric (62-char) or full (76-char) charset. Returns `string[] assignedPins`. Emits `PenteExternalCall` to validate UIDs on CodeManager. |
+| `redeemCodeBatch(pins[], codeHashes[], redeemers[])` | Batch-verify codes, delete consumed entries, emit `PenteExternalCall` per entry to route `recordRedemption` through CodeManager. Fully atomic — any failure reverts the entire batch. |
 
-#### Convenience View Functions
+#### View Functions
 
 | Function | Returns | Description |
 |----------|---------|-------------|
-| `isFrozen(uniqueId)` | `bool` | Private frozen status for a UID |
-| `isRedeemed(uniqueId)` | `bool` | Private redeemed status for a UID |
-| `getContentId(uniqueId)` | `string` | Private content identifier for a UID |
-| `isRedemptionVerified[uniqueId]` | `bool` | Whether a UID has been verified for redemption (private) |
-| `redemptionRedeemer[uniqueId]` | `address` | Redeemer address for a verified UID (private) |
-| `pinSlotCount[pin]` | `uint256` | Number of hashes stored under a PIN |
-| `isAuthorized[addr]` | `bool` | Whether an address is authorized |
-| `admin` | `address` | Admin address |
-| `codeManager` | `address` | CodeManager address on the public chain |
-| `MAX_PER_PIN` | `uint256` | Maximum entries per PIN slot (32) |
+| `pinSlotCount(pin)` | `uint256` | Number of hashes stored under a PIN |
+| `ADMIN()` | `address` | Admin constant |
+| `AUTHORIZED()` | `address` | Authorized caller constant |
+| `CODE_MANAGER()` | `address` | CodeManager address constant |
+| `MAX_PER_PIN()` | `uint256` | Max entries per PIN slot constant |
 
 ---
 
@@ -915,7 +910,9 @@ Options:
 
 ### `Tools/RedeemableCodeGenerator/generate_redeemable_codes.py`
 
-Generates case-sensitive PIN/code pairs for `PrivateComboStorage` and computes the exact lookup hash format required on-chain: `keccak256(bytes(pin + code))`.
+Generates redeemable codes for `PrivateComboStorage` and computes the on-chain hash format: `keccak256(bytes(code))`. PINs are assigned by the contract during `storeDataBatch` — this tool generates the code and its hash for off-chain preparation.
+
+> **Note:** The tool currently generates client-side PINs and hashes as `keccak256(pin + code)` — this is stale. PINs are now contract-assigned and the hash is `keccak256(code)` only. The tool needs updating to match the current contract.
 
 Each run writes the generated output into `Tools/RedeemableCodeGenerator/results/` and also prints the same data to stdout.
 

@@ -23,7 +23,7 @@
 9. [Verifying the Private Contract](#9-verifying-the-private-contract)
 10. [Authorization & Whitelisting Strategy](#10-authorization--whitelisting-strategy)
 11. [Store Flow — storeDataBatch](#11-store-flow--storedatabatch)
-12. [Redeem Flow — redeemCode + External Call](#12-redeem-flow--redeemcode--external-call)
+12. [Redeem Flow — redeemCodeBatch + External Call](#12-redeem-flow--redeemcodebatch--external-call)
 13. [Troubleshooting Matrix](#13-troubleshooting-matrix)
 14. [Operational Best Practices & Key Lessons](#14-operational-best-practices--key-lessons)
 
@@ -54,10 +54,10 @@ The patented system uses a three-layer architecture. No single layer holds all t
 │  ┌────────▼─┴───────────────────────────────────────────────────┐   │
 │  │                  PENTE PRIVACY GROUP                          │   │
 │  │  ┌──────────────────────┐                                    │   │
-│  │  │ PrivateComboStorage  │  • Hash+salt code pairs (private)  │   │
-│  │  │                      │  • PIN-based O(1) bucket lookup    │   │
-│  │  │                      │  • Batch code storage              │   │
-│  │  │                      │  • Hash verification (no cleartext)│   │
+│  │  │ PrivateComboStorage  │  • Hash-only code storage (private) │   │
+│  │  │                      │  • Contract-assigned PIN routing    │   │
+│  │  │                      │  • Batch code storage + redemption  │   │
+│  │  │                      │  • Hash verification (no cleartext) │   │
 │  │  └──────────────────────┘                                    │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
@@ -69,11 +69,11 @@ The patented system uses a three-layer architecture. No single layer holds all t
 |-------|----------|----------------|
 | **Public Registry** | CodeManager | UID registration, deterministic ID generation, governance (2/3 supermajority), Pente router — forwards calls to gift contracts. Stores **no** per-UID state. |
 | **Public Authority** | Gift Contract (IRedeemable) | Sole authority on per-UID state: frozen status, redemption behavior. Decides how redemption works (single-use, multi-use, NFT transfer, etc.). If it reverts, the Pente transition rolls back. |
-| **Private Storage** | PrivateComboStorage | Hash+salt code storage within a Pente privacy group. Verifies codes via hash comparison. Emits `PenteExternalCall` events to atomically route state changes through CodeManager to the gift contract. |
+| **Private Storage** | PrivateComboStorage | Hash-only code storage within a Pente privacy group. PINs are contract-assigned routing keys (not part of the hash). Verifies codes via hash comparison. Emits `PenteExternalCall` events to atomically route state changes through CodeManager to the gift contract. All configuration is compile-time constants — changes require a contract upgrade via proxy. |
 
 ### Key Design Principles
 
-- **No cleartext codes on-chain.** Codes are represented as `keccak256(pin + code)` hashes. The PIN acts as a bucket key for O(1) lookup.
+- **No cleartext codes on-chain.** Codes are represented as `keccak256(code)` hashes. The PIN is a contract-assigned routing key (not part of the hash) for O(1) bucket lookup.
 - **Gift contract authority.** CodeManager delegates all per-UID state management. If the gift contract reverts, the entire Pente transition rolls back atomically.
 - **Default frozen state.** New UIDs default to frozen until explicitly unfrozen, preventing premature redemption.
 - **Privacy-preserving verification.** The Pente privacy group verifies codes privately, then triggers public state updates via `PenteExternalCall`.
@@ -219,7 +219,7 @@ curl -X POST http://localhost:31548/rpc \
 
 The response contains a `privacyGroupAddress`. This group is private-only — `PenteExternalCall` events emitted inside it will not be relayed to the base ledger.
 
-**Use for:** testing `storeDataBatch` and `redeemCode` logic without affecting the public chain.
+**Use for:** testing `storeDataBatch` and `redeemCodeBatch` logic without affecting the public chain.
 
 ---
 
@@ -251,7 +251,7 @@ curl -X POST http://localhost:31548/rpc \
 "externalCallsEnabled": true       ← WRONG (boolean — silently ignored)
 ```
 
-If you pass a boolean, the group will be created successfully but `PenteExternalCall` events will never be relayed. Calls to `storeDataBatch` (which emits `validateUniqueIdsOrRevert` via external call) and `redeemCode` (which emits `recordRedemption` via external call) will appear to succeed in private state but will never reach the public chain. This is the most common silent misconfiguration.
+If you pass a boolean, the group will be created successfully but `PenteExternalCall` events will never be relayed. Calls to `storeDataBatch` (which emits `validateUniqueIdsOrRevert` via external call) and `redeemCodeBatch` (which emits `recordRedemption` via external call) will appear to succeed in private state but will never reach the public chain. This is the most common silent misconfiguration.
 
 ### EVM Version
 
@@ -274,10 +274,9 @@ Pente operations that emit `PenteExternalCall` events require the **derived subm
 
 Gas is needed for any Pente operation that triggers a base-ledger transaction:
 - `storeDataBatch` → emits `PenteExternalCall(CODE_MANAGER, validateUniqueIdsOrRevert(...))`
-- `redeemCode` → emits `PenteExternalCall(CODE_MANAGER, recordRedemption(...))`
-- `setFrozen` (via Pente) → emits `PenteExternalCall(CODE_MANAGER, setUidFrozen(...))`
+- `redeemCodeBatch` → emits `PenteExternalCall(CODE_MANAGER, recordRedemption(...))` per entry
 
-Operations that are purely private (e.g., `admin()`, `authorize()` in a non-ext-calls group) do not require gas on the derived submitter.
+Operations that are purely private (e.g., read-only `pente_call` queries in a non-ext-calls group) do not require gas on the derived submitter.
 
 ### 7.2 How to Identify the Derived Submitter
 
@@ -318,6 +317,7 @@ Before deploying `PrivateComboStorage` into the privacy group:
 2. **Privacy group is created** with `externalCallsEnabled: "true"` and `evmVersion: "shanghai"`
 3. **Derived submitter is funded** (attempt a simple operation first to discover the address)
 4. **`CODE_MANAGER` constant is set** in the `PrivateComboStorage` source to the CodeManager proxy address before compilation
+5. **`ADMIN` and `AUTHORIZED` constants are set** to the correct addresses before compilation
 
 ### 8.2 Compile for Shanghai EVM
 
@@ -336,7 +336,7 @@ When deploying via `pente_deploy`, you must provide the **deployment bytecode** 
 
 The compiled output from `compile.py` includes both in the artifact JSON. Use the `bytecode` field (deployment), not the `deployedBytecode` field (runtime).
 
-The `PrivateComboStorage` constructor sets `admin = msg.sender`. If you use runtime bytecode, the constructor never runs and `admin` will be `address(0)` — all `onlyAdmin` calls will revert.
+`PrivateComboStorage` has no constructor logic (no `initialize()`, no storage writes at deploy time — all configuration is compile-time constants). However, always use deployment bytecode to ensure the EVM deploys correctly.
 
 ### 8.4 Deploy
 
@@ -367,33 +367,7 @@ The response contains the private contract address (e.g., `0xb202...`). Record i
 
 After deployment, verify the contract is working correctly before proceeding to storage and redemption.
 
-### 9.1 Check admin()
-
-```bash
-curl -X POST http://localhost:31548/rpc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "pente_call",
-    "params": [{
-      "group": {
-        "salt": "<PRIVACY_GROUP_SALT>",
-        "members": ["node1@node1"]
-      },
-      "from": "node1@node1",
-      "to": "<PRIVATE_CONTRACT_ADDRESS>",
-      "function": "admin()",
-      "inputs": []
-    }]
-  }'
-```
-
-**Expected:** Returns a non-zero address (the deployer's derived address within the privacy group).
-
-**If it returns `0x0000...0000`:** You deployed with runtime bytecode instead of deployment bytecode. The constructor never ran. Redeploy using the correct bytecode.
-
-### 9.2 Check CODE_MANAGER()
+### 9.1 Check CODE_MANAGER()
 
 ```bash
 curl -X POST http://localhost:31548/rpc \
@@ -419,10 +393,38 @@ curl -X POST http://localhost:31548/rpc \
 
 **If it returns the placeholder `0x...c0DE`:** You compiled `PrivateComboStorage` without updating the `CODE_MANAGER` constant. Recompile and redeploy.
 
+### 9.2 Check ADMIN() and AUTHORIZED()
+
+Verify the access control constants match your intended addresses:
+
+```bash
+# Check ADMIN
+curl -X POST http://localhost:31548/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "pente_call",
+    "params": [{
+      "group": {
+        "salt": "<PRIVACY_GROUP_SALT>",
+        "members": ["node1@node1"]
+      },
+      "from": "node1@node1",
+      "to": "<PRIVATE_CONTRACT_ADDRESS>",
+      "function": "ADMIN()",
+      "inputs": []
+    }]
+  }'
+```
+
+Repeat for `AUTHORIZED()`. Both should return the addresses you set as constants before compilation.
+
 ### 9.3 Verification Checklist
 
-- [ ] `admin()` returns non-zero address (confirms constructor ran → deployment bytecode used)
 - [ ] `CODE_MANAGER()` returns the correct CodeManager proxy address
+- [ ] `ADMIN()` returns the intended admin address
+- [ ] `AUTHORIZED()` returns the intended service account address
 - [ ] Privacy group has `externalCallsEnabled: "true"` (string)
 - [ ] Derived submitter is funded
 
@@ -447,31 +449,13 @@ await codeManager.connect(voter2).voteToAuthorizePrivacyGroup(privacyGroupAddres
 // If 2/3 reached, authorization takes effect
 ```
 
-### 10.2 Authorize Callers on PrivateComboStorage
+### 10.2 Access Control on PrivateComboStorage
 
-Inside the privacy group, `PrivateComboStorage` has its own authorization. The `admin` (deployer) can authorize additional addresses:
+`PrivateComboStorage` uses compile-time constant addresses for access control. Two addresses are authorized: `ADMIN` and `AUTHORIZED`. These are set in the contract source before compilation and cannot be changed at runtime — changing them requires deploying a new implementation and upgrading the proxy.
 
-```bash
-curl -X POST http://localhost:31548/rpc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "pente_invoke",
-    "params": [{
-      "group": {
-        "salt": "<PRIVACY_GROUP_SALT>",
-        "members": ["node1@node1"]
-      },
-      "from": "node1@node1",
-      "to": "<PRIVATE_CONTRACT_ADDRESS>",
-      "function": "authorize(address)",
-      "inputs": ["<ADDRESS_TO_AUTHORIZE>"]
-    }]
-  }'
-```
+There are no `authorize()`, `deauthorize()`, or `transferAdmin()` functions. All configuration updates are performed via contract upgrade.
 
-Only `admin` and authorized addresses can call `storeDataBatch` and `redeemCode`.
+Only `ADMIN` and `AUTHORIZED` can call `storeDataBatch` and `redeemCodeBatch`.
 
 ### 10.3 Register UIDs on CodeManager
 
@@ -505,14 +489,14 @@ The complete authorization sequence:
 1. Deploy CodeManager + Gift Contract on public chain
 2. Create ext-calls privacy group
 3. Fund derived submitter
-4. Deploy PrivateComboStorage in privacy group
-5. Verify admin() and CODE_MANAGER()
-6. Authorize privacy group on CodeManager:
+4. Compile PrivateComboStorage with correct CODE_MANAGER, ADMIN, AUTHORIZED constants
+5. Deploy PrivateComboStorage in privacy group
+6. Verify CODE_MANAGER(), ADMIN(), AUTHORIZED()
+7. Authorize privacy group on CodeManager:
      voteToAuthorizePrivacyGroup(privacyGroupAddress)
-7. Register UIDs on CodeManager (or let buy() do it)
-8. Authorize callers on PrivateComboStorage (optional — admin can call directly)
+8. Register UIDs on CodeManager (or let buy() do it)
 9. Store codes → storeDataBatch
-10. Redeem codes → redeemCode
+10. Redeem codes → redeemCodeBatch
 ```
 
 ---
@@ -526,13 +510,12 @@ Codes are generated off-chain. No cleartext ever touches any chain:
 ```
 For each code:
   1. Generate random code string (e.g., "HappyBirthday2026")
-  2. Choose a PIN (e.g., "OsF") — this is the bucket key
-  3. Compute giftCode = PIN + code = "OsF" + "HappyBirthday2026"
-  4. Compute codeHash = keccak256(abi.encodePacked(giftCode))
-  5. Record: { uniqueId, pin: "OsF", codeHash: 0x... }
+  2. Compute codeHash = keccak256(abi.encodePacked(code))
+     NOTE: The PIN is NOT part of the hash — PINs are assigned by the contract.
+  3. Record: { uniqueId, codeHash: 0x... }
 ```
 
-The PIN is shared with the end user (e.g., printed on the card). The full code is the secret. Both are needed to redeem.
+The contract assigns a PIN to each code during `storeDataBatch`. The PIN is returned to the caller and shared with the end user (e.g., printed on the card). The full code is the secret. Both PIN and code are needed to redeem.
 
 ### 11.2 Calling storeDataBatch
 
@@ -550,44 +533,48 @@ curl -X POST http://localhost:31548/rpc \
       },
       "from": "node1@node1",
       "to": "<PRIVATE_CONTRACT_ADDRESS>",
-      "function": "storeDataBatch(string[],string[],bytes32[])",
+      "function": "storeDataBatch(string[],bytes32[],uint256,bool,bytes32)",
       "inputs": [
         ["<UNIQUE_ID_1>", "<UNIQUE_ID_2>"],
-        ["OsF", "OsF"],
-        ["0xabc123...", "0xdef456..."]
+        ["0xabc123...", "0xdef456..."],
+        3,
+        false,
+        "0x<RANDOM_32_BYTES>"
       ]
     }]
   }'
 ```
 
+The function returns `string[] assignedPins` — the contract-assigned PIN for each entry. Store these PINs alongside the codes in your off-chain database.
+
 ### 11.3 What Happens Inside
 
 `storeDataBatch` executes three phases atomically:
 
-1. **Phase 1 — Local preflight:** Validates arrays, checks for empty values, verifies no duplicate hashes in current state, confirms PIN slots are not full (max 32 per PIN).
+1. **Phase 1 — Local preflight:** Validates arrays, checks for empty values and zero hashes.
 
 2. **Phase 2 — Public registry validation:** Emits `PenteExternalCall` → `CodeManager.validateUniqueIdsOrRevert(uniqueIds)`. If any uniqueId is not registered on CodeManager, the entire Pente transition reverts.
 
-3. **Phase 3 — Store entries:** Stores each `(pin, codeHash) → CodeMetadata{ uniqueId, exists: true }` mapping. Re-checks for duplicates within the same batch. Emits `DataStoredStatus(uniqueId, codeHash, true)` per entry.
+3. **Phase 3 — Assign PINs and store entries:** For each entry, derives a PIN from caller-supplied entropy using the selected charset (alphanumeric or full). If a collision occurs (same codeHash at derived PIN, or slot is full at MAX_PER_PIN=32), the entropy is re-chained via `keccak256(entropy)` until an open slot is found — no revert, no information leakage. Stores `(pin, codeHash) → CodeMetadata{ uniqueId, exists: true }`. Emits `DataStoredStatus(uniqueId, assignedPin)` per entry.
 
 ### 11.4 Failure Modes
 
 | Failure | Cause | Fix |
 |---------|-------|-----|
-| `"Array length mismatch"` | `uniqueIds`, `pins`, and `codeHashes` arrays have different lengths | Ensure all three arrays are the same length |
+| `"Array length mismatch"` | `uniqueIds` and `codeHashes` arrays have different lengths | Ensure both arrays are the same length |
 | `"Empty uniqueId"` | One of the uniqueIds is an empty string | Check your UID generation |
-| `"Empty PIN"` | One of the PINs is an empty string | Ensure PINs are non-empty |
 | `"Zero code hash"` | A codeHash is `bytes32(0)` | Check your hash computation |
-| `"Code hash already stored for PIN"` | This exact `(pin, hash)` pair already exists in private state | Skip duplicates or use a new batch |
-| `"PIN slot full"` | A PIN already has 32 hashes stored | Use a different PIN |
+| `"PIN length must be 1-8"` | Invalid `pinLength` parameter | Use a value between 1 and 8 |
+| `"Entropy cannot be zero"` | Entropy parameter is `bytes32(0)` | Supply random 32 bytes |
+| `"PIN space exhausted"` | 100 retries failed to find an open PIN slot | Increase PIN length or reduce stored codes |
 | `"Invalid uniqueId in batch"` | The uniqueId is not registered on CodeManager | Register UIDs first via `registerUniqueIds` |
 | `"Caller is not an authorized privacy group"` | The privacy group is not authorized on CodeManager | Call `voteToAuthorizePrivacyGroup` |
-| `"Caller is not authorized"` | The `from` identity is not admin or authorized on PrivateComboStorage | Call `authorize(address)` as admin |
+| `"Caller is not authorized"` | The `from` identity is not `ADMIN` or `AUTHORIZED` | Update constants and redeploy via upgrade |
 | `insufficient funds for gas` | The derived submitter has no gas | Fund the address shown in the error |
 
 ---
 
-## 12. Redeem Flow — redeemCode + External Call
+## 12. Redeem Flow — redeemCodeBatch + External Call
 
 ### 12.1 End-to-End Data Flow
 
@@ -595,25 +582,26 @@ curl -X POST http://localhost:31548/rpc \
 User enters PIN + code
          │
          ▼
-Client computes codeHash = keccak256(abi.encodePacked(pin + code))
+Client computes codeHash = keccak256(abi.encodePacked(code))
+  NOTE: The PIN is NOT part of the hash.
          │
          ▼
-Client calls Paladin RPC → PrivateComboStorage.redeemCode(pin, codeHash, redeemer)
+Client calls Paladin RPC → PrivateComboStorage.redeemCodeBatch(pins[], codeHashes[], redeemers[])
          │
          ▼
-PrivateComboStorage (inside Pente privacy group):
+PrivateComboStorage (inside Pente privacy group), for each entry:
   1. Looks up pinToHash[pin][codeHash] → CodeMetadata
   2. Requires: exists == true
   3. Reads uniqueId from the metadata
   4. Deletes the hash entry (code is consumed)
   5. Decrements pinSlotCount[pin]
-  6. Emits RedeemStatus(uniqueId, redeemer, true)
+  6. Emits RedeemStatus(uniqueId, redeemer)
   7. Emits PenteExternalCall(CODE_MANAGER,
        abi.encodeWithSignature("recordRedemption(string,address)", uniqueId, redeemer))
          │
          ▼
-Pente processes the transition, sees PenteExternalCall:
-  → Submits base-ledger tx to CODE_MANAGER from the derived submitter
+Pente processes the transition, sees PenteExternalCall(s):
+  → Submits base-ledger tx(es) to CODE_MANAGER from the derived submitter
          │
          ▼
 CodeManager.recordRedemption(uniqueId, redeemer) [onlyAuthorizedPrivacyGroup]:
@@ -633,7 +621,7 @@ Gift Contract.recordRedemption(uniqueId, redeemer) [onlyCodeManager]:
      → code remains usable
 ```
 
-### 12.2 Calling redeemCode
+### 12.2 Calling redeemCodeBatch
 
 ```bash
 curl -X POST http://localhost:31548/rpc \
@@ -649,11 +637,11 @@ curl -X POST http://localhost:31548/rpc \
       },
       "from": "node1@node1",
       "to": "<PRIVATE_CONTRACT_ADDRESS>",
-      "function": "redeemCode(string,bytes32,address)",
+      "function": "redeemCodeBatch(string[],bytes32[],address[])",
       "inputs": [
-        "<PIN>",
-        "<CODE_HASH>",
-        "<REDEEMER_ADDRESS>"
+        ["<PIN_1>", "<PIN_2>"],
+        ["<CODE_HASH_1>", "<CODE_HASH_2>"],
+        ["<REDEEMER_1>", "<REDEEMER_2>"]
       ]
     }]
   }'
@@ -678,6 +666,7 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 
 | Failure | Cause | Fix |
 |---------|-------|-----|
+| `"Array length mismatch"` | `pins`, `codeHashes`, and `redeemers` arrays differ in length | Ensure all three arrays are the same length |
 | `"PIN cannot be empty"` | Empty PIN string | Provide the PIN |
 | `"Hash cannot be zero"` | `codeHash` is `bytes32(0)` | Check hash computation |
 | `"Redeemer cannot be zero address"` | `redeemer` is `address(0)` | Provide valid redeemer |
@@ -698,8 +687,9 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 |---------|-----------|------------|-----|
 | `insufficient funds for gas * price + value: address 0xABC...` | Derived submitter unfunded | The address in the error is the derived submitter | Send native currency to that exact address |
 | `storeDataBatch` succeeds but public state unchanged | `externalCallsEnabled` passed as boolean `true` instead of string `"true"` | Recreate group and check the field is a string | Create new group with `"externalCallsEnabled": "true"` (string) |
-| `admin()` returns `0x0000...0000` | Deployed with runtime bytecode instead of deployment bytecode | Constructor never ran | Redeploy with deployment bytecode (includes constructor) |
-| `CODE_MANAGER()` returns `0x...c0DE` | Did not update the constant before compiling | Placeholder value still in contract | Update `CODE_MANAGER` in source, recompile, redeploy |
+| `ADMIN()` returns a placeholder address | Did not update the constant before compiling | Placeholder value still in contract | Update `ADMIN` in source, recompile, redeploy via upgrade |
+| `AUTHORIZED()` returns a placeholder address | Did not update the constant before compiling | Placeholder value still in contract | Update `AUTHORIZED` in source, recompile, redeploy via upgrade |
+| `CODE_MANAGER()` returns `0x...c0DE` | Did not update the constant before compiling | Placeholder value still in contract | Update `CODE_MANAGER` in source, recompile, redeploy via upgrade |
 | `"Caller is not an authorized privacy group"` | Privacy group address not authorized on CodeManager | Check `isAuthorizedPrivacyGroup(groupAddr)` | Call `voteToAuthorizePrivacyGroup(groupAddr)` |
 | `"Invalid uniqueId in batch"` during `storeDataBatch` | UIDs not registered on CodeManager | Check `validateUniqueId(uid)` on CodeManager | Call `registerUniqueIds` or `buy()` first |
 | `"No matching uniqueId found."` during redemption | UID not registered on CodeManager | Call `getUniqueIdDetails(uid)` — should revert | Register UIDs first |
@@ -745,23 +735,21 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 
 1. **`externalCallsEnabled` is a string, not a boolean.** This is the single most common silent failure. The privacy group will create successfully with a boolean, but external calls will never fire.
 
-2. **Use deployment bytecode, not runtime bytecode.** If `admin()` returns `address(0)`, the constructor never ran. Always use the `bytecode` field from the compiler output, not `deployedBytecode`.
+2. **Fund the derived submitter, not the root signer.** The address in the `insufficient funds` error is the one that needs funding. It is a deterministic address you cannot predict — you must attempt an operation and read it from the error message.
 
-3. **Fund the derived submitter, not the root signer.** The address in the `insufficient funds` error is the one that needs funding. It is a deterministic address you cannot predict — you must attempt an operation and read it from the error message.
+3. **All addresses and limits are compile-time constants.** `ADMIN`, `AUTHORIZED`, `CODE_MANAGER`, and `MAX_PER_PIN` cannot be changed after deployment. If any is wrong, you must recompile and redeploy via proxy upgrade.
 
-4. **`CODE_MANAGER` is a compile-time constant.** It cannot be changed after deployment. If it's wrong, you must recompile and redeploy.
+4. **Pente runs shanghai EVM.** Private contracts must be compiled with `--evm-version shanghai`. Public contracts can use a later EVM version.
 
-5. **Pente runs shanghai EVM.** Private contracts must be compiled with `--evm-version shanghai`. Public contracts can use a later EVM version.
+5. **Register UIDs before storing codes.** `storeDataBatch` emits a `PenteExternalCall` to `validateUniqueIdsOrRevert`. If UIDs aren't registered, the entire batch reverts atomically.
 
-6. **Register UIDs before storing codes.** `storeDataBatch` emits a `PenteExternalCall` to `validateUniqueIdsOrRevert`. If UIDs aren't registered, the entire batch reverts atomically.
+6. **Counter sync matters.** The GreetingCards `buy()` function verifies `getIdentifierCounter` matches `_totalMinted` before registering new UIDs. If any other caller has registered UIDs for the same contract+chainId pair, `buy()` will revert with `"Counter drift: CodeManager out of sync"`.
 
-7. **Counter sync matters.** The GreetingCards `buy()` function verifies `getIdentifierCounter` matches `_totalMinted` before registering new UIDs. If any other caller has registered UIDs for the same contract+chainId pair, `buy()` will revert with `"Counter drift: CodeManager out of sync"`.
+7. **Frozen state is derived.** In CryftGreetingCards, a card is frozen if: (a) the token doesn't exist yet (not purchased), OR (b) it's explicitly frozen by admin. There is no separate frozen mapping for UIDs — it's computed from on-chain state.
 
-8. **Frozen state is derived.** In CryftGreetingCards, a card is frozen if: (a) the token doesn't exist yet (not purchased), OR (b) it's explicitly frozen by admin. There is no separate frozen mapping for UIDs — it's computed from on-chain state.
+8. **Redeemed state is derived.** A card is redeemed if the token exists AND is not held by the vault (the contract itself). Once transferred out, the transfer guard prevents returning it.
 
-9. **Redeemed state is derived.** A card is redeemed if the token exists AND is not held by the vault (the contract itself). Once transferred out, the transfer guard prevents returning it.
-
-10. **Atomicity is the safety net.** If the gift contract reverts during `recordRedemption` (frozen, already redeemed, invalid UID), the entire Pente transition rolls back. The code hash deletion in PrivateComboStorage is undone. No manual cleanup needed.
+9. **Atomicity is the safety net.** If the gift contract reverts during `recordRedemption` (frozen, already redeemed, invalid UID), the entire Pente transition rolls back. The code hash deletion in PrivateComboStorage is undone. No manual cleanup needed.
 
 ### Operational Checklist — End-to-End Verification
 
@@ -772,14 +760,16 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 □ maxSaleSupply set
 □ Privacy group created with externalCallsEnabled: "true" (STRING)
 □ Derived submitter funded
-□ PrivateComboStorage deployed with correct CODE_MANAGER constant
-□ admin() returns non-zero → constructor ran
+□ PrivateComboStorage compiled with correct ADMIN, AUTHORIZED, CODE_MANAGER constants
+□ PrivateComboStorage deployed via Pente
+□ ADMIN() returns intended admin address
+□ AUTHORIZED() returns intended authorized address
 □ CODE_MANAGER() returns correct address
 □ Privacy group authorized on CodeManager
 □ UIDs registered (via buy() or registerUniqueIds)
-□ Codes generated off-chain: PIN + code → codeHash
-□ storeDataBatch succeeds and validateUniqueIdsOrRevert passes
-□ redeemCode succeeds → recordRedemption routes to gift contract → NFT transferred
+□ Codes generated off-chain: code → codeHash = keccak256(code)
+□ storeDataBatch succeeds → PINs assigned → validateUniqueIdsOrRevert passes
+□ redeemCodeBatch succeeds → recordRedemption routes to gift contract → NFT transferred
 □ tokenURI switches from unredeemed to redeemed metadata
 ```
 
