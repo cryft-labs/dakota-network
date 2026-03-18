@@ -5,6 +5,16 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "InvalidInitialization",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotInitializing",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -34,18 +44,25 @@
       },
       {
         "indexed": false,
-        "internalType": "bytes32",
-        "name": "codeHash",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "status",
-        "type": "bool"
+        "internalType": "string",
+        "name": "assignedPin",
+        "type": "string"
       }
     ],
     "name": "DataStoredStatus",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "version",
+        "type": "uint64"
+      }
+    ],
+    "name": "Initialized",
     "type": "event"
   },
   {
@@ -158,6 +175,13 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -255,22 +279,32 @@
         "type": "string[]"
       },
       {
-        "internalType": "string[]",
-        "name": "pins",
-        "type": "string[]"
-      },
-      {
         "internalType": "bytes32[]",
         "name": "codeHashes",
         "type": "bytes32[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pinLength",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "useSpecialChars",
+        "type": "bool"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "entropy",
+        "type": "bytes32"
       }
     ],
     "name": "storeDataBatch",
     "outputs": [
       {
-        "internalType": "bool[]",
-        "name": "stored",
-        "type": "bool[]"
+        "internalType": "string[]",
+        "name": "assignedPins",
+        "type": "string[]"
       }
     ],
     "stateMutability": "nonpayable",

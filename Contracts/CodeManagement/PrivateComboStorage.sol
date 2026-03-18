@@ -20,9 +20,9 @@ pragma solidity >=0.8.2 <0.9.0;
   │  DEPLOYED INSIDE A PALADIN PENTE PRIVACY GROUP.      │
   │  All state is private to privacy group members.      │
   │                                                      │
-  │  Stores hash+salt pairs (secret representations of   │
-  │  redeemable codes). Verifies submitted codes via     │
-  │  hash comparison.                                    │
+  │  Stores code hashes with contract-assigned PIN       │
+  │  routing keys. Verifies submitted codes via hash     │
+  │  comparison.                                         │
   │                                                      │
   │  Frozen/redeemed status is NOT tracked here — the    │
   │  gift contract on the public chain is the sole       │
@@ -32,14 +32,16 @@ pragma solidity >=0.8.2 <0.9.0;
   │  (e.g. frozen or already redeemed), the entire       │
   │  Pente transition rolls back.                        │
   │                                                      │
-  │  PIN-based O(1) bucket lookup. No cleartext code     │
-  │  ever touches the chain.                             │
+  │  Contract-assigned PIN routing. O(1) bucket lookup.  │
+  │  No cleartext code ever touches the chain.           │
   │                                                      │
   │  Patent: U.S. App. Ser. No. 18/930,857               │
   └──────────────────────────────────────────────────────┘
 */
 
-contract PrivateComboStorage {
+import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v5.2.0/contracts/proxy/utils/Initializable.sol";
+
+contract PrivateComboStorage is Initializable {
     // ── Pente External Call ───────────────────────────────
     //
     //    The PenteExternalCall event is the mechanism by which private
@@ -73,12 +75,13 @@ contract PrivateComboStorage {
         bool exists;
     }
 
-    /// @dev Maximum number of hash/uniqueId entries allowed per PIN slot.
+    /// @dev Maximum entries per PIN slot. When a slot reaches this cap,
+    ///      the entropy chain skips to the next PIN automatically.
     uint256 public constant MAX_PER_PIN = 32;
 
-    /// @dev PIN → codeHash → code metadata. The PIN acts as a bucket
-    ///      index for efficient O(1) lookup. The codeHash is keccak256(giftCode)
-    ///      where giftCode = pin + code, computed off-chain.
+    /// @dev PIN → codeHash → code metadata. The PIN is a contract-assigned
+    ///      routing key for O(1) bucket lookup. The codeHash is keccak256(code)
+    ///      computed off-chain — the PIN is NOT part of the hash.
     mapping(string => mapping(bytes32 => CodeMetadata)) public pinToHash;
 
     /// @dev Tracks how many hashes are currently stored under each PIN.
@@ -88,8 +91,7 @@ contract PrivateComboStorage {
 
     event DataStoredStatus(
         string uniqueId,
-        bytes32 codeHash,
-        bool status
+        string assignedPin
     );
 
     event RedeemStatus(
@@ -115,9 +117,16 @@ contract PrivateComboStorage {
         _;
     }
 
-    // ── Constructor ───────────────────────────────────────
+    // ── Constructor / Initializer ──────────────────────────
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initialize the private storage contract.
+    ///         Must be called once after deployment inside the privacy group.
+    function initialize() public initializer {
         admin = msg.sender;
     }
 
@@ -142,46 +151,55 @@ contract PrivateComboStorage {
     // ── Batch Code Storage ────────────────────────────────
     //
     //    Store multiple pre-computed hashes in one transaction.
-    //    The batch is fully atomic: if any local validation fails,
-    //    any public uniqueId validation fails, or any duplicate/full
-    //    bucket is encountered during the batch, the entire
-    //    transition reverts.
+    //    The caller supplies opaque entropy (e.g. random bytes
+    //    generated off-chain) which the contract uses to derive
+    //    PIN assignments. The entropy never leaves the privacy
+    //    group and cannot be reconstructed by outside observers.
+    //
+    //    The hash is computed off-chain as keccak256(code) — the
+    //    PIN is purely a routing key and is NOT part of the hash.
+    //    This guarantees no two codes can collide within a PIN
+    //    slot (distinct codes → distinct keccak256 outputs).
+    //
+    //    The batch is fully atomic: if any local validation fails
+    //    or any public uniqueId validation fails, the entire
+    //    transition reverts. PIN-slot collisions are resolved
+    //    silently by chaining keccak256(entropy) until an open
+    //    slot is found — no revert, no information leakage.
 
     /// @notice Store multiple pre-computed hashes in one transaction.
-    /// @param uniqueIds Array of unique IDs (must be registered in CodeManager).
-    /// @param pins      Array of PINs (bucket keys for O(1) lookup).
-    /// @param codeHashes Array of keccak256(giftCode) hashes.
-    /// @return stored Per-index boolean indicating which entries were stored.
+    ///         The contract assigns PINs — callers receive them in the return value.
+    /// @param uniqueIds  Array of unique IDs (must be registered in CodeManager).
+    /// @param codeHashes Array of keccak256(code) hashes (PIN is NOT part of the hash).
+    /// @param pinLength  Number of characters for assigned PINs.
+    ///                   Alphanumeric only (62 chars): 3-char = 238,328 slots; 4-char = 14,776,336.
+    ///                   With specials  (76 chars): 3-char = 438,976 slots; 4-char = 33,362,176.
+    /// @param useSpecialChars If true, PINs include special characters
+    ///                   (0-9, A-Z, a-z, !, at, #, $, %, &, *, +, -, =, ?, ~, ^, _, |).
+    ///                   If false, alphanumeric only (0-9, A-Z, a-z).
+    /// @param entropy    Caller-supplied randomness for PIN derivation. Should be
+    ///                   generated off-chain (e.g. keccak256 of random bytes).
+    /// @return assignedPins Per-index PIN strings assigned by the contract.
     function storeDataBatch(
         string[] calldata uniqueIds,
-        string[] calldata pins,
-        bytes32[] calldata codeHashes
-    ) external onlyAuthorizedOrAdmin returns (bool[] memory stored) {
+        bytes32[] calldata codeHashes,
+        uint256 pinLength,
+        bool useSpecialChars,
+        bytes32 entropy
+    ) external onlyAuthorizedOrAdmin returns (string[] memory assignedPins) {
         uint256 len = uniqueIds.length;
-        require(
-            len == pins.length && len == codeHashes.length,
-            "Array length mismatch"
-        );
-
+        require(len == codeHashes.length, "Array length mismatch");
         require(len > 0, "Empty batch");
+        require(pinLength > 0 && pinLength <= 8, "PIN length must be 1-8");
+        require(entropy != bytes32(0), "Entropy cannot be zero");
 
         // ----------------------------------------------------
-        // Phase 1: local preflight against current private state
+        // Phase 1: local preflight — validate inputs
         // ----------------------------------------------------
 
         for (uint256 i = 0; i < len; ) {
             require(bytes(uniqueIds[i]).length > 0, "Empty uniqueId");
-            require(bytes(pins[i]).length > 0, "Empty PIN");
             require(codeHashes[i] != bytes32(0), "Zero code hash");
-            require(
-                !pinToHash[pins[i]][codeHashes[i]].exists,
-                "Code hash already stored for PIN"
-            );
-            require(
-                pinSlotCount[pins[i]] < MAX_PER_PIN,
-                "PIN slot full"
-            );
-
             unchecked { ++i; }
         }
 
@@ -202,32 +220,35 @@ contract PrivateComboStorage {
         );
 
         // ----------------------------------------------------
-        // Phase 3: store all entries
+        // Phase 3: assign PINs and store all entries
         //
-        // Re-check state-sensitive conditions here so duplicates
-        // inside the same batch also revert the whole transaction.
+        // Caller-supplied entropy drives PIN derivation. On each
+        // assignment the entropy is chained: entropy = keccak256(entropy).
+        // If a slot collision occurs (same codeHash already exists
+        // at the derived PIN) or the slot has reached MAX_PER_PIN,
+        // the entropy is re-chained and a new PIN is tried — no
+        // revert, no information leakage. No on-chain counter or
+        // deterministic seed is stored, so PIN assignments cannot
+        // be reconstructed without knowing the original entropy.
         // ----------------------------------------------------
 
-        stored = new bool[](len);
+        assignedPins = new string[](len);
 
         for (uint256 i = 0; i < len; ) {
-            require(
-                !pinToHash[pins[i]][codeHashes[i]].exists,
-                "Duplicate code hash in batch"
+            // Derive PIN; on collision or full slot, rehash entropy and retry.
+            (string memory pin, bytes32 nextEntropy) = _assignPin(
+                entropy, pinLength, useSpecialChars, codeHashes[i]
             );
-            require(
-                pinSlotCount[pins[i]] < MAX_PER_PIN,
-                "PIN slot full during batch store"
-            );
+            entropy = nextEntropy;
 
-            pinToHash[pins[i]][codeHashes[i]] = CodeMetadata({
+            pinToHash[pin][codeHashes[i]] = CodeMetadata({
                 uniqueId: uniqueIds[i],
                 exists: true
             });
-            pinSlotCount[pins[i]]++;
-            stored[i] = true;
+            pinSlotCount[pin]++;
+            assignedPins[i] = pin;
 
-            emit DataStoredStatus(uniqueIds[i], codeHashes[i], true);
+            emit DataStoredStatus(uniqueIds[i], pin);
             unchecked { ++i; }
         }
     }
@@ -240,8 +261,8 @@ contract PrivateComboStorage {
     //    is handled entirely by the gift contract on the public chain.
     //
     /// @notice Redeem a code by submitting its PIN, hash, and target redeemer address.
-    ///         Off-chain: giftCode = pin + code, codeHash = keccak256(giftCode).
-    ///         PIN routes to the correct bucket, hash verifies the code.
+    ///         Off-chain: codeHash = keccak256(code). PIN routes to the correct
+    ///         bucket (assigned during storage), hash verifies the code.
     ///         No cleartext code ever touches the chain. O(1) lookup.
     ///
     ///         The redeemer address is NOT assumed to be msg.sender — it is an
@@ -282,5 +303,65 @@ contract PrivateComboStorage {
                 redeemer
             )
         );
+    }
+
+    // ── Internal Helpers ──────────────────────────────────
+
+    /// @dev Alphanumeric charset: 0-9, A-Z, a-z (62 characters).
+    bytes internal constant CHARSET_ALNUM = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+    /// @dev Full charset: alphanumeric + specials (76 characters).
+    bytes internal constant CHARSET_FULL = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%&*+-=?~^_|";
+
+    /// @dev Size of the alphanumeric-only charset.
+    uint256 internal constant CHARSET_ALNUM_SIZE = 62;
+
+    /// @dev Size of the full charset (alphanumeric + specials).
+    uint256 internal constant CHARSET_FULL_SIZE = 76;
+
+    /// @dev Derive a collision-free PIN for a given codeHash.
+    ///      Chains entropy via keccak256 until an open slot is found.
+    function _assignPin(
+        bytes32 entropy,
+        uint256 pinLength,
+        bool useSpecialChars,
+        bytes32 codeHash
+    ) internal view returns (string memory pin, bytes32 nextEntropy) {
+        nextEntropy = entropy;
+        uint256 base = useSpecialChars ? CHARSET_FULL_SIZE : CHARSET_ALNUM_SIZE;
+        uint256 pinSpace = _powBase(base, pinLength);
+        bytes memory charset = useSpecialChars ? CHARSET_FULL : CHARSET_ALNUM;
+        uint256 retries;
+        do {
+            pin = _toPin(uint256(nextEntropy) % pinSpace, pinLength, charset, base);
+            nextEntropy = keccak256(abi.encodePacked(nextEntropy));
+            retries++;
+            require(retries <= 100, "PIN space exhausted");
+        } while (pinToHash[pin][codeHash].exists || pinSlotCount[pin] >= MAX_PER_PIN);
+    }
+
+    /// @dev Convert a uint to a fixed-length PIN string using the given charset.
+    function _toPin(
+        uint256 value,
+        uint256 length,
+        bytes memory charset,
+        uint256 base
+    ) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(length);
+        for (uint256 i = length; i > 0; ) {
+            unchecked { --i; }
+            buffer[i] = charset[value % base];
+            value /= base;
+        }
+        return string(buffer);
+    }
+
+    /// @dev Compute base^exp for PIN space sizing.
+    function _powBase(uint256 base, uint256 exp) internal pure returns (uint256 result) {
+        result = 1;
+        for (uint256 i = 0; i < exp; ) {
+            result *= base;
+            unchecked { ++i; }
+        }
     }
 }

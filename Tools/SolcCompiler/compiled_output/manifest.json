@@ -1,58 +1,10 @@
 [
   {
-    "source": "ERC721Utils.sol",
-    "contract": "ERC721Utils",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\ERC721Utils",
-    "over_limit": false
-  },
-  {
-    "source": "Panic.sol",
-    "contract": "Panic",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Panic",
-    "over_limit": false
-  },
-  {
-    "source": "Strings.sol",
-    "contract": "Strings",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Strings",
-    "over_limit": false
-  },
-  {
-    "source": "Math.sol",
-    "contract": "Math",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Math",
-    "over_limit": false
-  },
-  {
-    "source": "SafeCast.sol",
-    "contract": "SafeCast",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\SafeCast",
-    "over_limit": false
-  },
-  {
-    "source": "SignedMath.sol",
-    "contract": "SignedMath",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\SignedMath",
-    "over_limit": false
-  },
-  {
-    "source": "Tokens\\GreetingCards.sol",
-    "contract": "CryftGreetingCards",
-    "runtime_bytes": 15152,
-    "creation_bytes": 15366,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Tokens\\GreetingCards",
+    "source": "CodeManagement\\PrivateComboStorage.sol",
+    "contract": "PrivateComboStorage",
+    "runtime_bytes": 6375,
+    "creation_bytes": 6589,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage",
     "over_limit": false
   }
 ]
