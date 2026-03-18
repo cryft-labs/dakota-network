@@ -20,9 +20,18 @@ pragma solidity >=0.8.2 <0.9.0;
   │  DEPLOYED INSIDE A PALADIN PENTE PRIVACY GROUP.      │
   │  All state is private to privacy group members.      │
   │                                                      │
-  │  Stores code hashes with contract-assigned PIN       │
-  │  routing keys. Verifies submitted codes via hash     │
-  │  comparison.                                         │
+  │  Designed for client-generated redeemable codes:     │
+  │  codes are created off-chain, hashed, and submitted  │
+  │  in batches. The contract assigns PIN routing keys   │
+  │  and stores hashes for O(1) verification. Preloaded  │
+  │  or centralized code generation can be handled by    │
+  │  a separate contract if desired.                     │
+  │                                                      │
+  │  Caller-supplied entropy drives PIN assignment.      │
+  │  Collision resolution chains keccak256(entropy)      │
+  │  silently — no revert, no information leakage.       │
+  │  Each PIN slot holds up to MAX_PER_PIN entries.      │
+  │  No cleartext code ever touches the chain.           │
   │                                                      │
   │  Frozen/redeemed status is NOT tracked here — the    │
   │  gift contract on the public chain is the sole       │
@@ -31,9 +40,6 @@ pragma solidity >=0.8.2 <0.9.0;
   │  to the gift contract. If the gift contract reverts  │
   │  (e.g. frozen or already redeemed), the entire       │
   │  Pente transition rolls back.                        │
-  │                                                      │
-  │  Contract-assigned PIN routing. O(1) bucket lookup.  │
-  │  No cleartext code ever touches the chain.           │
   │                                                      │
   │  Patent: U.S. App. Ser. No. 18/930,857               │
   └──────────────────────────────────────────────────────┘
