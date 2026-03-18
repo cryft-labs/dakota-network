@@ -1,42 +1,58 @@
 [
   {
-    "source": "CodeManagement\\CodeManager.sol",
-    "contract": "CodeManager",
-    "runtime_bytes": 16939,
-    "creation_bytes": 17163,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\CodeManager",
+    "source": "ERC1967Proxy.sol",
+    "contract": "ERC1967Proxy",
+    "runtime_bytes": 163,
+    "creation_bytes": 1014,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\ERC1967Proxy",
     "over_limit": false
   },
   {
-    "source": "Genesis\\Upgradeable\\AddressUpgradeable.sol",
-    "contract": "AddressUpgradeable",
+    "source": "ERC1967Utils.sol",
+    "contract": "ERC1967Utils",
     "runtime_bytes": 85,
     "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\AddressUpgradeable",
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\ERC1967Utils",
     "over_limit": false
   },
   {
-    "source": "Genesis\\Upgradeable\\Utils\\Math\\MathUpgradeable.sol",
-    "contract": "MathUpgradeable",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Utils\\Math\\MathUpgradeable",
+    "source": "ProxyAdmin.sol",
+    "contract": "ProxyAdmin",
+    "runtime_bytes": 1039,
+    "creation_bytes": 1275,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\ProxyAdmin",
     "over_limit": false
   },
   {
-    "source": "Genesis\\Upgradeable\\Utils\\Math\\SignedMathUpgradeable.sol",
-    "contract": "SignedMathUpgradeable",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Utils\\Math\\SignedMathUpgradeable",
+    "source": "TransparentUpgradeableProxy.sol",
+    "contract": "TransparentUpgradeableProxy",
+    "runtime_bytes": 1137,
+    "creation_bytes": 3610,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\TransparentUpgradeableProxy",
     "over_limit": false
   },
   {
-    "source": "Genesis\\Upgradeable\\Utils\\StringsUpgradeable.sol",
-    "contract": "StringsUpgradeable",
+    "source": "Address.sol",
+    "contract": "Address",
     "runtime_bytes": 85,
     "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Utils\\StringsUpgradeable",
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Address",
+    "over_limit": false
+  },
+  {
+    "source": "Errors.sol",
+    "contract": "Errors",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Errors",
+    "over_limit": false
+  },
+  {
+    "source": "StorageSlot.sol",
+    "contract": "StorageSlot",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\StorageSlot",
     "over_limit": false
   }
 ]

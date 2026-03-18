@@ -1,0 +1,22 @@
+{
+  "runtime_bytecode": "0x730000000000000000000000000000000000000000301460806040525f5ffdfea2646970667358221220924f98c82842b9f03d22797fbf0a4ce1aa17dcea2267ea9fadb19e491fde450164736f6c63430008220033",
+  "creation_bytecode": "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea2646970667358221220924f98c82842b9f03d22797fbf0a4ce1aa17dcea2267ea9fadb19e491fde450164736f6c63430008220033",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        }
+      ],
+      "name": "AddressEmptyCode",
+      "type": "error"
+    }
+  ],
+  "opcodes": "PUSH1 0x55 PUSH1 0x32 PUSH1 0xB DUP3 DUP3 DUP3 CODECOPY DUP1 MLOAD PUSH0 BYTE PUSH1 0x73 EQ PUSH1 0x26 JUMPI PUSH4 0x4E487B71 PUSH1 0xE0 SHL PUSH0 MSTORE PUSH0 PUSH1 0x4 MSTORE PUSH1 0x24 PUSH0 REVERT JUMPDEST ADDRESS PUSH0 MSTORE PUSH1 0x73 DUP2 MSTORE8 DUP3 DUP2 RETURN INVALID PUSH20 0x0 ADDRESS EQ PUSH1 0x80 PUSH1 0x40 MSTORE PUSH0 PUSH0 REVERT INVALID LOG2 PUSH5 0x6970667358 0x22 SLT KECCAK256 SWAP3 0x4F SWAP9 0xC8 0x28 TIMESTAMP 0xB9 CREATE RETURNDATASIZE 0x22 PUSH26 0x7FBF0A4CE1AA17DCEA2267EA9FADB19E491FDE450164736F6C63 NUMBER STOP ADDMOD 0x22 STOP CALLER ",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.34+commit.80d5c536\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"}],\"name\":\"AddressEmptyCode\",\"type\":\"error\"}],\"devdoc\":{\"details\":\"Collection of functions related to the address type\",\"errors\":{\"AddressEmptyCode(address)\":[{\"details\":\"There's no code at `target` (it is not a contract).\"}]},\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"Tools/SolcCompiler/.import_cache/OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Address.sol\":\"Address\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"Tools/SolcCompiler/.import_cache/OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Address.sol\":{\"keccak256\":\"0xaaa1d17c1129b127a4a401db2fbd72960e2671474be3d08cae71ccdc42f7624c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://cb2f27cd3952aa667e198fba0d9b7bcec52fbb12c16f013c25fe6fb52b29cc0e\",\"dweb:/ipfs/QmeuohBFoeyDPZA9JNCTEDz3VBfBD4EABWuWXVhHAuEpKR\"]},\"Tools/SolcCompiler/.import_cache/OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Errors.sol\":{\"keccak256\":\"0x6afa713bfd42cf0f7656efa91201007ac465e42049d7de1d50753a373648c123\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://ba1d02f4847670a1b83dec9f7d37f0b0418d6043447b69f3a29a5f9efc547fcf\",\"dweb:/ipfs/QmQ7iH2keLNUKgq2xSWcRmuBE5eZ3F5whYAkAGzCNNoEWB\"]}},\"version\":1}",
+  "runtime_size_bytes": 85,
+  "creation_size_bytes": 135,
+  "source_rel_path": "Address.sol"
+}
