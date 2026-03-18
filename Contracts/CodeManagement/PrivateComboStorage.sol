@@ -63,20 +63,26 @@ contract PrivateComboStorage is Initializable {
     );
 
     // ── State ─────────────────────────────────────────────
+    //
+    //    All configuration is compile-time constant. To change
+    //    addresses, limits, or access control, deploy a new
+    //    implementation and upgrade the proxy. This eliminates
+    //    SLOAD overhead on every call (~2,100 gas per read).
+    //
 
     /// @dev The CodeManager address on the public chain.
     ///      PenteExternalCall events target this address.
-    ///      Hard-code before deployment to match the deployed CodeManager proxy.
+    ///      Update via contract upgrade if CodeManager is redeployed.
     address public constant CODE_MANAGER = address(0x000000000000000000000000000000000000c0DE);
 
-    /// @dev Admin address — deployer of this private contract within the privacy group.
-    address public admin;
+    /// @dev Admin — authorized to call storeDataBatch and redeemCode.
+    ///      Update via contract upgrade.
+    address public constant ADMIN = address(0x000000000000000000000000000000000000AD01);
 
-    /// @dev Pending admin for two-step transfer. Must call acceptAdmin() to complete.
-    address public pendingAdmin;
-
-    /// @dev Authorized callers within the privacy group (e.g., redemption service).
-    mapping(address => bool) public isAuthorized;
+    /// @dev Authorized service account — also authorized to call
+    ///      storeDataBatch and redeemCode (e.g., redemption service).
+    ///      Update via contract upgrade.
+    address public constant AUTHORIZED = address(0x000000000000000000000000000000000000Ad02);
 
     /// @dev Per-code metadata stored privately.
     struct CodeMetadata {
@@ -86,6 +92,7 @@ contract PrivateComboStorage is Initializable {
 
     /// @dev Maximum entries per PIN slot. When a slot reaches this cap,
     ///      the entropy chain skips to the next PIN automatically.
+    ///      Update via contract upgrade.
     uint256 public constant MAX_PER_PIN = 32;
 
     /// @dev PIN → codeHash → code metadata. The PIN is a contract-assigned
@@ -109,73 +116,21 @@ contract PrivateComboStorage is Initializable {
         bool status
     );
 
-    event AuthorizationUpdated(address indexed account, bool status);
-
-    event AdminTransferProposed(address indexed currentAdmin, address indexed proposedAdmin);
-
-    event AdminTransferCancelled(address indexed currentAdmin, address indexed cancelledAdmin);
-
-    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
-
     // ── Modifiers ─────────────────────────────────────────
 
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Caller is not admin");
-        _;
-    }
-
-    modifier onlyAuthorizedOrAdmin() {
+    modifier onlyAuthorized() {
         require(
-            msg.sender == admin || isAuthorized[msg.sender],
+            msg.sender == ADMIN || msg.sender == AUTHORIZED,
             "Caller is not authorized"
         );
         _;
     }
 
-    // ── Constructor / Initializer ──────────────────────────
+    // ── Constructor ───────────────────────────────────────
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
-    }
-
-    /// @notice Initialize the private storage contract.
-    ///         Must be called once after deployment inside the privacy group.
-    function initialize() public initializer {
-        admin = msg.sender;
-    }
-
-    // ── Authorization ─────────────────────────────────────
-
-    function authorize(address account) external onlyAdmin {
-        require(account != address(0), "Cannot authorize zero address");
-        isAuthorized[account] = true;
-        emit AuthorizationUpdated(account, true);
-    }
-
-    function deauthorize(address account) external onlyAdmin {
-        isAuthorized[account] = false;
-        emit AuthorizationUpdated(account, false);
-    }
-
-    function transferAdmin(address newAdmin) external onlyAdmin {
-        require(newAdmin != address(0), "Cannot set zero address as admin");
-        require(newAdmin != admin, "Already admin");
-        pendingAdmin = newAdmin;
-        emit AdminTransferProposed(admin, newAdmin);
-    }
-
-    function acceptAdmin() external {
-        require(msg.sender == pendingAdmin, "Caller is not pending admin");
-        emit AdminTransferred(admin, msg.sender);
-        admin = msg.sender;
-        pendingAdmin = address(0);
-    }
-
-    function cancelTransferAdmin() external onlyAdmin {
-        require(pendingAdmin != address(0), "No pending transfer");
-        emit AdminTransferCancelled(admin, pendingAdmin);
-        pendingAdmin = address(0);
     }
 
     // ── Batch Code Storage ────────────────────────────────
@@ -216,7 +171,7 @@ contract PrivateComboStorage is Initializable {
         uint256 pinLength,
         bool useSpecialChars,
         bytes32 entropy
-    ) external onlyAuthorizedOrAdmin returns (string[] memory assignedPins) {
+    ) external onlyAuthorized returns (string[] memory assignedPins) {
         uint256 len = uniqueIds.length;
         require(len == codeHashes.length, "Array length mismatch");
         require(len > 0, "Empty batch");
@@ -283,56 +238,74 @@ contract PrivateComboStorage is Initializable {
         }
     }
 
-    // ── Redemption ────────────────────────────────────────
+    // ── Batch Redemption ────────────────────────────────────
     //
-    //    Verifies a submitted code against the stored hash, then emits
-    //    PenteExternalCall to route the redemption through
+    //    Verifies submitted codes against stored hashes, then emits
+    //    PenteExternalCall for each to route redemptions through
     //    CodeManager → gift contract. Frozen / redeemed validation
     //    is handled entirely by the gift contract on the public chain.
     //
-    /// @notice Redeem a code by submitting its PIN, hash, and target redeemer address.
+    /// @notice Redeem one or more codes in a single transaction.
     ///         Off-chain: codeHash = keccak256(code). PIN routes to the correct
     ///         bucket (assigned during storage), hash verifies the code.
     ///         No cleartext code ever touches the chain. O(1) lookup.
     ///
-    ///         The redeemer address is NOT assumed to be msg.sender — it is an
-    ///         explicit parameter to support meta-transactions, sponsored calls,
+    ///         The redeemer addresses are NOT assumed to be msg.sender — they are
+    ///         explicit parameters to support meta-transactions, sponsored calls,
     ///         and user-supplied third-party wallet addresses. The frontend
-    ///         provides a predefined or user-selected redeemer address.
+    ///         provides predefined or user-selected redeemer addresses.
     ///
     ///         Frozen / redeemed status is NOT checked here — the gift contract
-    ///         on the public chain is the sole authority. If the token is frozen
+    ///         on the public chain is the sole authority. If a token is frozen
     ///         or already redeemed, the gift contract reverts and the entire
     ///         Pente transition rolls back atomically, undoing all private state
-    ///         changes including the code deletion below.
-    function redeemCode(string memory pin, bytes32 codeHash, address redeemer) external onlyAuthorizedOrAdmin {
-        require(bytes(pin).length > 0, "PIN cannot be empty");
-        require(codeHash != bytes32(0), "Hash cannot be zero");
-        require(redeemer != address(0), "Redeemer cannot be zero address");
+    ///         changes including the code deletions below.
+    ///
+    ///         The batch is fully atomic: if any redemption fails, the entire
+    ///         transition reverts.
+    /// @param pins      Array of PINs (assigned during storage).
+    /// @param codeHashes Array of keccak256(code) hashes.
+    /// @param redeemers  Array of redeemer addresses to receive the NFTs.
+    function redeemCodeBatch(
+        string[] calldata pins,
+        bytes32[] calldata codeHashes,
+        address[] calldata redeemers
+    ) external onlyAuthorized {
+        uint256 len = pins.length;
+        require(len == codeHashes.length && len == redeemers.length, "Array length mismatch");
+        require(len > 0, "Empty batch");
 
-        CodeMetadata storage metadata = pinToHash[pin][codeHash];
-        require(metadata.exists, "Invalid PIN or code hash");
+        for (uint256 i = 0; i < len; ) {
+            require(bytes(pins[i]).length > 0, "PIN cannot be empty");
+            require(codeHashes[i] != bytes32(0), "Hash cannot be zero");
+            require(redeemers[i] != address(0), "Redeemer cannot be zero address");
 
-        string memory redeemedUniqueId = metadata.uniqueId;
+            CodeMetadata storage metadata = pinToHash[pins[i]][codeHashes[i]];
+            require(metadata.exists, "Invalid PIN or code hash");
 
-        // Clear stored hash data and free the PIN slot
-        delete pinToHash[pin][codeHash];
-        pinSlotCount[pin]--;
+            string memory redeemedUniqueId = metadata.uniqueId;
 
-        emit RedeemStatus(redeemedUniqueId, redeemer, true);
+            // Clear stored hash data and free the PIN slot
+            delete pinToHash[pins[i]][codeHashes[i]];
+            pinSlotCount[pins[i]]--;
 
-        // Route redemption to public chain via CodeManager → gift contract.
-        // The gift contract validates frozen/redeemed state and transfers
-        // the NFT to the redeemer. If it reverts, the entire Pente
-        // transition rolls back — including the delete above.
-        emit PenteExternalCall(
-            CODE_MANAGER,
-            abi.encodeWithSignature(
-                "recordRedemption(string,address)",
-                redeemedUniqueId,
-                redeemer
-            )
-        );
+            emit RedeemStatus(redeemedUniqueId, redeemers[i], true);
+
+            // Route redemption to public chain via CodeManager → gift contract.
+            // The gift contract validates frozen/redeemed state and transfers
+            // the NFT to the redeemer. If it reverts, the entire Pente
+            // transition rolls back — including the deletes above.
+            emit PenteExternalCall(
+                CODE_MANAGER,
+                abi.encodeWithSignature(
+                    "recordRedemption(string,address)",
+                    redeemedUniqueId,
+                    redeemers[i]
+                )
+            );
+
+            unchecked { ++i; }
+        }
     }
 
     // ── Internal Helpers ──────────────────────────────────
