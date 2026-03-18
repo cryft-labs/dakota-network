@@ -113,6 +113,11 @@ contract PrivateComboStorage {
         address redeemer
     );
 
+    event RedeemFailed(
+        uint256 index,
+        string reason
+    );
+
     // ── Modifiers ─────────────────────────────────────────
 
     modifier onlyAuthorized() {
@@ -235,10 +240,13 @@ contract PrivateComboStorage {
 
     // ── Batch Redemption ────────────────────────────────────
     //
-    //    Verifies submitted codes against stored hashes, then emits
-    //    PenteExternalCall for each to route redemptions through
-    //    CodeManager → gift contract. Frozen / redeemed validation
-    //    is handled entirely by the gift contract on the public chain.
+    //    Verifies submitted codes against stored hashes. Entries
+    //    that fail local validation (bad PIN, zero hash, missing
+    //    entry) are skipped with a RedeemFailed event — no
+    //    PenteExternalCall is emitted for them. Valid entries are
+    //    deleted and routed through CodeManager → gift contract
+    //    via PenteExternalCall. Frozen / redeemed validation is
+    //    handled entirely by the gift contract on the public chain.
     //
     /// @notice Redeem one or more codes in a single transaction.
     ///         Off-chain: codeHash = keccak256(code). PIN routes to the correct
@@ -250,14 +258,17 @@ contract PrivateComboStorage {
     ///         and user-supplied third-party wallet addresses. The frontend
     ///         provides predefined or user-selected redeemer addresses.
     ///
-    ///         Frozen / redeemed status is NOT checked here — the gift contract
-    ///         on the public chain is the sole authority. If a token is frozen
-    ///         or already redeemed, the gift contract reverts and the entire
-    ///         Pente transition rolls back atomically, undoing all private state
-    ///         changes including the code deletions below.
+    ///         Entries that fail local validation (empty PIN, zero hash, zero
+    ///         redeemer, or no matching entry in private state) are skipped —
+    ///         a RedeemFailed event is emitted with the index and reason, and
+    ///         no PenteExternalCall is emitted for that entry. This prevents
+    ///         a single bad entry from poisoning the entire batch.
     ///
-    ///         The batch is fully atomic: if any redemption fails, the entire
-    ///         transition reverts.
+    ///         Entries that pass local validation are deleted from private
+    ///         state and routed to the public chain. If the gift contract
+    ///         reverts for any routed entry (frozen, already redeemed), the
+    ///         entire Pente transition still rolls back — but only entries
+    ///         that were genuinely valid locally will have been routed.
     /// @param pins      Array of PINs (assigned during storage).
     /// @param codeHashes Array of keccak256(code) hashes.
     /// @param redeemers  Array of redeemer addresses to receive the NFTs.
@@ -271,12 +282,29 @@ contract PrivateComboStorage {
         require(len > 0, "Empty batch");
 
         for (uint256 i = 0; i < len; ) {
-            require(bytes(pins[i]).length > 0, "PIN cannot be empty");
-            require(codeHashes[i] != bytes32(0), "Hash cannot be zero");
-            require(redeemers[i] != address(0), "Redeemer cannot be zero address");
+            // ── Local validation — skip invalid entries ──
+            if (bytes(pins[i]).length == 0) {
+                emit RedeemFailed(i, "PIN cannot be empty");
+                unchecked { ++i; }
+                continue;
+            }
+            if (codeHashes[i] == bytes32(0)) {
+                emit RedeemFailed(i, "Hash cannot be zero");
+                unchecked { ++i; }
+                continue;
+            }
+            if (redeemers[i] == address(0)) {
+                emit RedeemFailed(i, "Redeemer cannot be zero address");
+                unchecked { ++i; }
+                continue;
+            }
 
             CodeMetadata storage metadata = pinToHash[pins[i]][codeHashes[i]];
-            require(metadata.exists, "Invalid PIN or code hash");
+            if (!metadata.exists) {
+                emit RedeemFailed(i, "Invalid PIN or code hash");
+                unchecked { ++i; }
+                continue;
+            }
 
             string memory redeemedUniqueId = metadata.uniqueId;
 
@@ -287,6 +315,7 @@ contract PrivateComboStorage {
             emit RedeemStatus(redeemedUniqueId, redeemers[i]);
 
             // Route redemption to public chain via CodeManager → gift contract.
+            // Only entries that pass local validation reach this point.
             // The gift contract validates frozen/redeemed state and transfers
             // the NFT to the redeemer. If it reverts, the entire Pente
             // transition rolls back — including the deletes above.

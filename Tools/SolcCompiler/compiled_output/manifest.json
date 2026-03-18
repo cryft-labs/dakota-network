@@ -2,8 +2,8 @@
   {
     "source": "CodeManagement\\PrivateComboStorage.sol",
     "contract": "PrivateComboStorage",
-    "runtime_bytes": 5884,
-    "creation_bytes": 5912,
+    "runtime_bytes": 5993,
+    "creation_bytes": 6021,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage",
     "over_limit": false
   }
