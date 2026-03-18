@@ -480,9 +480,11 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         require(len > 0, "No uniqueIds provided");
 
         for (uint256 i = 0; i < len; ) {
+            // getUniqueIdDetails reverts on invalid format / unregistered UID
+            (address giftContract, , ) = getUniqueIdDetails(uniqueIds[i]);
             require(
-                validateUniqueId(uniqueIds[i]),
-                "Invalid uniqueId in batch"
+                !IRedeemable(giftContract).isUniqueIdRedeemed(uniqueIds[i]),
+                "UniqueId already redeemed"
             );
             unchecked { ++i; }
         }

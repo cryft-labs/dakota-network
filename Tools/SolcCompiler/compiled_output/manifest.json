@@ -1,10 +1,42 @@
 [
   {
-    "source": "CodeManagement\\PrivateComboStorage.sol",
-    "contract": "PrivateComboStorage",
-    "runtime_bytes": 5993,
-    "creation_bytes": 6021,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage",
+    "source": "CodeManagement\\CodeManager.sol",
+    "contract": "CodeManager",
+    "runtime_bytes": 16939,
+    "creation_bytes": 17163,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\CodeManager",
+    "over_limit": false
+  },
+  {
+    "source": "Genesis\\Upgradeable\\AddressUpgradeable.sol",
+    "contract": "AddressUpgradeable",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\AddressUpgradeable",
+    "over_limit": false
+  },
+  {
+    "source": "Genesis\\Upgradeable\\Utils\\Math\\MathUpgradeable.sol",
+    "contract": "MathUpgradeable",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Utils\\Math\\MathUpgradeable",
+    "over_limit": false
+  },
+  {
+    "source": "Genesis\\Upgradeable\\Utils\\Math\\SignedMathUpgradeable.sol",
+    "contract": "SignedMathUpgradeable",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Utils\\Math\\SignedMathUpgradeable",
+    "over_limit": false
+  },
+  {
+    "source": "Genesis\\Upgradeable\\Utils\\StringsUpgradeable.sol",
+    "contract": "StringsUpgradeable",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Genesis\\Upgradeable\\Utils\\StringsUpgradeable",
     "over_limit": false
   }
 ]

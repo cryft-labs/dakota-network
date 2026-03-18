@@ -76,6 +76,25 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "StoreFailed",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "ADMIN",
     "outputs": [

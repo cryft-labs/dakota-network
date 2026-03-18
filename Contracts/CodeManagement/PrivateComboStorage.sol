@@ -118,6 +118,11 @@ contract PrivateComboStorage {
         string reason
     );
 
+    event StoreFailed(
+        uint256 index,
+        string reason
+    );
+
     // ── Modifiers ─────────────────────────────────────────
 
     modifier onlyAuthorized() {
@@ -146,14 +151,26 @@ contract PrivateComboStorage {
     //    This guarantees no two codes can collide within a PIN
     //    slot (distinct codes → distinct keccak256 outputs).
     //
-    //    The batch is fully atomic: if any local validation fails
-    //    or any public uniqueId validation fails, the entire
-    //    transition reverts. PIN-slot collisions are resolved
-    //    silently by chaining keccak256(entropy) until an open
-    //    slot is found — no revert, no information leakage.
+    //    Entries that fail local validation (empty uniqueId, zero
+    //    hash) are skipped with a StoreFailed event — no PIN is
+    //    assigned, no state is written, and the entry is excluded
+    //    from the public-chain UID validation call. Only entries
+    //    that pass local checks are sent to CodeManager and
+    //    stored. PIN-slot collisions are resolved silently by
+    //    chaining keccak256(entropy) until an open slot is found.
 
     /// @notice Store multiple pre-computed hashes in one transaction.
     ///         The contract assigns PINs — callers receive them in the return value.
+    ///
+    ///         Entries that fail local validation (empty uniqueId, zero code hash)
+    ///         are skipped — a StoreFailed event is emitted with the index and
+    ///         reason, and the entry is excluded from the public-chain validation
+    ///         call. The corresponding assignedPins slot is left as an empty string.
+    ///
+    ///         Entries that pass local validation are sent to CodeManager for UID
+    ///         verification. If any valid UID fails on CodeManager, the entire
+    ///         Pente transition rolls back (unavoidable — PenteExternalCall is
+    ///         fire-and-forget with no return value).
     /// @param uniqueIds  Array of unique IDs (must be registered in CodeManager).
     /// @param codeHashes Array of keccak256(code) hashes (PIN is NOT part of the hash).
     /// @param pinLength  Number of characters for assigned PINs.
@@ -165,6 +182,7 @@ contract PrivateComboStorage {
     /// @param entropy    Caller-supplied randomness for PIN derivation. Should be
     ///                   generated off-chain (e.g. keccak256 of random bytes).
     /// @return assignedPins Per-index PIN strings assigned by the contract.
+    ///                      Empty string for entries that failed local validation.
     function storeDataBatch(
         string[] calldata uniqueIds,
         bytes32[] calldata codeHashes,
@@ -178,49 +196,34 @@ contract PrivateComboStorage {
         require(pinLength > 0 && pinLength <= 8, "PIN length must be 1-8");
         require(entropy != bytes32(0), "Entropy cannot be zero");
 
-        // ----------------------------------------------------
-        // Phase 1: local preflight — validate inputs
-        // ----------------------------------------------------
-
-        for (uint256 i = 0; i < len; ) {
-            require(bytes(uniqueIds[i]).length > 0, "Empty uniqueId");
-            require(codeHashes[i] != bytes32(0), "Zero code hash");
-            unchecked { ++i; }
-        }
+        assignedPins = new string[](len);
 
         // ----------------------------------------------------
-        // Phase 2: atomic public-registry validation
-        //
-        // This routes through CodeManager on the public chain.
-        // If any uniqueId is invalid, CodeManager reverts and
-        // the entire Pente transition rolls back.
+        // Phase 1 + 2: validate inputs and emit public-chain
+        //              UID validation for valid entries only.
+        //              Moved to helper to avoid stack-too-deep.
         // ----------------------------------------------------
 
-        emit PenteExternalCall(
-            CODE_MANAGER,
-            abi.encodeWithSignature(
-                "validateUniqueIdsOrRevert(string[])",
-                uniqueIds
-            )
-        );
+        bool[] memory isValid = _validateAndEmitStore(uniqueIds, codeHashes, len);
 
         // ----------------------------------------------------
-        // Phase 3: assign PINs and store all entries
+        // Phase 3: assign PINs and store valid entries
         //
         // Caller-supplied entropy drives PIN derivation. On each
         // assignment the entropy is chained: entropy = keccak256(entropy).
         // If a slot collision occurs (same codeHash already exists
         // at the derived PIN) or the slot has reached MAX_PER_PIN,
         // the entropy is re-chained and a new PIN is tried — no
-        // revert, no information leakage. No on-chain counter or
-        // deterministic seed is stored, so PIN assignments cannot
-        // be reconstructed without knowing the original entropy.
+        // revert, no information leakage. Skipped entries are
+        // left as empty strings in assignedPins.
         // ----------------------------------------------------
 
-        assignedPins = new string[](len);
-
         for (uint256 i = 0; i < len; ) {
-            // Derive PIN; on collision or full slot, rehash entropy and retry.
+            if (!isValid[i]) {
+                unchecked { ++i; }
+                continue;
+            }
+
             (string memory pin, bytes32 nextEntropy) = _assignPin(
                 entropy, pinLength, useSpecialChars, codeHashes[i]
             );
@@ -236,6 +239,69 @@ contract PrivateComboStorage {
             emit DataStoredStatus(uniqueIds[i], pin);
             unchecked { ++i; }
         }
+    }
+
+    /// @dev Phase 1 + 2 helper for storeDataBatch.
+    ///      Validates each entry locally — skips bad entries with StoreFailed
+    ///      events. Builds a filtered UID array and emits a single
+    ///      PenteExternalCall to validate only the valid UIDs on CodeManager.
+    function _validateAndEmitStore(
+        string[] calldata uniqueIds,
+        bytes32[] calldata codeHashes,
+        uint256 len
+    ) internal returns (bool[] memory isValid) {
+        isValid = new bool[](len);
+        string[] memory validUniqueIds = new string[](len);
+        bytes32[] memory seenUids = new bytes32[](len);
+        uint256 validCount;
+
+        for (uint256 i = 0; i < len; ) {
+            if (bytes(uniqueIds[i]).length == 0) {
+                emit StoreFailed(i, "Empty uniqueId");
+                unchecked { ++i; }
+                continue;
+            }
+            if (codeHashes[i] == bytes32(0)) {
+                emit StoreFailed(i, "Zero code hash");
+                unchecked { ++i; }
+                continue;
+            }
+
+            // Duplicate uniqueId within the batch — skip
+            bytes32 uidHash = keccak256(bytes(uniqueIds[i]));
+            bool isDuplicate;
+            for (uint256 j = 0; j < validCount; ) {
+                if (seenUids[j] == uidHash) { isDuplicate = true; break; }
+                unchecked { ++j; }
+            }
+            if (isDuplicate) {
+                emit StoreFailed(i, "Duplicate uniqueId in batch");
+                unchecked { ++i; }
+                continue;
+            }
+            seenUids[validCount] = uidHash;
+
+            validUniqueIds[validCount] = uniqueIds[i];
+            isValid[i] = true;
+            unchecked { ++validCount; }
+            unchecked { ++i; }
+        }
+
+        if (validCount == 0) return isValid;
+
+        // Trim validUniqueIds to actual count and emit
+        // public-chain validation for valid entries only.
+        // If any valid UID is not registered on CodeManager,
+        // the entire Pente transition rolls back.
+        assembly ("memory-safe") { mstore(validUniqueIds, validCount) }
+
+        emit PenteExternalCall(
+            CODE_MANAGER,
+            abi.encodeWithSignature(
+                "validateUniqueIdsOrRevert(string[])",
+                validUniqueIds
+            )
+        );
     }
 
     // ── Batch Redemption ────────────────────────────────────
@@ -281,6 +347,9 @@ contract PrivateComboStorage {
         require(len == codeHashes.length && len == redeemers.length, "Array length mismatch");
         require(len > 0, "Empty batch");
 
+        bytes32[] memory seenHashes = new bytes32[](len);
+        uint256 seenCount;
+
         for (uint256 i = 0; i < len; ) {
             // ── Local validation — skip invalid entries ──
             if (bytes(pins[i]).length == 0) {
@@ -297,6 +366,22 @@ contract PrivateComboStorage {
                 emit RedeemFailed(i, "Redeemer cannot be zero address");
                 unchecked { ++i; }
                 continue;
+            }
+
+            // Duplicate codeHash within the batch — skip
+            {
+                bool isDuplicate;
+                for (uint256 j = 0; j < seenCount; ) {
+                    if (seenHashes[j] == codeHashes[i]) { isDuplicate = true; break; }
+                    unchecked { ++j; }
+                }
+                if (isDuplicate) {
+                    emit RedeemFailed(i, "Duplicate code hash in batch");
+                    unchecked { ++i; }
+                    continue;
+                }
+                seenHashes[seenCount] = codeHashes[i];
+                unchecked { ++seenCount; }
             }
 
             CodeMetadata storage metadata = pinToHash[pins[i]][codeHashes[i]];
