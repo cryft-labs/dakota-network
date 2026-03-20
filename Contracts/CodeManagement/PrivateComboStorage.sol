@@ -141,10 +141,11 @@ contract PrivateComboStorage {
     // ── Batch Code Storage ────────────────────────────────
     //
     //    Store multiple pre-computed hashes in one transaction.
-    //    The caller supplies opaque entropy (e.g. random bytes
-    //    generated off-chain) which the contract uses to derive
-    //    PIN assignments. The entropy never leaves the privacy
-    //    group and cannot be reconstructed by outside observers.
+    //    The caller supplies one opaque entropy seed per entry
+    //    (e.g. random bytes generated off-chain). Each entry uses
+    //    its own seed for initial PIN derivation. If the derived
+    //    PIN is unavailable, the contract chains keccak256(seed)
+    //    until an open slot is found.
     //
     //    The hash is computed off-chain as keccak256(code) — the
     //    PIN is purely a routing key and is NOT part of the hash.
@@ -162,10 +163,11 @@ contract PrivateComboStorage {
     /// @notice Store multiple pre-computed hashes in one transaction.
     ///         The contract assigns PINs — callers receive them in the return value.
     ///
-    ///         Entries that fail local validation (empty uniqueId, zero code hash)
-    ///         are skipped — a StoreFailed event is emitted with the index and
-    ///         reason, and the entry is excluded from the public-chain validation
-    ///         call. The corresponding assignedPins slot is left as an empty string.
+    ///         Entries that fail local validation (empty uniqueId, zero code hash,
+    ///         invalid pin length, or zero entropy) are skipped — a StoreFailed
+    ///         event is emitted with the index and reason, and the entry is
+    ///         excluded from the public-chain validation call. The corresponding
+    ///         assignedPins slot is left as an empty string.
     ///
     ///         Entries that pass local validation are sent to CodeManager for UID
     ///         verification. If any valid UID fails on CodeManager, the entire
@@ -173,50 +175,42 @@ contract PrivateComboStorage {
     ///         fire-and-forget with no return value).
     /// @param uniqueIds  Array of unique IDs (must be registered in CodeManager).
     /// @param codeHashes Array of keccak256(code) hashes (PIN is NOT part of the hash).
-    /// @param pinLength  Number of characters for assigned PINs.
+    /// @param pinLengths One PIN length per entry.
     ///                   Alphanumeric only (62 chars): 3-char = 238,328 slots; 4-char = 14,776,336.
     ///                   With specials  (76 chars): 3-char = 438,976 slots; 4-char = 33,362,176.
-    /// @param useSpecialChars If true, PINs include special characters
-    ///                   (0-9, A-Z, a-z, !, at, #, $, %, &, *, +, -, =, ?, ~, ^, _, |).
-    ///                   If false, alphanumeric only (0-9, A-Z, a-z).
-    /// @param entropy    Caller-supplied randomness for PIN derivation. Should be
-    ///                   generated off-chain (e.g. keccak256 of random bytes).
+    /// @param useSpecialChars One special-character flag per entry.
+    ///                   True enables (0-9, A-Z, a-z, !, at, #, $, %, &, *, +, -, =, ?, ~, ^, _, |).
+    ///                   False keeps alphanumeric only (0-9, A-Z, a-z).
+    /// @param entropies  One entropy seed per entry for PIN derivation. Each
+    ///                   value should be generated off-chain from secure randomness.
     /// @return assignedPins Per-index PIN strings assigned by the contract.
     ///                      Empty string for entries that failed local validation.
     function storeDataBatch(
         string[] calldata uniqueIds,
         bytes32[] calldata codeHashes,
-        uint256 pinLength,
-        bool useSpecialChars,
-        bytes32 entropy
+        uint256[] calldata pinLengths,
+        bool[] calldata useSpecialChars,
+        bytes32[] calldata entropies
     ) external onlyAuthorized returns (string[] memory assignedPins) {
         uint256 len = uniqueIds.length;
-        require(len == codeHashes.length, "Array length mismatch");
+        require(
+            len == codeHashes.length
+                && len == pinLengths.length
+                && len == useSpecialChars.length
+                && len == entropies.length,
+            "Array length mismatch"
+        );
         require(len > 0, "Empty batch");
-        require(pinLength > 0 && pinLength <= 8, "PIN length must be 1-8");
-        require(entropy != bytes32(0), "Entropy cannot be zero");
 
         assignedPins = new string[](len);
 
-        // ----------------------------------------------------
-        // Phase 1 + 2: validate inputs and emit public-chain
-        //              UID validation for valid entries only.
-        //              Moved to helper to avoid stack-too-deep.
-        // ----------------------------------------------------
-
-        bool[] memory isValid = _validateAndEmitStore(uniqueIds, codeHashes, len);
-
-        // ----------------------------------------------------
-        // Phase 3: assign PINs and store valid entries
-        //
-        // Caller-supplied entropy drives PIN derivation. On each
-        // assignment the entropy is chained: entropy = keccak256(entropy).
-        // If a slot collision occurs (same codeHash already exists
-        // at the derived PIN) or the slot has reached MAX_PER_PIN,
-        // the entropy is re-chained and a new PIN is tried — no
-        // revert, no information leakage. Skipped entries are
-        // left as empty strings in assignedPins.
-        // ----------------------------------------------------
+        bool[] memory isValid = _validateAndEmitStore(
+            uniqueIds,
+            codeHashes,
+            pinLengths,
+            entropies,
+            len
+        );
 
         for (uint256 i = 0; i < len; ) {
             if (!isValid[i]) {
@@ -224,19 +218,13 @@ contract PrivateComboStorage {
                 continue;
             }
 
-            (string memory pin, bytes32 nextEntropy) = _assignPin(
-                entropy, pinLength, useSpecialChars, codeHashes[i]
-            );
-            entropy = nextEntropy;
-
-            pinToHash[pin][codeHashes[i]] = CodeMetadata({
-                uniqueId: uniqueIds[i],
-                exists: true
-            });
-            pinSlotCount[pin]++;
-            assignedPins[i] = pin;
-
-            emit DataStoredStatus(uniqueIds[i], pin);
+                assignedPins[i] = _storeValidatedEntry(
+                    uniqueIds[i],
+                    codeHashes[i],
+                    pinLengths[i],
+                    useSpecialChars[i],
+                    entropies[i]
+                );
             unchecked { ++i; }
         }
     }
@@ -248,6 +236,8 @@ contract PrivateComboStorage {
     function _validateAndEmitStore(
         string[] calldata uniqueIds,
         bytes32[] calldata codeHashes,
+        uint256[] calldata pinLengths,
+        bytes32[] calldata entropies,
         uint256 len
     ) internal returns (bool[] memory isValid) {
         isValid = new bool[](len);
@@ -266,12 +256,24 @@ contract PrivateComboStorage {
                 unchecked { ++i; }
                 continue;
             }
+            if (pinLengths[i] == 0 || pinLengths[i] > 8) {
+                emit StoreFailed(i, "PIN length must be 1-8");
+                unchecked { ++i; }
+                continue;
+            }
+            if (entropies[i] == bytes32(0)) {
+                emit StoreFailed(i, "Zero entropy");
+                unchecked { ++i; }
+                continue;
+            }
 
-            // Duplicate uniqueId within the batch — skip
             bytes32 uidHash = keccak256(bytes(uniqueIds[i]));
             bool isDuplicate;
             for (uint256 j = 0; j < validCount; ) {
-                if (seenUids[j] == uidHash) { isDuplicate = true; break; }
+                if (seenUids[j] == uidHash) {
+                    isDuplicate = true;
+                    break;
+                }
                 unchecked { ++j; }
             }
             if (isDuplicate) {
@@ -289,10 +291,6 @@ contract PrivateComboStorage {
 
         if (validCount == 0) return isValid;
 
-        // Trim validUniqueIds to actual count and emit
-        // public-chain validation for valid entries only.
-        // If any valid UID is not registered on CodeManager,
-        // the entire Pente transition rolls back.
         assembly ("memory-safe") { mstore(validUniqueIds, validCount) }
 
         emit PenteExternalCall(
@@ -302,6 +300,25 @@ contract PrivateComboStorage {
                 validUniqueIds
             )
         );
+    }
+
+    /// @dev Assigns a PIN and stores one locally validated entry.
+    function _storeValidatedEntry(
+        string calldata uniqueId,
+        bytes32 codeHash,
+        uint256 pinLength,
+        bool useSpecialChars,
+        bytes32 entropy
+    ) internal returns (string memory assignedPin) {
+        assignedPin = _assignPin(entropy, pinLength, useSpecialChars, codeHash);
+
+        pinToHash[assignedPin][codeHash] = CodeMetadata({
+            uniqueId: uniqueId,
+            exists: true
+        });
+        pinSlotCount[assignedPin]++;
+
+        emit DataStoredStatus(uniqueId, assignedPin);
     }
 
     // ── Batch Redemption ────────────────────────────────────
@@ -351,7 +368,6 @@ contract PrivateComboStorage {
         uint256 seenCount;
 
         for (uint256 i = 0; i < len; ) {
-            // ── Local validation — skip invalid entries ──
             if (bytes(pins[i]).length == 0) {
                 emit RedeemFailed(i, "PIN cannot be empty");
                 unchecked { ++i; }
@@ -368,11 +384,13 @@ contract PrivateComboStorage {
                 continue;
             }
 
-            // Duplicate codeHash within the batch — skip
             {
                 bool isDuplicate;
                 for (uint256 j = 0; j < seenCount; ) {
-                    if (seenHashes[j] == codeHashes[i]) { isDuplicate = true; break; }
+                    if (seenHashes[j] == codeHashes[i]) {
+                        isDuplicate = true;
+                        break;
+                    }
                     unchecked { ++j; }
                 }
                 if (isDuplicate) {
@@ -393,7 +411,6 @@ contract PrivateComboStorage {
 
             string memory redeemedUniqueId = metadata.uniqueId;
 
-            // Clear stored hash data and free the PIN slot
             delete pinToHash[pins[i]][codeHashes[i]];
             pinSlotCount[pins[i]]--;
 
@@ -432,14 +449,15 @@ contract PrivateComboStorage {
     uint256 internal constant CHARSET_FULL_SIZE = 76;
 
     /// @dev Derive a collision-free PIN for a given codeHash.
-    ///      Chains entropy via keccak256 until an open slot is found.
+    ///      Starts from a caller-provided entry seed and chains
+    ///      keccak256(seed) only as a retry path until an open slot is found.
     function _assignPin(
         bytes32 entropy,
         uint256 pinLength,
         bool useSpecialChars,
         bytes32 codeHash
-    ) internal view returns (string memory pin, bytes32 nextEntropy) {
-        nextEntropy = entropy;
+    ) internal view returns (string memory pin) {
+        bytes32 nextEntropy = entropy;
         uint256 base = useSpecialChars ? CHARSET_FULL_SIZE : CHARSET_ALNUM_SIZE;
         uint256 pinSpace = _powBase(base, pinLength);
         bytes memory charset = useSpecialChars ? CHARSET_FULL : CHARSET_ALNUM;

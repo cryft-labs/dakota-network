@@ -230,19 +230,19 @@
         "type": "bytes32[]"
       },
       {
-        "internalType": "uint256",
-        "name": "pinLength",
-        "type": "uint256"
+        "internalType": "uint256[]",
+        "name": "pinLengths",
+        "type": "uint256[]"
       },
       {
-        "internalType": "bool",
+        "internalType": "bool[]",
         "name": "useSpecialChars",
-        "type": "bool"
+        "type": "bool[]"
       },
       {
-        "internalType": "bytes32",
-        "name": "entropy",
-        "type": "bytes32"
+        "internalType": "bytes32[]",
+        "name": "entropies",
+        "type": "bytes32[]"
       }
     ],
     "name": "storeDataBatch",

@@ -1,0 +1,46 @@
+{
+  "count": 3,
+  "entropies": [
+    "0x9b70eae502cfad1edeac7a041fd30e4dfa45e3ac68ccce429e6ae5dc3a8c1a5f",
+    "0x27be0ecb23788b8d35d85197ee305d67c0333a685b53438f96d68c52be6f4971",
+    "0xa2bac8440e56d0346a706ccc669ea3ff5d13ded5b1cf0668e18193b494c04927"
+  ],
+  "pin_lengths": [
+    4,
+    5,
+    4
+  ],
+  "use_special_chars": [
+    false,
+    true,
+    false
+  ],
+  "code_hashes": [
+    "0x301274a0e4fab69517013067eb111bdc33999ad2f91d87aa825b006e55eafbeb",
+    "0x5c13587754666950fdeca3ffa4801ceffec1c12dab73aaad62587051dcbe8531",
+    "0x3a486c2a9faf2e6d9f85220647c66254907cb64213f25ff26284f5ea23a85c62"
+  ],
+  "records": [
+    {
+      "entropy": "0x9b70eae502cfad1edeac7a041fd30e4dfa45e3ac68ccce429e6ae5dc3a8c1a5f",
+      "pin_length": 4,
+      "use_special_chars": false,
+      "code": "Wj7mHfxgvrlpSwBo",
+      "code_hash": "0x301274a0e4fab69517013067eb111bdc33999ad2f91d87aa825b006e55eafbeb"
+    },
+    {
+      "entropy": "0x27be0ecb23788b8d35d85197ee305d67c0333a685b53438f96d68c52be6f4971",
+      "pin_length": 5,
+      "use_special_chars": true,
+      "code": "nAbsF0jPEQWf0guN",
+      "code_hash": "0x5c13587754666950fdeca3ffa4801ceffec1c12dab73aaad62587051dcbe8531"
+    },
+    {
+      "entropy": "0xa2bac8440e56d0346a706ccc669ea3ff5d13ded5b1cf0668e18193b494c04927",
+      "pin_length": 4,
+      "use_special_chars": false,
+      "code": "q20RY572vQ0xHKaq",
+      "code_hash": "0x3a486c2a9faf2e6d9f85220647c66254907cb64213f25ff26284f5ea23a85c62"
+    }
+  ]
+}
