@@ -29,10 +29,10 @@ pragma solidity >=0.8.2 <0.9.0;
   │  Own voter set with pluggable external voter         │
   │  contracts via otherVoterContracts[].                │
   │                                                      │
-  │  PENTE INTEGRATION:                                  │
-  │  Authorized Pente privacy groups call router         │
-  │  functions (recordRedemption, setUidFrozen) which    │
-  │  resolve the UID to its gift                         │
+    │  PENTE INTEGRATION:                                  │
+    │  Authorized Pente privacy groups call the            │
+    │  redemption router (recordRedemption), which         │
+    │  resolves the UID to its gift                        │
   │  contract and forward via IRedeemable. The gift      │
   │  contract is the SOLE AUTHORITY on per-UID state.    │
   │  CodeManager stores NO per-UID state — it is a       │
@@ -104,7 +104,6 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     event VoteTallyBlockThresholdUpdated(uint256 newThreshold);
     event PrivacyGroupAuthorized(address indexed privacyGroup, bool authorized);
     event RedemptionRouted(string uniqueId, address indexed giftContract, address indexed redeemer);
-    event FrozenStatusRouted(string uniqueId, address indexed giftContract, bool frozen);
 
 
     constructor() {
@@ -424,13 +423,6 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         (address giftContract, , ) = getUniqueIdDetails(uniqueId);
         IRedeemable(giftContract).recordRedemption(uniqueId, redeemer);
         emit RedemptionRouted(uniqueId, giftContract, redeemer);
-    }
-
-    /// @notice Route a freeze/unfreeze from the Pente privacy group to the gift contract.
-    function setUidFrozen(string memory uniqueId, bool frozen) external onlyAuthorizedPrivacyGroup {
-        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
-        IRedeemable(giftContract).setFrozen(uniqueId, frozen);
-        emit FrozenStatusRouted(uniqueId, giftContract, frozen);
     }
 
     // ── UID View Functions (read from gift contract) ──────

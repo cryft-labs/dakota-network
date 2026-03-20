@@ -41,9 +41,6 @@ interface IRedeemable {
 
     // ── Management Functions (called by CodeManager router) ─
 
-    /// @notice Set frozen status for a unique ID.
-    function setFrozen(string memory uniqueId, bool frozen) external;
-
     /// @notice Record a redemption for a unique ID.
     function recordRedemption(string memory uniqueId, address redeemer) external;
 }

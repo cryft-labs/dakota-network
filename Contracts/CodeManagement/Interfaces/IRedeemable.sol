@@ -39,13 +39,7 @@ interface IRedeemable {
     /// @notice Returns true if the unique ID has already been redeemed.
     function isUniqueIdRedeemed(string memory uniqueId) external view returns (bool);
 
-    // ── Management Functions (called by CodeManager router) ─
-
-    /// @notice Set frozen status for a unique ID.
-    ///         Called by CodeManager when routing from Pente externalCall.
-    /// @param uniqueId The unique identifier to freeze/unfreeze.
-    /// @param frozen True to freeze (prevent redemption), false to unfreeze.
-    function setFrozen(string memory uniqueId, bool frozen) external;
+    // ── Management Functions ───────────────────────────────
 
     /// @notice Record a redemption for a unique ID.
     ///         Called by CodeManager when routing from Pente externalCall.

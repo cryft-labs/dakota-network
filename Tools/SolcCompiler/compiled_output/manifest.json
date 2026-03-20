@@ -1,10 +1,58 @@
 [
   {
-    "source": "CodeManagement\\PrivateComboStorage.sol",
-    "contract": "PrivateComboStorage",
-    "runtime_bytes": 7315,
-    "creation_bytes": 7343,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage",
+    "source": "ERC721Utils.sol",
+    "contract": "ERC721Utils",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\ERC721Utils",
+    "over_limit": false
+  },
+  {
+    "source": "Panic.sol",
+    "contract": "Panic",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Panic",
+    "over_limit": false
+  },
+  {
+    "source": "Strings.sol",
+    "contract": "Strings",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Strings",
+    "over_limit": false
+  },
+  {
+    "source": "Math.sol",
+    "contract": "Math",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Math",
+    "over_limit": false
+  },
+  {
+    "source": "SafeCast.sol",
+    "contract": "SafeCast",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\SafeCast",
+    "over_limit": false
+  },
+  {
+    "source": "SignedMath.sol",
+    "contract": "SignedMath",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\SignedMath",
+    "over_limit": false
+  },
+  {
+    "source": "Tokens\\GreetingCards.sol",
+    "contract": "CryftGreetingCards",
+    "runtime_bytes": 15063,
+    "creation_bytes": 15277,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Tokens\\GreetingCards",
     "over_limit": false
   }
 ]

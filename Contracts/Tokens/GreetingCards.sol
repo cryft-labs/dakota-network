@@ -512,18 +512,6 @@ contract CryftGreetingCards is
     }
 
     /// @inheritdoc IRedeemable
-    /// @dev GreetingCards derives frozen from explicit admin flags + vault state.
-    ///      Only CodeManager (acting as Pente router) can call this.
-    function setFrozen(string memory uniqueId, bool frozen) external override {
-        require(msg.sender == codeManagerAddress, "Only CodeManager");
-        (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
-        require(valid && _ownerOf(tokenId) != address(0), "Invalid uniqueId");
-        require(ownerOf(tokenId) == address(this), "Not in vault");
-        _explicitlyFrozen[tokenId] = frozen;
-        emit TokenFrozen(tokenId, frozen);
-    }
-
-    /// @inheritdoc IRedeemable
     /// @dev Records redemption by transferring the NFT from vault to redeemer.
     ///      Only CodeManager (acting as Pente router) can call this.
     ///      Reverts if already redeemed, frozen, or invalid — causing the

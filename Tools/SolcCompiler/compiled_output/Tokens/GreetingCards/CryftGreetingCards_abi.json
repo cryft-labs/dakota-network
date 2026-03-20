@@ -781,6 +781,19 @@
   },
   {
     "inputs": [],
+    "name": "maxSaleSupply",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "name",
     "outputs": [
       {
@@ -866,19 +879,6 @@
     "name": "recordRedemption",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "registeredSupply",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -999,9 +999,9 @@
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
       },
       {
         "internalType": "bool",
@@ -1018,16 +1018,11 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "tokenId",
+        "name": "supply",
         "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "frozen",
-        "type": "bool"
       }
     ],
-    "name": "setFrozen",
+    "name": "setMaxSaleSupply",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1054,19 +1049,6 @@
       }
     ],
     "name": "setPricePerCard",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "supply",
-        "type": "uint256"
-      }
-    ],
-    "name": "setRegisteredSupply",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
