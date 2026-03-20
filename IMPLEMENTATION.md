@@ -434,7 +434,7 @@ Repeat for `AUTHORIZED()`. Both should return the addresses you set as constants
 
 ### 10.1 Authorize the Privacy Group on CodeManager
 
-The privacy group must be authorized on CodeManager before its `PenteExternalCall` events will be accepted. Without authorization, calls to `recordRedemption`, `setUidFrozen`, and `validateUniqueIdsOrRevert` from the privacy group will revert with `"Caller is not an authorized privacy group"`.
+The privacy group must be authorized on CodeManager before its `PenteExternalCall` events will be accepted. Without authorization, calls to `recordRedemption` and `validateUniqueIdsOrRevert` from the privacy group will revert with `"Caller is not an authorized privacy group"`.
 
 ```javascript
 // Single voter — takes effect immediately
@@ -533,13 +533,13 @@ curl -X POST http://localhost:31548/rpc \
       },
       "from": "node1@node1",
       "to": "<PRIVATE_CONTRACT_ADDRESS>",
-      "function": "storeDataBatch(string[],bytes32[],uint256,bool,bytes32)",
+      "function": "storeDataBatch(string[],bytes32[],uint256[],bool[],bytes32[])",
       "inputs": [
         ["<UNIQUE_ID_1>", "<UNIQUE_ID_2>"],
         ["0xabc123...", "0xdef456..."],
-        3,
-        false,
-        "0x<RANDOM_32_BYTES>"
+        [3, 4],
+        [false, true],
+        ["0x<RANDOM_32_BYTES_1>", "0x<RANDOM_32_BYTES_2>"]
       ]
     }]
   }'
@@ -551,21 +551,22 @@ The function returns `string[] assignedPins` — the contract-assigned PIN for e
 
 `storeDataBatch` executes three phases atomically:
 
-1. **Phase 1 — Local preflight:** Validates arrays, checks for empty values and zero hashes.
+1. **Phase 1 — Local preflight:** Validates arrays, checks for empty values, zero hashes, invalid per-entry PIN lengths, zero entropies, and duplicate UIDs.
 
 2. **Phase 2 — Public registry validation:** Emits `PenteExternalCall` → `CodeManager.validateUniqueIdsOrRevert(uniqueIds)`. If any uniqueId is not registered on CodeManager, the entire Pente transition reverts.
 
-3. **Phase 3 — Assign PINs and store entries:** For each entry, derives a PIN from caller-supplied entropy using the selected charset (alphanumeric or full). If a collision occurs (same codeHash at derived PIN, or slot is full at MAX_PER_PIN=32), the entropy is re-chained via `keccak256(entropy)` until an open slot is found — no revert, no information leakage. Stores `(pin, codeHash) → CodeMetadata{ uniqueId, exists: true }`. Emits `DataStoredStatus(uniqueId, assignedPin)` per entry.
+3. **Phase 3 — Assign PINs and store entries:** For each entry, derives a PIN from that entry's supplied entropy, PIN length, and charset choice. If a collision occurs (same codeHash at derived PIN, or slot is full at MAX_PER_PIN=32), the entry seed is re-chained via `keccak256(seed)` until an open slot is found — no revert, no information leakage. Stores `(pin, codeHash) → CodeMetadata{ uniqueId, exists: true }`. Emits `DataStoredStatus(uniqueId, assignedPin)` per entry.
 
 ### 11.4 Failure Modes
 
 | Failure | Cause | Fix |
 |---------|-------|-----|
-| `"Array length mismatch"` | `uniqueIds` and `codeHashes` arrays have different lengths | Ensure both arrays are the same length |
+| `"Array length mismatch"` | `uniqueIds`, `codeHashes`, `pinLengths`, and `entropies` arrays have different lengths | Ensure all per-entry arrays are the same length |
 | `"Empty uniqueId"` | One of the uniqueIds is an empty string | Check your UID generation |
 | `"Zero code hash"` | A codeHash is `bytes32(0)` | Check your hash computation |
-| `"PIN length must be 1-8"` | Invalid `pinLength` parameter | Use a value between 1 and 8 |
-| `"Entropy cannot be zero"` | Entropy parameter is `bytes32(0)` | Supply random 32 bytes |
+| `"PIN length must be 1-8"` | An entry has an invalid `pinLengths[i]` | Use a value between 1 and 8 for each entry |
+| `"Zero entropy"` | An entry entropy is `bytes32(0)` | Supply random 32 bytes per entry |
+| `"Duplicate uniqueId in batch"` | The same UID appears more than once in a store batch | Deduplicate before calling |
 | `"PIN space exhausted"` | 100 retries failed to find an open PIN slot | Increase PIN length or reduce stored codes |
 | `"Invalid uniqueId in batch"` | The uniqueId is not registered on CodeManager | Register UIDs first via `registerUniqueIds` |
 | `"Caller is not an authorized privacy group"` | The privacy group is not authorized on CodeManager | Call `voteToAuthorizePrivacyGroup` |

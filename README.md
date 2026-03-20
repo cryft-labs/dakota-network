@@ -489,7 +489,7 @@ CodeManager (independent)
 
 Permissionless unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`. Voter-pool changes are blocked while any tally is active (`activeVoteCount > 0`).
 
-Also serves as the Pente router — authorized privacy groups call router functions (`recordRedemption`, `setUidFrozen`, `setUidContent`) which resolve the UID to its gift contract and forward via `IRedeemable`. CodeManager stores **no per-UID state** — it is a thin registry + router only. The gift contract is the **sole authority** on per-UID state.
+Also serves as the Pente redemption router — authorized privacy groups call `recordRedemption`, which resolves the UID to its gift contract and forwards via `IRedeemable`. CodeManager stores **no per-UID state** — it is a thin registry + router only. The gift contract is the **sole authority** on per-UID state, including frozen status.
 
 #### Governance Actions (all require voter supermajority)
 
@@ -512,8 +512,6 @@ Also serves as the Pente router — authorized privacy groups call router functi
 | Function | Description |
 |----------|-------------|
 | `recordRedemption(uniqueId, redeemer)` | Resolves UID → gift contract, calls `IRedeemable.recordRedemption()` |
-| `setUidFrozen(uniqueId, frozen)` | Resolves UID → gift contract, calls `IRedeemable.setFrozen()` |
-| `setUidContent(uniqueId, contentId)` | Resolves UID → gift contract, calls `IRedeemable.setContent()` |
 
 #### Registration (permissionless)
 
@@ -566,7 +564,7 @@ All configuration is embedded as **compile-time constants** — no constructor, 
 
 | Function | Description |
 |----------|-------------|
-| `storeDataBatch(uniqueIds[], codeHashes[], pinLength, useSpecialChars, entropy)` | Bulk store code hashes. Contract assigns a PIN per entry from caller-supplied entropy, using either alphanumeric (62-char) or full (76-char) charset. Returns `string[] assignedPins`. Emits `PenteExternalCall` to validate UIDs on CodeManager. |
+| `storeDataBatch(uniqueIds[], codeHashes[], pinLengths[], useSpecialChars[], entropies[])` | Bulk store code hashes. Each entry supplies its own PIN length, special-character flag, and entropy seed. Contract assigns a PIN per entry and uses `keccak256(seed)` only as a retry path if the derived PIN collides or the slot is full. Returns `string[] assignedPins`. Emits `PenteExternalCall` to validate UIDs on CodeManager. |
 | `redeemCodeBatch(pins[], codeHashes[], redeemers[])` | Batch-verify codes, delete consumed entries, emit `PenteExternalCall` per entry to route `recordRedemption` through CodeManager. Fully atomic — any failure reverts the entire batch. |
 
 #### View Functions
@@ -676,8 +674,6 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 | `claimRedemption(uniqueId, recipient)` | Verified redeemer (via PrivateComboStorage) | Transfer NFT from vault to recipient. Recipient ≠ msg.sender (gift flow). |
 | `setFrozen(tokenId, frozen)` | Buyer or owner | Freeze/unfreeze a card in the vault (lost/stolen code protection). |
 | `recordRedemption(uniqueId, redeemer)` | CodeManager only (Pente router) | Route redemption from privacy group — transfers NFT from vault to redeemer. |
-| `setFrozen(uniqueId, frozen)` (IRedeemable) | CodeManager only | Route freeze from privacy group. |
-| `setContent(uniqueId, contentId)` (IRedeemable) | CodeManager only | No-op for GreetingCards (content is batch-level IPFS metadata). |
 
 #### Convenience View Functions
 
@@ -698,7 +694,6 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 | `getCardCreator()` | `address` | Creator who registered the uniqueIds on CodeManager |
 | `isUniqueIdFrozen(uniqueId)` | `bool` | Derived frozen status (IRedeemable implementation) |
 | `isUniqueIdRedeemed(uniqueId)` | `bool` | Derived redeemed status (IRedeemable implementation) |
-| `getUniqueIdContent(uniqueId)` | `string` | Returns `""` (content is batch-level IPFS, not per-UID) |
 | `isValidUniqueId(uniqueId)` | `bool` | Validates against CodeManager registry (read-only pass-through) |
 | `getDetailsFromCodeManager(uniqueId)` | `(giftContract, chainId, counter)` | Fetches UID details from CodeManager (read-only pass-through) |
 
