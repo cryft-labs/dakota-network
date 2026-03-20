@@ -1,58 +1,10 @@
 [
   {
-    "source": "ERC1967Proxy.sol",
-    "contract": "ERC1967Proxy",
-    "runtime_bytes": 163,
-    "creation_bytes": 1014,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\ERC1967Proxy",
-    "over_limit": false
-  },
-  {
-    "source": "ERC1967Utils.sol",
-    "contract": "ERC1967Utils",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\ERC1967Utils",
-    "over_limit": false
-  },
-  {
-    "source": "ProxyAdmin.sol",
-    "contract": "ProxyAdmin",
-    "runtime_bytes": 1039,
-    "creation_bytes": 1275,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\ProxyAdmin",
-    "over_limit": false
-  },
-  {
-    "source": "TransparentUpgradeableProxy.sol",
-    "contract": "TransparentUpgradeableProxy",
-    "runtime_bytes": 1137,
-    "creation_bytes": 3610,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\TransparentUpgradeableProxy",
-    "over_limit": false
-  },
-  {
-    "source": "Address.sol",
-    "contract": "Address",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Address",
-    "over_limit": false
-  },
-  {
-    "source": "Errors.sol",
-    "contract": "Errors",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Errors",
-    "over_limit": false
-  },
-  {
-    "source": "StorageSlot.sol",
-    "contract": "StorageSlot",
-    "runtime_bytes": 85,
-    "creation_bytes": 135,
-    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\StorageSlot",
+    "source": "CodeManagement\\PrivateComboStorage.sol",
+    "contract": "PrivateComboStorage",
+    "runtime_bytes": 7053,
+    "creation_bytes": 7081,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage",
     "over_limit": false
   }
 ]

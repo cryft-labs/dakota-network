@@ -75,12 +75,12 @@ contract PrivateComboStorage {
 
     /// @dev Admin — authorized to call storeDataBatch and redeemCodeBatch.
     ///      Update via contract upgrade.
-    address public constant ADMIN = address(0x000000000000000000000000000000000000AD01);
+    address public constant ADMIN = address(0x2B7361056b31D2bf201E6764e7825fd31c0D223A);
 
     /// @dev Authorized service account — also authorized to call
     ///      storeDataBatch and redeemCodeBatch (e.g., redemption service).
     ///      Update via contract upgrade.
-    address public constant AUTHORIZED = address(0x000000000000000000000000000000000000Ad02);
+    address public constant AUTHORIZED = address(0xc0dE49f742792913219DA0606f59a27431BCC0de);
 
     /// @dev Per-code metadata stored privately.
     struct CodeMetadata {
