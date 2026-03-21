@@ -50,8 +50,8 @@
   {
     "source": "CodeManagement\\PrivateMetaTxRelay.sol",
     "contract": "PrivateMetaTxRelay",
-    "runtime_bytes": 5140,
-    "creation_bytes": 5168,
+    "runtime_bytes": 4962,
+    "creation_bytes": 4990,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateMetaTxRelay",
     "over_limit": false
   },

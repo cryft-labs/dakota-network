@@ -32,14 +32,21 @@ pragma solidity >=0.8.2 <0.9.0;
   │                                                                     │
   │  Flow:                                                              │
   │    1. User signs ForwardRequest (EIP-712) off-chain                 │
-  │    2. Admin calls execute(request, signature) via Pente             │
+  │    2. Any privacy group member calls execute(request, signature)    │
   │    3. Relay verifies signature, increments nonce                    │
   │    4. Relay calls PrivateComboStorage with appended sender          │
   │       (ERC-2771: last 20 bytes of calldata = original signer)      │
   │    5. PrivateComboStorage extracts real sender via _msgSender()     │
+  │       and enforces its own access control (ADMIN / AUTHORIZED /    │
+  │       UID manager) against the recovered signer                    │
   │                                                                     │
   │  Security model:                                                    │
-  │    • Only ADMIN can submit requests to the relay                    │
+  │    • The relay itself is open — any privacy group member may        │
+  │      submit signed requests on behalf of a signer                  │
+  │    • Authorization is enforced by PrivateComboStorage, not the      │
+  │      relay — the recovered signer must satisfy the target           │
+  │      function's access control (onlyAdmin / onlyAuthorized /       │
+  │      per-UID manager check)                                        │
   │    • EIP-712 signatures with per-signer nonces prevent replay       │
   │    • Deadline enforcement prevents stale request execution          │
   │    • EIP-2 low-s check prevents signature malleability              │
@@ -62,8 +69,8 @@ contract PrivateMetaTxRelay is IPrivateMetaTxRelay {
     //    the proxy.
     //
 
-    /// @dev Admin — the Paladin signer. Only this address may submit
-    ///      signed meta-transactions to the relay.
+    /// @dev Admin — the Paladin signer. Retained for potential
+    ///      future admin-only relay functions.
     ///      Update via contract upgrade.
     address public constant ADMIN = address(0x01d5E8F6aa4650e571acAa8733F46c3d16fa13cB);
 
@@ -96,13 +103,6 @@ contract PrivateMetaTxRelay is IPrivateMetaTxRelay {
     ///      increasing — consumed on every successful signature verification.
     mapping(address => uint256) private _nonces;
 
-    // ── Modifier ──────────────────────────────────────────
-
-    modifier onlyAdmin() {
-        require(msg.sender == ADMIN, "Caller is not admin");
-        _;
-    }
-
     // ── Constructor ───────────────────────────────────────
 
     /// @dev No constructor logic needed. All configuration is
@@ -114,7 +114,7 @@ contract PrivateMetaTxRelay is IPrivateMetaTxRelay {
     function execute(
         ForwardRequest calldata request,
         bytes calldata signature
-    ) external override onlyAdmin returns (bytes memory returnData) {
+    ) external override returns (bytes memory returnData) {
         _verifyAndConsumeNonce(request, signature);
 
         bool success;
@@ -133,7 +133,7 @@ contract PrivateMetaTxRelay is IPrivateMetaTxRelay {
     function executeBatch(
         ForwardRequest[] calldata requests,
         bytes[] calldata signatures
-    ) external override onlyAdmin returns (bool[] memory successes, bytes[] memory results) {
+    ) external override returns (bool[] memory successes, bytes[] memory results) {
         uint256 len = requests.length;
         require(len == signatures.length, "Array length mismatch");
         require(len > 0, "Empty batch");
