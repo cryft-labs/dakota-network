@@ -32,6 +32,7 @@
 15. [Troubleshooting Matrix](#15-troubleshooting-matrix)
 16. [Operational Best Practices & Key Lessons](#16-operational-best-practices--key-lessons)
 17. [Private Meta-Transaction Relay — EIP-712 / ERC-2771 Architecture](#17-private-meta-transaction-relay--eip-712--erc-2771-architecture)
+18. [API-Level User Intent Signatures & Result Routing](#18-api-level-user-intent-signatures--result-routing)
 
 ---
 
@@ -1773,6 +1774,8 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 - User-specified recipient wallets (redeem to a different address)
 - Sponsored/delegated redemptions
 
+**Important:** The redeemer address has no bearing on authorization. On-chain access control is determined by `_msgSender()` (which resolves via ERC-2771 to the ForwardRequest signer), not by the redeemer parameter. The user who _requested_ the redemption may differ from both the on-chain signer and the redeemer. See [Section 18](#18-api-level-user-intent-signatures--result-routing) for how the API attributes requests to users via separate intent signatures.
+
 ### 14.6 Failure Modes
 
 | Failure                                      | Cause                                                         | Fix                                                                                                |
@@ -2288,3 +2291,411 @@ await paladinClient.invokePrivate({
 | Relay `execute()` reverts | PrivateComboStorage rejected the forwarded call | Check `_msgSender()` matches ADMIN, AUTHORIZED, or UID manager for the target function |
 | `"Array length mismatch"` | `requests[]` and `signatures[]` have different lengths | Ensure arrays match |
 | `"Empty batch"` | Zero-length arrays passed to `executeBatch()` | Provide at least one request |
+
+---
+
+## 18. API-Level User Intent Signatures & Result Routing
+
+### Problem Statement
+
+When multiple end users submit redemption (or store) requests through a shared API, the API batches them into a single on-chain `executeBatch()` call signed by an AUTHORIZED key. The on-chain layer does not know or care which end user requested each entry — `_msgSender()` resolves to the AUTHORIZED batch handler, and the `redeemer` parameter is just an NFT destination address.
+
+This creates a routing problem: **how does the API know which result belongs to which user?** Without attribution, the API cannot deliver per-user responses, events, or error messages.
+
+### Solution: Two-Tier Signature Model
+
+The architecture uses **two separate EIP-712 signature layers** with distinct concerns:
+
+| Concern | Handled by | Where |
+|---|---|---|
+| Who authorized the batch | AUTHORIZED's EIP-712 ForwardRequest signature | On-chain (PrivateMetaTxRelay verifies) |
+| Who requested each entry | End user's EIP-712 intent signature | API-side verification only |
+| Result routing | Batch index → user signature mapping | API-side |
+| Replay protection (on-chain) | Relay nonces per signer | On-chain |
+| Replay protection (API) | Per-user API nonces | API-side |
+| Non-repudiation | Both signatures stored | API database |
+| Redeemer ≠ signer | `redeemer` is just a parameter | By design |
+
+**Key insight:** The user's intent signature is **never sent on-chain.** It exists purely for API-level attribution, auditability, and result routing. The on-chain contracts are unchanged.
+
+### EIP-712 User Intent Types
+
+The API defines its own EIP-712 domain and typed data structures for user intent signatures. These are independent of the on-chain ForwardRequest types used by PrivateMetaTxRelay.
+
+```typescript
+// ── API-Level EIP-712 Domain ──
+// NOTE: No verifyingContract — this is verified API-side, not on-chain
+const USER_INTENT_DOMAIN = {
+    name: 'CryftGreetingCards',
+    version: '1',
+    chainId: dakotaChainId,  // Use the public chain ID for domain binding
+};
+
+// ── Redemption Intent ──
+const REDEMPTION_INTENT_TYPES = {
+    RedemptionIntent: [
+        { name: 'pin', type: 'string' },
+        { name: 'codeHash', type: 'bytes32' },
+        { name: 'redeemer', type: 'address' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' },
+    ],
+};
+
+// ── Store Intent (for code storage operations) ──
+const STORE_INTENT_TYPES = {
+    StoreIntent: [
+        { name: 'uniqueId', type: 'string' },
+        { name: 'codeHashes', type: 'bytes32[]' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' },
+    ],
+};
+```
+
+### Client-Side: Signing an Intent
+
+End users sign their intent in the browser before submitting to the API. This signature proves the request originated from a specific wallet and binds the intent to the user for result routing.
+
+```typescript
+// Browser-side: user signs a RedemptionIntent
+async function signRedemptionIntent(
+    signer: ethers.Signer,
+    pin: string,
+    codeHash: string,
+    redeemer: string,
+    nonce: number,
+    deadline: number,
+    chainId: number,
+): Promise<{ intent: RedemptionIntent; signature: string }> {
+    const intent = { pin, codeHash, redeemer, nonce, deadline };
+
+    const domain = {
+        name: 'CryftGreetingCards',
+        version: '1',
+        chainId,
+    };
+
+    const types = {
+        RedemptionIntent: [
+            { name: 'pin', type: 'string' },
+            { name: 'codeHash', type: 'bytes32' },
+            { name: 'redeemer', type: 'address' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'deadline', type: 'uint256' },
+        ],
+    };
+
+    const signature = await signer.signTypedData(domain, types, intent);
+
+    return { intent, signature };
+}
+
+// Usage:
+const nonce = await fetch('/api/intent/nonce?address=' + userAddress).then(r => r.json());
+const deadline = Math.floor(Date.now() / 1000) + 600; // 10-minute window
+
+const { intent, signature } = await signRedemptionIntent(
+    browserSigner,
+    pin,
+    codeHash,
+    redeemerAddress,
+    nonce.value,
+    deadline,
+    DAKOTA_CHAIN_ID,
+);
+
+// Submit to API with the signed intent
+await fetch('/api/cards/redeem', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...intent, signature }),
+});
+```
+
+### API-Side: Verifying Intent Signatures & Building Batches
+
+The API server verifies each user's intent signature via `ecrecover`, tracks the mapping from batch index to user address, then has the AUTHORIZED key sign a single ForwardRequest for the entire batch.
+
+```typescript
+import { ethers } from 'ethers';
+
+interface VerifiedIntent {
+    userAddress: string;  // Recovered from user's EIP-712 signature
+    pin: string;
+    codeHash: string;
+    redeemer: string;
+}
+
+// ── Step 1: Verify user intent signature ──
+function verifyRedemptionIntent(
+    intent: RedemptionIntent,
+    signature: string,
+    chainId: number,
+): string {
+    const domain = {
+        name: 'CryftGreetingCards',
+        version: '1',
+        chainId,
+    };
+
+    const types = {
+        RedemptionIntent: [
+            { name: 'pin', type: 'string' },
+            { name: 'codeHash', type: 'bytes32' },
+            { name: 'redeemer', type: 'address' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'deadline', type: 'uint256' },
+        ],
+    };
+
+    // Recover the signer address from the EIP-712 signature
+    const recoveredAddress = ethers.verifyTypedData(domain, types, intent, signature);
+    return recoveredAddress;
+}
+
+// ── Step 2: Process batch with result routing ──
+async function processBatchRedemptions(
+    pendingIntents: Array<{ intent: RedemptionIntent; signature: string }>,
+    authorizedSigner: ethers.Wallet,  // AUTHORIZED key for on-chain ForwardRequest
+    paladinClient: PaladinClient,
+    config: { chainId: number; relayAddress: string; penteGroup: string },
+): Promise<void> {
+    // 2a. Verify each user's intent signature
+    const verified: VerifiedIntent[] = [];
+    const batchIndexToUser: Map<number, string> = new Map();
+
+    for (const { intent, signature } of pendingIntents) {
+        // Check deadline
+        if (intent.deadline < Math.floor(Date.now() / 1000)) {
+            // Notify user of expired intent via WebSocket
+            continue;
+        }
+
+        // Check and consume API-level nonce
+        const currentNonce = await getNonce(intent);  // from DB
+        if (intent.nonce !== currentNonce) {
+            continue;  // Stale or replayed intent
+        }
+        await incrementNonce(intent);  // Consume the nonce
+
+        // Verify EIP-712 signature
+        const userAddress = verifyRedemptionIntent(intent, signature, config.chainId);
+
+        const idx = verified.length;
+        verified.push({ userAddress, pin: intent.pin, codeHash: intent.codeHash, redeemer: intent.redeemer });
+        batchIndexToUser.set(idx, userAddress);
+    }
+
+    if (verified.length === 0) return;
+
+    // 2b. Encode the PrivateComboStorage.redeemCodeBatch() call
+    const pins = verified.map(v => v.pin);
+    const codeHashes = verified.map(v => v.codeHash);
+    const redeemers = verified.map(v => v.redeemer);
+
+    const comboStorageInterface = new ethers.Interface(COMBO_STORAGE_ABI);
+    const callData = comboStorageInterface.encodeFunctionData(
+        'redeemCodeBatch',
+        [pins, codeHashes, redeemers],
+    );
+
+    // 2c. AUTHORIZED signs a single ForwardRequest for the whole batch
+    const nonce = await relay.getNonce(authorizedSigner.address);
+    const deadline = Math.floor(Date.now() / 1000) + 3600;
+
+    const forwardRequest = {
+        from: authorizedSigner.address,
+        data: callData,
+        nonce,
+        deadline,
+    };
+
+    const relayDomain = {
+        name: 'PrivateMetaTxRelay',
+        version: '1',
+        chainId: config.chainId,
+        verifyingContract: config.relayAddress,
+    };
+
+    const forwardTypes = {
+        ForwardRequest: [
+            { name: 'from', type: 'address' },
+            { name: 'data', type: 'bytes' },
+            { name: 'nonce', type: 'uint256' },
+            { name: 'deadline', type: 'uint256' },
+        ],
+    };
+
+    const relaySignature = await authorizedSigner.signTypedData(
+        relayDomain, forwardTypes, forwardRequest,
+    );
+
+    // 2d. Submit to Paladin via the relay
+    const txResult = await paladinClient.invokePrivate({
+        group: config.penteGroup,
+        to: config.relayAddress,
+        function: 'execute',
+        args: [forwardRequest, relaySignature],
+    });
+
+    // 2e. Route results back to each user using the batch index mapping
+    for (const [batchIdx, userAddress] of batchIndexToUser) {
+        const entryResult = {
+            success: txResult.success,
+            txHash: txResult.hash,
+            batchIndex: batchIdx,
+            pin: verified[batchIdx].pin,
+            redeemer: verified[batchIdx].redeemer,
+        };
+
+        // Deliver result to the specific user who signed the intent
+        websocket.to(userAddress).emit('redemptionResult', entryResult);
+    }
+}
+```
+
+### Result Delivery Patterns
+
+The API routes results to users using the batch index → user address mapping established during signature verification.
+
+#### WebSocket (Recommended)
+
+```typescript
+// Server-side: user connects with their address
+io.on('connection', (socket) => {
+    const address = socket.handshake.auth.address;
+    socket.join(address);  // Join a room keyed by address
+});
+
+// After batch completes, emit to each user's room
+websocket.to(userAddress).emit('redemptionResult', {
+    success: true,
+    txHash: '0x...',
+    tokenId: 42,
+    card: { name: 'Cryft Birthday Card #42', image: 'ipfs://...', /* ... */ },
+    bagCount: 3,
+});
+```
+
+#### Server-Sent Events (Alternative)
+
+```typescript
+// GET /api/events/:address — SSE stream
+app.get('/api/events/:address', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const listener = (result: RedemptionResult) => {
+        res.write(`data: ${JSON.stringify(result)}\n\n`);
+    };
+
+    resultEmitter.on(req.params.address, listener);
+    req.on('close', () => resultEmitter.off(req.params.address, listener));
+});
+```
+
+#### Polling (Simplest)
+
+```typescript
+// POST /api/cards/redeem returns a requestId
+// GET /api/cards/redeem/status/:requestId — poll for result
+
+// Client-side:
+const { requestId } = await fetch('/api/cards/redeem', { method: 'POST', body: ... }).then(r => r.json());
+
+const poll = setInterval(async () => {
+    const status = await fetch(`/api/cards/redeem/status/${requestId}`).then(r => r.json());
+    if (status.completed) {
+        clearInterval(poll);
+        showRedemptionResult(status.result);
+    }
+}, 2000);
+```
+
+### API Nonce Management
+
+Per-user API nonces prevent replay of intent signatures. These are separate from on-chain relay nonces.
+
+```typescript
+// Database table for API-level nonces
+// CREATE TABLE user_nonces (address TEXT PRIMARY KEY, nonce INTEGER DEFAULT 0);
+
+async function getNonce(intent: { pin: string; codeHash: string }): Promise<number> {
+    // Recover address from intent for nonce lookup
+    // OR use a separate address-based nonce endpoint
+    const row = await db.query('SELECT nonce FROM user_nonces WHERE address = ?', [address]);
+    return row?.nonce ?? 0;
+}
+
+async function incrementNonce(intent: { pin: string; codeHash: string }): Promise<void> {
+    await db.query(
+        'INSERT INTO user_nonces (address, nonce) VALUES (?, 1) ON CONFLICT(address) DO UPDATE SET nonce = nonce + 1',
+        [address],
+    );
+}
+
+// GET /api/intent/nonce?address=0x...
+// Returns: { value: 42 }
+```
+
+### Complete Flow Sequence
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌───────────────────────┐
+│   End User       │      │   API Server      │      │   Blockchain          │
+│   (Browser)      │      │   (Batch Handler) │      │   (Pente + Relay)     │
+└────────┬────────┘      └────────┬─────────┘      └───────────┬───────────┘
+         │                        │                             │
+         │  1. signTypedData()    │                             │
+         │  (RedemptionIntent)    │                             │
+         │───────────────────────▶│                             │
+         │  POST /api/cards/redeem│                             │
+         │  { intent, signature } │                             │
+         │                        │                             │
+         │                        │  2. ecrecover → userAddr    │
+         │                        │     verify nonce & deadline │
+         │                        │     store batchIdx→user map │
+         │                        │                             │
+         │                        │  3. Collect N intents       │
+         │                        │     into batch arrays       │
+         │                        │                             │
+         │                        │  4. AUTHORIZED signs        │
+         │                        │     ForwardRequest          │
+         │                        │     (single sig for batch)  │
+         │                        │                             │
+         │                        │  5. relay.execute()────────▶│
+         │                        │     via Paladin             │  6. Relay verifies
+         │                        │                             │     AUTHORIZED sig
+         │                        │                             │     → forwards to
+         │                        │                             │     ComboStorage
+         │                        │                             │
+         │                        │                             │  7. _msgSender()
+         │                        │                             │     = AUTHORIZED
+         │                        │                             │     → authorized ✓
+         │                        │                             │
+         │                        │                             │  8. redeemCodeBatch
+         │                        │                             │     executes
+         │                        │                             │     → PenteExternalCall
+         │                        │                             │     → CodeManager
+         │                        │                             │     → NFT transfer
+         │                        │                             │
+         │                        │◀─ 9. tx result ────────────│
+         │                        │                             │
+         │                        │  10. Look up batchIdx→user  │
+         │                        │      Route result per user  │
+         │                        │                             │
+         │◀─ 11. WebSocket ──────│                             │
+         │   redemptionResult     │                             │
+         │   { txHash, tokenId,   │                             │
+         │     card: {...} }      │                             │
+         │                        │                             │
+```
+
+### What Does NOT Change
+
+- **No contract modifications.** The on-chain contracts (PrivateMetaTxRelay, PrivateComboStorage, CodeManager, GreetingCards) are unchanged.
+- **On-chain authorization model unchanged.** `_msgSender()` via ERC-2771 must still resolve to ADMIN, AUTHORIZED, or a UID manager. The user's intent signature is never verified on-chain.
+- **`redeemer` is still just a parameter.** It specifies the NFT destination address, not the authorization source. The user who signed the intent may or may not be the redeemer.
+- **Direct calls still work.** An ADMIN or AUTHORIZED address can still call PrivateComboStorage directly via Paladin without using the relay or the API-level intent signatures.
