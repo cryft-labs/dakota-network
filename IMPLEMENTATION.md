@@ -31,7 +31,7 @@
 14. [Redeem Flow — redeemCodeBatch + External Call](#14-redeem-flow--redeemcodebatch--external-call)
 15. [Troubleshooting Matrix](#15-troubleshooting-matrix)
 16. [Operational Best Practices & Key Lessons](#16-operational-best-practices--key-lessons)
-17. [Recommended Future Architecture — Forwarder / Meta-Transaction Pattern](#17-recommended-future-architecture--forwarder--meta-transaction-pattern)
+17. [Private Meta-Transaction Relay — EIP-712 / ERC-2771 Architecture](#17-private-meta-transaction-relay--eip-712--erc-2771-architecture)
 
 ---
 
@@ -86,7 +86,26 @@ The patented system uses a three-layer architecture. No single layer holds all t
 │  │   │  • ADMIN     = Paladin signer addr     │                      │   │
 │  │   │  • AUTHORIZED = meta-tx processor addr │                      │   │
 │  │   │  • CODE_MANAGER = public CM address    │                      │   │
+│  │   │  • TRUSTED_FORWARDER = relay addr      │                      │   │
 │  │   │  • MAX_PER_PIN                         │                      │   │
+│  │   │                                        │                      │   │
+│  │   │  ERC-2771: _msgSender() extracts the   │                      │   │
+│  │   │  original signer from calldata when    │                      │   │
+│  │   │  called by TRUSTED_FORWARDER            │                      │   │
+│  │   └────────────────────────────────────────┘                      │   │
+│  │                                                                   │   │
+│  │   ┌────────────────────────────────────────┐                      │   │
+│  │   │  PrivateMetaTxRelay (EIP-712/ERC-2771) │  ← open relay       │   │
+│  │   │                                        │                      │   │
+│  │   │  Verifies EIP-712 signatures, appends  │                      │   │
+│  │   │  original signer to calldata, forwards │                      │   │
+│  │   │  to PrivateComboStorage as trusted     │                      │   │
+│  │   │  forwarder. Any group member can call. │                      │   │
+│  │   │                                        │                      │   │
+│  │   │  STATE:                                │                      │   │
+│  │   │  • _nonces[address] (per-signer)       │                      │   │
+│  │   │                                        │                      │   │
+│  │   │  CONSTANTS: ADMIN, PRIVATE_COMBO_STORAGE│                     │   │
 │  │   └────────────────────────────────────────┘                      │   │
 │  │                                                                   │   │
 │  │   ┌────────────────────────────────────────┐                      │   │
@@ -108,7 +127,8 @@ The patented system uses a three-layer architecture. No single layer holds all t
 | **Public Registry / Mirror**    | CodeManager                                       | UID registry, mirrored active/inactive overrides (sparse), terminal REDEEMED marking, governance votes, fee vault balance, privacy group authorization list | UID registration, deterministic ID generation, governance (2/3 supermajority), public mirrored UID state, and Pente routing. Only UIDs with mirroring enabled in PrivateComboStorage propagate state changes here — absence of a public override (USE_DEFAULT_ACTIVE_STATE) may indicate private-only management.                                                                                                                                                                                                                                                    |
 | **Public Authority**            | Gift Contract (IRedeemable)                       | Token ownership, frozen/unfrozen flags, redeemed status (token holder ≠ vault), metadata URI                                                                | Authority on redemption side effects and asset transfer. Decides how redemption works (single-use, multi-use, NFT transfer, etc.). Called by CodeManager via try/catch — reverts are caught and logged as RedemptionFailed events, not propagated. The UID remains terminally REDEEMED at every layer regardless. Recovery via `syncRedemption`.                                                                                                                                                                                                                     |
 | **Private Proxy**               | TransparentUpgradeableProxy (OZ 5.2)              | None (delegates all storage to implementation)                                                                                                              | Entry point for all private contract interactions. Delegates to the current PrivateComboStorage implementation via `delegatecall`. All state lives in the proxy's storage slots. Enables upgrades without redeployment.                                                                                                                                                                                                                                                                                                                                              |
-| **Private Storage / Execution** | PrivateComboStorage (implementation behind proxy) | Code hashes, PIN→bucket mappings, per-UID active/inactive state, per-UID mirror flags, per-UID manager delegation, contract-identifier whitelist            | Hash-only code storage within a Pente privacy group. PINs are contract-assigned routing keys (not part of the hash). Verifies codes via hash comparison, tracks execution-time UID active state privately, and selectively mirrors valid status changes to CodeManager based on per-UID `mirrorStatuses` configuration. Supports per-UID manager delegation for fine-grained active-state control. Requires contract-identifier whitelisting before codes can be stored. All configuration is compile-time constants — changes require a contract upgrade via proxy. |
+| **Private Storage / Execution** | PrivateComboStorage (implementation behind proxy) | Code hashes, PIN→bucket mappings, per-UID active/inactive state, per-UID mirror flags, per-UID manager delegation, contract-identifier whitelist            | Hash-only code storage within a Pente privacy group. PINs are contract-assigned routing keys (not part of the hash). Verifies codes via hash comparison, tracks execution-time UID active state privately, and selectively mirrors valid status changes to CodeManager based on per-UID `mirrorStatuses` configuration. Supports per-UID manager delegation for fine-grained active-state control. Requires contract-identifier whitelisting before codes can be stored. All configuration is compile-time constants — changes require a contract upgrade via proxy. Implements ERC-2771 trusted forwarder pattern: when called by `TRUSTED_FORWARDER` (PrivateMetaTxRelay), `_msgSender()` extracts the original signer from the last 20 bytes of calldata, preserving authorization semantics for meta-transactions. |
+| **Private Meta-Tx Relay**       | PrivateMetaTxRelay (standalone or behind proxy)   | Per-signer nonces (`_nonces[address]`)                                                                                                                      | Open EIP-712/ERC-2771 meta-transaction relay. Verifies off-chain EIP-712 `ForwardRequest` signatures, increments nonces for replay protection, and forwards calls to PrivateComboStorage with the original signer appended as the last 20 bytes of calldata (ERC-2771). The relay itself enforces no caller restrictions — authorization is entirely delegated to PrivateComboStorage's access control (`_msgSender()` recovers the signer, which must be ADMIN, AUTHORIZED, or a per-UID manager). Supports both single `execute()` (reverts on failure) and batched `executeBatch()` (skip-and-report). |
 | **Private Admin**               | ProxyAdmin (auto-deployed by OZ 5.2)              | Ownership (owner = Paladin signer)                                                                                                                          | Controls upgrade authority for the proxy. Only the ProxyAdmin can call `upgradeAndCall` on the proxy. Owned by the Paladin signer — external EOAs cannot call upgrade directly.                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ### Key Design Principles
@@ -461,7 +481,9 @@ Per-UID Manager                     (via proxy)
 |                         | `registeredCodeCount[hash]`                                                  | `syncRegisteredCodeCountBatch` (monotonic update)                              | `storeDataBatch` (counter ceiling check)                                       | Synced from public CodeManager counter                                                                                      |
 |                         | `storedCodeCount[hash]`                                                      | `storeDataBatch` (+= validCount)                                               | Telemetry only                                                                 | Operational tracking — not used for validation                                                                              |
 |                         | `_contractIdentifierStrings[hash]`                                           | `setContractIdentifierWhitelist`, `syncRegisteredCodeCountBatch`               | `redeemCodeBatch` (UID reconstruction)                                         | Maps hash → string for UID rebuild at redemption                                                                            |
-|                         | `ADMIN`, `AUTHORIZED`, `CODE_MANAGER`, `MAX_PER_PIN`, `DEFAULT_ACTIVE_STATE` | Never (compile-time constants)                                                 | Every access is `PUSH` opcode                                                  | Zero SLOAD cost — embedded in bytecode                                                                                      |
+|                         | `ADMIN`, `AUTHORIZED`, `CODE_MANAGER`, `TRUSTED_FORWARDER`, `MAX_PER_PIN`, `DEFAULT_ACTIVE_STATE` | Never (compile-time constants)                                                 | Every access is `PUSH` opcode                                                  | Zero SLOAD cost — embedded in bytecode. `TRUSTED_FORWARDER` = PrivateMetaTxRelay address for ERC-2771.                      |
+| **PrivateMetaTxRelay**  | `_nonces[address]`                                                           | `execute` / `executeBatch` (++ on verified signature)                          | `getNonce` (read), `verify` (read)                                             | One SSTORE per verified meta-transaction request                                                                             |
+|                         | `ADMIN`, `PRIVATE_COMBO_STORAGE`                                             | Never (compile-time constants)                                                 | Every access is `PUSH` opcode                                                  | Zero SLOAD cost — embedded in bytecode                                                                                      |
 
 #### Cross-Contract Call Matrix
 
@@ -476,6 +498,7 @@ Per-UID Manager                     (via proxy)
 | Gift Contract       | CodeManager   | `getUniqueIdDetails()`       | `getDetailsFromCodeManager()`                    | Public → Public (view)        |
 | PrivateComboStorage | CodeManager   | `recordRedemption()`         | `redeemCodeBatch()` via PenteExternalCall        | Private → Public              |
 | PrivateComboStorage | CodeManager   | `setUniqueIdActiveBatch()`   | `setUniqueIdActiveBatch()` via PenteExternalCall | Private → Public              |
+| PrivateMetaTxRelay  | PrivateComboStorage | `*` (any function)     | `execute()` / `executeBatch()` via `.call()` with ERC-2771 appended sender | Private → Private (forwarding) |
 | CodeManager         | Gift Contract | `recordRedemption()`         | `recordRedemption()` via try/catch               | Public → Public (IRedeemable) |
 
 ---
@@ -785,6 +808,7 @@ Before deploying `PrivateComboStorage` (or any implementation contract) into the
 2. **Privacy group is created** with `externalCallsEnabled: "true"` and verified via `pgroup_getGroupById`
 3. **`CODE_MANAGER` constant is set** in the `PrivateComboStorage` source to the CodeManager proxy address
 4. **`ADMIN` and `AUTHORIZED` constants are set** to Paladin-signable addresses (see [Section 11](#11-signer--admin-strategy))
+5. **`TRUSTED_FORWARDER` constant is set** to the PrivateMetaTxRelay proxy address (if relay is already deployed), or a placeholder address to be updated later via proxy upgrade after relay deployment (see [Section 17](#17-private-meta-transaction-relay--eip-712--erc-2771-architecture))
 
 ### 7.2 Compile for Shanghai EVM
 
@@ -1237,9 +1261,13 @@ Both should return Paladin-signable addresses (see [Section 11](#11-signer--admi
 - [ ] `CODE_MANAGER()` returns the correct CodeManager proxy address
 - [ ] `ADMIN()` returns a Paladin-signable admin address
 - [ ] `AUTHORIZED()` returns the meta-tx processing service address (Paladin-signable)
+- [ ] `TRUSTED_FORWARDER()` returns the PrivateMetaTxRelay proxy address
+- [ ] `isTrustedForwarder(relayProxyAddr)` returns `true`
 - [ ] Privacy group has `externalCallsEnabled: "true"` (string) — verified via `pgroup_getGroupById`
 - [ ] If using a proxy: `ProxyAdmin.owner()` returns a Paladin-signable address
 - [ ] Derived submitter(s) funded for each transaction path
+- [ ] PrivateMetaTxRelay: `PRIVATE_COMBO_STORAGE()` returns the PrivateComboStorage proxy address
+- [ ] PrivateMetaTxRelay: `domainSeparator()` returns expected value
 
 ---
 
@@ -1447,14 +1475,22 @@ The complete authorization sequence:
 1.  Deploy CodeManager + Gift Contract on public chain
 2.  Create ext-calls privacy group (pgroup_createGroup with "externalCallsEnabled": "true")
 3.  Verify group config (pgroup_getGroupById) and record group contract address
-4.  Compile PrivateComboStorage with correct CODE_MANAGER, ADMIN, AUTHORIZED constants
+4.  Compile PrivateComboStorage with correct CODE_MANAGER, ADMIN, AUTHORIZED, TRUSTED_FORWARDER constants
       (ADMIN and AUTHORIZED must be Paladin-signable addresses)
+      (TRUSTED_FORWARDER = PrivateMetaTxRelay proxy address — set after step 10b or use placeholder + upgrade)
 5.  Deploy implementation in privacy group (pgroup_sendTransaction)
 6.  Poll receipt for implementation address (ptx_getTransactionReceiptFull)
 7.  Deploy proxy with _logic = implementation address, initialOwner = Paladin signer
 8.  Poll receipt for proxy address
 9.  Verify ProxyAdmin.owner() matches Paladin signer
-10. Verify CODE_MANAGER(), ADMIN(), AUTHORIZED() on proxy
+10. Verify CODE_MANAGER(), ADMIN(), AUTHORIZED(), TRUSTED_FORWARDER() on proxy
+10a. Compile PrivateMetaTxRelay with PRIVATE_COMBO_STORAGE = PrivateComboStorage proxy address
+10b. Deploy PrivateMetaTxRelay implementation + proxy (same pattern as steps 5-8)
+10c. Verify PRIVATE_COMBO_STORAGE(), ADMIN(), domainSeparator() on relay proxy
+10d. If TRUSTED_FORWARDER was a placeholder: recompile PrivateComboStorage with real relay address,
+       deploy new implementation, upgrade proxy (Section 9)
+10e. Verify TRUSTED_FORWARDER() on PrivateComboStorage → relay proxy address
+10f. Verify isTrustedForwarder(relayProxyAddr) → true
 11. Fund derived submitter(s) as needed (check Paladin logs)
 12. Authorize privacy group CONTRACT ADDRESS on CodeManager:
       voteToAuthorizePrivacyGroup(groupContractAddress)
@@ -1463,8 +1499,8 @@ The complete authorization sequence:
 14. Register UIDs on CodeManager via setMaxSaleSupply() on the gift contract
 15. Configure per-UID options (optional):
       setUniqueIdManagersBatch / setUniqueIdActiveBatch with mirrorStatuses
-16. Store codes → storeDataBatch
-17. Redeem codes → redeemCodeBatch
+16. Store codes → storeDataBatch (direct or via relay)
+17. Redeem codes → redeemCodeBatch (direct or via relay)
 ```
 
 ---
@@ -1768,6 +1804,7 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 | `ADMIN()` returns a placeholder address                                 | Did not update the constant before compiling                                                   | Placeholder value still in contract                                                                                                                       | Update `ADMIN` in source, recompile, redeploy via proxy upgrade (Section 9)                            |
 | `AUTHORIZED()` returns a placeholder address                            | Did not update the constant before compiling                                                   | Placeholder value still in contract                                                                                                                       | Update `AUTHORIZED` in source, recompile, redeploy via proxy upgrade (Section 9)                       |
 | `CODE_MANAGER()` returns `0x...c0DE`                                    | Did not update the constant before compiling                                                   | Placeholder value still in contract                                                                                                                       | Update `CODE_MANAGER` in source, recompile, redeploy via proxy upgrade (Section 9)                     |
+| `TRUSTED_FORWARDER()` returns placeholder or wrong address              | Did not update the constant before compiling, or relay was deployed after PrivateComboStorage   | Placeholder value or zero address in contract                                                                                                             | Update `TRUSTED_FORWARDER` in source, recompile, redeploy via proxy upgrade (Section 9)                |
 | `"Caller is not an authorized privacy group"`                           | Wrong address authorized on CodeManager                                                        | You authorized the derived submitter instead of the **group contract address**                                                                            | Authorize the group contract address, not the derived submitter. See Section 12.                       |
 | `"Counter not registered on CodeManager"` during `storeDataBatch`       | Counter exceeds synced `registeredCodeCount` ceiling                                           | Sync via `syncRegisteredCodeCountBatch` after increasing `maxSaleSupply`                                                                                  | Call `syncRegisteredCodeCountBatch` with current CodeManager counter                                   |
 | `RedemptionRejected` event on CodeManager                               | UID precondition failed (invalid, unregistered, inactive, or already redeemed on public chain) | Read event `reason` field; no Pente rollback occurred                                                                                                     | Fix root cause; private state is preserved                                                             |
@@ -1778,6 +1815,12 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 | `"Counter drift: CodeManager out of sync"` during `setMaxSaleSupply()`  | External registration changed the counter                                                      | Check `getIdentifierCounter` on CodeManager                                                                                                               | Ensure only `setMaxSaleSupply()` registers UIDs for this contract                                      |
 | `"Payment must equal price"` during `buy()`                             | Incorrect `msg.value`                                                                          | Calculate: `pricePerCard * qty`                                                                                                                           | Send exact amount                                                                                      |
 | `"Must send exact registration fee"` during `setMaxSaleSupply()`        | Incorrect `msg.value`                                                                          | Calculate: `registrationFee * delta`                                                                                                                      | Send exact amount                                                                                      |
+| Relay `execute()` reverts after forwarding                              | PrivateComboStorage rejected the forwarded call (unauthorized signer)                          | The recovered EIP-712 signer does not match ADMIN, AUTHORIZED, or the UID's manager in PrivateComboStorage                                               | Verify the signing address is authorized for the target function                                       |
+| `"Bad signature length"` in relay `executeBatch()`                      | Signature is not exactly 65 bytes                                                              | Check signature encoding (must be r + s + v = 32 + 32 + 1 bytes)                                                                                        | Fix signature encoding                                                                                 |
+| `"Expired"` in relay                                                    | `block.timestamp > request.deadline`                                                           | Check Pente block time vs. deadline — Pente timestamps may lag behind wall clock                                                                         | Use a later deadline; verify Pente block time                                                          |
+| `"Invalid nonce"` in relay                                              | `request.nonce != _nonces[from]`                                                               | Query `getNonce(from)` on the relay for the current value                                                                                                | Use the current nonce; requests must be submitted in order                                              |
+| `"Invalid signature"` in relay                                          | `ecrecover()` did not return `request.from`                                                    | Domain mismatch (wrong chainId, contract address), wrong type hash, or data encoding mismatch                                                            | Verify EIP-712 domain parameters match the deployed relay                                               |
+| `TRUSTED_FORWARDER()` returns placeholder address                       | PrivateComboStorage compiled without setting `TRUSTED_FORWARDER` to the relay proxy             | Constant still has placeholder value                                                                                                                      | Recompile with the correct relay proxy address and upgrade via proxy                                    |
 | `pgroup_sendTransaction` returns success but no event on public chain   | Group not ext-calls-enabled, or derived submitter unfunded for that specific operation         | Check group config via `pgroup_getGroupById`; check each derived submitter balance (different ops use different submitters)                               | Recreate group with string `"true"` or fund the specific derived submitter shown in logs               |
 | Private contract call reverts with no useful message                    | Wrong ABI, function signature, or calling via wrong address (implementation instead of proxy)  | Verify function signature matches contract exactly; verify you're calling the proxy address, not the implementation                                       | Re-check ABI; use the proxy address for all interactions                                               |
 | `ptx_resolveVerifier` returns unexpected address                        | You're resolving in the wrong context or using the wrong algorithm                             | Must use `algorithm: "domain:ecdsa"`                                                                                                                      | See Section 2 for the correct call format                                                              |
@@ -1901,7 +1944,7 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 
 2. **Fund the correct derived submitter — there are multiple.** Different operations (deploy, finalize, store, external-call) route through *different* derived submitter addresses. The address in the `insufficient funds` error is the one that needs funding. You cannot predict these addresses — deploy, read the error, fund, retry. See Section 6 for the full table.
 
-3. **All addresses and limits are compile-time constants.** `ADMIN`, `AUTHORIZED`, `CODE_MANAGER`, and `MAX_PER_PIN` cannot be changed after deployment. If any is wrong, you must recompile and redeploy via proxy upgrade (Section 9).
+3. **All addresses and limits are compile-time constants.** `ADMIN`, `AUTHORIZED`, `CODE_MANAGER`, `TRUSTED_FORWARDER`, and `MAX_PER_PIN` cannot be changed after deployment. If any is wrong, you must recompile and redeploy via proxy upgrade (Section 9).
 
 4. **Pente runs `shanghai` EVM.** Private contracts must be compiled with `--evm-version shanghai`. Public contracts can use a later EVM version.
 
@@ -1942,12 +1985,21 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 □ Privacy group created with externalCallsEnabled: "true" (STRING)
 □ Group ID and group contract address recorded
 □ Group verified via pgroup_getGroupById
-□ PrivateComboStorage compiled with correct ADMIN, AUTHORIZED, CODE_MANAGER constants
+□ PrivateComboStorage compiled with correct ADMIN, AUTHORIZED, CODE_MANAGER, TRUSTED_FORWARDER constants
 □ Compiled with --evm-version shanghai
 □ Implementation deployed via pgroup_sendTransaction (creation bytecode)
 □ Receipt polled, implementation address recorded from PentePrivateDeployEvent
 □ TransparentUpgradeableProxy deployed with (implAddr, paladinSigner, initData)
 □ Receipt polled, ProxyAdmin and proxy addresses parsed correctly
+□ PrivateMetaTxRelay compiled with correct ADMIN, PRIVATE_COMBO_STORAGE constants
+□ PrivateMetaTxRelay compiled with --evm-version shanghai
+□ PrivateMetaTxRelay implementation deployed via pgroup_sendTransaction
+□ PrivateMetaTxRelay proxy deployed with (implAddr, paladinSigner, 0x)
+□ PrivateMetaTxRelay: PRIVATE_COMBO_STORAGE() verified → PrivateComboStorage proxy
+□ PrivateMetaTxRelay: ADMIN() verified → Paladin signer
+□ PrivateMetaTxRelay: domainSeparator() verified
+□ TRUSTED_FORWARDER() on PrivateComboStorage verified → PrivateMetaTxRelay proxy
+□ isTrustedForwarder(relayProxy) → true
 □ Derived submitters funded (deploy, finalize, and store/external-call addresses)
 □ ADMIN() verified via pgroup_call → returns Paladin signer
 □ AUTHORIZED() verified via pgroup_call → returns meta-tx processor (Paladin signer)
@@ -1962,6 +2014,7 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 □ registeredCodeCount synced on PrivateComboStorage (private)
 □ storeDataBatch succeeds → PINs assigned for counters already registered publicly
 □ redeemCodeBatch succeeds → recordRedemption routes to gift contract → NFT transferred
+□ If using relay: execute() / executeBatch() forwards correctly, _msgSender() returns signer
 □ If RedemptionFailed emitted → syncRedemption(uniqueId, redeemer) recovers the NFT transfer
 □ tokenURI switches from unredeemed to redeemed metadata
 ```
@@ -1972,19 +2025,25 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 | --------------------------- | -------------- | -------------------- | -------------------------------------------- |
 | CodeManager                 | >=0.8.2 <0.9.0 | Public chain default | Genesis Upgradeable (custom)                 |
 | GreetingCards               | >=0.8.2 <0.9.0 | Public chain default | OpenZeppelin v5.2.0 Upgradeable              |
-| PrivateComboStorage         | >=0.8.2 <0.9.0 | shanghai             | None (standalone)                            |
+| PrivateComboStorage         | >=0.8.2 <0.9.0 | shanghai             | None (standalone, ERC-2771 recipient)        |
+| PrivateMetaTxRelay          | >=0.8.2 <0.9.0 | shanghai             | None (standalone, EIP-712 / ERC-2771 relay)  |
 | TransparentUpgradeableProxy | ^0.8.20        | shanghai             | OpenZeppelin v5.2.0                          |
 | ProxyAdmin                  | ^0.8.20        | shanghai             | OpenZeppelin v5.2.0 (auto-deployed by proxy) |
 
 ---
 
-## 17. Recommended Future Architecture — Forwarder / Meta-Transaction Pattern
+## 17. Private Meta-Transaction Relay — EIP-712 / ERC-2771 Architecture
 
-### Current State: AUTHORIZED as Meta-Transaction Processor
+### Implementation Overview
 
-The current architecture already embodies the core concept of meta-transaction forwarding. The `AUTHORIZED` constant in `PrivateComboStorage` designates a **meta-transaction processing service** — the identity that receives forwarded store/redeem requests from external callers, recovers the original caller's intent, and executes `storeDataBatch` / `redeemCodeBatch` within the privacy group. The Paladin signer provides the `msg.sender` authority for these forwarded calls.
+The system implements a full EIP-712 / ERC-2771 meta-transaction relay (`PrivateMetaTxRelay`) deployed inside the Pente privacy group alongside `PrivateComboStorage`. This enables external EOAs (hardware wallets, multisigs, end-user wallets) to sign structured data off-chain while the Paladin signer pays gas and submits the transaction.
 
-What the current design lacks is **on-chain signature verification** — the private contract trusts `msg.sender` (the Paladin signer) rather than verifying an embedded signature from the external caller. This works when a single Paladin node operator controls all operations, but limits extensibility.
+**Two-contract pattern:**
+
+| Component | Contract | Role |
+|---|---|---|
+| **Relay** | `PrivateMetaTxRelay` | Verifies EIP-712 signatures, increments per-signer nonces, appends the recovered signer to calldata (ERC-2771), forwards to `PrivateComboStorage`. Open — any privacy group member can call. |
+| **Target** | `PrivateComboStorage` | ERC-2771 trusted forwarder recipient. When `msg.sender == TRUSTED_FORWARDER`, `_msgSender()` extracts the original signer from the last 20 bytes of calldata. All access control (ADMIN, AUTHORIZED, per-UID manager) is enforced against the recovered signer. |
 
 ### The Problem with `msg.sender` in Pente
 
@@ -1994,79 +2053,238 @@ Inside a Paladin Pente privacy group, **every** transaction is signed and submit
 - You cannot distinguish between different external users via `msg.sender`.
 - If you hard-code `require(msg.sender == ADMIN)`, only the Paladin signer can pass — not an external EOA.
 
-This works for single-admin systems where the Paladin node operator IS the admin. But it breaks down when:
-- Multiple external users need different authorization levels.
-- You want an external EOA (e.g., a hardware wallet) to retain admin privileges.
-- You need non-repudiation tied to real identities rather than a shared node signer.
+The meta-transaction relay solves this by verifying **signatures** embedded in the transaction data, recovering the real signer's address, and forwarding it via the ERC-2771 trusted forwarder pattern.
 
-### The Solution: Gateway / Forwarder Pattern
-
-Instead of relying on `msg.sender`, the private contract verifies **signatures** embedded in the transaction data.
-
-**Architecture:**
+### Architecture Flow
 
 ```
 External EOA                    Paladin Node                    Pente Privacy Group
      │                               │                               │
-     │  1. Sign typed data           │                               │
-     │     (EIP-712 approval)        │                               │
+     │  1. Sign ForwardRequest       │                               │
+     │     (EIP-712 typed data)      │                               │
      │                               │                               │
      │  2. Submit signed payload ──► │                               │
      │                               │  3. pgroup_sendTransaction    │
-     │                               │     with signed payload ────► │
+     │                               │     → relay.execute(          │
+     │                               │       request, signature) ──► │
      │                               │                               │
-     │                               │                    4. Contract calls │
-     │                               │                       ecrecover()    │
-     │                               │                       to recover     │
-     │                               │                       external EOA   │
+     │                               │                    4. Relay verifies     │
+     │                               │                       EIP-712 signature  │
+     │                               │                       via ecrecover()    │
      │                               │                               │
-     │                               │                    5. Authorize      │
-     │                               │                       based on       │
-     │                               │                       recovered addr │
+     │                               │                    5. Relay calls        │
+     │                               │                       PrivateComboStorage│
+     │                               │                       with appended     │
+     │                               │                       sender (ERC-2771) │
+     │                               │                               │
+     │                               │                    6. PrivateComboStorage│
+     │                               │                       _msgSender()      │
+     │                               │                       extracts signer   │
+     │                               │                       → enforces        │
+     │                               │                       access control    │
 ```
 
-**Key components:**
+### Security Model
 
-1. **Off-chain:** External admin signs an EIP-712 typed data struct (e.g., `Approve(address target, bytes32 action, uint256 nonce, uint256 deadline)`). This proves intent without requiring on-chain execution by that EOA.
+The security split between the relay and the target contract is intentional and critical:
 
-2. **Relay:** The signed payload is submitted to Paladin, which wraps it in a `pgroup_sendTransaction`. Paladin's internal signer is the `msg.sender`, but the *payload* carries the external signature.
+| Aspect | PrivateMetaTxRelay | PrivateComboStorage |
+|---|---|---|
+| **Caller restriction** | None — open to any privacy group member | `_msgSender()` must be ADMIN, AUTHORIZED, or per-UID manager |
+| **Signature verification** | EIP-712 `ecrecover()` with nonce + deadline | N/A — trusts the relay's ERC-2771 appended sender |
+| **Replay protection** | Per-signer monotonic nonces (`_nonces[from]`) | N/A — handled by relay |
+| **Deadline enforcement** | `require(block.timestamp <= request.deadline)` | N/A — handled by relay |
+| **Malleability protection** | EIP-2 low-s check on signature | N/A — handled by relay |
 
-3. **On-chain verification:** The private contract has a `forwarder` or `gateway` function:
-   ```solidity
-   function executeWithApproval(
-       bytes32 action,
-       bytes calldata data,
-       uint256 deadline,
-       uint8 v, bytes32 r, bytes32 s
-   ) external {
-       require(block.timestamp <= deadline, "Expired");
-       bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-           APPROVE_TYPEHASH, action, keccak256(data), nonces[signer]++, deadline
-       )));
-       address signer = ecrecover(digest, v, r, s);
-       require(signer == ADMIN, "Not admin");
-       // Execute the action
-       (bool success,) = address(this).delegatecall(data);
-       require(success);
-   }
-   ```
+**Why the relay is open:** The relay's job is to verify that a valid EIP-712 signature exists and forward the recovered signer. It doesn't need to know *who* is submitting — only that the *signature* is valid. PrivateComboStorage decides whether the recovered signer has authority for the requested operation. This separation means any privacy group member can act as a gas-paying relayer for any legitimate signer.
 
-4. **Authorization:** The contract checks the *recovered signer* against its admin/authorized addresses, not `msg.sender`.
+### EIP-712 Domain & ForwardRequest
 
-### Benefits
+**EIP-712 Domain:**
 
-| Aspect            | Current (msg.sender)         | Forwarder Pattern                        |
-| ----------------- | ---------------------------- | ---------------------------------------- |
-| Admin identity    | Paladin node signer          | External EOA (hardware wallet, multisig) |
-| Multi-user auth   | Not possible — single signer | Each user signs with own key             |
-| Key security      | Paladin manages key          | Admin key can be cold storage            |
-| Non-repudiation   | All actions look same        | Signatures tied to specific EOAs         |
-| Upgrade authority | Must match Paladin signer    | Can be any verified address              |
+```solidity
+EIP712Domain(string name, string version, uint256 chainId, address verifyingContract)
+```
 
-### Implementation Considerations
+| Parameter | Value |
+|---|---|
+| `name` | `"PrivateMetaTxRelay"` |
+| `version` | `"1"` |
+| `chainId` | Privacy group chain ID (shanghai EVM) |
+| `verifyingContract` | PrivateMetaTxRelay proxy address |
 
-- **Nonce management:** The contract must track per-signer nonces to prevent replay attacks.
-- **EIP-712 domain:** Must include the chain ID and contract address to prevent cross-chain replay.
-- **Deadline enforcement:** `block.timestamp` inside Pente reflects the base chain block time. Include reasonable deadlines.
-- **Gas sponsorship:** Paladin's internal signer still pays gas. The external signer only signs approvals — they don't need ETH on the privacy group.
-- **Backward compatibility:** Can coexist with direct `msg.sender` checks. Add forwarder functions alongside existing admin functions; phase out direct checks over time.
+**ForwardRequest struct:**
+
+```solidity
+struct ForwardRequest {
+    address from;       // The original signer's address
+    bytes   data;       // ABI-encoded function call for PrivateComboStorage
+    uint256 nonce;      // Must match _nonces[from] — consumed on success
+    uint256 deadline;   // block.timestamp cutoff — prevents stale execution
+}
+```
+
+**TypeHash:**
+
+```
+ForwardRequest(address from,bytes data,uint256 nonce,uint256 deadline)
+```
+
+### PrivateMetaTxRelay Constants
+
+| Constant | Value | Purpose |
+|---|---|---|
+| `ADMIN` | `0x01d5E8F6aa4650e571acAa8733F46c3d16fa13cB` | Paladin signer. Retained for potential future admin-only relay functions. |
+| `PRIVATE_COMBO_STORAGE` | `0x000000000000000000000000000000000000c0b0` | Target contract. All forwarded calls route here. Update via contract upgrade. |
+
+### PrivateMetaTxRelay Functions
+
+**Write functions (open — no caller restriction):**
+
+| Function | Parameters | Behavior |
+|---|---|---|
+| `execute(request, signature)` | `ForwardRequest calldata`, `bytes calldata` | Verifies signature, increments nonce, forwards call with ERC-2771 appended sender. **Reverts on failure** — atomic single-request execution. Emits `MetaTxExecuted`. |
+| `executeBatch(requests[], signatures[])` | `ForwardRequest[] calldata`, `bytes[] calldata` | Batch execution with **skip-and-report** semantics. Each request is independently validated; failures emit `MetaTxFailed` but do not revert the batch. Returns `bool[] successes` and `bytes[] results`. |
+
+**View functions:**
+
+| Function | Returns | Purpose |
+|---|---|---|
+| `getNonce(address from)` | `uint256` | Current nonce for a signer. Used by off-chain code to construct valid `ForwardRequest`s. |
+| `verify(ForwardRequest, bytes)` | `bool` | Dry-run signature verification without consuming nonce. For off-chain pre-validation. |
+| `domainSeparator()` | `bytes32` | Computed EIP-712 domain separator. For off-chain signing libraries. |
+
+### PrivateComboStorage ERC-2771 Integration
+
+PrivateComboStorage recognizes the relay as its trusted forwarder via a compile-time constant:
+
+| Constant | Value | Purpose |
+|---|---|---|
+| `TRUSTED_FORWARDER` | PrivateMetaTxRelay proxy address | When `msg.sender == TRUSTED_FORWARDER`, `_msgSender()` extracts the original signer from the last 20 bytes of calldata instead of using `msg.sender` directly. |
+
+**`_msgSender()` implementation:**
+
+```solidity
+function _msgSender() internal view returns (address) {
+    if (msg.sender == TRUSTED_FORWARDER && msg.data.length >= 20) {
+        return address(bytes20(msg.data[msg.data.length - 20:]));
+    }
+    return msg.sender;
+}
+```
+
+All state-modifying functions in PrivateComboStorage call `_msgSender()` (cached as a local `sender` variable for gas efficiency) instead of using `msg.sender` directly. This means the same access control logic works for both:
+- **Direct calls** (Paladin signer calls PrivateComboStorage directly → `msg.sender` is the Paladin signer)
+- **Relayed calls** (Paladin signer calls relay → relay calls PrivateComboStorage → `_msgSender()` returns the original EIP-712 signer)
+
+### Deployment & Verification
+
+**Prerequisites:**
+1. PrivateComboStorage is deployed (implementation + proxy) with `TRUSTED_FORWARDER` set to the PrivateMetaTxRelay proxy address
+2. Privacy group is created with `externalCallsEnabled: "true"`
+
+**Deployment steps:**
+
+```
+1.  Compile PrivateMetaTxRelay with correct ADMIN and PRIVATE_COMBO_STORAGE constants
+      → PRIVATE_COMBO_STORAGE = PrivateComboStorage proxy address inside Pente
+      → ADMIN = Paladin signer address
+2.  Compile with --evm-version shanghai
+3.  Deploy implementation via pgroup_sendTransaction (creation bytecode)
+4.  Poll receipt for implementation address
+5.  Deploy TransparentUpgradeableProxy with (implAddr, paladinSigner, 0x)
+6.  Poll receipt for proxy address
+7.  Verify:
+      → ADMIN() returns Paladin signer
+      → PRIVATE_COMBO_STORAGE() returns PrivateComboStorage proxy address
+      → domainSeparator() returns expected value
+8.  Verify PrivateComboStorage recognizes the relay:
+      → TRUSTED_FORWARDER() returns PrivateMetaTxRelay proxy address
+      → isTrustedForwarder(relayProxyAddr) returns true
+```
+
+**Verification commands:**
+
+```bash
+# Check PRIVATE_COMBO_STORAGE on the relay
+# Use same pgroup_call pattern as Section 10, targeting the relay proxy address
+# Function: "PRIVATE_COMBO_STORAGE", outputs: [{ type: "address" }]
+
+# Check TRUSTED_FORWARDER on PrivateComboStorage
+# Target: PrivateComboStorage proxy address
+# Function: "TRUSTED_FORWARDER", outputs: [{ type: "address" }]
+
+# Check isTrustedForwarder
+# Target: PrivateComboStorage proxy address
+# Function: "isTrustedForwarder", inputs: [{ name: "forwarder", type: "address" }]
+# Input: relay proxy address
+# Expected: true
+```
+
+### Off-Chain Signing Workflow (Client/Backend)
+
+```typescript
+// 1. Build the ForwardRequest
+const nonce = await relay.getNonce(signerAddress);
+const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour
+
+const forwardRequest = {
+    from: signerAddress,
+    data: comboStorage.interface.encodeFunctionData('storeDataBatch', [request]),
+    nonce: nonce,
+    deadline: deadline,
+};
+
+// 2. Build the EIP-712 typed data
+const domain = {
+    name: 'PrivateMetaTxRelay',
+    version: '1',
+    chainId: penteChainId,
+    verifyingContract: relayProxyAddress,
+};
+
+const types = {
+    ForwardRequest: [
+        { name: 'from', type: 'address' },
+        { name: 'data', type: 'bytes' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' },
+    ],
+};
+
+// 3. Sign with the external EOA (hardware wallet, browser wallet, etc.)
+const signature = await signer.signTypedData(domain, types, forwardRequest);
+
+// 4. Submit to Paladin — any privacy group member can relay
+await paladinClient.invokePrivate({
+    group: PENTE_GROUP_ADDRESS,
+    to: RELAY_PROXY_ADDRESS,
+    function: 'execute',
+    args: [forwardRequest, signature],
+});
+```
+
+### Benefits vs. Direct `msg.sender`
+
+| Aspect            | Direct `msg.sender`          | EIP-712 / ERC-2771 Relay                  |
+| ----------------- | ---------------------------- | ----------------------------------------- |
+| Admin identity    | Paladin node signer only     | Any external EOA (hardware wallet, etc.)  |
+| Multi-user auth   | Not possible — single signer | Each user signs with own key              |
+| Key security      | Paladin manages key          | Admin key can be cold storage             |
+| Non-repudiation   | All actions look same        | Signatures tied to specific EOAs          |
+| Upgrade authority | Must match Paladin signer    | Can be any verified address               |
+| Gas payment       | Caller pays                  | Relayer pays — signer needs no gas        |
+| Backward compat   | N/A                          | Direct calls still work alongside relayed |
+
+### Failure Modes (Relay-Specific)
+
+| Failure | Cause | Fix |
+|---|---|---|
+| `"Bad signature length"` | Signature is not exactly 65 bytes (r + s + v) | Check signature encoding |
+| `"Expired"` | `block.timestamp > request.deadline` | Use a later deadline; check Pente block time |
+| `"Invalid nonce"` | `request.nonce != _nonces[from]` | Query `getNonce(from)` for current value |
+| `"Invalid signature"` | `ecrecover` did not return `request.from` | Wrong signer, wrong domain, or data mismatch |
+| `"Call failed"` (in `executeBatch`) | PrivateComboStorage reverted (e.g., unauthorized signer) | Check that the recovered signer has appropriate role in PrivateComboStorage |
+| Relay `execute()` reverts | PrivateComboStorage rejected the forwarded call | Check `_msgSender()` matches ADMIN, AUTHORIZED, or UID manager for the target function |
+| `"Array length mismatch"` | `requests[]` and `signatures[]` have different lengths | Ensure arrays match |
+| `"Empty batch"` | Zero-length arrays passed to `executeBatch()` | Provide at least one request |

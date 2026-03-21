@@ -478,7 +478,8 @@ CodeManager (independent)
 | Contract                | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **CodeManager**         | **Patent-covered.** Permissionless unique ID registry with an independent voter pool, 2/3 supermajority quorum, public mirrored UID state, and Pente routing. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`.                                                                                                                                                                      |
-| **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, tracks execution-time UID active state privately, and emits `PenteExternalCall` events to mirror UID status and route redemptions through CodeManager. All configuration (admin, authorized caller, CodeManager address, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
+| **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, tracks execution-time UID active state privately, and emits `PenteExternalCall` events to mirror UID status and route redemptions through CodeManager. Supports ERC-2771 trusted forwarder for meta-transactions via PrivateMetaTxRelay. All configuration (admin, authorized caller, CodeManager address, trusted forwarder, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
+| **PrivateMetaTxRelay**  | **Patent-covered.** Pente privacy group deployment. EIP-712 / ERC-2771 meta-transaction relay for PrivateComboStorage. Any privacy group member can submit signed requests; the relay verifies the signature, increments a per-signer nonce, and forwards the call with the recovered signer appended per ERC-2771. Authorization is enforced by PrivateComboStorage, not the relay. |
 | **DakotaDelegation**    | EIP-7702 delegation target. EOAs delegate to this contract for smart-account capabilities: single/batch execution, sponsored execution (EIP-712), session keys, EIP-1271 signature validation.                                                                                                                                                                                                                                                                                                    |
 | **GasSponsor**          | On-chain gas sponsorship treasury. Per-sponsor deposits, authorized relayer management, daily/per-claim spending limits, optional target allowlisting, and integrated `sponsoredCall` forwarding with automatic gas metering and reimbursement.                                                                                                                                                                                                                                                   |
 | **CryftGreetingCards**  | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase from pre-registered supply. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license.                                                                                                                                     |
@@ -553,12 +554,13 @@ All configuration is embedded as **compile-time constants** — no constructor, 
 
 #### Constants (set at compile time)
 
-| Constant       | Type      | Description                             |
-| -------------- | --------- | --------------------------------------- |
-| `ADMIN`        | `address` | Primary authorized caller               |
-| `AUTHORIZED`   | `address` | Secondary authorized caller             |
-| `CODE_MANAGER` | `address` | CodeManager address on the public chain |
-| `MAX_PER_PIN`  | `uint256` | Maximum entries per PIN slot (32)       |
+| Constant            | Type      | Description                                                       |
+| ------------------- | --------- | ----------------------------------------------------------------- |
+| `ADMIN`             | `address` | Primary authorized caller                                         |
+| `AUTHORIZED`        | `address` | Secondary authorized caller                                       |
+| `CODE_MANAGER`      | `address` | CodeManager address on the public chain                           |
+| `TRUSTED_FORWARDER` | `address` | ERC-2771 trusted forwarder (PrivateMetaTxRelay proxy address)     |
+| `MAX_PER_PIN`       | `uint256` | Maximum entries per PIN slot (32)                                 |
 
 #### Write Functions
 
@@ -572,13 +574,78 @@ All configuration is embedded as **compile-time constants** — no constructor, 
 
 #### View Functions
 
-| Function            | Returns   | Description                         |
-| ------------------- | --------- | ----------------------------------- |
-| `pinSlotCount(pin)` | `uint256` | Number of hashes stored under a PIN |
-| `ADMIN()`           | `address` | Admin constant                      |
-| `AUTHORIZED()`      | `address` | Authorized caller constant          |
-| `CODE_MANAGER()`    | `address` | CodeManager address constant        |
-| `MAX_PER_PIN()`     | `uint256` | Max entries per PIN slot constant   |
+| Function                       | Returns   | Description                                                            |
+| ------------------------------ | --------- | ---------------------------------------------------------------------- |
+| `pinSlotCount(pin)`            | `uint256` | Number of hashes stored under a PIN                                    |
+| `isTrustedForwarder(address)`  | `bool`    | Whether the given address is the ERC-2771 trusted forwarder            |
+| `ADMIN()`                      | `address` | Admin constant                                                         |
+| `AUTHORIZED()`                 | `address` | Authorized caller constant                                             |
+| `CODE_MANAGER()`               | `address` | CodeManager address constant                                           |
+| `TRUSTED_FORWARDER()`          | `address` | ERC-2771 trusted forwarder address (PrivateMetaTxRelay proxy)          |
+| `MAX_PER_PIN()`                | `uint256` | Max entries per PIN slot constant                                      |
+
+---
+
+### PrivateMetaTxRelay (Pente Privacy Group)
+
+Deployed inside the same Paladin Pente privacy group as PrivateComboStorage. Implements the EIP-712 / ERC-2771 meta-transaction relay pattern — any privacy group member can submit signed requests on behalf of external signers. The relay verifies signatures, manages per-signer nonces, and forwards calls to PrivateComboStorage with the recovered signer address appended per the ERC-2771 trusted forwarder specification.
+
+The relay itself is open — it performs no caller authorization. Authorization is enforced entirely by PrivateComboStorage's `_msgSender()`, which extracts the appended signer and checks it against `ADMIN`, `AUTHORIZED`, or the per-UID manager depending on the target function.
+
+All configuration is embedded as **compile-time constants** — no constructor, no initializer.
+
+#### Constants (set at compile time)
+
+| Constant                | Type      | Description                                                 |
+| ----------------------- | --------- | ----------------------------------------------------------- |
+| `ADMIN`                 | `address` | Paladin signer address (retained for future admin functions) |
+| `PRIVATE_COMBO_STORAGE` | `address` | Target PrivateComboStorage proxy address within the group   |
+
+#### EIP-712 Signing Domain
+
+| Field               | Value                                        |
+| ------------------- | -------------------------------------------- |
+| `name`              | `"PrivateMetaTxRelay"`                      |
+| `version`           | `"1"`                                       |
+| `chainId`           | `block.chainid`                              |
+| `verifyingContract` | `address(this)` (proxy address in Pente)     |
+
+#### ForwardRequest Struct
+
+```solidity
+struct ForwardRequest {
+    address from;       // The original signer (recovered via ecrecover)
+    bytes   data;       // ABI-encoded function call to PrivateComboStorage
+    uint256 nonce;      // Per-signer replay-protection nonce
+    uint256 deadline;   // block.timestamp expiry
+}
+```
+
+#### Write Functions
+
+| Function                                       | Description                                                                                                                                                                                   |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `execute(request, signature)`                  | Forward a single signed request. Verifies signature, consumes nonce, calls PrivateComboStorage with `abi.encodePacked(request.data, request.from)`. Reverts if signature or forwarded call fails. |
+| `executeBatch(requests[], signatures[])`        | Forward multiple independent signed requests. Invalid entries (bad signature length, expired, wrong nonce, bad signature) are skipped with `MetaTxFailed` events. Failed forwarded calls are reported, not reverted. |
+
+#### View Functions
+
+| Function                       | Returns   | Description                                                                |
+| ------------------------------ | --------- | -------------------------------------------------------------------------- |
+| `getNonce(address)`            | `uint256` | Current nonce for a signer (monotonically increasing)                      |
+| `verify(request, signature)`   | `bool`    | Non-consuming check: would this request pass verification at current block |
+| `domainSeparator()`            | `bytes32` | EIP-712 domain separator for this relay instance                           |
+| `ADMIN()`                      | `address` | Admin constant                                                             |
+| `PRIVATE_COMBO_STORAGE()`      | `address` | Target contract constant                                                   |
+
+#### Security Model
+
+- **Open relay, enforced target**: The relay has no `onlyAdmin` gate — any privacy group member may submit. Authorization is enforced by PrivateComboStorage's `_msgSender()` against the recovered signer.
+- **EIP-712 typed signatures**: Prevent cross-chain and cross-contract replay via domain separator.
+- **Per-signer nonces**: Monotonically increasing, consumed on successful verification. Prevents replay of the same request.
+- **Deadline enforcement**: Requests expire at `block.timestamp > deadline`.
+- **EIP-2 low-s check**: Rejects malleable signatures (`s > secp256k1n/2`).
+- **ERC-2771 forwarding**: `abi.encodePacked(request.data, request.from)` appends the 20-byte signer address. PrivateComboStorage's `_msgSender()` extracts it when `msg.sender == TRUSTED_FORWARDER`.
 
 ---
 
