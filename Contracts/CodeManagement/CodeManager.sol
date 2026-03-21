@@ -141,6 +141,7 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     event PrivacyGroupAuthorized(address indexed privacyGroup, bool authorized);
     event RedemptionRouted(string uniqueId, address indexed giftContract, address indexed redeemer);
     event RedemptionFailed(string uniqueId, address indexed giftContract, address indexed redeemer, string reason);
+    event RedemptionRejected(string uniqueId, address indexed redeemer, string reason);
     event UniqueIdActiveStatusUpdated(string uniqueId, bool active, bool usesDefaultState);
     event UniqueIdRedeemed(string uniqueId);
     event UniqueIdActiveStatusRejected(uint256 index, string uniqueId, string reason);
@@ -458,30 +459,57 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     ///         The gift contract decides how to handle the redemption — single-use,
     ///         multi-use, NFT mint, etc.
     ///
+    ///         This function NEVER reverts on precondition failures. Invalid UIDs,
+    ///         unregistered identifiers, out-of-range counters, and inactive/redeemed
+    ///         UIDs emit a RedemptionRejected event and return gracefully. This
+    ///         guarantees that every PenteExternalCall from redeemCodeBatch succeeds
+    ///         from Pente's perspective — private state changes (hash deletion,
+    ///         local REDEEMED marking) are never rolled back by a public-chain
+    ///         precondition failure.
+    ///
     ///         CodeManager marks the UID as REDEEMED before calling the gift contract.
     ///         If the gift contract reverts, CodeManager catches the error and emits
-    ///         a RedemptionFailed event instead of propagating the revert. This
-    ///         prevents a faulty or misconfigured gift contract from rolling back
-    ///         the entire Pente transition (which would also undo private state
-    ///         changes in PrivateComboStorage).
+    ///         a RedemptionFailed event instead of propagating the revert.
     ///
     ///         The UID remains terminally REDEEMED in CodeManager regardless of
     ///         gift contract outcome. Admin monitoring should watch for
     ///         RedemptionFailed events and resolve the gift-contract side effect
     ///         (e.g., manual NFT transfer) separately.
     function recordRedemption(string memory uniqueId, address redeemer) external onlyAuthorizedPrivacyGroup {
-        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
-        require(isUniqueIdActive(uniqueId), "UniqueId is inactive");
+        // ── Precondition checks (graceful skip, never revert) ──
+        (bool splitOk, string memory contractIdentifier, ) = _trySplitUniqueId(uniqueId);
+        if (!splitOk) {
+            emit RedemptionRejected(uniqueId, redeemer, "Invalid uniqueId format");
+            return;
+        }
 
+        ContractData memory data = _contractIdentifierToData[contractIdentifier];
+        if (data.giftContract == address(0)) {
+            emit RedemptionRejected(uniqueId, redeemer, "Unregistered contract identifier");
+            return;
+        }
+
+        if (!validateUniqueId(uniqueId)) {
+            emit RedemptionRejected(uniqueId, redeemer, "Invalid or out-of-range uniqueId");
+            return;
+        }
+
+        if (!isUniqueIdActive(uniqueId)) {
+            emit RedemptionRejected(uniqueId, redeemer, "UniqueId is inactive or already redeemed");
+            return;
+        }
+
+        // ── Commit: mark terminally REDEEMED ──
         _uniqueIdStatuses[keccak256(bytes(uniqueId))] = UniqueIdStatus.REDEEMED;
         emit UniqueIdRedeemed(uniqueId);
 
-        try IRedeemable(giftContract).recordRedemption(uniqueId, redeemer) {
-            emit RedemptionRouted(uniqueId, giftContract, redeemer);
+        // ── Route to gift contract (try/catch — never reverts) ──
+        try IRedeemable(data.giftContract).recordRedemption(uniqueId, redeemer) {
+            emit RedemptionRouted(uniqueId, data.giftContract, redeemer);
         } catch Error(string memory reason) {
-            emit RedemptionFailed(uniqueId, giftContract, redeemer, reason);
+            emit RedemptionFailed(uniqueId, data.giftContract, redeemer, reason);
         } catch {
-            emit RedemptionFailed(uniqueId, giftContract, redeemer, "Unknown gift contract error");
+            emit RedemptionFailed(uniqueId, data.giftContract, redeemer, "Unknown gift contract error");
         }
     }
 

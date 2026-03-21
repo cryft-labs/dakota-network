@@ -304,11 +304,20 @@ AUTHORIZED                    PrivateComboStorage              CodeManager      
      │                                  │   redeemer))               │                        │
      │                                  │───────────────────────────▶│                        │
      │                                  │                            │                        │
-     │                                  │                  STATE READS:                       │
-     │                                  │                  • getUniqueIdDetails(uid)           │
-     │                                  │                    → resolves giftContract           │
-     │                                  │                  • isUniqueIdActive(uid)             │
-     │                                  │                    [sparse map check]                │
+     │                                  │                  PRECONDITION CHECKS:               │
+     │                                  │                  (graceful skip — never revert)      │
+     │                                  │                  • _trySplitUniqueId(uid)             │
+     │                                  │                    → extract contractIdentifier       │
+     │                                  │                  • lookup giftContract                │
+     │                                  │                    → skip if unregistered             │
+     │                                  │                  • validateUniqueId(uid)              │
+     │                                  │                    → skip if invalid/out-of-range     │
+     │                                  │                  • isUniqueIdActive(uid)              │
+     │                                  │                    → skip if inactive/redeemed        │
+     │                                  │                  ON SKIP:                             │
+     │                                  │                  • emit RedemptionRejected(uid,       │
+     │                                  │                    redeemer, reason)                  │
+     │                                  │                  • return (no revert)                 │
      │                                  │                            │                        │
      │                                  │                  STATE WRITE:                       │
      │                                  │                  • _uniqueIdStatuses[hash]           │
@@ -353,7 +362,7 @@ AUTHORIZED                    PrivateComboStorage              CodeManager      
 | Per-entry PenteExternalCall | Targeted routing | Each valid redemption emits its own `PenteExternalCall` so CodeManager→gift contract routing resolves independently per UID. Failed entries are excluded before the external call is emitted — no wasted base-chain gas on invalid entries. |
 | Hash deletion frees storage | ~4,800 gas refund per entry | `delete pinToHash[pin][codeHash]` zeroes the slot, triggering an EIP-2929 storage refund. Redeemed codes release their private storage. |
 | O(1) hash-verified lookup | Constant cost per entry | `pinToHash[pin][codeHash].exists` is a direct mapping access — no array iteration. PIN is the bucket, hash is the key. |
-| try/catch gift contract isolation | Prevents Pente rollback | CodeManager wraps `recordRedemption` in try/catch. A gift contract bug (frozen, already transferred, misconfigured) does NOT undo the private state changes (hash deletion, local REDEEMED marking). Only the gift-contract side effect fails — recoverable via `syncRedemption`. |
+| Revert-free recordRedemption | Prevents ALL Pente rollback | `recordRedemption` never reverts on precondition failures (invalid UID, unregistered identifier, inactive/redeemed). It emits `RedemptionRejected` and returns gracefully. Gift contract failures are caught via try/catch with `RedemptionFailed`. This guarantees every `PenteExternalCall` succeeds from Pente's perspective — private state changes (hash deletion, local REDEEMED marking) are never rolled back. |
 | Sparse REDEEMED write on CodeManager | One SSTORE per redemption | `_uniqueIdStatuses[hash] = REDEEMED` writes exactly one slot. No array operations, no counter updates. |
 | No per-token redeemed mapping (Gift) | Zero writes for redeemed tracking | Redeemed is derived from `ownerOf(tokenId) != address(this)`. The `_transfer` call already writes the new owner — no separate `isRedeemed[tokenId] = true` needed. |
 | Transfer guard instead of redeemed flag | Zero additional storage | `_update` override prevents tokens from returning to the vault. This makes "not in vault" a permanent, unforgeable redeemed signal — no separate mapping needed. |
@@ -1740,7 +1749,7 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 | `"Only CodeManager"` (on gift contract) | CodeManager is not the caller | Privacy group not authorized, or CODE_MANAGER constant is wrong |
 | `"Invalid uniqueId"` (on gift contract) | Token was never minted / uniqueId doesn't parse | UID registered but token not yet minted via `buy()` |
 | `"Not in vault"` (on gift contract) | Token already redeemed (left the vault) | Code was already used |
-| `"UniqueId is inactive"` | Private execution state blocked the UID before routing | Mirror or inspect the UID active state and re-enable it if appropriate |
+| `"UniqueId is inactive or already redeemed"` | UID publicly marked INACTIVE or REDEEMED | CodeManager emits `RedemptionRejected` (no revert) | Inspect UID state; admin re-enables or accepts terminal state |
 | `insufficient funds for gas` | Derived submitter out of gas | Fund the address in the error |
 
 ---
@@ -1761,10 +1770,11 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 | `CODE_MANAGER()` returns `0x...c0DE` | Did not update the constant before compiling | Placeholder value still in contract | Update `CODE_MANAGER` in source, recompile, redeploy via proxy upgrade (Section 9) |
 | `"Caller is not an authorized privacy group"` | Wrong address authorized on CodeManager | You authorized the derived submitter instead of the **group contract address** | Authorize the group contract address (`0xf3cdb5de53edc04e1aea1a211ac586bb84faf8e4`), not the derived submitter. See Section 12. |
 | `"Counter not registered on CodeManager"` during `storeDataBatch` | Counter exceeds synced `registeredCodeCount` ceiling | Sync via `syncRegisteredCodeCountBatch` after increasing `maxSaleSupply` | Call `syncRegisteredCodeCountBatch` with current CodeManager counter |
-| `"No matching uniqueId found."` during redemption | UID not registered on CodeManager | Call `getUniqueIdDetails(uid)` — should revert | Register UIDs first |
+| `RedemptionRejected` event on CodeManager | UID precondition failed (invalid, unregistered, inactive, or already redeemed on public chain) | Read event `reason` field; no Pente rollback occurred | Fix root cause; private state is preserved |
+| `"No matching uniqueId found."` during `getUniqueIdDetails()` view call | UID not registered on CodeManager | Call `validateUniqueId(uid)` — returns false | Register UIDs first |
 | `"Not in vault"` during redemption | Token already redeemed | Check `ownerOf(tokenId)` — not the contract address | Code was already used; cannot re-redeem |
 | `RedemptionFailed` event on CodeManager | Gift contract reverted during `recordRedemption` | Read event `reason` field; check gift contract state | Fix root cause, then call `syncRedemption(uniqueId, redeemer)` on the gift contract |
-| `"UniqueId is inactive"` during redemption | Private execution state marks the UID inactive | Check private status flow and CodeManager mirror | Re-enable via `setUniqueIdActiveBatch` if appropriate |
+| `"UniqueId is inactive"` during private redemption | Private execution state marks the UID inactive | Check private status flow and CodeManager mirror | Re-enable via `setUniqueIdActiveBatch` if appropriate |
 | `"Counter drift: CodeManager out of sync"` during `setMaxSaleSupply()` | External registration changed the counter | Check `getIdentifierCounter` on CodeManager | Ensure only `setMaxSaleSupply()` registers UIDs for this contract |
 | `"Payment must equal price"` during `buy()` | Incorrect `msg.value` | Calculate: `pricePerCard * qty` | Send exact amount |
 | `"Must send exact registration fee"` during `setMaxSaleSupply()` | Incorrect `msg.value` | Calculate: `registrationFee * delta` | Send exact amount |

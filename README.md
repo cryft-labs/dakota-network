@@ -489,7 +489,7 @@ CodeManager (independent)
 
 Permissionless unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`. Voter-pool changes are blocked while any tally is active (`activeVoteCount > 0`).
 
-Also serves as the public mirror and Pente router. Authorized privacy groups call `recordRedemption`, which resolves the UID to its gift contract, forwards via `IRedeemable`, and marks the UID terminally redeemed in CodeManager. Active/inactive state is mirrored publicly from the private contract using sparse per-UID overrides over a default active state.
+Also serves as the public mirror and Pente router. Authorized privacy groups call `recordRedemption`, which resolves the UID to its gift contract, marks the UID terminally redeemed, and forwards to the gift contract via try/catch. The function never reverts on precondition failures (emits `RedemptionRejected`) or gift contract errors (emits `RedemptionFailed`), guaranteeing that every `PenteExternalCall` succeeds from Pente's perspective and private state is always preserved. Active/inactive state is mirrored publicly from the private contract using sparse per-UID overrides over a default active state.
 
 #### Governance Actions (all require voter supermajority)
 
@@ -511,7 +511,7 @@ Also serves as the public mirror and Pente router. Authorized privacy groups cal
 
 | Function | Description |
 |----------|-------------|
-| `recordRedemption(uniqueId, redeemer)` | Resolves UID → gift contract, calls `IRedeemable.recordRedemption()` |
+| `recordRedemption(uniqueId, redeemer)` | Resolves UID → gift contract, marks REDEEMED, calls `IRedeemable.recordRedemption()` via try/catch. Never reverts — emits `RedemptionRejected` on precondition failures, `RedemptionFailed` on gift contract errors. |
 | `setUniqueIdActiveBatch(uniqueIds, activeStates)` | Mirrors sparse UID active-state changes from an authorized privacy group. Redeemed UIDs are rejected and left terminal. |
 
 #### Registration (permissionless)
@@ -568,7 +568,7 @@ All configuration is embedded as **compile-time constants** — no constructor, 
 | `storeDataBatch(request)` | Bulk store code hashes using a batch-level `contractIdentifier`, batch-level PIN config, and per-entry pre-registered `counters`. Each entry also supplies its entropy seed and optional per-UID manager (`address(0)` means no dedicated manager). The contract reconstructs `uniqueId = contractIdentifier-counter`, rejects any counter above the synced public registration ceiling or already stored privately, assigns a PIN, and stores the hash. Returns `string[] assignedPins`. |
 | `setUniqueIdManagersBatch(uniqueIds[], newManagers[])` | Reassign or clear per-UID managers. Current UID manager, `ADMIN`, or `AUTHORIZED` may update each UID. |
 | `setUniqueIdActiveBatch(uniqueIds[], activeStates[])` | Update private execution-time UID active state and mirror valid entries to CodeManager. UID manager, `ADMIN`, or `AUTHORIZED` may update each UID. |
-| `redeemCodeBatch(pins[], codeHashes[], redeemers[])` | Batch-verify codes, skip inactive/redeemed UIDs privately, delete consumed entries, mark redeemed locally, and emit `PenteExternalCall` per valid entry to route `recordRedemption` through CodeManager. External failures still roll back the Pente transition for routed entries. |
+| `redeemCodeBatch(pins[], codeHashes[], redeemers[])` | Batch-verify codes, skip inactive/redeemed UIDs privately, delete consumed entries, mark redeemed locally, and emit `PenteExternalCall` per valid entry to route `recordRedemption` through CodeManager. CodeManager never reverts on precondition failures or gift contract errors, so Pente private state is always preserved. |
 
 #### View Functions
 
