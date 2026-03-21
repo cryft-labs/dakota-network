@@ -575,6 +575,11 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         counter = _identifierCounter[contractIdentifier];
     }
 
+    /// @notice Get the registered counter for a contract identifier directly.
+    function getCounterByIdentifier(string memory contractIdentifier) public view returns (uint256) {
+        return _identifierCounter[contractIdentifier];
+    }
+
     function validateUniqueId(string memory uniqueId) public view returns (bool isValid) {
         (bool ok, string memory contractIdentifier, uint256 extractedCounter) = _trySplitUniqueId(uniqueId);
 

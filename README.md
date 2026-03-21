@@ -481,7 +481,7 @@ CodeManager (independent)
 | **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, tracks execution-time UID active state privately, and emits `PenteExternalCall` events to mirror UID status and route redemptions through CodeManager. All configuration (admin, authorized caller, CodeManager address, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
 | **DakotaDelegation** | EIP-7702 delegation target. EOAs delegate to this contract for smart-account capabilities: single/batch execution, sponsored execution (EIP-712), session keys, EIP-1271 signature validation. |
 | **GasSponsor** | On-chain gas sponsorship treasury. Per-sponsor deposits, authorized relayer management, daily/per-claim spending limits, optional target allowlisting, and integrated `sponsoredCall` forwarding with automatic gas metering and reimbursement. |
-| **CryftGreetingCards** | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase with atomic CodeManager registration. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license. |
+| **CryftGreetingCards** | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase from pre-registered supply. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license. |
 
 ---
 
@@ -564,7 +564,8 @@ All configuration is embedded as **compile-time constants** — no constructor, 
 
 | Function | Description |
 |----------|-------------|
-| `storeDataBatch(uniqueIds[], codeHashes[], pinLengths[], useSpecialChars[], entropies[], uidManagers[])` | Bulk store code hashes. Each entry supplies its own PIN length, special-character flag, entropy seed, and optional per-UID manager (`address(0)` means no dedicated manager). Contract assigns a PIN per entry and uses `keccak256(seed)` only as a retry path if the derived PIN collides or the slot is full. Returns `string[] assignedPins`. Emits `PenteExternalCall` to validate UIDs on CodeManager. |
+| `syncRegisteredCodeCountBatch(contractIdentifiers[], registeredCounts[])` | Sync the public CodeManager counter ceiling for one or more whitelisted contract identifiers. This local mirror is the store-time source of truth used to reject unregistered counters before any external call is considered. |
+| `storeDataBatch(request)` | Bulk store code hashes using a batch-level `contractIdentifier`, batch-level PIN config, and per-entry pre-registered `counters`. Each entry also supplies its entropy seed and optional per-UID manager (`address(0)` means no dedicated manager). The contract reconstructs `uniqueId = contractIdentifier-counter`, rejects any counter above the synced public registration ceiling or already stored privately, assigns a PIN, and stores the hash. Returns `string[] assignedPins`. |
 | `setUniqueIdManagersBatch(uniqueIds[], newManagers[])` | Reassign or clear per-UID managers. Current UID manager, `ADMIN`, or `AUTHORIZED` may update each UID. |
 | `setUniqueIdActiveBatch(uniqueIds[], activeStates[])` | Update private execution-time UID active state and mirror valid entries to CodeManager. UID manager, `ADMIN`, or `AUTHORIZED` may update each UID. |
 | `redeemCodeBatch(pins[], codeHashes[], redeemers[])` | Batch-verify codes, skip inactive/redeemed UIDs privately, delete consumed entries, mark redeemed locally, and emit `PenteExternalCall` per valid entry to route `recordRedemption` through CodeManager. External failures still roll back the Pente transition for routed entries. |
@@ -659,7 +660,7 @@ Per-sponsor gas deposit and reimbursement contract. Sponsors deposit native toke
 
 ### CryftGreetingCards (ERC-721 NFT)
 
-ERC-721 NFT gift card contract. Service client of the redeemable-code system — not itself patent-covered. Mint-on-purchase with atomic CodeManager registration. Uses per-batch `PurchaseSegment` storage for O(1) buyer/URI lookups via binary search. Tokens live in an internal vault until redemption.
+ERC-721 NFT gift card contract. Service client of the redeemable-code system — not itself patent-covered. UID registration is decoupled from purchasing — when admin increases `maxSaleSupply`, the delta UIDs are registered on CodeManager automatically. Buyers mint from pre-registered supply. Uses per-batch `PurchaseSegment` storage for O(1) buyer/URI lookups via binary search. Tokens live in an internal vault until redemption.
 
 #### Status Derivation (no explicit state flags)
 
@@ -672,8 +673,8 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 
 | Function | Access | Description |
 |----------|--------|-------------|
-| `buy(buyer, quantity, redeemedBaseURI)` | Anyone (payable) | Purchase cards — pays `pricePerCard × qty + registrationFee × qty`. Mints into vault, registers on CodeManager atomically. |
-| `claimRedemption(uniqueId, recipient)` | Verified redeemer (via PrivateComboStorage) | Transfer NFT from vault to recipient. Recipient ≠ msg.sender (gift flow). |
+| `buy(buyer, quantity, redeemedBaseURI)` | Anyone (payable) | Purchase cards — pays `pricePerCard × qty`. Mints into vault from pre-registered supply. |
+| `setMaxSaleSupply(supply)` | Owner (payable) | Increase max purchasable supply (can only increase). Atomically registers the delta UIDs on CodeManager — `registrationFee × delta` must be sent as msg.value. |
 | `recordRedemption(uniqueId, redeemer)` | CodeManager only (Pente router) | Route redemption from privacy group — transfers NFT from vault to redeemer. |
 
 #### Convenience View Functions
@@ -687,12 +688,11 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 | `totalSupply()` | `uint256` | Total minted tokens |
 | `availableSupply()` | `uint256` | Cards registered but not yet purchased |
 | `pricePerCard` | `uint256` | Current price per card (wei) |
-| `registeredSupply` | `uint256` | Total cards available for purchase |
+| `maxSaleSupply` | `uint256` | Maximum cards available for purchase |
 | `totalRedeems` | `uint256` | Total number of redeemed cards |
 | `getUniqueIdForToken(tokenId)` | `string` | Compute uniqueId from tokenId (deterministic, no storage) |
 | `getTokenForUniqueId(uniqueId)` | `uint256` | Parse tokenId from uniqueId (no storage) |
 | `cardBuyer(tokenId)` | `address` | Original purchaser (binary search through purchase segments) |
-| `getCardCreator()` | `address` | Creator who registered the uniqueIds on CodeManager |
 | `isUniqueIdFrozen(uniqueId)` | `bool` | Compatibility alias: inverse of CodeManager mirrored active state |
 | `isUniqueIdRedeemed(uniqueId)` | `bool` | Derived redeemed status (IRedeemable implementation) |
 | `isValidUniqueId(uniqueId)` | `bool` | Validates against CodeManager registry (read-only pass-through) |

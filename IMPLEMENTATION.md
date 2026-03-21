@@ -13,6 +13,9 @@
 ## Table of Contents
 
 1. [Architecture Overview](#1-architecture-overview)
+   - [Layer Responsibilities](#layer-responsibilities)
+   - [Key Design Principles](#key-design-principles)
+   - [Complete Contract Flow](#complete-contract-flow)
 2. [Identity & Address Taxonomy](#2-identity--address-taxonomy)
 3. [Public Bootstrap Procedure](#3-public-bootstrap-procedure)
 4. [Node Registration Procedure](#4-node-registration-procedure)
@@ -120,6 +123,352 @@ The patented system uses a three-layer architecture. No single layer holds all t
 - **External calls.** The privacy group must be created with `externalCallsEnabled: "true"` (string, not boolean) so that `PenteExternalCall` events are processed by Paladin and forwarded to the base ledger.
 - **EVM version.** Pente privacy groups run `shanghai` EVM. Public chain may run a later EVM version. Private contracts must compile with `--evm-version shanghai`.
 
+### Complete Contract Flow
+
+This section maps every function, the state it reads/writes, the cross-contract calls it produces, and the gas efficiency decisions behind the design.
+
+#### Registration Flow (Public — CodeManager + Gift Contract)
+
+```
+Admin                         Gift Contract                     CodeManager
+     │                              │                                │
+     │  setMaxSaleSupply(newSupply)  │                                │
+     │  msg.value = regFee * delta   │                                │
+     │─────────────────────────────▶│                                │
+     │                              │  registrationFee()  [view]     │
+     │                              │───────────────────────────────▶│
+     │                              │◀───────────────────────────────│
+     │                              │                                │
+     │                              │  getIdentifierCounter(this,    │
+     │                              │    chainId)  [view]            │
+     │                              │───────────────────────────────▶│
+     │                              │◀── (contractIdentifier, ctr)──│
+     │                              │                                │
+     │                              │  require(ctr == _totalMinted)  │
+     │                              │  [counter drift check]         │
+     │                              │                                │
+     │                              │  registerUniqueIds{regFee}     │
+     │                              │    (this, chainId, qty)        │
+     │                              │───────────────────────────────▶│
+     │                              │                                │  STATE WRITES:
+     │                              │                                │  • _identifierCounter[id] += qty
+     │                              │                                │  • _contractIdentifierToData[id]
+     │                              │                                │    = {giftContract, chainId}
+     │                              │                                │    (only on first registration)
+     │                              │                                │  • feeVault.call{regFee}
+     │                              │                                │  • refund excess to caller
+     │                              │◀───────────────────────────────│
+     │                              │                                │
+     │                              │  STATE WRITES (Gift Contract):
+     │                              │  • _mint(this, startId+i)  ×qty
+     │                              │    [ERC721 ownership: token→vault]
+     │                              │  • _purchaseSegments.push({
+     │                              │      endTokenId, buyer, URI})
+     │                              │    [ONE write per batch, not per token]
+     │                              │  • _totalMinted = endTokenId
+     │                              │
+     │◀──────────────────────────────│
+     │  BatchPurchased(buyer, startId, qty)
+```
+
+**Gas efficiency — Registration:**
+
+| Technique | What It Saves | How |
+|-----------|--------------|-----|
+| Counter increment, not per-UID writes | ~20,000 gas per UID | `_identifierCounter += qty` is one SSTORE. No per-UID mapping write at registration time. UIDs are implicitly valid if their counter ≤ the stored maximum. |
+| Sparse active state (no default writes) | ~20,000 gas per UID | Newly registered UIDs inherit `DEFAULT_ACTIVE_STATE = true` with zero storage. Only deviations (freeze/redeem) consume a slot. The `USE_DEFAULT_ACTIVE_STATE` enum value is 0, so uninitialized mappings naturally return "use default." |
+| `_contractIdentifierToData` first-write only | ~20,000 gas on repeat batches | The gift contract + chainId mapping is only written on the first batch for a contract identifier. Subsequent batches just increment the counter. |
+| Purchase segments instead of per-token buyer | ~20,000 gas per token | One `_purchaseSegments.push()` per batch regardless of quantity. `cardBuyer(tokenId)` uses O(log n) binary search over the sorted segment array at read time. |
+| Computed uniqueId ↔ tokenId | ~20,000 gas per token, both directions | `_computeUniqueId(tokenId)` concatenates `contractIdentifier + "-" + tokenId`. `_parseTokenId(uniqueId)` extracts the counter. No storage mapping needed. Token ID IS the counter by construction. |
+| Derived redeemed state | ~20,000 gas per token | `isUniqueIdRedeemed` checks `ownerOf(tokenId) != address(this)`. No separate redeemed mapping. The transfer guard `_update` prevents tokens from returning to the vault, so "not in vault" is permanent. |
+| Derived frozen state | ~20,000 gas per token | `isUniqueIdFrozen` reads `!CodeManager.isUniqueIdActive(uid)`. No local frozen mapping on the gift contract — it delegates entirely to CodeManager's sparse overrides. |
+| Plain `uint256` counter vs Counters lib | ~2,000 gas per mint | Direct `_totalMinted++` instead of OZ `Counters.increment()` saves library overhead. |
+| `unchecked` loop increments | ~60 gas per iteration | All `for` loops use `unchecked { ++i; }` — safe because loop bounds are known. |
+
+#### Code Storage Flow (Private — PrivateComboStorage → CodeManager)
+
+```
+AUTHORIZED                    PrivateComboStorage              CodeManager (public)
+(meta-tx processor)                 (via proxy)
+     │                                  │                            │
+     │  storeDataBatch(request)         │                            │
+     │─────────────────────────────────▶│                            │
+     │                                  │                            │
+     │               ┌─ Phase 1: _collectValidStoreIndexes ─┐       │
+     │               │  For each entry:                      │       │
+     │               │  ✗ Zero codeHash → StoreFailed        │       │
+     │               │  ✗ Zero entropy → StoreFailed         │       │
+     │               │  ✗ Counter == 0 → StoreFailed         │       │
+     │               │  ✗ Counter > registeredCount          │       │
+     │               │    → StoreFailed                      │       │
+     │               │  ✗ Already stored → StoreFailed       │       │
+     │               │  ✗ Duplicate in batch → StoreFailed   │       │
+     │               │  ✓ Valid → add to validIndexes[]      │       │
+     │               └───────────────────────────────────────┘       │
+     │                                  │                            │
+    │               ┌─ Phase 2: reconstruct uniqueIds ──────┐       │
+    │               │  Build uniqueId =                     │       │
+    │               │    contractIdentifier-counter         │       │
+    │               │  for validIndexes only                │       │
+    │               │  No store-time public validation call │       │
+     │               └───────────────────────────────────────┘       │
+     │                                  │                  STATE READ:
+    │                                  │                  • registeredCodeCount ceiling
+    │                                  │                  • _knownUniqueIds[hash]
+     │                                  │                            │
+     │               ┌─ Phase 3: _assignPinsForValidEntries ─┐       │
+     │               │  For each valid entry:                │       │
+     │               │  • _assignPin(entropy, len, special,  │       │
+     │               │    codeHash)                          │       │
+     │               │  • Derive PIN from entropy mod space  │       │
+     │               │  • If slot full or collision →        │       │
+     │               │    chain keccak256(entropy) and retry │       │
+     │               │  • O(1) expected, O(retries) worst    │       │
+     │               └───────────────────────────────────────┘       │
+     │                                  │                            │
+     │               ┌─ Phase 4: _persistStoredHashes ───────┐       │
+     │               │  STATE WRITES per valid entry:        │       │
+     │               │  • pinToHash[pin][codeHash] =         │       │
+     │               │    CodeMetadata{contractIdHash,       │       │
+     │               │    counter, exists:true}              │       │
+     │               │  • pinSlotCount[pin]++                │       │
+     │               │  • emit DataStoredStatus(uid, pin)    │       │
+     │               └───────────────────────────────────────┘       │
+     │                                  │                            │
+     │               ┌─ Phase 5: _persistStoredUniqueIdConfig┐       │
+     │               │  STATE WRITES per valid entry:        │       │
+     │               │  • _knownUniqueIds[uidHash] = true    │       │
+     │               │  • IF manager ≠ 0:                    │       │
+     │               │    uniqueIdManager[uidHash] = mgr     │       │
+     │               │  • IF mirrorStatuses[i] == false:     │       │
+     │               │    isUniqueIdStatusMirrorDisabled      │       │
+     │               │      [uidHash] = true                 │       │
+     │               └───────────────────────────────────────┘       │
+     │                                  │                            │
+     │◀─────────────────────────────────│                            │
+     │  returns assignedPins[]          │                            │
+```
+
+**Gas efficiency — Code Storage:**
+
+| Technique | What It Saves | How |
+|-----------|--------------|-----|
+| Skip-and-report, not revert | Entire batch gas on single bad entry | Invalid entries emit `StoreFailed` events and are excluded from valid arrays. Only valid entries pay for PenteExternalCall + writes. A single bad entry doesn't waste the gas of all valid entries. |
+| Compile-time constants in bytecode | ~2,100 gas per access (no SLOAD) | `ADMIN`, `AUTHORIZED`, `CODE_MANAGER`, `MAX_PER_PIN`, `DEFAULT_ACTIVE_STATE` are `constant`/`immutable` — embedded in bytecode, not state trie. Every access is a `PUSH` opcode instead of `SLOAD`. |
+| Sparse mirror-disable | ~20,000 gas per mirrored UID | `isUniqueIdStatusMirrorDisabled` only writes `true` for disabled UIDs. Mirrored UIDs (the common case) have no write — the mapping's default `false` means "mirror is enabled." |
+| Sparse manager assignment | ~20,000 gas per unmanaged UID | `uniqueIdManager` only writes when `manager ≠ address(0)`. Most UIDs have no dedicated manager — the mapping's default `address(0)` means "ADMIN/AUTHORIZED control." |
+| Caller-supplied entropy | No on-chain randomness cost | PIN derivation uses off-chain entropy. No `blockhash`, no oracle call. Collision resolution chains `keccak256(entropy)` — pure computation, no external state. |
+| Two-mapping hash storage | O(1) lookup | `pinToHash[pin][codeHash]` gives direct access. PIN is the bucket key, codeHash is the entry key. No iteration over arrays. |
+| `unchecked` loop increments | ~60 gas per iteration | All loops use `unchecked { ++i; }`. |
+| Local validation only (no store-time PenteExternalCall) | Zero base-chain gas at store time | Store-time validation uses locally synced `registeredCodeCount` ceiling. No PenteExternalCall is emitted during `storeDataBatch` — validation is purely local. |
+
+#### Redemption Flow (Private → Public → Gift Contract)
+
+```
+AUTHORIZED                    PrivateComboStorage              CodeManager              Gift Contract
+(meta-tx processor)                 (via proxy)                  (public)                 (public)
+     │                                  │                            │                        │
+     │  redeemCodeBatch(pins,           │                            │                        │
+     │    codeHashes, redeemers)        │                            │                        │
+     │─────────────────────────────────▶│                            │                        │
+     │                                  │                            │                        │
+     │        For each entry:           │                            │                        │
+     │        ┌─ Validation ────────────┤                            │                        │
+     │        │ ✗ Empty PIN → skip      │                            │                        │
+     │        │ ✗ Zero hash → skip      │                            │                        │
+     │        │ ✗ Zero redeemer → skip  │                            │                        │
+     │        │ ✗ Duplicate hash → skip │                            │                        │
+     │        │ ✗ No match in           │                            │                        │
+     │        │   pinToHash → skip      │                            │                        │
+     │        │ ✗ Already REDEEMED      │                            │                        │
+     │        │   locally → skip        │                            │                        │
+     │        │ ✗ Locally INACTIVE      │                            │                        │
+     │        │   → skip                │                            │                        │
+     │        │ (skipped entries emit   │                            │                        │
+     │        │  RedeemFailed event)    │                            │                        │
+     │        └─────────────────────────┤                            │                        │
+     │                                  │                            │                        │
+     │        ┌─ Commit (per valid) ────┤                            │                        │
+     │        │ STATE WRITES:           │                            │                        │
+     │        │ • delete pinToHash      │                            │                        │
+     │        │   [pin][codeHash]       │                            │                        │
+     │        │ • pinSlotCount[pin]--   │                            │                        │
+     │        │ • _uniqueIdLocalStatuses│                            │                        │
+     │        │   [hash] = REDEEMED     │                            │                        │
+     │        │ • emit RedeemStatus     │                            │                        │
+     │        └─────────────────────────┤                            │                        │
+     │                                  │                            │                        │
+     │                                  │  emit PenteExternalCall    │                        │
+     │                                  │  (CODE_MANAGER,            │                        │
+     │                                  │   recordRedemption(uid,    │                        │
+     │                                  │   redeemer))               │                        │
+     │                                  │───────────────────────────▶│                        │
+     │                                  │                            │                        │
+     │                                  │                  STATE READS:                       │
+     │                                  │                  • getUniqueIdDetails(uid)           │
+     │                                  │                    → resolves giftContract           │
+     │                                  │                  • isUniqueIdActive(uid)             │
+     │                                  │                    [sparse map check]                │
+     │                                  │                            │                        │
+     │                                  │                  STATE WRITE:                       │
+     │                                  │                  • _uniqueIdStatuses[hash]           │
+     │                                  │                    = REDEEMED                        │
+     │                                  │                  • emit UniqueIdRedeemed(uid)        │
+     │                                  │                            │                        │
+     │                                  │                            │  try recordRedemption  │
+     │                                  │                            │  (uid, redeemer) ─────▶│
+     │                                  │                            │                        │
+     │                                  │                            │              STATE READS:
+     │                                  │                            │              • _parseTokenId
+     │                                  │                            │                [computed,
+     │                                  │                            │                 no SLOAD]
+     │                                  │                            │              • _ownerOf(tid)
+     │                                  │                            │              • ownerOf(tid)
+     │                                  │                            │                == vault?
+     │                                  │                            │
+     │                                  │                            │              STATE WRITES:
+     │                                  │                            │              • totalRedeems++
+     │                                  │                            │              • _transfer(
+     │                                  │                            │                vault→redeemer)
+     │                                  │                            │                [ERC721 owner
+     │                                  │                            │                 update]
+     │                                  │                            │              • emit
+     │                                  │                            │                CardRedeemed
+     │                                  │                            │◀─────────────────────────│
+     │                                  │                            │                        │
+     │                                  │                  ON SUCCESS:                        │
+     │                                  │                  • emit RedemptionRouted             │
+     │                                  │                  ON REVERT:                         │
+     │                                  │                  • emit RedemptionFailed             │
+     │                                  │                  • UID stays REDEEMED                │
+     │                                  │                  • Pente transition preserved        │
+     │                                  │                            │                        │
+     │◀─────────────────────────────────│                            │                        │
+```
+
+**Gas efficiency — Redemption:**
+
+| Technique | What It Saves | How |
+|-----------|--------------|-----|
+| Per-entry PenteExternalCall | Targeted routing | Each valid redemption emits its own `PenteExternalCall` so CodeManager→gift contract routing resolves independently per UID. Failed entries are excluded before the external call is emitted — no wasted base-chain gas on invalid entries. |
+| Hash deletion frees storage | ~4,800 gas refund per entry | `delete pinToHash[pin][codeHash]` zeroes the slot, triggering an EIP-2929 storage refund. Redeemed codes release their private storage. |
+| O(1) hash-verified lookup | Constant cost per entry | `pinToHash[pin][codeHash].exists` is a direct mapping access — no array iteration. PIN is the bucket, hash is the key. |
+| try/catch gift contract isolation | Prevents Pente rollback | CodeManager wraps `recordRedemption` in try/catch. A gift contract bug (frozen, already transferred, misconfigured) does NOT undo the private state changes (hash deletion, local REDEEMED marking). Only the gift-contract side effect fails — recoverable via `syncRedemption`. |
+| Sparse REDEEMED write on CodeManager | One SSTORE per redemption | `_uniqueIdStatuses[hash] = REDEEMED` writes exactly one slot. No array operations, no counter updates. |
+| No per-token redeemed mapping (Gift) | Zero writes for redeemed tracking | Redeemed is derived from `ownerOf(tokenId) != address(this)`. The `_transfer` call already writes the new owner — no separate `isRedeemed[tokenId] = true` needed. |
+| Transfer guard instead of redeemed flag | Zero additional storage | `_update` override prevents tokens from returning to the vault. This makes "not in vault" a permanent, unforgeable redeemed signal — no separate mapping needed. |
+
+#### Active State Management Flow (Private → Selective Public Mirror)
+
+```
+ADMIN / AUTHORIZED /          PrivateComboStorage              CodeManager (public)
+Per-UID Manager                     (via proxy)
+     │                                  │                            │
+     │  setUniqueIdActiveBatch(         │                            │
+     │    uniqueIds, activeStates)      │                            │
+     │─────────────────────────────────▶│                            │
+     │                                  │                            │
+     │        For each entry:           │                            │
+     │        ┌─ Validation ────────────┤                            │
+     │        │ ✗ Empty uid → skip      │                            │
+     │        │ ✗ Invalid format → skip │                            │
+     │        │ ✗ Not whitelisted → skip│                            │
+     │        │ ✗ Unknown uid → skip    │                            │
+     │        │ ✗ Not authorized → skip │                            │
+     │        │   (must be ADMIN,       │                            │
+     │        │    AUTHORIZED, or       │                            │
+     │        │    the UID's manager)   │                            │
+     │        │ ✗ Already REDEEMED      │                            │
+     │        │   → skip                │                            │
+     │        │ ✗ Duplicate in batch    │                            │
+     │        │   → skip                │                            │
+     │        └─────────────────────────┤                            │
+     │                                  │                            │
+     │        ┌─ Commit (per valid) ────┤                            │
+     │        │ IF active == DEFAULT:   │                            │
+     │        │   delete local status   │                            │
+     │        │   (gas refund)          │                            │
+     │        │ ELSE:                   │                            │
+     │        │   set INACTIVE          │                            │
+     │        │                         │                            │
+     │        │ IF mirror enabled:      │                            │
+     │        │   add to mirrored[]     │                            │
+     │        │ (mirror-disabled UIDs   │                            │
+     │        │  remain privately       │                            │
+     │        │  managed only)          │                            │
+     │        └─────────────────────────┤                            │
+     │                                  │                            │
+     │                                  │  IF mirrored count > 0:    │
+     │                                  │  emit PenteExternalCall    │
+     │                                  │  (CODE_MANAGER,            │
+     │                                  │   setUniqueIdActiveBatch   │
+     │                                  │   (mirroredUids, states))  │
+     │                                  │───────────────────────────▶│
+     │                                  │                            │
+     │                                  │                  STATE PER UID:
+     │                                  │                  • IF active == DEFAULT:
+     │                                  │                    delete override
+     │                                  │                    (gas refund)
+     │                                  │                  • ELSE:
+     │                                  │                    set INACTIVE
+     │                                  │                            │
+     │◀─────────────────────────────────│                            │
+```
+
+**Gas efficiency — Active State:**
+
+| Technique | What It Saves | How |
+|-----------|--------------|-----|
+| Sparse defaults (delete on re-activate) | ~4,800 gas refund per re-activation | When `activeState == DEFAULT_ACTIVE_STATE`, both PrivateComboStorage and CodeManager `delete` the status mapping entry instead of writing `true`. The uninitialized slot naturally returns `USE_DEFAULT_ACTIVE_STATE` (enum value 0). Re-activating a frozen UID earns a storage refund. |
+| Single PenteExternalCall for mirrored batch | One event vs N events | Only mirror-enabled UIDs are collected into `mirroredUniqueIds[]`. One `PenteExternalCall` carries all of them. Mirror-disabled UIDs incur zero base-chain gas. |
+| Assembly array truncation | Avoids memory copy | `assembly { mstore(arr, newLen) }` truncates the mirrored arrays in-place without allocating new memory or copying elements. |
+| Skip mirror-disabled UIDs | Zero gas on base chain | UIDs with `isUniqueIdStatusMirrorDisabled == true` update private state only. No PenteExternalCall, no CodeManager SSTORE, no event on the base chain. |
+| Per-UID manager delegation | No governance overhead | Managers call `setUniqueIdActiveBatch` directly — no vote tally, no supermajority. The `onlyAuthorized` modifier is bypassed for per-UID managers, who are checked inline. |
+
+#### State Summary by Contract
+
+| Contract | Storage Slot | Written When | Read When | Gas Notes |
+|----------|-------------|-------------|-----------|-----------|
+| **CodeManager** | `_identifierCounter[id]` | `registerUniqueIds` (+= qty) | `validateUniqueId`, `getIdentifierCounter` | One SSTORE per batch, not per UID |
+| | `_contractIdentifierToData[id]` | `registerUniqueIds` (first batch only) | `getUniqueIdDetails`, `getContractData` | Skipped on repeat batches |
+| | `_uniqueIdStatuses[hash]` | `recordRedemption` (→REDEEMED), `setUniqueIdActiveBatch` (→INACTIVE or delete) | `isUniqueIdActive`, `isUniqueIdRedeemed`, `validateUniqueIdsOrRevert` | Sparse: never written at registration. Only deviations from default consume storage. Deletes on re-activate for gas refund. |
+| | `isAuthorizedPrivacyGroup[addr]` | `voteToAuthorizePrivacyGroup` / `voteToDeauthorize...` | `onlyAuthorizedPrivacyGroup` modifier | One-time setup |
+| | `votersArray`, `_voteTallies`, `hasVoted` | Governance vote functions | `isVoter`, `getSupermajorityThreshold` | Vote tallies are auto-cleaned on passage/expiry |
+| | `feeVault`, `registrationFee` | Governance | `registerUniqueIds` | Rarely changed |
+| **GreetingCards** | `_totalMinted` | `buy` (= endTokenId) | `buy`, `totalSupply`, `availableSupply` | Plain uint256 — no library overhead |
+| | `_purchaseSegments[]` | `buy` (one push per batch) | `cardBuyer`, `tokenURI`, `_redeemedBaseURIOf` | O(log n) binary search at read time. One write per batch, not per token. |
+| | `totalRedeems` | `recordRedemption`, `syncRedemption` (++) | View only | unchecked increment |
+| | ERC721 ownership slots | `_mint` (per token), `_transfer` (redemption) | `ownerOf`, `_ownerOf` | Standard OZ ERC721 storage |
+| | `baseTokenURI`, `_contractURI` | Admin setters | `tokenURI`, `contractURI` | Rarely changed |
+| | `pricePerCard`, `maxSaleSupply`, `paused` | Admin setters | `buy` | Rarely changed |
+| | `codeManagerAddress`, `chainId`, `_contractIdentifier` | `initialize` (once) | Multiple | Immutable after init |
+| **PrivateComboStorage** | `pinToHash[pin][hash]` | `storeDataBatch` (write), `redeemCodeBatch` (delete) | `redeemCodeBatch` (lookup), `_assignPin` (collision check) | Delete on redeem earns gas refund |
+| | `pinSlotCount[pin]` | `storeDataBatch` (++), `redeemCodeBatch` (--) | `_assignPin` (capacity check) | |
+| | `_knownUniqueIds[hash]` | `storeDataBatch` (= true) | `storeDataBatch` (dedup), `setUniqueIdActiveBatch`, `setUniqueIdManagersBatch` | Never deleted — UIDs are permanent |
+| | `_uniqueIdLocalStatuses[hash]` | `redeemCodeBatch` (→REDEEMED), `setUniqueIdActiveBatch` (→INACTIVE or delete) | `redeemCodeBatch`, `_isUniqueIdActive`, `setUniqueIdActiveBatch` | Sparse: default 0 = USE_DEFAULT. Delete on re-activate for gas refund. |
+| | `isUniqueIdStatusMirrorDisabled[hash]` | `storeDataBatch` (= true, only when disabled) | `setUniqueIdActiveBatch` (skip mirror check) | Sparse: default false = mirror enabled, no write needed |
+| | `uniqueIdManager[hash]` | `storeDataBatch`, `setUniqueIdManagersBatch` | `setUniqueIdActiveBatch`, `setUniqueIdManagersBatch` | Sparse: default 0 = no manager |
+| | `isWhitelistedContractIdentifier[hash]` | `setContractIdentifierWhitelist` | `storeDataBatch`, `setUniqueIdActiveBatch` | Admin config — rarely changed |
+| | `registeredCodeCount[hash]` | `syncRegisteredCodeCountBatch` (monotonic update) | `storeDataBatch` (counter ceiling check) | Synced from public CodeManager counter |
+| | `storedCodeCount[hash]` | `storeDataBatch` (+= validCount) | Telemetry only | Operational tracking — not used for validation |
+| | `_contractIdentifierStrings[hash]` | `setContractIdentifierWhitelist`, `syncRegisteredCodeCountBatch` | `redeemCodeBatch` (UID reconstruction) | Maps hash → string for UID rebuild at redemption |
+| | `ADMIN`, `AUTHORIZED`, `CODE_MANAGER`, `MAX_PER_PIN`, `DEFAULT_ACTIVE_STATE` | Never (compile-time constants) | Every access is `PUSH` opcode | Zero SLOAD cost — embedded in bytecode |
+
+#### Cross-Contract Call Matrix
+
+| Caller | Target | Function | Trigger | Direction |
+|--------|--------|----------|---------|-----------|
+| Gift Contract | CodeManager | `registrationFee()` | `setMaxSaleSupply()` | Public → Public (view) |
+| Gift Contract | CodeManager | `getIdentifierCounter()` | `setMaxSaleSupply()` | Public → Public (view) |
+| Gift Contract | CodeManager | `registerUniqueIds{value}()` | `setMaxSaleSupply()` | Public → Public (payable) |
+| Gift Contract | CodeManager | `isUniqueIdActive()` | `getCardStatus()`, `isUniqueIdFrozen()` | Public → Public (view) |
+| Gift Contract | CodeManager | `isUniqueIdRedeemed()` | `syncRedemption()` | Public → Public (view) |
+| Gift Contract | CodeManager | `validateUniqueId()` | `isValidUniqueId()` | Public → Public (view) |
+| Gift Contract | CodeManager | `getUniqueIdDetails()` | `getDetailsFromCodeManager()` | Public → Public (view) |
+| PrivateComboStorage | CodeManager | `recordRedemption()` | `redeemCodeBatch()` via PenteExternalCall | Private → Public |
+| PrivateComboStorage | CodeManager | `setUniqueIdActiveBatch()` | `setUniqueIdActiveBatch()` via PenteExternalCall | Private → Public |
+| CodeManager | Gift Contract | `recordRedemption()` | `recordRedemption()` via try/catch | Public → Public (IRedeemable) |
+
 ---
 
 ## 2. Identity & Address Taxonomy
@@ -188,7 +537,7 @@ voteToUpdateRegistrationFee(newFee)       → Fee per UID registration (default 
 ### 3.4 Configure Gift Contract
 
 ```
-setMaxSaleSupply(quantity)     → Maximum cards available for purchase
+setMaxSaleSupply(quantity)     → Set max sale supply; if increasing, registers delta UIDs on CodeManager automatically
 setPricePerCard(priceInWei)    → Price per card in native currency (0 = free)
 setBaseTokenURI(ipfsURI)       → IPFS base URI for unredeemed card metadata
 setContractURI(ipfsURI)        → Collection-level metadata for marketplaces
@@ -370,7 +719,6 @@ Pente operations that emit `PenteExternalCall` events or perform state transitio
 
 Gas is needed for any Pente operation that triggers a base-ledger transaction:
 - Privacy group state transitions (deploy, finalize)
-- `storeDataBatch` → emits `PenteExternalCall(CODE_MANAGER, validateUniqueIdsOrRevert(...))`
 - `redeemCodeBatch` → emits `PenteExternalCall(CODE_MANAGER, recordRedemption(...))` per entry
 
 Operations that are purely private (e.g., read-only `pgroup_call` queries) do not require gas on the derived submitter.
@@ -957,7 +1305,7 @@ Use the returned address as `ADMIN` and `initialOwner`. Use it as `AUTHORIZED` w
 
 ### 12.1 Authorize the Privacy Group on CodeManager
 
-The privacy group must be authorized on CodeManager before its `PenteExternalCall` events will be accepted. Without authorization, calls to `recordRedemption` and `validateUniqueIdsOrRevert` from the privacy group will revert with `"Caller is not an authorized privacy group"`.
+The privacy group must be authorized on CodeManager before its `PenteExternalCall` events will be accepted. Without authorization, calls such as `recordRedemption` and `setUniqueIdActiveBatch` from the privacy group will revert with `"Caller is not an authorized privacy group"`.
 
 > **Critical lesson from production:** The address that must be authorized is the **privacy group contract address** — not the Paladin signer, not the derived submitter. In our deployment, the privacy group contract address was `0xf3cdb5de53edc04e1aea1a211ac586bb84faf8e4`. This is the `msg.sender` that CodeManager sees when processing `PenteExternalCall` events. Earlier attempts that authorized only the derived submitter address were insufficient.
 
@@ -1080,7 +1428,7 @@ This creates deterministic UIDs: `<contractIdentifier>-1`, `<contractIdentifier>
 contractIdentifier = toHexString(keccak256(codeManagerAddress, giftContractAddress, chainId))
 ```
 
-The gift contract can also register UIDs atomically at purchase time via its `buy()` function, which calls `registerUniqueIds` internally and verifies counter sync.
+The gift contract registers UIDs when admin increases `maxSaleSupply` via `setMaxSaleSupply(supply)` — the delta is automatically registered on CodeManager. Buyers then mint from the pre-registered supply via `buy()`.
 
 ### 12.6 Authorization Order
 
@@ -1103,7 +1451,7 @@ The complete authorization sequence:
       voteToAuthorizePrivacyGroup(groupContractAddress)
 13. Whitelist contract identifier on PrivateComboStorage:
       setContractIdentifierWhitelist([contractId], [true])
-14. Register UIDs on CodeManager (or let buy() do it)
+14. Register UIDs on CodeManager via setMaxSaleSupply() on the gift contract
 15. Configure per-UID options (optional):
       setUniqueIdManagersBatch / setUniqueIdActiveBatch with mirrorStatuses
 16. Store codes → storeDataBatch
@@ -1158,10 +1506,11 @@ curl -s "$PALADIN_RPC" \
             \"name\":\"request\",
             \"type\":\"tuple\",
             \"components\":[
-              {\"name\":\"uniqueIds\",\"type\":\"string[]\"},
+              {\"name\":\"contractIdentifier\",\"type\":\"string\"},
+              {\"name\":\"counters\",\"type\":\"uint256[]\"},
               {\"name\":\"codeHashes\",\"type\":\"bytes32[]\"},
-              {\"name\":\"pinLengths\",\"type\":\"uint256[]\"},
-              {\"name\":\"useSpecialChars\",\"type\":\"bool[]\"},
+              {\"name\":\"pinLength\",\"type\":\"uint256\"},
+              {\"name\":\"useSpecialChars\",\"type\":\"bool\"},
               {\"name\":\"entropies\",\"type\":\"bytes32[]\"},
               {\"name\":\"uidManagers\",\"type\":\"address[]\"},
               {\"name\":\"mirrorStatuses\",\"type\":\"bool[]\"}]
@@ -1170,10 +1519,11 @@ curl -s "$PALADIN_RPC" \
         },
         \"input\":[
           [
-            [\"<UNIQUE_ID_1>\", \"<UNIQUE_ID_2>\"],
+            \"<CONTRACT_IDENTIFIER>\",
+            [1, 2],
             [\"0xabc123...\", \"0xdef456...\"],
-            [3, 4],
-            [false, true],
+            6,
+            false,
             [\"0x<RANDOM_32_BYTES_1>\", \"0x<RANDOM_32_BYTES_2>\"],
             [\"0x<UID_MANAGER_1_OR_ZERO>\", \"0x<UID_MANAGER_2_OR_ZERO>\"],
             [true, false]
@@ -1186,27 +1536,28 @@ curl -s "$PALADIN_RPC" \
 ```
 
 **StoreBatchRequest fields:**
-- `uniqueIds` — registered UID strings (must exist on CodeManager)
+- `contractIdentifier` — deterministic public identifier already registered on CodeManager
+- `counters` — exact pre-registered UID counters to store privately
 - `codeHashes` — keccak256(code) hashes computed off-chain
-- `pinLengths` — PIN character length per entry (1-8)
-- `useSpecialChars` — whether to include special characters in the PIN
+- `pinLength` — batch PIN character length (1-8)
+- `useSpecialChars` — batch PIN charset choice
 - `entropies` — random 32-byte seeds for PIN derivation
 - `uidManagers` — optional per-UID manager addresses (zero = no manager)
 - `mirrorStatuses` — per-UID public mirror control:
   - `true` → active-state changes mirror to CodeManager publicly
   - `false` → active state stays private; CodeManager returns DEFAULT_ACTIVE_STATE
 
-The function returns `string[] assignedPins` — the contract-assigned PIN for each entry. Store these PINs alongside the codes in your off-chain database.
+Before calling `storeDataBatch`, sync the public counter ceiling locally with `syncRegisteredCodeCountBatch`. The function returns `string[] assignedPins` — the contract-assigned PIN for each valid entry. Store these PINs alongside the codes in your off-chain database.
 
 ### 13.3 What Happens Inside
 
 `storeDataBatch` executes three phases atomically:
 
-1. **Phase 1 — Local preflight:** Validates arrays, checks for empty values, invalid UID format, non-whitelisted contract identifiers, zero hashes, invalid per-entry PIN lengths, zero entropies, duplicate UIDs, and UIDs already stored in private state.
+1. **Phase 1 — Local preflight:** Validates arrays, zero hashes, zero entropies, duplicate counters, counters above the locally synced public registration ceiling, and UIDs already stored in private state.
 
-2. **Phase 2 — Public registry validation:** Emits `PenteExternalCall` → `CodeManager.validateUniqueIdsOrRevert(uniqueIds)`. If any uniqueId is not registered on CodeManager, the entire Pente transition reverts.
+2. **Phase 2 — Deterministic UID reconstruction:** Rebuilds `uniqueId = contractIdentifier-counter` for each valid entry using the submitted counters. Registration must already have occurred publicly. Invalid counters fail locally and never reach a public call.
 
-3. **Phase 3 — Assign PINs and store entries:** For each entry, derives a PIN from that entry's supplied entropy, PIN length, and charset choice. If a collision occurs (same codeHash at derived PIN, or slot is full at MAX_PER_PIN=32), the entry seed is re-chained via `keccak256(seed)` until an open slot is found — no revert, no information leakage. Stores `(pin, codeHash) → CodeMetadata{ uniqueId, exists: true }` and emits `DataStoredStatus(uniqueId, assignedPin)` per entry.
+3. **Phase 3 — Assign PINs and store entries:** For each entry, derives a PIN from that entry's supplied entropy, batch PIN length, and batch charset choice. If a collision occurs (same codeHash at derived PIN, or slot is full at MAX_PER_PIN=32), the entry seed is re-chained via `keccak256(seed)` until an open slot is found — no revert, no information leakage. Stores `(pin, codeHash) → CodeMetadata{ contractIdHash, counter, exists: true }` and emits `DataStoredStatus(uniqueId, assignedPin)` per entry.
 
 4. **Phase 4 — Per-UID configuration:** Records per-UID managers (if provided) and mirror preferences. UIDs with `mirrorStatuses[i] == false` have their `isUniqueIdStatusMirrorDisabled` flag set — future active-state changes via `setUniqueIdActiveBatch()` will update private execution state but will not propagate to CodeManager. Emits `UniqueIdManagerUpdated` and `UniqueIdStatusMirrorUpdated` events as applicable.
 
@@ -1214,16 +1565,17 @@ The function returns `string[] assignedPins` — the contract-assigned PIN for e
 
 | Failure | Cause | Fix |
 |---------|-------|-----|
-| `"Array length mismatch"` | `uniqueIds`, `codeHashes`, `pinLengths`, `useSpecialChars`, `entropies`, `uidManagers`, and `mirrorStatuses` arrays have different lengths | Ensure all per-entry arrays in the StoreBatchRequest are the same length |
-| `"Contract identifier not whitelisted"` | The UID prefix is not approved in PrivateComboStorage | Whitelist the contract identifier first |
-| `"Empty uniqueId"` | One of the uniqueIds is an empty string | Check your UID generation |
+| `"Array length mismatch"` | `counters`, `codeHashes`, `entropies`, `uidManagers`, and `mirrorStatuses` arrays have different lengths | Ensure all per-entry arrays in the StoreBatchRequest are the same length |
+| `"Contract identifier not whitelisted"` | The contract identifier is not approved in PrivateComboStorage | Whitelist the contract identifier first |
+| `"Registered count not synced"` | No public registration ceiling has been synced locally for this contract identifier | Call `syncRegisteredCodeCountBatch` first |
 | `"Zero code hash"` | A codeHash is `bytes32(0)` | Check your hash computation |
-| `"PIN length must be 1-8"` | An entry has an invalid `pinLengths[i]` | Use a value between 1 and 8 for each entry |
+| `"PIN length must be 1-8"` | The batch `pinLength` is invalid | Use a value between 1 and 8 |
 | `"Zero entropy"` | An entry entropy is `bytes32(0)` | Supply random 32 bytes per entry |
+| `"Counter must be greater than zero"` | A submitted UID counter is zero | Counters start at 1 |
+| `"Counter not registered on CodeManager"` | A submitted counter exceeds the synced public registration ceiling | Register UIDs publicly first, then sync the ceiling locally |
 | `"Duplicate uniqueId in batch"` | The same UID appears more than once in a store batch | Deduplicate before calling |
-| `"UniqueId already has manager"` | The UID was already initialized in private storage | Do not re-store the same UID |
+| `"UniqueId already stored"` | The UID was already initialized in private storage | Do not re-store the same UID |
 | `"PIN space exhausted"` | 100 retries failed to find an open PIN slot | Increase PIN length or reduce stored codes |
-| `"Invalid uniqueId in batch"` | The uniqueId is not registered on CodeManager | Register UIDs first via `registerUniqueIds` |
 | `"Caller is not an authorized privacy group"` | The privacy group is not authorized on CodeManager | Call `voteToAuthorizePrivacyGroup` |
 | `"Caller is not authorized"` | The `from` identity is not `ADMIN` or `AUTHORIZED` | Update constants and redeploy via upgrade |
 | `insufficient funds for gas` | The derived submitter has no gas | Fund the address shown in the error |
@@ -1408,13 +1760,14 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 | `AUTHORIZED()` returns a placeholder address | Did not update the constant before compiling | Placeholder value still in contract | Update `AUTHORIZED` in source, recompile, redeploy via proxy upgrade (Section 9) |
 | `CODE_MANAGER()` returns `0x...c0DE` | Did not update the constant before compiling | Placeholder value still in contract | Update `CODE_MANAGER` in source, recompile, redeploy via proxy upgrade (Section 9) |
 | `"Caller is not an authorized privacy group"` | Wrong address authorized on CodeManager | You authorized the derived submitter instead of the **group contract address** | Authorize the group contract address (`0xf3cdb5de53edc04e1aea1a211ac586bb84faf8e4`), not the derived submitter. See Section 12. |
-| `"Invalid uniqueId in batch"` during `storeDataBatch` | UIDs not registered on CodeManager | Check `validateUniqueId(uid)` on CodeManager | Call `registerUniqueIds` or `buy()` first |
+| `"Counter not registered on CodeManager"` during `storeDataBatch` | Counter exceeds synced `registeredCodeCount` ceiling | Sync via `syncRegisteredCodeCountBatch` after increasing `maxSaleSupply` | Call `syncRegisteredCodeCountBatch` with current CodeManager counter |
 | `"No matching uniqueId found."` during redemption | UID not registered on CodeManager | Call `getUniqueIdDetails(uid)` — should revert | Register UIDs first |
 | `"Not in vault"` during redemption | Token already redeemed | Check `ownerOf(tokenId)` — not the contract address | Code was already used; cannot re-redeem |
 | `RedemptionFailed` event on CodeManager | Gift contract reverted during `recordRedemption` | Read event `reason` field; check gift contract state | Fix root cause, then call `syncRedemption(uniqueId, redeemer)` on the gift contract |
 | `"UniqueId is inactive"` during redemption | Private execution state marks the UID inactive | Check private status flow and CodeManager mirror | Re-enable via `setUniqueIdActiveBatch` if appropriate |
-| `"Counter drift: CodeManager out of sync"` during `buy()` | External registration changed the counter | Check `getIdentifierCounter` on CodeManager | Ensure only `buy()` registers UIDs for this contract, or adjust `maxSaleSupply` |
-| `"Payment must equal price + registration fee"` during `buy()` | Incorrect `msg.value` | Calculate: `(pricePerCard * qty) + (registrationFee * qty)` | Send exact amount |
+| `"Counter drift: CodeManager out of sync"` during `setMaxSaleSupply()` | External registration changed the counter | Check `getIdentifierCounter` on CodeManager | Ensure only `setMaxSaleSupply()` registers UIDs for this contract |
+| `"Payment must equal price"` during `buy()` | Incorrect `msg.value` | Calculate: `pricePerCard * qty` | Send exact amount |
+| `"Must send exact registration fee"` during `setMaxSaleSupply()` | Incorrect `msg.value` | Calculate: `registrationFee * delta` | Send exact amount |
 | `pgroup_sendTransaction` returns success but no event on public chain | Group not ext-calls-enabled, or derived submitter unfunded for that specific operation | Check group config via `pgroup_getGroupById`; check each derived submitter balance (different ops use different submitters) | Recreate group with string `"true"` or fund the specific derived submitter shown in logs |
 | Private contract call reverts with no useful message | Wrong ABI, function signature, or calling via wrong address (implementation instead of proxy) | Verify function signature matches contract exactly; verify you're calling the proxy address, not the implementation | Re-check ABI; use the proxy address for all interactions |
 | `ptx_resolveVerifier` returns unexpected address | You're resolving in the wrong context or using the wrong algorithm | Must use `algorithm: "domain:ecdsa"` | See Section 2 for the correct call format |
@@ -1552,7 +1905,7 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 
 9. **Use creation bytecode, not runtime bytecode.** When deploying via `pgroup_sendTransaction`, send the full creation bytecode from the compiler artifact's `bytecode` field. Do NOT use the deployed runtime code that `eth_getCode` returns — it lacks the constructor.
 
-10. **Register UIDs before storing codes.** `storeDataBatch` emits a `PenteExternalCall` to `validateUniqueIdsOrRevert`. If UIDs aren't registered, the entire batch reverts atomically.
+10. **Register UIDs before storing codes.** `storeDataBatch` assumes UIDs were already registered publicly and validates submitted counters against a locally synced `registeredCodeCount` ceiling. Sync that ceiling before storing so invalid counters fail locally.
 
 11. **Counter sync matters.** The GreetingCards `buy()` function verifies `getIdentifierCounter` matches `_totalMinted` before registering new UIDs. If any other caller has registered UIDs for the same contract+chainId pair, `buy()` will revert with `"Counter drift: CodeManager out of sync"`.
 
@@ -1596,7 +1949,8 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 □ Per-UID managers configured if needed (setUniqueIdManagersBatch) (private)
 □ mirrorStatuses decided per UID (selective mirroring) (private)
 □ Codes generated off-chain: code → codeHash = keccak256(code)
-□ storeDataBatch succeeds → PINs assigned → validateUniqueIdsOrRevert passes
+□ registeredCodeCount synced on PrivateComboStorage (private)
+□ storeDataBatch succeeds → PINs assigned for counters already registered publicly
 □ redeemCodeBatch succeeds → recordRedemption routes to gift contract → NFT transferred
 □ If RedemptionFailed emitted → syncRedemption(uniqueId, redeemer) recovers the NFT transfer
 □ tokenURI switches from unredeemed to redeemed metadata

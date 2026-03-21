@@ -2,8 +2,8 @@
   {
     "source": "CodeManagement\\CodeManager.sol",
     "contract": "CodeManager",
-    "runtime_bytes": 18855,
-    "creation_bytes": 19079,
+    "runtime_bytes": 18936,
+    "creation_bytes": 19160,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\CodeManager",
     "over_limit": false
   },
@@ -42,8 +42,8 @@
   {
     "source": "CodeManagement\\PrivateComboStorage.sol",
     "contract": "PrivateComboStorage",
-    "runtime_bytes": 13665,
-    "creation_bytes": 13693,
+    "runtime_bytes": 14649,
+    "creation_bytes": 14677,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage",
     "over_limit": false
   },
@@ -250,8 +250,8 @@
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "CryftGreetingCards",
-    "runtime_bytes": 15510,
-    "creation_bytes": 15724,
+    "runtime_bytes": 15578,
+    "creation_bytes": 15792,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Tokens\\CryftGreetingCards",
     "over_limit": false
   }

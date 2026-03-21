@@ -118,6 +118,25 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "string",
+        "name": "contractIdentifier",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "registeredCount",
+        "type": "uint256"
+      }
+    ],
+    "name": "RegisteredCodeCountSynced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "uint256",
         "name": "index",
         "type": "uint256"
@@ -339,9 +358,14 @@
     "name": "pinToHash",
     "outputs": [
       {
-        "internalType": "string",
-        "name": "uniqueId",
-        "type": "string"
+        "internalType": "bytes32",
+        "name": "contractIdHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "counter",
+        "type": "uint256"
       },
       {
         "internalType": "bool",
@@ -373,6 +397,25 @@
     "name": "redeemCodeBatch",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "registeredCodeCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -434,9 +477,14 @@
       {
         "components": [
           {
-            "internalType": "string[]",
-            "name": "uniqueIds",
-            "type": "string[]"
+            "internalType": "string",
+            "name": "contractIdentifier",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "counters",
+            "type": "uint256[]"
           },
           {
             "internalType": "bytes32[]",
@@ -444,14 +492,14 @@
             "type": "bytes32[]"
           },
           {
-            "internalType": "uint256[]",
-            "name": "pinLengths",
-            "type": "uint256[]"
+            "internalType": "uint256",
+            "name": "pinLength",
+            "type": "uint256"
           },
           {
-            "internalType": "bool[]",
+            "internalType": "bool",
             "name": "useSpecialChars",
-            "type": "bool[]"
+            "type": "bool"
           },
           {
             "internalType": "bytes32[]",
@@ -482,6 +530,43 @@
         "type": "string[]"
       }
     ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "storedCodeCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string[]",
+        "name": "contractIdentifiers",
+        "type": "string[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "registeredCounts",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "syncRegisteredCodeCountBatch",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },

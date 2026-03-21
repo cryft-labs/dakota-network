@@ -50,6 +50,12 @@ interface ICodeManager {
         view
         returns (string memory contractIdentifier, uint256 counter);
 
+    /// @notice Get the registered counter for a contract identifier directly.
+    function getCounterByIdentifier(string memory contractIdentifier)
+        external
+        view
+        returns (uint256);
+
     /// @notice Returns whether an address is whitelisted.
     function isWhitelistedAddress(address addr) external view returns (bool);
 

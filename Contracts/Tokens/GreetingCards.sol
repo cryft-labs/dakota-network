@@ -85,9 +85,8 @@ pragma solidity >=0.8.2 <0.9.0;
   │                                                                 │
   │  Purchase (user or sponsor):                                    │
   │    3. Call buy(buyer, quantity, redeemedBaseURI)                │
-  │       → Pays pricePerCard + registrationFee per card            │
-  │       → Registers counter range on CodeManager                  │
-  │       → Mints token(s) into vault                               │
+  │       → Pays pricePerCard per card (no registration fee)       │
+  │       → Mints token(s) into vault from pre-registered supply   │
   │       → Records purchase segment (buyer + URI)                  │
   │       → Redeemed metadata locked in at purchase time            │
   │       → All atomic in one transaction                           │
@@ -194,9 +193,9 @@ pragma solidity >=0.8.2 <0.9.0;
   │  ── Write (requires gas + payment) ──────────────────────────   │
   │                                                                 │
   │  buy(buyer, quantity, redeemedBaseURI)                          │
-  │    payable — send pricePerCard * qty + registration             │
-  │    fee. Mints cards into vault. Pass the IPFS CID               │
-  │    directory for redeemed metadata.                             │
+  │    payable — send pricePerCard * qty.                           │
+  │    Mints cards into vault from pre-registered supply.           │
+  │    Pass IPFS CID directory for redeemed metadata.              │
   │    msg.sender pays; buyer gets card attribution.                │
   │    Emits: BatchPurchased(buyer, startTokenId, qty)              │
   │    Emits: Transfer(0x0, contract, tokenId) per token            │
@@ -230,7 +229,7 @@ pragma solidity >=0.8.2 <0.9.0;
   │  ── Typical API Flow ────────────────────────────────────────   │
   │                                                                 │
   │  1. Frontend calls buy(buyer, qty, redeemedURI)                 │
-  │     with msg.value = (pricePerCard + regFee) * qty              │
+  │     with msg.value = pricePerCard * qty                         │
   │  2. Backend listens for BatchPurchased event                    │
   │  3. Backend stores codes via ComboStorage.storeDataBatch()      │
   │     with mirrorStatuses controlling public visibility           │
@@ -442,15 +441,16 @@ contract CryftGreetingCards is
     //                    PURCHASING
     // ════════════════════════════════════════════════════
 
-    /// @notice Purchase greeting cards. Tokens are minted into the vault and
-    ///         registered on CodeManager atomically at purchase time.
+    /// @notice Purchase greeting cards. Tokens are minted into the vault
+    ///         from a pre-registered batch release.
     ///
-    ///         Prerequisite: admin must call `setMaxSaleSupply(quantity)` and
-    ///         store redemption codes on ComboStorage.
+    ///         Prerequisites:
+    ///           1. Admin calls `setMaxSaleSupply(supply)` to register
+    ///              UIDs on CodeManager and set maxSaleSupply.
+    ///           2. Admin stores redemption codes on ComboStorage.
     ///
-    ///         Registration on CodeManager happens atomically at purchase time.
-    ///         After registration, the CodeManager counter is verified against
-    ///         the expected value to detect any counter drift.
+    ///         UID registration is decoupled from purchasing — it happens
+    ///         at batch release time, not per purchase.
     ///
     ///         Token IDs and uniqueId counters are kept in 1:1 sync:
     ///           Token 1 → contractIdentifier-1 → baseTokenURI/1.json
@@ -466,30 +466,11 @@ contract CryftGreetingCards is
         require(quantity > 0 && quantity <= MAX_BATCH_SIZE, "Batch: 1-100");
         require(bytes(redeemedURI).length > 0, "Redeemed URI required");
 
-        // Calculate registration fee from CodeManager
-        uint256 registrationFee = ICodeManager(codeManagerAddress).registrationFee() * quantity;
-        uint256 totalCost = (pricePerCard * quantity) + registrationFee;
-        require(msg.value == totalCost, "Payment must equal price + registration fee");
+        uint256 totalCost = pricePerCard * quantity;
+        require(msg.value == totalCost, "Payment must equal price");
 
         uint256 currentTotal = _totalMinted;
         require(currentTotal + quantity <= maxSaleSupply, "Exceeds max sale supply");
-
-        // Verify CodeManager counter matches our internal mint count before registration.
-        // This ensures no external registration has drifted the counter out of sync.
-        (, uint256 counterBefore) = ICodeManager(codeManagerAddress).getIdentifierCounter(
-            address(this),
-            chainId
-        );
-        require(counterBefore == currentTotal, "Counter drift: CodeManager out of sync");
-
-        // Register the counter range on CodeManager atomically with minting.
-        // This ensures uniqueIds are valid on CodeManager the moment they're minted.
-        // Registration fee is forwarded to CodeManager → feeVault.
-        ICodeManager(codeManagerAddress).registerUniqueIds{value: registrationFee}(
-            address(this),
-            chainId,
-            quantity
-        );
 
         uint256 startTokenId = currentTotal + 1;
         uint256 endTokenId = currentTotal + quantity;
@@ -685,10 +666,35 @@ contract CryftGreetingCards is
         emit PriceUpdated(price);
     }
 
-    /// @notice Set the maximum number of cards available for purchase.
-    function setMaxSaleSupply(uint256 supply) external onlyOwner {
-        require(supply >= _totalMinted, "Below already minted");
+    /// @notice Increase the maximum number of cards available for purchase
+    ///         and register the delta UIDs on CodeManager atomically.
+    ///         Supply can only increase — decreasing would invalidate
+    ///         already-registered UIDs on CodeManager.
+    ///         The registration fee for the delta must be included as msg.value.
+    function setMaxSaleSupply(uint256 supply) external payable onlyOwner {
+        require(supply > maxSaleSupply, "Supply can only increase");
         require(supply <= MAX_SUPPLY, "Exceeds MAX_SUPPLY");
+
+        uint256 currentMax = maxSaleSupply;
+        uint256 delta = supply - currentMax;
+
+        // Verify CodeManager counter matches our registered ceiling.
+        (, uint256 counterBefore) = ICodeManager(codeManagerAddress).getIdentifierCounter(
+            address(this),
+            chainId
+        );
+        require(counterBefore == currentMax, "Counter drift: CodeManager out of sync");
+
+        // Registration fee forwarded to CodeManager → feeVault.
+        uint256 registrationFee = ICodeManager(codeManagerAddress).registrationFee() * delta;
+        require(msg.value == registrationFee, "Must send exact registration fee");
+
+        ICodeManager(codeManagerAddress).registerUniqueIds{value: registrationFee}(
+            address(this),
+            chainId,
+            delta
+        );
+
         maxSaleSupply = supply;
         emit SupplyRegistered(supply);
     }

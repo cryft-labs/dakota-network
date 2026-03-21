@@ -122,7 +122,8 @@ contract PrivateComboStorage {
 
     /// @dev Per-code metadata stored privately.
     struct CodeMetadata {
-        string uniqueId;
+        bytes32 contractIdHash;
+        uint256 counter;
         bool exists;
     }
 
@@ -130,13 +131,15 @@ contract PrivateComboStorage {
         uint256[] validIndexes;
         uint256 validCount;
         string[] assignedPins;
+        string[] computedUniqueIds;
     }
 
     struct StoreBatchRequest {
-        string[] uniqueIds;
+        string contractIdentifier;
+        uint256[] counters;
         bytes32[] codeHashes;
-        uint256[] pinLengths;
-        bool[] useSpecialChars;
+        uint256 pinLength;
+        bool useSpecialChars;
         bytes32[] entropies;
         address[] uidManagers;
         bool[] mirrorStatuses;
@@ -171,6 +174,21 @@ contract PrivateComboStorage {
 
     /// @dev Tracks whether a UID has ever been admitted into private storage.
     mapping(bytes32 => bool) private _knownUniqueIds;
+
+    /// @dev Stores the contract identifier string for each whitelisted hash.
+    ///      Populated during setContractIdentifierWhitelist; used to reconstruct
+    ///      full uniqueId strings from stored counter + hash at redemption time.
+    mapping(bytes32 => string) private _contractIdentifierStrings;
+
+    /// @dev Per-contract-identifier counter tracking stored code count.
+    ///      Synced from the public CodeManager and used as the local
+    ///      registration source of truth before any external call is emitted.
+    mapping(bytes32 => uint256) public registeredCodeCount;
+
+    /// @dev Count of hashes successfully stored privately for each identifier.
+    ///      This is operational telemetry only. It is NOT used to assign or
+    ///      validate public uniqueId counters.
+    mapping(bytes32 => uint256) public storedCodeCount;
 
     /// @dev Sparse override for UIDs whose active/frozen state should remain
     ///      private. Default false means public mirroring is enabled.
@@ -209,6 +227,11 @@ contract PrivateComboStorage {
     event ContractIdentifierWhitelistUpdated(
         string contractIdentifier,
         bool allowed
+    );
+
+    event RegisteredCodeCountSynced(
+        string contractIdentifier,
+        uint256 registeredCount
     );
 
     event UniqueIdManagerUpdated(
@@ -263,7 +286,43 @@ contract PrivateComboStorage {
             require(bytes(contractIdentifiers[i]).length > 0, "Empty contract identifier");
             bytes32 contractIdentifierHash = keccak256(bytes(contractIdentifiers[i]));
             isWhitelistedContractIdentifier[contractIdentifierHash] = allowed[i];
+            if (allowed[i]) {
+                _contractIdentifierStrings[contractIdentifierHash] = contractIdentifiers[i];
+            }
             emit ContractIdentifierWhitelistUpdated(contractIdentifiers[i], allowed[i]);
+            unchecked { ++i; }
+        }
+    }
+
+    /// @notice Sync the public CodeManager counter for one or more contract identifiers.
+    ///         The caller reads the current counter from CodeManager off-chain
+    ///         and supplies it here. The counter is monotonic — the supplied
+    ///         value must be >= the previously synced value.
+    ///         This decouples UID registration from store-time validation:
+    ///         registration happens publicly first, then sync records the
+    ///         ceiling so storeDataBatch can validate counters locally.
+    function syncRegisteredCodeCountBatch(
+        string[] calldata contractIdentifiers,
+        uint256[] calldata registeredCounts
+    ) external onlyAuthorized {
+        uint256 len = contractIdentifiers.length;
+        require(len == registeredCounts.length, "Array length mismatch");
+        require(len > 0, "Empty batch");
+
+        for (uint256 i = 0; i < len; ) {
+            require(bytes(contractIdentifiers[i]).length > 0, "Empty contract identifier");
+
+            bytes32 contractIdentifierHash = keccak256(bytes(contractIdentifiers[i]));
+            require(isWhitelistedContractIdentifier[contractIdentifierHash], "Contract identifier not whitelisted");
+            require(
+                registeredCounts[i] >= registeredCodeCount[contractIdentifierHash],
+                "Registered count cannot decrease"
+            );
+
+            _contractIdentifierStrings[contractIdentifierHash] = contractIdentifiers[i];
+            registeredCodeCount[contractIdentifierHash] = registeredCounts[i];
+
+            emit RegisteredCodeCountSynced(contractIdentifiers[i], registeredCounts[i]);
             unchecked { ++i; }
         }
     }
@@ -271,96 +330,124 @@ contract PrivateComboStorage {
     // ── Batch Code Storage ────────────────────────────────
     //
     //    Store multiple pre-computed hashes in one transaction.
-    //    The caller supplies one opaque entropy seed per entry
-    //    (e.g. random bytes generated off-chain). Each entry uses
-    //    its own seed for initial PIN derivation. If the derived
-    //    PIN is unavailable, the contract chains keccak256(seed)
-    //    until an open slot is found.
+    //    The caller supplies a batch-level contract identifier,
+    //    PIN config, explicit pre-registered counters, and per-entry
+    //    non-deterministic data (codeHashes, entropies, uidManagers,
+    //    mirrorStatuses).
+    //    Each entry uses its own entropy seed for initial PIN
+    //    derivation. If the derived PIN is unavailable, the
+    //    contract chains keccak256(seed) until an open slot
+    //    is found.
     //
     //    The hash is computed off-chain as keccak256(code) — the
     //    PIN is purely a routing key and is NOT part of the hash.
     //    This guarantees no two codes can collide within a PIN
     //    slot (distinct codes → distinct keccak256 outputs).
     //
-    //    Entries that fail local validation (empty uniqueId, invalid
-    //    UID format, non-whitelisted contract identifier, zero hash)
-    //    are skipped with a StoreFailed event — no PIN is
-    //    assigned, no state is written, and the entry is excluded
-    //    from the public-chain UID validation call. Only entries
-    //    that pass local checks are sent to CodeManager and
-    //    stored. PIN-slot collisions are resolved silently by
+    //    Contract identifier and PIN config (pinLength, useSpecialChars)
+    //    are batch-level parameters. Callers supply the exact public
+    //    counters they intend to use for each entry. Those counters are
+    //    preflighted against a locally synced mirror of CodeManager's
+    //    identifier counter so invalid UIDs are rejected before any
+    //    external call could be emitted.
+    //
+    //    Entries that fail local validation (zero code hash or zero
+    //    entropy, duplicate counter, out-of-range public counter, or
+    //    already-stored UID) are skipped with a StoreFailed event — no
+    //    PIN is assigned and no state is written. PIN-slot collisions are
+    //    resolved silently by
     //    chaining keccak256(entropy) until an open slot is found.
 
     /// @notice Store multiple pre-computed hashes in one transaction.
     ///         The contract assigns PINs — callers receive them in the return value.
+    ///         UniqueIds are computed deterministically from the batch-level contract
+    ///         identifier and the explicit public counters supplied in the request.
     ///
-    ///         Entries that fail local validation (empty uniqueId, invalid UID format,
-    ///         non-whitelisted contract identifier, zero code hash, invalid pin length,
-    ///         or zero entropy) are skipped — a StoreFailed
-    ///         event is emitted with the index and reason, and the entry is
-    ///         excluded from the public-chain validation call. The corresponding
-    ///         assignedPins slot is left as an empty string.
+    ///         Entries that fail local validation (zero code hash, zero entropy,
+    ///         duplicate counter, counter not registered on CodeManager, or UID
+    ///         already stored privately) are skipped — a StoreFailed event is
+    ///         emitted with the index and reason. The corresponding assignedPins
+    ///         slot is left as an empty string.
     ///
-    ///         Entries that pass local validation are sent to CodeManager for UID
-    ///         verification. If any valid UID fails on CodeManager, the entire
-    ///         Pente transition rolls back (unavoidable — PenteExternalCall is
-    ///         fire-and-forget with no return value).
-    /// @param request Batched store request containing uniqueIds, codeHashes,
-    ///                pinLengths, useSpecialChars, entropies, uidManagers, and
-    ///                mirrorStatuses. `mirrorStatuses[i] == false` keeps the
-    ///                UID's active/frozen state private in this contract.
+    ///         Public registration is treated as the source of truth via the
+    ///         synced registeredCodeCount ceiling. This prevents store-time UID
+    ///         drift and avoids emitting an external validation call that could
+    ///         revert on the public contract.
+    /// @param request Batched store request containing contractIdentifier,
+    ///                counters, codeHashes, pinLength, useSpecialChars, entropies,
+    ///                uidManagers, and mirrorStatuses.
+    ///                `mirrorStatuses[i] == false` keeps the UID's active/frozen
+    ///                state private in this contract.
     /// @return assignedPins Per-index PIN strings assigned by the contract.
     ///                      Empty string for entries that failed local validation.
     function storeDataBatch(
         StoreBatchRequest calldata request
     ) external onlyAuthorized returns (string[] memory assignedPins) {
+        uint256 len = request.codeHashes.length;
         require(
-            request.uniqueIds.length == request.codeHashes.length
-                && request.uniqueIds.length == request.pinLengths.length
-                && request.uniqueIds.length == request.useSpecialChars.length
-                && request.uniqueIds.length == request.entropies.length
-                && request.uniqueIds.length == request.uidManagers.length
-                && request.uniqueIds.length == request.mirrorStatuses.length,
+            len == request.counters.length
+                && len == request.entropies.length
+                && len == request.uidManagers.length
+                && len == request.mirrorStatuses.length,
             "Array length mismatch"
         );
-        require(request.uniqueIds.length > 0, "Empty batch");
+        require(len > 0, "Empty batch");
+        require(request.pinLength > 0 && request.pinLength <= 8, "PIN length must be 1-8");
 
-        StorePreparation memory preparation = _prepareStoreBatch(request);
+        bytes32 contractIdHash = keccak256(bytes(request.contractIdentifier));
+        require(isWhitelistedContractIdentifier[contractIdHash], "Contract identifier not whitelisted");
+        require(registeredCodeCount[contractIdHash] > 0, "Registered count not synced");
+
+        StorePreparation memory preparation = _prepareStoreBatch(request, contractIdHash);
 
         assignedPins = preparation.assignedPins;
 
         _persistStoredHashes(
-            request.uniqueIds,
+            contractIdHash,
+            request.counters,
             request.codeHashes,
             preparation.validIndexes,
             preparation.validCount,
-            preparation.assignedPins
+            preparation.assignedPins,
+            preparation.computedUniqueIds
         );
 
         _persistStoredUniqueIdConfig(
-            request.uniqueIds,
+            preparation.computedUniqueIds,
             request.uidManagers,
             request.mirrorStatuses,
             preparation.validIndexes,
             preparation.validCount
         );
+
+        storedCodeCount[contractIdHash] += preparation.validCount;
     }
 
     function _prepareStoreBatch(
-        StoreBatchRequest calldata request
+        StoreBatchRequest calldata request,
+        bytes32 contractIdHash
     ) internal returns (StorePreparation memory preparation) {
         (preparation.validIndexes, preparation.validCount) = _collectValidStoreIndexes(
-            request.uniqueIds,
+            request.contractIdentifier,
+            request.counters,
             request.codeHashes,
-            request.pinLengths,
-            request.entropies
+            request.entropies,
+            registeredCodeCount[contractIdHash]
         );
 
-        _emitStoreValidation(request.uniqueIds, preparation.validIndexes, preparation.validCount);
+        preparation.computedUniqueIds = new string[](preparation.validCount);
+        for (uint256 i = 0; i < preparation.validCount; ) {
+            uint256 index = preparation.validIndexes[i];
+            preparation.computedUniqueIds[i] = _reconstructUniqueId(
+                request.contractIdentifier,
+                request.counters[index]
+            );
+            unchecked { ++i; }
+        }
 
         preparation.assignedPins = _assignPinsForValidEntries(
             request.codeHashes,
-            request.pinLengths,
+            request.pinLength,
             request.useSpecialChars,
             request.entropies,
             preparation.validIndexes,
@@ -370,41 +457,23 @@ contract PrivateComboStorage {
 
     /// @dev Phase 1 helper for storeDataBatch.
     ///      Validates each entry locally and returns the indexes that survived.
+    ///      Contract identifier and PIN config are validated at the batch level.
+    ///      Per-entry validation ensures each explicit counter is already
+    ///      registered on CodeManager and has not been stored privately before.
     function _collectValidStoreIndexes(
-        string[] calldata uniqueIds,
+        string calldata contractIdentifier,
+        uint256[] calldata counters,
         bytes32[] calldata codeHashes,
-        uint256[] calldata pinLengths,
-        bytes32[] calldata entropies
+        bytes32[] calldata entropies,
+        uint256 registeredCount
     ) internal returns (uint256[] memory validIndexes, uint256 validCount) {
-        uint256 len = uniqueIds.length;
+        uint256 len = codeHashes.length;
         validIndexes = new uint256[](len);
         bytes32[] memory seenUids = new bytes32[](len);
 
         for (uint256 i = 0; i < len; ) {
-            if (bytes(uniqueIds[i]).length == 0) {
-                emit StoreFailed(i, "Empty uniqueId");
-                unchecked { ++i; }
-                continue;
-            }
-
-            (bool hasContractIdentifier, bytes32 contractIdentifierHash) = _tryGetContractIdentifierHash(uniqueIds[i]);
-            if (!hasContractIdentifier) {
-                emit StoreFailed(i, "Invalid uniqueId format");
-                unchecked { ++i; }
-                continue;
-            }
-            if (!isWhitelistedContractIdentifier[contractIdentifierHash]) {
-                emit StoreFailed(i, "Contract identifier not whitelisted");
-                unchecked { ++i; }
-                continue;
-            }
             if (codeHashes[i] == bytes32(0)) {
                 emit StoreFailed(i, "Zero code hash");
-                unchecked { ++i; }
-                continue;
-            }
-            if (pinLengths[i] == 0 || pinLengths[i] > 8) {
-                emit StoreFailed(i, "PIN length must be 1-8");
                 unchecked { ++i; }
                 continue;
             }
@@ -414,7 +483,18 @@ contract PrivateComboStorage {
                 continue;
             }
 
-            bytes32 uidHash = keccak256(bytes(uniqueIds[i]));
+            if (counters[i] == 0) {
+                emit StoreFailed(i, "Counter must be greater than zero");
+                unchecked { ++i; }
+                continue;
+            }
+            if (counters[i] > registeredCount) {
+                emit StoreFailed(i, "Counter not registered on CodeManager");
+                unchecked { ++i; }
+                continue;
+            }
+
+            bytes32 uidHash = keccak256(bytes(_reconstructUniqueId(contractIdentifier, counters[i])));
             if (_knownUniqueIds[uidHash]) {
                 emit StoreFailed(i, "UniqueId already stored");
                 unchecked { ++i; }
@@ -434,44 +514,20 @@ contract PrivateComboStorage {
                 unchecked { ++i; }
                 continue;
             }
+
             seenUids[validCount] = uidHash;
+
             validIndexes[validCount] = i;
             unchecked { ++validCount; }
             unchecked { ++i; }
         }
     }
 
-    /// @dev Phase 2 helper for storeDataBatch.
-    ///      Emits a single validation call for only the locally valid UIDs.
-    function _emitStoreValidation(
-        string[] calldata uniqueIds,
-        uint256[] memory validIndexes,
-        uint256 validCount
-    ) internal {
-        if (validCount == 0) {
-            return;
-        }
-
-        string[] memory validUniqueIds = new string[](validCount);
-        for (uint256 i = 0; i < validCount; ) {
-            validUniqueIds[i] = uniqueIds[validIndexes[i]];
-            unchecked { ++i; }
-        }
-
-        emit PenteExternalCall(
-            CODE_MANAGER,
-            abi.encodeWithSignature(
-                "validateUniqueIdsOrRevert(string[])",
-                validUniqueIds
-            )
-        );
-    }
-
     /// @dev Assign PINs for all locally validated entries.
     function _assignPinsForValidEntries(
         bytes32[] calldata codeHashes,
-        uint256[] calldata pinLengths,
-        bool[] calldata useSpecialChars,
+        uint256 pinLength,
+        bool useSpecialChars,
         bytes32[] calldata entropies,
         uint256[] memory validIndexes,
         uint256 validCount
@@ -480,56 +536,43 @@ contract PrivateComboStorage {
 
         for (uint256 i = 0; i < validCount; ) {
             uint256 index = validIndexes[i];
-            assignedPins[index] = _assignPinForStoredEntry(
-                index,
-                codeHashes,
-                pinLengths,
+            assignedPins[index] = _assignPin(
+                entropies[index],
+                pinLength,
                 useSpecialChars,
-                entropies
+                codeHashes[index]
             );
             unchecked { ++i; }
         }
     }
 
-    function _assignPinForStoredEntry(
-        uint256 index,
-        bytes32[] calldata codeHashes,
-        uint256[] calldata pinLengths,
-        bool[] calldata useSpecialChars,
-        bytes32[] calldata entropies
-    ) internal returns (string memory assignedPin) {
-        return _assignPin(
-            entropies[index],
-            pinLengths[index],
-            useSpecialChars[index],
-            codeHashes[index]
-        );
-    }
-
     /// @dev Persist code-hash metadata for validated entries.
     function _persistStoredHashes(
-        string[] calldata uniqueIds,
+        bytes32 contractIdHash,
+        uint256[] calldata counters,
         bytes32[] calldata codeHashes,
         uint256[] memory validIndexes,
         uint256 validCount,
-        string[] memory assignedPins
+        string[] memory assignedPins,
+        string[] memory computedUniqueIds
     ) internal {
         for (uint256 i = 0; i < validCount; ) {
             uint256 index = validIndexes[i];
             pinToHash[assignedPins[index]][codeHashes[index]] = CodeMetadata({
-                uniqueId: uniqueIds[index],
+                contractIdHash: contractIdHash,
+                counter: counters[index],
                 exists: true
             });
             pinSlotCount[assignedPins[index]]++;
 
-            emit DataStoredStatus(uniqueIds[index], assignedPins[index]);
+            emit DataStoredStatus(computedUniqueIds[i], assignedPins[index]);
             unchecked { ++i; }
         }
     }
 
     /// @dev Persist UID-level config for validated entries.
     function _persistStoredUniqueIdConfig(
-        string[] calldata uniqueIds,
+        string[] memory computedUniqueIds,
         address[] calldata uidManagers,
         bool[] calldata mirrorStatuses,
         uint256[] memory validIndexes,
@@ -537,15 +580,15 @@ contract PrivateComboStorage {
     ) internal {
         for (uint256 i = 0; i < validCount; ) {
             uint256 index = validIndexes[i];
-            bytes32 uidHash = keccak256(bytes(uniqueIds[index]));
+            bytes32 uidHash = keccak256(bytes(computedUniqueIds[i]));
             _knownUniqueIds[uidHash] = true;
             if (uidManagers[index] != address(0)) {
-                emit UniqueIdManagerUpdated(uniqueIds[index], uidManagers[index], msg.sender);
                 uniqueIdManager[uidHash] = uidManagers[index];
+                emit UniqueIdManagerUpdated(computedUniqueIds[i], uidManagers[index], msg.sender);
             }
             if (!mirrorStatuses[index]) {
                 isUniqueIdStatusMirrorDisabled[uidHash] = true;
-                emit UniqueIdStatusMirrorUpdated(uniqueIds[index], false);
+                emit UniqueIdStatusMirrorUpdated(computedUniqueIds[i], false);
             }
             unchecked { ++i; }
         }
@@ -805,7 +848,10 @@ contract PrivateComboStorage {
                 continue;
             }
 
-            string memory redeemedUniqueId = metadata.uniqueId;
+            string memory redeemedUniqueId = _reconstructUniqueId(
+                _contractIdentifierStrings[metadata.contractIdHash],
+                metadata.counter
+            );
             bytes32 uniqueIdHash = keccak256(bytes(redeemedUniqueId));
             if (_uniqueIdLocalStatuses[uniqueIdHash] == UniqueIdLocalStatus.REDEEMED) {
                 emit RedeemFailed(i, "UniqueId already redeemed");
@@ -946,5 +992,33 @@ contract PrivateComboStorage {
         }
 
         return (true, keccak256(contractIdentifier));
+    }
+
+    /// @dev Convert a uint256 to its decimal string representation.
+    function _uintToString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits--;
+            buffer[digits] = bytes1(uint8(48 + value % 10));
+            value /= 10;
+        }
+        return string(buffer);
+    }
+
+    /// @dev Reconstruct a full uniqueId string from contract identifier and counter.
+    function _reconstructUniqueId(
+        string memory contractIdentifier,
+        uint256 counter
+    ) internal pure returns (string memory) {
+        return string(abi.encodePacked(contractIdentifier, "-", _uintToString(counter)));
     }
 }
