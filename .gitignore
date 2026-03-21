@@ -4,9 +4,10 @@ __pycache__/
 *.egg-info/
 .venv/
 
-# Solc Compiler build cache (regenerated on every compile)
+# Tools & Misc
 Tools/SolcCompiler/.import_cache/
 GREETING_CARDS_APP_PROMPT.md
+Tools/align_tables.py
 
 # OS / IDE
 .DS_Store

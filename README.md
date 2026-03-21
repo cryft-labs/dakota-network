@@ -18,14 +18,14 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ## Quick Reference
 
-| Component | Version | Notes |
-|-----------|---------|-------|
-| **Besu** | 26.1.0 | Java 21, QBFT consensus |
-| **solc** | 0.8.34 | All contracts except validator contracts |
-| **solc** | 0.8.19 | Validator contracts only (pragma `<0.8.20`) |
-| **EVM target** | Osaka | All contracts compiled with solc 0.8.34 |
-| **EVM target** | London | Validator contracts (solc 0.8.19 maximum) |
-| **Paladin** | latest | Pente privacy domain (replaces Tessera) |
+| Component      | Version | Notes                                       |
+| -------------- | ------- | ------------------------------------------- |
+| **Besu**       | 26.1.0  | Java 21, QBFT consensus                     |
+| **solc**       | 0.8.34  | All contracts except validator contracts    |
+| **solc**       | 0.8.19  | Validator contracts only (pragma `<0.8.20`) |
+| **EVM target** | Osaka   | All contracts compiled with solc 0.8.34     |
+| **EVM target** | London  | Validator contracts (solc 0.8.19 maximum)   |
+| **Paladin**    | latest  | Pente privacy domain (replaces Tessera)     |
 
 > **Full installation instructions** — Besu setup, Paladin deployment (Docker / build-from-source / k3s+Helm), genesis configuration, security notes, and documentation references — are in the **[Implementation Guide](IMPLEMENTATION.md#3-layer-1--besu-network-setup)**.
 
@@ -35,12 +35,12 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ### Block Timing
 
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| **Block period** | 1 second | Time between blocks when transactions are pending |
-| **Empty block period** | 64 seconds | Time between blocks when no transactions are pending |
-| **Epoch length** | 86,000 blocks | Validator set checkpoint interval |
-| **Request timeout** | 86 seconds | QBFT round-change timeout |
+| Parameter              | Value         | Notes                                                |
+| ---------------------- | ------------- | ---------------------------------------------------- |
+| **Block period**       | 1 second      | Time between blocks when transactions are pending    |
+| **Empty block period** | 64 seconds    | Time between blocks when no transactions are pending |
+| **Epoch length**       | 86,000 blocks | Validator set checkpoint interval                    |
+| **Request timeout**    | 86 seconds    | QBFT round-change timeout                            |
 
 ### Genesis File Breakdown
 
@@ -48,59 +48,59 @@ The genesis file (`Contracts/Genesis/BesuGenesis.7z`, compressed) contains the f
 
 #### Chain Parameters
 
-| Parameter | Value |
-|-----------|-------|
-| **Chain ID** | `112311` |
-| **Consensus** | QBFT (Istanbul BFT) |
-| **Gas limit** | 64,000,000 (`0x3D09000`) |
-| **Block reward** | 3.2 ETH per block (sent to `miningBeneficiary`) |
-| **Contract size limit** | 32,768 bytes (32 KiB) |
-| **EVM fork** | Osaka + BPO2 (all forks through Osaka plus BPO1/BPO2 enabled from genesis) |
+| Parameter               | Value                                                                      |
+| ----------------------- | -------------------------------------------------------------------------- |
+| **Chain ID**            | `112311`                                                                   |
+| **Consensus**           | QBFT (Istanbul BFT)                                                        |
+| **Gas limit**           | 64,000,000 (`0x3D09000`)                                                   |
+| **Block reward**        | 3.2 ETH per block (sent to `miningBeneficiary`)                            |
+| **Contract size limit** | 32,768 bytes (32 KiB)                                                      |
+| **EVM fork**            | Osaka + BPO2 (all forks through Osaka plus BPO1/BPO2 enabled from genesis) |
 
 #### Ethereum Fork Activation
 
 All Ethereum hard forks through Osaka are activated from genesis (block 0 / timestamp 0), along with BPO1 and BPO2 Blob Parameter Only upgrades. Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention. BPO upgrades adjust blob-related parameters (target and maximum blobs per block) without requiring a full hard fork, enabling incremental Layer 2 data throughput scaling.
 
-| Fork | Genesis Key | Activation | Notable EIPs |
-|------|------------|------------|--------------|
-| **Homestead** | `homesteadBlock: 0` | Block 0 | EIP-2 (tx validation), EIP-7 (DELEGATECALL) |
-| **EIP-150** | `eip150Block: 0` | Block 0 | Gas cost rebalancing (Tangerine Whistle) |
-| **EIP-155/158** | `eip155Block: 0` / `eip158Block: 0` | Block 0 | Replay protection, state clearing (Spurious Dragon) |
-| **Byzantium** | `byzantiumBlock: 0` | Block 0 | REVERT opcode, STATICCALL, precompiles |
-| **Constantinople** | `constantinopleBlock: 0` | Block 0 | SHL/SHR/SAR opcodes, CREATE2, EXTCODEHASH |
-| **Petersburg** | `petersburgBlock: 0` | Block 0 | Removed EIP-1283 (SSTORE re-entrancy fix) |
-| **Istanbul** | `istanbulBlock: 0` | Block 0 | ChainID opcode, SELFBALANCE, Blake2 precompile |
-| **Muir Glacier** | `muirglacierblock: 0` | Block 0 | Difficulty bomb delay (no EVM changes) |
-| **Berlin** | `berlinBlock: 0` | Block 0 | Access lists (EIP-2929/2930), cold/warm storage pricing |
-| **London** | `londonBlock: 0` | Block 0 | EIP-1559 base fee, EIP-3529 refund reduction |
-| **Shanghai** | `shanghaiTime: 0` | Timestamp 0 | PUSH0 (EIP-3855), warm COINBASE (EIP-3651), initcode limits (EIP-3860) |
-| **Cancun** | `cancunTime: 0` | Timestamp 0 | Transient storage TSTORE/TLOAD (EIP-1153), MCOPY (EIP-5656), SELFDESTRUCT neutered (EIP-6780) |
-| **Prague/Pectra** | `pragueTime: 0` | Timestamp 0 | EIP-7702 (EOA code delegation), EIP-7251 (max effective balance), EIP-7002 (execution layer withdrawals) |
-| **Osaka** | `osakaTime: 0` | Timestamp 0 | EIP-7594 (PeerDAS), EIP-7692 (EOF v1), EIP-7823 (set max blob count), EIP-7691 (blob throughput increase) |
-| **BPO1** | `bpo1Time: 0` | Timestamp 0 | Blob Parameter Only upgrade 1 — raises blob target from 6→10, max from 9→15 (Mainnet: 2025-12-09 14:21:11 UTC, epoch 412,672) |
-| **BPO2** | `bpo2Time: 0` | Timestamp 0 | Blob Parameter Only upgrade 2 — raises blob target from 10→14, max from 15→21 (Mainnet: 2026-01-07 01:01:11 UTC, epoch 419,072) |
+| Fork               | Genesis Key                         | Activation  | Notable EIPs                                                                                                                    |
+| ------------------ | ----------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Homestead**      | `homesteadBlock: 0`                 | Block 0     | EIP-2 (tx validation), EIP-7 (DELEGATECALL)                                                                                     |
+| **EIP-150**        | `eip150Block: 0`                    | Block 0     | Gas cost rebalancing (Tangerine Whistle)                                                                                        |
+| **EIP-155/158**    | `eip155Block: 0` / `eip158Block: 0` | Block 0     | Replay protection, state clearing (Spurious Dragon)                                                                             |
+| **Byzantium**      | `byzantiumBlock: 0`                 | Block 0     | REVERT opcode, STATICCALL, precompiles                                                                                          |
+| **Constantinople** | `constantinopleBlock: 0`            | Block 0     | SHL/SHR/SAR opcodes, CREATE2, EXTCODEHASH                                                                                       |
+| **Petersburg**     | `petersburgBlock: 0`                | Block 0     | Removed EIP-1283 (SSTORE re-entrancy fix)                                                                                       |
+| **Istanbul**       | `istanbulBlock: 0`                  | Block 0     | ChainID opcode, SELFBALANCE, Blake2 precompile                                                                                  |
+| **Muir Glacier**   | `muirglacierblock: 0`               | Block 0     | Difficulty bomb delay (no EVM changes)                                                                                          |
+| **Berlin**         | `berlinBlock: 0`                    | Block 0     | Access lists (EIP-2929/2930), cold/warm storage pricing                                                                         |
+| **London**         | `londonBlock: 0`                    | Block 0     | EIP-1559 base fee, EIP-3529 refund reduction                                                                                    |
+| **Shanghai**       | `shanghaiTime: 0`                   | Timestamp 0 | PUSH0 (EIP-3855), warm COINBASE (EIP-3651), initcode limits (EIP-3860)                                                          |
+| **Cancun**         | `cancunTime: 0`                     | Timestamp 0 | Transient storage TSTORE/TLOAD (EIP-1153), MCOPY (EIP-5656), SELFDESTRUCT neutered (EIP-6780)                                   |
+| **Prague/Pectra**  | `pragueTime: 0`                     | Timestamp 0 | EIP-7702 (EOA code delegation), EIP-7251 (max effective balance), EIP-7002 (execution layer withdrawals)                        |
+| **Osaka**          | `osakaTime: 0`                      | Timestamp 0 | EIP-7594 (PeerDAS), EIP-7692 (EOF v1), EIP-7823 (set max blob count), EIP-7691 (blob throughput increase)                       |
+| **BPO1**           | `bpo1Time: 0`                       | Timestamp 0 | Blob Parameter Only upgrade 1 — raises blob target from 6→10, max from 9→15 (Mainnet: 2025-12-09 14:21:11 UTC, epoch 412,672)   |
+| **BPO2**           | `bpo2Time: 0`                       | Timestamp 0 | Blob Parameter Only upgrade 2 — raises blob target from 10→14, max from 15→21 (Mainnet: 2026-01-07 01:01:11 UTC, epoch 419,072) |
 
 #### Alloc Entries (32,434 total)
 
-| Category | Count | Description |
-|----------|-------|-------------|
-| Addresses ending in `323` | 32,324 | Pre-deployed contract instances (greeting card service) |
-| Addresses ending in `c0DE` | 100 | Pre-deployed contract instances (code management service) |
-| Repeating-pattern addresses | 4 | Reserved contract slots (`0x2222...`, `0x2323...`, `0x3232...`, `0x3333...`) |
-| Reserved system addresses | 7 | Governance and infrastructure contracts (see below) |
-| EOA accounts | 1 | Deployer account with 32 ETH initial balance |
+| Category                    | Count  | Description                                                                  |
+| --------------------------- | ------ | ---------------------------------------------------------------------------- |
+| Addresses ending in `323`   | 32,324 | Pre-deployed contract instances (greeting card service)                      |
+| Addresses ending in `c0DE`  | 100    | Pre-deployed contract instances (code management service)                    |
+| Repeating-pattern addresses | 4      | Reserved contract slots (`0x2222...`, `0x2323...`, `0x3232...`, `0x3333...`) |
+| Reserved system addresses   | 7      | Governance and infrastructure contracts (see below)                          |
+| EOA accounts                | 1      | Deployer account with 32 ETH initial balance                                 |
 
 #### Reserved System Addresses
 
-| Address | Comment | Purpose |
-|---------|---------|---------|
-| `0x0000...1111` | Validator smart contract | `ValidatorSmartContractAllowList` — QBFT validator/voter/overlord governance |
-| `0x0000...cafE` | GasManager smart contract | `GasManager` — block reward beneficiary, voter-governed gas funding and burns |
-| `0x0000...c0DE` | CodeManager smart contract | `CodeManager` — official Dakota code management service (patent-covered) |
-| `0x0000...Face` | ERC-8004 Agent Registry | Official ERC-8004 agent identity contract |
-| `0x0000...FacAdE` | ProxyAdmin smart contract | `ProxyAdmin` — guardian-gated ERC1967 upgrade dispatch |
-| `0x0000...de1E6A7E` | DakotaDelegation | EIP-7702 delegation target (upgradeable — TransparentUpgradeableProxy) |
-| `0x0000...FEeD` | GasSponsor | Gas sponsorship treasury (upgradeable — TransparentUpgradeableProxy) |
+| Address             | Comment                    | Purpose                                                                       |
+| ------------------- | -------------------------- | ----------------------------------------------------------------------------- |
+| `0x0000...1111`     | Validator smart contract   | `ValidatorSmartContractAllowList` — QBFT validator/voter/overlord governance  |
+| `0x0000...cafE`     | GasManager smart contract  | `GasManager` — block reward beneficiary, voter-governed gas funding and burns |
+| `0x0000...c0DE`     | CodeManager smart contract | `CodeManager` — official Dakota code management service (patent-covered)      |
+| `0x0000...Face`     | ERC-8004 Agent Registry    | Official ERC-8004 agent identity contract                                     |
+| `0x0000...FacAdE`   | ProxyAdmin smart contract  | `ProxyAdmin` — guardian-gated ERC1967 upgrade dispatch                        |
+| `0x0000...de1E6A7E` | DakotaDelegation           | EIP-7702 delegation target (upgradeable — TransparentUpgradeableProxy)        |
+| `0x0000...FEeD`     | GasSponsor                 | Gas sponsorship treasury (upgradeable — TransparentUpgradeableProxy)          |
 
 ---
 
@@ -126,12 +126,12 @@ Dakota genesis slots use **OpenZeppelin 4.9.6 TransparentUpgradeableProxy** cont
 
 ### Genesis Contracts (deployed at network genesis)
 
-| Contract | Address | Runtime Size | Purpose |
-|----------|---------|-------------|---------|
-| **ValidatorSmartContractAllowList** | `0x0000...1111` | 20,565 B | QBFT validator, voter, and root overlord governance (solc 0.8.19 / London) |
-| **GasManager** | Genesis beneficiary | 14,163 B | Voter-governed gas funding, token burns, and native coin burns |
-| **TransparentUpgradeableProxy** | Per-contract | 15,246 B | Multi-party overlord/guardian transparent proxy |
-| **ProxyAdmin** | Per-proxy | 3,200 B | Guardian-gated ERC1967 upgrade dispatch |
+| Contract                            | Address             | Runtime Size | Purpose                                                                    |
+| ----------------------------------- | ------------------- | ------------ | -------------------------------------------------------------------------- |
+| **ValidatorSmartContractAllowList** | `0x0000...1111`     | 20,565 B     | QBFT validator, voter, and root overlord governance (solc 0.8.19 / London) |
+| **GasManager**                      | Genesis beneficiary | 14,163 B     | Voter-governed gas funding, token burns, and native coin burns             |
+| **TransparentUpgradeableProxy**     | Per-contract        | 15,246 B     | Multi-party overlord/guardian transparent proxy                            |
+| **ProxyAdmin**                      | Per-proxy           | 3,200 B      | Guardian-gated ERC1967 upgrade dispatch                                    |
 
 ---
 
@@ -141,30 +141,30 @@ The core governance contract for the QBFT consensus layer. Deployed at genesis a
 
 #### Access Control
 
-| Role | How Assigned | Powers |
-|------|-------------|--------|
+| Role      | How Assigned                          | Powers                       |
+| --------- | ------------------------------------- | ---------------------------- |
 | **Voter** | Supermajority vote of existing voters | All governance actions below |
 
 All state changes require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`.
 
 #### Governance Actions (all require voter supermajority)
 
-| Action | Function | Constraints |
-|--------|----------|-------------|
-| Add validator | `voteToAddValidator()` | Must not exceed `MAX_VALIDATORS` cap; not already in list |
-| Remove validator | `voteToRemoveValidator()` | Must exist in local list |
-| Add voter | `voteToAddVoter()` | Must not already be a voter (aggregated) |
-| Remove voter | `voteToRemoveVoter()` | `getVoters().length > 1` — cannot remove the last voter |
-| Add external validator contract | `voteToAddOtherValidatorContract()` | Must be a contract implementing `getValidators()` and `isValidator()` |
-| Remove external validator contract | `voteToRemoveOtherValidatorContract()` | Must exist in list |
-| Add external voter contract | `voteToAddOtherVoterContract()` | Must implement `getVoters()` and `isVoter()` |
-| Remove external voter contract | `voteToRemoveOtherVoterContract()` | `votersArray.length > 0 \|\| otherVoterContracts.length > 1` — prevents empty voter pool |
-| Add root overlord | `voteToAddRootOverlord()` | Not `address(0)`, not already an overlord |
-| Remove root overlord | `voteToRemoveRootOverlord()` | Must exist in local list |
-| Add external overlord contract | `voteToAddOtherOverlordContract()` | Must implement `getRootOverlords()` and `isRootOverlord()` |
-| Remove external overlord contract | `voteToRemoveOtherOverlordContract()` | Must exist in list |
-| Change max validators | `voteToChangeMaxValidators()` | Must be > 0 (no upper bound) |
-| Change vote tally block threshold | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 blocks |
+| Action                             | Function                                | Constraints                                                           |   |                                                             |
+| ---------------------------------- | --------------------------------------- | --------------------------------------------------------------------- | - | ----------------------------------------------------------- |
+| Add validator                      | `voteToAddValidator()`                  | Must not exceed `MAX_VALIDATORS` cap; not already in list             |   |                                                             |
+| Remove validator                   | `voteToRemoveValidator()`               | Must exist in local list                                              |   |                                                             |
+| Add voter                          | `voteToAddVoter()`                      | Must not already be a voter (aggregated)                              |   |                                                             |
+| Remove voter                       | `voteToRemoveVoter()`                   | `getVoters().length > 1` — cannot remove the last voter               |   |                                                             |
+| Add external validator contract    | `voteToAddOtherValidatorContract()`     | Must be a contract implementing `getValidators()` and `isValidator()` |   |                                                             |
+| Remove external validator contract | `voteToRemoveOtherValidatorContract()`  | Must exist in list                                                    |   |                                                             |
+| Add external voter contract        | `voteToAddOtherVoterContract()`         | Must implement `getVoters()` and `isVoter()`                          |   |                                                             |
+| Remove external voter contract     | `voteToRemoveOtherVoterContract()`      | `votersArray.length > 0 \                                             | \ | otherVoterContracts.length > 1` — prevents empty voter pool |
+| Add root overlord                  | `voteToAddRootOverlord()`               | Not `address(0)`, not already an overlord                             |   |                                                             |
+| Remove root overlord               | `voteToRemoveRootOverlord()`            | Must exist in local list                                              |   |                                                             |
+| Add external overlord contract     | `voteToAddOtherOverlordContract()`      | Must implement `getRootOverlords()` and `isRootOverlord()`            |   |                                                             |
+| Remove external overlord contract  | `voteToRemoveOtherOverlordContract()`   | Must exist in list                                                    |   |                                                             |
+| Change max validators              | `voteToChangeMaxValidators()`           | Must be > 0 (no upper bound)                                          |   |                                                             |
+| Change vote tally block threshold  | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 blocks                                                   |   |                                                             |
 
 #### Vote Tally Mechanics
 
@@ -177,11 +177,11 @@ All state changes require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 
 
 Three categories of external contracts can be plugged in:
 
-| Array | Interface Required | Aggregation Function |
-|-------|-------------------|---------------------|
-| `otherValidatorContracts[]` | `getValidators()`, `isValidator()` | `getValidators()` — union of local + all external validators |
-| `otherVoterContracts[]` | `getVoters()`, `isVoter()` | `getVoters()` — union of local + all external voters |
-| `otherOverlordContracts[]` | `getRootOverlords()`, `isRootOverlord()` | `getRootOverlords()` — union of local + all external overlords |
+| Array                       | Interface Required                       | Aggregation Function                                           |
+| --------------------------- | ---------------------------------------- | -------------------------------------------------------------- |
+| `otherValidatorContracts[]` | `getValidators()`, `isValidator()`       | `getValidators()` — union of local + all external validators   |
+| `otherVoterContracts[]`     | `getVoters()`, `isVoter()`               | `getVoters()` — union of local + all external voters           |
+| `otherOverlordContracts[]`  | `getRootOverlords()`, `isRootOverlord()` | `getRootOverlords()` — union of local + all external overlords |
 
 All external calls use `try/catch` — a failing external contract is silently skipped (returns 0 entries), preventing a single broken contract from bricking governance.
 
@@ -205,38 +205,38 @@ Once all three are revoked, this contract's local lists are permanently frozen. 
 
 #### Convenience View Functions
 
-| Function | Returns | Description |
-|----------|---------|-------------|
-| `isVoter(address)` | `bool` | Check if address is a voter (local + external contracts) |
-| `isValidator(address)` | `bool` | Check if address is an active validator (local + external) |
-| `isRootOverlord(address)` | `bool` | Check if address is a root overlord (local + external) |
-| `getVoters()` | `address[]` | All voters (local `votersArray` + external contracts) |
-| `getValidators()` | `address[]` | All validators (local + external contracts) |
-| `getRootOverlords()` | `address[]` | All root overlords (local + external contracts) |
-| `getVoterCount()` | `uint256` | Total voter count (local + external) without materializing the array |
-| `getValidatorCount()` | `uint256` | Total validator count (local + external) without materializing the array |
-| `getRootOverlordCount()` | `uint256` | Total root overlord count (local + external) without materializing the array |
-| `getSupermajorityThreshold()` | `uint256` | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
-| `getVoteTally(VoteType, target)` | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target |
-| `MAX_VALIDATORS` | `uint256` | Current validator cap |
-| `voteTallyBlockThreshold` | `uint256` | Blocks before a vote tally expires (default: 1,000) |
-| `activeVoteCount` | `uint256` | Number of currently active vote tallies |
-| `overlordManagementRevoked` | `bool` | Whether overlord management has been permanently revoked |
-| `validatorManagementRevoked` | `bool` | Whether validator management has been permanently revoked |
-| `voterManagementRevoked` | `bool` | Whether voter management has been permanently revoked |
-| `hasVoted[VoteType][target][addr]` | `bool` | Whether an address has voted on a specific tally |
+| Function                           | Returns                                                             | Description                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `isVoter(address)`                 | `bool`                                                              | Check if address is a voter (local + external contracts)                     |
+| `isValidator(address)`             | `bool`                                                              | Check if address is an active validator (local + external)                   |
+| `isRootOverlord(address)`          | `bool`                                                              | Check if address is a root overlord (local + external)                       |
+| `getVoters()`                      | `address[]`                                                         | All voters (local `votersArray` + external contracts)                        |
+| `getValidators()`                  | `address[]`                                                         | All validators (local + external contracts)                                  |
+| `getRootOverlords()`               | `address[]`                                                         | All root overlords (local + external contracts)                              |
+| `getVoterCount()`                  | `uint256`                                                           | Total voter count (local + external) without materializing the array         |
+| `getValidatorCount()`              | `uint256`                                                           | Total validator count (local + external) without materializing the array     |
+| `getRootOverlordCount()`           | `uint256`                                                           | Total root overlord count (local + external) without materializing the array |
+| `getSupermajorityThreshold()`      | `uint256`                                                           | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3`         |
+| `getVoteTally(VoteType, target)`   | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target                                    |
+| `MAX_VALIDATORS`                   | `uint256`                                                           | Current validator cap                                                        |
+| `voteTallyBlockThreshold`          | `uint256`                                                           | Blocks before a vote tally expires (default: 1,000)                          |
+| `activeVoteCount`                  | `uint256`                                                           | Number of currently active vote tallies                                      |
+| `overlordManagementRevoked`        | `bool`                                                              | Whether overlord management has been permanently revoked                     |
+| `validatorManagementRevoked`       | `bool`                                                              | Whether validator management has been permanently revoked                    |
+| `voterManagementRevoked`           | `bool`                                                              | Whether voter management has been permanently revoked                        |
+| `hasVoted[VoteType][target][addr]` | `bool`                                                              | Whether an address has voted on a specific tally                             |
 
 #### Lockout Prevention
 
-| Scenario | Guard |
-|----------|-------|
-| Remove last voter | `getVoters().length > 1` enforced before removal |
-| Remove last external voter contract when no local voters | `votersArray.length > 0 \|\| otherVoterContracts.length > 1` |
-| Voter-pool change during active tally | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |
-| Revoke voter management with no external voters | Requires `otherVoterContracts.length > 0` and `getVoters().length >= 1` |
-| Revoke validator management with too few validators | Requires `getValidators().length >= 4` (QBFT minimum) |
-| Revoke voter management before other domains | Requires overlord + validator management already revoked |
-| `address(0)` as voter/validator/overlord | All entry points require `!= address(0)` |
+| Scenario                                                 | Guard                                                                                |   |                                 |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------ | - | ------------------------------- |
+| Remove last voter                                        | `getVoters().length > 1` enforced before removal                                     |   |                                 |
+| Remove last external voter contract when no local voters | `votersArray.length > 0 \                                                            | \ | otherVoterContracts.length > 1` |
+| Voter-pool change during active tally                    | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |   |                                 |
+| Revoke voter management with no external voters          | Requires `otherVoterContracts.length > 0` and `getVoters().length >= 1`              |   |                                 |
+| Revoke validator management with too few validators      | Requires `getValidators().length >= 4` (QBFT minimum)                                |   |                                 |
+| Revoke voter management before other domains             | Requires overlord + validator management already revoked                             |   |                                 |
+| `address(0)` as voter/validator/overlord                 | All entry points require `!= address(0)`                                             |   |                                 |
 
 ---
 
@@ -246,10 +246,10 @@ Receives all block rewards as the QBFT beneficiary address. Provides voter-gover
 
 #### Access Control
 
-| Role | How Assigned | Powers |
-|------|-------------|--------|
-| **Voter** | 2/3 supermajority vote of existing voters | Vote on all governance actions |
-| **Guardian** | 2/3 supermajority vote of voters | Execute approved funds/burns; execute token and native coin burns. Can be individually added/removed or bulk-cleared via `voteToClearGuardians()`. Enumerable via `getGuardians()` / `getGuardianCount()`. |
+| Role         | How Assigned                              | Powers                                                                                                                                                                                                     |
+| ------------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Voter**    | 2/3 supermajority vote of existing voters | Vote on all governance actions                                                                                                                                                                             |
+| **Guardian** | 2/3 supermajority vote of voters          | Execute approved funds/burns; execute token and native coin burns. Can be individually added/removed or bulk-cleared via `voteToClearGuardians()`. Enumerable via `getGuardians()` / `getGuardianCount()`. |
 
 #### Two-Phase Operations
 
@@ -258,30 +258,30 @@ Destructive operations (funding, burns) require two phases:
 1. **Vote phase**: Voters reach supermajority quorum on the operation. On passing, a `bytes32` approval key is stored.
 2. **Execute phase**: A guardian (or the funded address for gas funds) calls the execute function, which checks the approval key, clears it, and performs the transfer.
 
-| Operation | Vote Function | Execute Function | Who Can Execute |
-|-----------|--------------|-----------------|-----------------|
-| Fund gas to address | `voteToFundGas(to, amount)` | `executeFundGas(to, amount)` | Guardian or `to` address |
-| Burn ERC-20 tokens | `voteToBurnTokens(token, amount)` | `executeTokenBurn(token, amount)` | Guardian only |
-| Burn native coin | `voteToBurnNativeCoin(amount)` | `executeCoinBurn(amount)` | Guardian only |
+| Operation           | Vote Function                     | Execute Function                  | Who Can Execute          |
+| ------------------- | --------------------------------- | --------------------------------- | ------------------------ |
+| Fund gas to address | `voteToFundGas(to, amount)`       | `executeFundGas(to, amount)`      | Guardian or `to` address |
+| Burn ERC-20 tokens  | `voteToBurnTokens(token, amount)` | `executeTokenBurn(token, amount)` | Guardian only            |
+| Burn native coin    | `voteToBurnNativeCoin(amount)`    | `executeCoinBurn(amount)`         | Guardian only            |
 
 All execute functions are protected by `ReentrancyGuard` and use `.call{value:}` for transfers. The `executeFundGas` function also verifies the exact balance delta after transfer.
 
 #### Guardian Management
 
-| Action | Function | Notes |
-|--------|----------|-------|
-| Add guardian | `voteToAddGuardian(address)` | Voter supermajority required; must not already be a guardian |
-| Remove guardian | `voteToRemoveGuardian(address)` | Voter supermajority required; must be an existing guardian |
-| Clear all guardians | `voteToClearGuardians()` | Voter supermajority required; at least 1 guardian must exist |
-| List guardians | `getGuardians()` | Returns full `address[]` array |
-| Count guardians | `getGuardianCount()` | Returns `uint256` count |
+| Action              | Function                        | Notes                                                        |
+| ------------------- | ------------------------------- | ------------------------------------------------------------ |
+| Add guardian        | `voteToAddGuardian(address)`    | Voter supermajority required; must not already be a guardian |
+| Remove guardian     | `voteToRemoveGuardian(address)` | Voter supermajority required; must be an existing guardian   |
+| Clear all guardians | `voteToClearGuardians()`        | Voter supermajority required; at least 1 guardian must exist |
+| List guardians      | `getGuardians()`                | Returns full `address[]` array                               |
+| Count guardians     | `getGuardianCount()`            | Returns `uint256` count                                      |
 
 Clearing emits `GuardiansCleared(count)` and resets all guardian mappings and the array in one operation.
 
 #### Configurable Parameters (voter supermajority)
 
-| Parameter | Default | Function | Constraints |
-|-----------|---------|----------|-------------|
+| Parameter                 | Default      | Function                                | Constraints  |
+| ------------------------- | ------------ | --------------------------------------- | ------------ |
 | `voteTallyBlockThreshold` | 1,000 blocks | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 |
 
 #### Native Coin Burns
@@ -294,37 +294,37 @@ The GasManager has its own local `votersArray[]` and pluggable `otherVoterContra
 
 #### Convenience View Functions
 
-| Function | Returns | Description |
-|----------|---------|-------------|
-| `isVoter(address)` | `bool` | Check if address is a voter (local + external contracts) |
-| `getVoters()` | `address[]` | All voters (local `votersArray` + external contracts) |
-| `getVoterCount()` | `uint256` | Total voter count (local + external) without materializing the array |
-| `getSupermajorityThreshold()` | `uint256` | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
-| `getVoteTally(VoteType, target)` | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target |
-| `getContractBalance()` | `uint256` | Native coin balance held by this contract |
-| `getTokenBalance(token)` | `uint256` | ERC-20 token balance held by this contract |
-| `getGuardians()` | `address[]` | All guardian addresses |
-| `getGuardianCount()` | `uint256` | Number of guardians |
-| `isGuardian[addr]` | `bool` | Whether an address is a guardian |
-| `totalGasFunded` | `uint256` | Cumulative native coin funded to date |
-| `voteTallyBlockThreshold` | `uint256` | Blocks before a vote tally expires (default: 1,000) |
-| `activeVoteCount` | `uint256` | Number of currently active vote tallies |
-| `approvedFunds[key]` | `bool` | Whether a fund-gas operation has been approved |
-| `approvedBurns[key]` | `bool` | Whether a token-burn operation has been approved |
-| `approvedCoinBurns[key]` | `bool` | Whether a native-coin-burn operation has been approved |
-| `hasVoted[VoteType][target][addr]` | `bool` | Whether an address has voted on a specific tally |
+| Function                           | Returns                                                             | Description                                                          |
+| ---------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `isVoter(address)`                 | `bool`                                                              | Check if address is a voter (local + external contracts)             |
+| `getVoters()`                      | `address[]`                                                         | All voters (local `votersArray` + external contracts)                |
+| `getVoterCount()`                  | `uint256`                                                           | Total voter count (local + external) without materializing the array |
+| `getSupermajorityThreshold()`      | `uint256`                                                           | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
+| `getVoteTally(VoteType, target)`   | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target                            |
+| `getContractBalance()`             | `uint256`                                                           | Native coin balance held by this contract                            |
+| `getTokenBalance(token)`           | `uint256`                                                           | ERC-20 token balance held by this contract                           |
+| `getGuardians()`                   | `address[]`                                                         | All guardian addresses                                               |
+| `getGuardianCount()`               | `uint256`                                                           | Number of guardians                                                  |
+| `isGuardian[addr]`                 | `bool`                                                              | Whether an address is a guardian                                     |
+| `totalGasFunded`                   | `uint256`                                                           | Cumulative native coin funded to date                                |
+| `voteTallyBlockThreshold`          | `uint256`                                                           | Blocks before a vote tally expires (default: 1,000)                  |
+| `activeVoteCount`                  | `uint256`                                                           | Number of currently active vote tallies                              |
+| `approvedFunds[key]`               | `bool`                                                              | Whether a fund-gas operation has been approved                       |
+| `approvedBurns[key]`               | `bool`                                                              | Whether a token-burn operation has been approved                     |
+| `approvedCoinBurns[key]`           | `bool`                                                              | Whether a native-coin-burn operation has been approved               |
+| `hasVoted[VoteType][target][addr]` | `bool`                                                              | Whether an address has voted on a specific tally                     |
 
 #### Lockout Prevention
 
-| Scenario | Guard |
-|----------|-------|
-| Remove last voter | `getVoters().length > 1` enforced before removal |
-| Remove last external voter contract when no local voters | `votersArray.length > 0 \|\| otherVoterContracts.length > 1` |
-| Voter-pool change during active tally | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |
-| `address(0)` as voter/guardian/recipient | All entry points require `!= address(0)` |
-| Clear guardians when none exist | `guardiansArray.length > 0` required |
-| Re-entrancy on fund/burn execution | `ReentrancyGuard` modifier on all execute functions |
-| Balance discrepancy after fund transfer | Exact balance delta check: `balanceBefore - balanceAfter == _amount` |
+| Scenario                                                 | Guard                                                                                |   |                                 |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------ | - | ------------------------------- |
+| Remove last voter                                        | `getVoters().length > 1` enforced before removal                                     |   |                                 |
+| Remove last external voter contract when no local voters | `votersArray.length > 0 \                                                            | \ | otherVoterContracts.length > 1` |
+| Voter-pool change during active tally                    | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |   |                                 |
+| `address(0)` as voter/guardian/recipient                 | All entry points require `!= address(0)`                                             |   |                                 |
+| Clear guardians when none exist                          | `guardiansArray.length > 0` required                                                 |   |                                 |
+| Re-entrancy on fund/burn execution                       | `ReentrancyGuard` modifier on all execute functions                                  |   |                                 |
+| Balance discrepancy after fund transfer                  | Exact balance delta check: `balanceBefore - balanceAfter == _amount`                 |   |                                 |
 
 #### Upgradeability
 
@@ -338,12 +338,12 @@ Extended OpenZeppelin ERC1967 transparent proxy with multi-party overlord/guardi
 
 #### Access Tiers
 
-| Tier | Source | Powers |
-|------|--------|--------|
-| **Root Overlord** | Read dynamically from validator contract at `0x0000...1111` via `getRootOverlords()` / `isRootOverlord()` | Add/remove non-root overlords directly (no vote needed) |
-| **Overlord** (non-root) | Added by root overlord or via 2/3 supermajority overlord vote | Propose and vote on governance actions (2/3 supermajority) |
-| **Guardian** | Added via 2/3 supermajority overlord vote | Operational: `proxy_linkLogicAdmin()` (one-time), trigger upgrades via ProxyAdmin |
-| **Admin** (ProxyAdmin contract) | Immutable — baked into bytecode at compile/genesis time (3-gas reads) | ERC1967 upgrade dispatch (`upgradeTo`, `upgradeToAndCall`) |
+| Tier                            | Source                                                                                                    | Powers                                                                            |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **Root Overlord**               | Read dynamically from validator contract at `0x0000...1111` via `getRootOverlords()` / `isRootOverlord()` | Add/remove non-root overlords directly (no vote needed)                           |
+| **Overlord** (non-root)         | Added by root overlord or via 2/3 supermajority overlord vote                                             | Propose and vote on governance actions (2/3 supermajority)                        |
+| **Guardian**                    | Added via 2/3 supermajority overlord vote                                                                 | Operational: `proxy_linkLogicAdmin()` (one-time), trigger upgrades via ProxyAdmin |
+| **Admin** (ProxyAdmin contract) | Immutable — baked into bytecode at compile/genesis time (3-gas reads)                                     | ERC1967 upgrade dispatch (`upgradeTo`, `upgradeToAndCall`)                        |
 
 Root overlords are **not stored** in the proxy — they are read live from the validator contract via `try/catch`. If the validator contract is unreachable, root overlord calls return `false` / empty array (safe degradation).
 
@@ -357,23 +357,23 @@ A single overlord can pass any proposal unilaterally (supermajority threshold = 
 
 #### Governance Actions (2/3 supermajority)
 
-| Action | Function | Constraints |
-|--------|----------|-------------|
-| Add overlord | `proxy_proposeOverlordChange(target, true)` | Not `address(0)`, not a root overlord, not already an overlord, not a guardian |
-| Remove overlord | `proxy_proposeOverlordChange(target, false)` | Must be an overlord; cannot remove last non-root when no root overlords are active |
-| Add guardian | `proxy_proposeGuardianChange(target, true)` | Not `address(0)`, not the validator contract, not an overlord, max 10 guardians |
-| Remove guardian | `proxy_proposeGuardianChange(target, false)` | Must be a guardian |
-| Clear all guardians | `proxy_proposeClearGuardians()` | At least 1 guardian exists |
-| Change vote expiry | `proxy_proposeExpiryChange(newExpiry)` | Minimum 100 blocks (~5 min at 3s blocks) |
-| Revoke root overlord | `proxy_proposeRevokeRootOverlord()` | Root not already revoked; at least 1 non-root overlord exists |
-| Restore root overlord | `proxy_proposeRestoreRootOverlord()` | Root must be revoked; only non-root overlords can propose (root is excluded) |
+| Action                | Function                                     | Constraints                                                                        |
+| --------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Add overlord          | `proxy_proposeOverlordChange(target, true)`  | Not `address(0)`, not a root overlord, not already an overlord, not a guardian     |
+| Remove overlord       | `proxy_proposeOverlordChange(target, false)` | Must be an overlord; cannot remove last non-root when no root overlords are active |
+| Add guardian          | `proxy_proposeGuardianChange(target, true)`  | Not `address(0)`, not the validator contract, not an overlord, max 10 guardians    |
+| Remove guardian       | `proxy_proposeGuardianChange(target, false)` | Must be a guardian                                                                 |
+| Clear all guardians   | `proxy_proposeClearGuardians()`              | At least 1 guardian exists                                                         |
+| Change vote expiry    | `proxy_proposeExpiryChange(newExpiry)`       | Minimum 100 blocks (~5 min at 3s blocks)                                           |
+| Revoke root overlord  | `proxy_proposeRevokeRootOverlord()`          | Root not already revoked; at least 1 non-root overlord exists                      |
+| Restore root overlord | `proxy_proposeRestoreRootOverlord()`         | Root must be revoked; only non-root overlords can propose (root is excluded)       |
 
 #### Root Overlord Direct Actions (no vote)
 
-| Action | Function | Constraints |
-|--------|----------|-------------|
-| Add overlord | `proxy_addOverlord()` | Same as voted version |
-| Remove overlord | `proxy_removeOverlord()` | Same as voted version |
+| Action                | Function                     | Constraints                                                                |
+| --------------------- | ---------------------------- | -------------------------------------------------------------------------- |
+| Add overlord          | `proxy_addOverlord()`        | Same as voted version                                                      |
+| Remove overlord       | `proxy_removeOverlord()`     | Same as voted version                                                      |
 | Voluntary self-revoke | `proxy_revokeRootOverlord()` | Must be root overlord; root not already revoked; `_rawOverlordCount() > 0` |
 
 Direct root overlord changes also increment the vote epoch, invalidating all pending proposals.
@@ -395,25 +395,25 @@ All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., 
 
 #### Lockout Prevention
 
-| Scenario | Guard |
-|----------|-------|
-| Remove last non-root overlord when root is inactive | `_rawOverlordCount() > 1 \|\| (rootCount > 0 && !revoked)` |
-| Voluntary root revoke with no non-root overlords | `_rawOverlordCount() > 0` |
-| Force-revoke root with no non-root overlords | Same check in `proxy_proposeRevokeRootOverlord()` |
-| Link logic with `address(0)` logic | Checked `!= address(0)` in `proxy_linkLogicAdmin()` |
-| Overlord/guardian dual-role | Both `proxy_addOverlord` and `proxy_proposeGuardianChange` cross-check to prevent any address holding both roles |
-| Mid-vote membership manipulation | Every direct add/remove calls `_incrementVoteEpoch()`, invalidating all pending proposals |
-| Single overlord stuck (threshold too high) | Threshold formula: `(1*2+2)/3 = 1` — a single overlord passes anything |
-| Guardian overflow | Hard cap: `MAX_GUARDIANS = 10` |
+| Scenario                                            | Guard                                                                                                            |   |                              |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | - | ---------------------------- |
+| Remove last non-root overlord when root is inactive | `_rawOverlordCount() > 1 \                                                                                       | \ | (rootCount > 0 && !revoked)` |
+| Voluntary root revoke with no non-root overlords    | `_rawOverlordCount() > 0`                                                                                        |   |                              |
+| Force-revoke root with no non-root overlords        | Same check in `proxy_proposeRevokeRootOverlord()`                                                                |   |                              |
+| Link logic with `address(0)` logic                  | Checked `!= address(0)` in `proxy_linkLogicAdmin()`                                                              |   |                              |
+| Overlord/guardian dual-role                         | Both `proxy_addOverlord` and `proxy_proposeGuardianChange` cross-check to prevent any address holding both roles |   |                              |
+| Mid-vote membership manipulation                    | Every direct add/remove calls `_incrementVoteEpoch()`, invalidating all pending proposals                        |   |                              |
+| Single overlord stuck (threshold too high)          | Threshold formula: `(1*2+2)/3 = 1` — a single overlord passes anything                                           |   |                              |
+| Guardian overflow                                   | Hard cap: `MAX_GUARDIANS = 10`                                                                                   |   |                              |
 
 #### Constants
 
-| Constant | Value | Notes |
-|----------|-------|-------|
-| `_PROXY_ADMIN` | `0x0000...FacAdE` | Compile-time constant admin (3-gas read, immutable) |
-| `_PROXY_VALIDATOR_CONTRACT` | `0x0000...1111` | Genesis validator contract address |
-| `DEFAULT_VOTE_EXPIRY` | 60,000 blocks | ~1 week at 3s blocks |
-| `MAX_GUARDIANS` | 10 | Hard cap on guardian count per proxy |
+| Constant                    | Value             | Notes                                               |
+| --------------------------- | ----------------- | --------------------------------------------------- |
+| `_PROXY_ADMIN`              | `0x0000...FacAdE` | Compile-time constant admin (3-gas read, immutable) |
+| `_PROXY_VALIDATOR_CONTRACT` | `0x0000...1111`   | Genesis validator contract address                  |
+| `DEFAULT_VOTE_EXPIRY`       | 60,000 blocks     | ~1 week at 3s blocks                                |
+| `MAX_GUARDIANS`             | 10                | Hard cap on guardian count per proxy                |
 
 ---
 
@@ -423,19 +423,19 @@ Auxiliary contract assigned as the ERC1967 admin of `TransparentUpgradeableProxy
 
 #### Access Control
 
-| Action | Who | How |
-|--------|-----|-----|
+| Action                 | Who                          | How                                                           |
+| ---------------------- | ---------------------------- | ------------------------------------------------------------- |
 | Upgrade implementation | Guardian of the target proxy | `upgrade(proxy, impl)` or `upgradeAndCall(proxy, impl, data)` |
 
 The `onlyGuardianOf(proxy)` modifier queries the proxy's `proxy_isGuardian(msg.sender)` — which returns `true` for mapped guardians and for active root overlords (root overlords are implicit guardians).
 
 #### Introspection
 
-| Function | Returns |
-|----------|---------|
-| `getProxyAdmin(proxy)` | Current ERC1967 admin address |
-| `getProxyImplementation(proxy)` | Current implementation address |
-| `getProxyGuardians(proxy)` | Array of all guardian addresses |
+| Function                          | Returns                                                                                                                                  |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `getProxyAdmin(proxy)`            | Current ERC1967 admin address                                                                                                            |
+| `getProxyImplementation(proxy)`   | Current implementation address                                                                                                           |
+| `getProxyGuardians(proxy)`        | Array of all guardian addresses                                                                                                          |
 | `getProxyGovernanceStatus(proxy)` | Full state snapshot: admin, implementation, root revoked, overlord count, guardian count, threshold, active proposal, vote epoch, expiry |
 
 ---
@@ -475,13 +475,13 @@ CodeManager (independent)
 
 ### Application Contracts (deployed post-genesis)
 
-| Contract | Purpose |
-|----------|---------|
-| **CodeManager** | **Patent-covered.** Permissionless unique ID registry with an independent voter pool, 2/3 supermajority quorum, public mirrored UID state, and Pente routing. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`. |
+| Contract                | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CodeManager**         | **Patent-covered.** Permissionless unique ID registry with an independent voter pool, 2/3 supermajority quorum, public mirrored UID state, and Pente routing. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`.                                                                                                                                                                      |
 | **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, tracks execution-time UID active state privately, and emits `PenteExternalCall` events to mirror UID status and route redemptions through CodeManager. All configuration (admin, authorized caller, CodeManager address, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
-| **DakotaDelegation** | EIP-7702 delegation target. EOAs delegate to this contract for smart-account capabilities: single/batch execution, sponsored execution (EIP-712), session keys, EIP-1271 signature validation. |
-| **GasSponsor** | On-chain gas sponsorship treasury. Per-sponsor deposits, authorized relayer management, daily/per-claim spending limits, optional target allowlisting, and integrated `sponsoredCall` forwarding with automatic gas metering and reimbursement. |
-| **CryftGreetingCards** | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase from pre-registered supply. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license. |
+| **DakotaDelegation**    | EIP-7702 delegation target. EOAs delegate to this contract for smart-account capabilities: single/batch execution, sponsored execution (EIP-712), session keys, EIP-1271 signature validation.                                                                                                                                                                                                                                                                                                    |
+| **GasSponsor**          | On-chain gas sponsorship treasury. Per-sponsor deposits, authorized relayer management, daily/per-claim spending limits, optional target allowlisting, and integrated `sponsoredCall` forwarding with automatic gas metering and reimbursement.                                                                                                                                                                                                                                                   |
+| **CryftGreetingCards**  | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase from pre-registered supply. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license.                                                                                                                                     |
 
 ---
 
@@ -493,55 +493,55 @@ Also serves as the public mirror and Pente router. Authorized privacy groups cal
 
 #### Governance Actions (all require voter supermajority)
 
-| Action | Function | Constraints |
-|--------|----------|-------------|
-| Add whitelisted address | `voteToAddWhitelistedAddress(address)` | Voter supermajority required |
-| Remove whitelisted address | `voteToRemoveWhitelistedAddress(address)` | Voter supermajority required |
-| Update registration fee | `voteToUpdateRegistrationFee(uint256)` | Voter supermajority required |
-| Update fee vault | `voteToUpdateFeeVault(address)` | Voter supermajority required |
-| Add voter | `voteToAddVoter(address)` | `activeVoteCount == 0`; not already a voter |
-| Remove voter | `voteToRemoveVoter(address)` | `activeVoteCount == 0`; `getVoters().length > 1` |
-| Add external voter contract | `voteToAddOtherVoterContract(address)` | `activeVoteCount == 0`; must implement `getVoters()` + `isVoter()` |
-| Remove external voter contract | `voteToRemoveOtherVoterContract(address)` | `activeVoteCount == 0` |
-| Update vote tally block threshold | `voteToUpdateVoteTallyBlockThreshold(uint256)` | 1 to 100,000 blocks |
-| Authorize/de-authorize privacy group | `voteToAuthorizePrivacyGroup(address)` | Toggles `isAuthorizedPrivacyGroup[addr]`; voter supermajority required |
-| Reset expired tally | `resetExpiredTally(VoteType, uint256)` | Voter-only; tally must have expired |
+| Action                               | Function                                       | Constraints                                                            |
+| ------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------- |
+| Add whitelisted address              | `voteToAddWhitelistedAddress(address)`         | Voter supermajority required                                           |
+| Remove whitelisted address           | `voteToRemoveWhitelistedAddress(address)`      | Voter supermajority required                                           |
+| Update registration fee              | `voteToUpdateRegistrationFee(uint256)`         | Voter supermajority required                                           |
+| Update fee vault                     | `voteToUpdateFeeVault(address)`                | Voter supermajority required                                           |
+| Add voter                            | `voteToAddVoter(address)`                      | `activeVoteCount == 0`; not already a voter                            |
+| Remove voter                         | `voteToRemoveVoter(address)`                   | `activeVoteCount == 0`; `getVoters().length > 1`                       |
+| Add external voter contract          | `voteToAddOtherVoterContract(address)`         | `activeVoteCount == 0`; must implement `getVoters()` + `isVoter()`     |
+| Remove external voter contract       | `voteToRemoveOtherVoterContract(address)`      | `activeVoteCount == 0`                                                 |
+| Update vote tally block threshold    | `voteToUpdateVoteTallyBlockThreshold(uint256)` | 1 to 100,000 blocks                                                    |
+| Authorize/de-authorize privacy group | `voteToAuthorizePrivacyGroup(address)`         | Toggles `isAuthorizedPrivacyGroup[addr]`; voter supermajority required |
+| Reset expired tally                  | `resetExpiredTally(VoteType, uint256)`         | Voter-only; tally must have expired                                    |
 
 #### Pente Router Functions (called by authorized privacy groups)
 
-| Function | Description |
-|----------|-------------|
-| `recordRedemption(uniqueId, redeemer)` | Resolves UID → gift contract, marks REDEEMED, calls `IRedeemable.recordRedemption()` via try/catch. Never reverts — emits `RedemptionRejected` on precondition failures, `RedemptionFailed` on gift contract errors. |
-| `setUniqueIdActiveBatch(uniqueIds, activeStates)` | Mirrors sparse UID active-state changes from an authorized privacy group. Redeemed UIDs are rejected and left terminal. |
+| Function                                          | Description                                                                                                                                                                                                          |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `recordRedemption(uniqueId, redeemer)`            | Resolves UID → gift contract, marks REDEEMED, calls `IRedeemable.recordRedemption()` via try/catch. Never reverts — emits `RedemptionRejected` on precondition failures, `RedemptionFailed` on gift contract errors. |
+| `setUniqueIdActiveBatch(uniqueIds, activeStates)` | Mirrors sparse UID active-state changes from an authorized privacy group. Redeemed UIDs are rejected and left terminal.                                                                                              |
 
 #### Registration (permissionless)
 
-| Function | Description |
-|----------|-------------|
+| Function                                             | Description                                                                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `registerUniqueIds(giftContract, chainId, quantity)` | Payable — `registrationFee × quantity`. Forwards fee to `feeVault`. Increments counter range for the gift contract. |
 
 #### Convenience View Functions
 
-| Function | Returns | Description |
-|----------|---------|-------------|
-| `isVoter(address)` | `bool` | Check if address is a voter (local + external contracts) |
-| `getVoters()` | `address[]` | All voters (local `votersArray` + external contracts) |
-| `getVoterCount()` | `uint256` | Total voter count (local + external) without materializing the array |
-| `getSupermajorityThreshold()` | `uint256` | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
-| `getVoteTally(VoteType, target)` | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target |
-| `validateUniqueId(uniqueId)` | `bool` | Check if a UID is valid (registered and within counter range) |
-| `getUniqueIdDetails(uniqueId)` | `(giftContract, chainId, counter)` | Resolve a UID to its gift contract, chain, and counter |
-| `getContractData(contractIdentifier)` | `ContractData` | Look up the gift contract and chain ID for a contract identifier |
-| `getIdentifierCounter(giftContract, chainId)` | `(contractIdentifier, counter)` | Get the current counter for a gift contract + chain pair |
-| `isUniqueIdActive(uniqueId)` | `bool` | Public mirrored active state for a UID |
-| `isUniqueIdRedeemed(uniqueId)` | `bool` | Public mirrored redeemed state for a UID |
-| `registrationFee` | `uint256` | Current per-UID registration fee (wei) |
-| `feeVault` | `address` | Address that receives registration fees |
-| `voteTallyBlockThreshold` | `uint256` | Blocks before a vote tally expires (default: 1,000) |
-| `activeVoteCount` | `uint256` | Number of currently active vote tallies |
-| `isWhitelistedAddress[addr]` | `bool` | Whether an address is whitelisted for legacy operations |
-| `isAuthorizedPrivacyGroup[addr]` | `bool` | Whether an address is an authorized Pente privacy group |
-| `hasVoted[VoteType][target][addr]` | `bool` | Whether an address has voted on a specific tally |
+| Function                                      | Returns                                                             | Description                                                          |
+| --------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `isVoter(address)`                            | `bool`                                                              | Check if address is a voter (local + external contracts)             |
+| `getVoters()`                                 | `address[]`                                                         | All voters (local `votersArray` + external contracts)                |
+| `getVoterCount()`                             | `uint256`                                                           | Total voter count (local + external) without materializing the array |
+| `getSupermajorityThreshold()`                 | `uint256`                                                           | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
+| `getVoteTally(VoteType, target)`              | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target                            |
+| `validateUniqueId(uniqueId)`                  | `bool`                                                              | Check if a UID is valid (registered and within counter range)        |
+| `getUniqueIdDetails(uniqueId)`                | `(giftContract, chainId, counter)`                                  | Resolve a UID to its gift contract, chain, and counter               |
+| `getContractData(contractIdentifier)`         | `ContractData`                                                      | Look up the gift contract and chain ID for a contract identifier     |
+| `getIdentifierCounter(giftContract, chainId)` | `(contractIdentifier, counter)`                                     | Get the current counter for a gift contract + chain pair             |
+| `isUniqueIdActive(uniqueId)`                  | `bool`                                                              | Public mirrored active state for a UID                               |
+| `isUniqueIdRedeemed(uniqueId)`                | `bool`                                                              | Public mirrored redeemed state for a UID                             |
+| `registrationFee`                             | `uint256`                                                           | Current per-UID registration fee (wei)                               |
+| `feeVault`                                    | `address`                                                           | Address that receives registration fees                              |
+| `voteTallyBlockThreshold`                     | `uint256`                                                           | Blocks before a vote tally expires (default: 1,000)                  |
+| `activeVoteCount`                             | `uint256`                                                           | Number of currently active vote tallies                              |
+| `isWhitelistedAddress[addr]`                  | `bool`                                                              | Whether an address is whitelisted for legacy operations              |
+| `isAuthorizedPrivacyGroup[addr]`              | `bool`                                                              | Whether an address is an authorized Pente privacy group              |
+| `hasVoted[VoteType][target][addr]`            | `bool`                                                              | Whether an address has voted on a specific tally                     |
 
 ---
 
@@ -553,32 +553,32 @@ All configuration is embedded as **compile-time constants** — no constructor, 
 
 #### Constants (set at compile time)
 
-| Constant | Type | Description |
-|----------|------|-------------|
-| `ADMIN` | `address` | Primary authorized caller |
-| `AUTHORIZED` | `address` | Secondary authorized caller |
+| Constant       | Type      | Description                             |
+| -------------- | --------- | --------------------------------------- |
+| `ADMIN`        | `address` | Primary authorized caller               |
+| `AUTHORIZED`   | `address` | Secondary authorized caller             |
 | `CODE_MANAGER` | `address` | CodeManager address on the public chain |
-| `MAX_PER_PIN` | `uint256` | Maximum entries per PIN slot (32) |
+| `MAX_PER_PIN`  | `uint256` | Maximum entries per PIN slot (32)       |
 
 #### Write Functions
 
-| Function | Description |
-|----------|-------------|
-| `syncRegisteredCodeCountBatch(contractIdentifiers[], registeredCounts[])` | Sync the public CodeManager counter ceiling for one or more whitelisted contract identifiers. This local mirror is the store-time source of truth used to reject unregistered counters before any external call is considered. |
-| `storeDataBatch(request)` | Bulk store code hashes using a batch-level `contractIdentifier`, batch-level PIN config (`pinLength` 1–8, `useSpecialChars`), and per-entry pre-registered `counters`. PIN settings are per-batch, not per-contract — different batches for the same gift contract can use different PIN lengths and character sets, letting callers choose security level per batch. Each entry also supplies its entropy seed and optional per-UID manager (`address(0)` means no dedicated manager). The contract reconstructs `uniqueId = contractIdentifier-counter`, rejects any counter above the synced public registration ceiling or already stored privately, assigns a PIN, and stores the hash. Returns `string[] assignedPins`. |
-| `setUniqueIdManagersBatch(uniqueIds[], newManagers[])` | Reassign or clear per-UID managers. Current UID manager, `ADMIN`, or `AUTHORIZED` may update each UID. |
-| `setUniqueIdActiveBatch(uniqueIds[], activeStates[])` | Update private execution-time UID active state and mirror valid entries to CodeManager. UID manager, `ADMIN`, or `AUTHORIZED` may update each UID. |
-| `redeemCodeBatch(pins[], codeHashes[], redeemers[])` | Batch-verify codes, skip inactive/redeemed UIDs privately, delete consumed entries, mark redeemed locally, and emit `PenteExternalCall` per valid entry to route `recordRedemption` through CodeManager. CodeManager never reverts on precondition failures or gift contract errors, so Pente private state is always preserved. |
+| Function                                                                  | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `syncRegisteredCodeCountBatch(contractIdentifiers[], registeredCounts[])` | Sync the public CodeManager counter ceiling for one or more whitelisted contract identifiers. This local mirror is the store-time source of truth used to reject unregistered counters before any external call is considered.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `storeDataBatch(request)`                                                 | Bulk store code hashes using a batch-level `contractIdentifier`, batch-level PIN config (`pinLength` 1–8, `useSpecialChars`), and per-entry pre-registered `counters`. PIN settings are per-batch, not per-contract — different batches for the same gift contract can use different PIN lengths and character sets, letting callers choose security level per batch. Each entry also supplies its entropy seed and optional per-UID manager (`address(0)` means no dedicated manager). The contract reconstructs `uniqueId = contractIdentifier-counter`, rejects any counter above the synced public registration ceiling or already stored privately, assigns a PIN, and stores the hash. Returns `string[] assignedPins`. |
+| `setUniqueIdManagersBatch(uniqueIds[], newManagers[])`                    | Reassign or clear per-UID managers. Current UID manager, `ADMIN`, or `AUTHORIZED` may update each UID.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `setUniqueIdActiveBatch(uniqueIds[], activeStates[])`                     | Update private execution-time UID active state and mirror valid entries to CodeManager. UID manager, `ADMIN`, or `AUTHORIZED` may update each UID.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `redeemCodeBatch(pins[], codeHashes[], redeemers[])`                      | Batch-verify codes, skip inactive/redeemed UIDs privately, delete consumed entries, mark redeemed locally, and emit `PenteExternalCall` per valid entry to route `recordRedemption` through CodeManager. CodeManager never reverts on precondition failures or gift contract errors, so Pente private state is always preserved.                                                                                                                                                                                                                                                                                                                                                                                              |
 
 #### View Functions
 
-| Function | Returns | Description |
-|----------|---------|-------------|
+| Function            | Returns   | Description                         |
+| ------------------- | --------- | ----------------------------------- |
 | `pinSlotCount(pin)` | `uint256` | Number of hashes stored under a PIN |
-| `ADMIN()` | `address` | Admin constant |
-| `AUTHORIZED()` | `address` | Authorized caller constant |
-| `CODE_MANAGER()` | `address` | CodeManager address constant |
-| `MAX_PER_PIN()` | `uint256` | Max entries per PIN slot constant |
+| `ADMIN()`           | `address` | Admin constant                      |
+| `AUTHORIZED()`      | `address` | Authorized caller constant          |
+| `CODE_MANAGER()`    | `address` | CodeManager address constant        |
+| `MAX_PER_PIN()`     | `uint256` | Max entries per PIN slot constant   |
 
 ---
 
@@ -590,30 +590,30 @@ Uses ERC-7201 namespaced storage (`keccak256("dakota.delegation.v1")`) to avoid 
 
 #### Access Control
 
-| Role | How | Powers |
-|------|-----|--------|
-| **Owner** (`address(this)` = the delegating EOA) | EIP-7702 delegation | All account operations, session key management |
-| **Session Key** | Added by owner via `addSessionKey()` | Execute calls (single + batch) until expiry |
-| **Sponsor** (anyone) | Provides owner's EIP-712 signature | Execute sponsored batches on behalf of the owner |
+| Role                                             | How                                  | Powers                                           |
+| ------------------------------------------------ | ------------------------------------ | ------------------------------------------------ |
+| **Owner** (`address(this)` = the delegating EOA) | EIP-7702 delegation                  | All account operations, session key management   |
+| **Session Key**                                  | Added by owner via `addSessionKey()` | Execute calls (single + batch) until expiry      |
+| **Sponsor** (anyone)                             | Provides owner's EIP-712 signature   | Execute sponsored batches on behalf of the owner |
 
 #### Write Functions
 
-| Function | Access | Description |
-|----------|--------|-------------|
-| `execute(target, value, data)` | Owner or session key | Single call execution with reentrancy protection |
-| `executeBatch(calls[])` | Owner or session key | Batch call execution |
+| Function                                                     | Access                                      | Description                                                                  |
+| ------------------------------------------------------------ | ------------------------------------------- | ---------------------------------------------------------------------------- |
+| `execute(target, value, data)`                               | Owner or session key                        | Single call execution with reentrancy protection                             |
+| `executeBatch(calls[])`                                      | Owner or session key                        | Batch call execution                                                         |
 | `executeSponsored(calls[], nonce, deadline, ownerSignature)` | Anyone (with valid EIP-712 owner signature) | Sponsored batch execution — relayer pays gas, owner authorizes via signature |
-| `addSessionKey(key, expiry)` | Owner only | Grant temporary execution rights |
-| `removeSessionKey(key)` | Owner only | Revoke session key |
+| `addSessionKey(key, expiry)`                                 | Owner only                                  | Grant temporary execution rights                                             |
+| `removeSessionKey(key)`                                      | Owner only                                  | Revoke session key                                                           |
 
 #### Convenience View Functions
 
-| Function | Returns | Description |
-|----------|---------|-------------|
-| `getNonce()` | `uint256` | Current sponsored-execution nonce (increments per `executeSponsored` call) |
-| `isValidSessionKey(address)` | `bool` | Whether a key is an active, non-expired session key |
-| `domainSeparator()` | `bytes32` | EIP-712 domain separator (unique per delegating EOA since `verifyingContract = address(this)`) |
-| `isValidSignature(hash, signature)` | `bytes4` | EIP-1271: returns `0x1626ba7e` if signature is valid for the account owner, `0xffffffff` otherwise |
+| Function                            | Returns   | Description                                                                                        |
+| ----------------------------------- | --------- | -------------------------------------------------------------------------------------------------- |
+| `getNonce()`                        | `uint256` | Current sponsored-execution nonce (increments per `executeSponsored` call)                         |
+| `isValidSessionKey(address)`        | `bool`    | Whether a key is an active, non-expired session key                                                |
+| `domainSeparator()`                 | `bytes32` | EIP-712 domain separator (unique per delegating EOA since `verifyingContract = address(this)`)     |
+| `isValidSignature(hash, signature)` | `bytes4`  | EIP-1271: returns `0x1626ba7e` if signature is valid for the account owner, `0xffffffff` otherwise |
 
 #### Token Receiving
 
@@ -627,34 +627,34 @@ Per-sponsor gas deposit and reimbursement contract. Sponsors deposit native toke
 
 #### Sponsor Management Functions
 
-| Function | Description |
-|----------|-------------|
-| `deposit()` | Payable. Deposit native tokens as a sponsor. Also accepts bare `receive()` transfers. |
-| `withdraw(amount)` | Withdraw deposited funds (reentrancy-protected). |
-| `authorizeRelayer(relayer)` | Authorize an address to claim gas reimbursement from your deposit. |
-| `revokeRelayer(relayer)` | Revoke a relayer's authorization. |
-| `setMaxClaimPerTx(amount)` | Cap the maximum reimbursement per single claim (0 = unlimited). |
-| `setDailyLimit(amount)` | Cap daily total spending (0 = unlimited). Auto-resets every 24 hours. |
-| `addAllowedTarget(target)` | Restrict sponsored calls to specific target contracts. |
-| `removeAllowedTarget(target)` | Remove a target from the allowlist. |
-| `disableTargetAllowlist()` | Disable target restrictions (allow any target). |
+| Function                      | Description                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| `deposit()`                   | Payable. Deposit native tokens as a sponsor. Also accepts bare `receive()` transfers. |
+| `withdraw(amount)`            | Withdraw deposited funds (reentrancy-protected).                                      |
+| `authorizeRelayer(relayer)`   | Authorize an address to claim gas reimbursement from your deposit.                    |
+| `revokeRelayer(relayer)`      | Revoke a relayer's authorization.                                                     |
+| `setMaxClaimPerTx(amount)`    | Cap the maximum reimbursement per single claim (0 = unlimited).                       |
+| `setDailyLimit(amount)`       | Cap daily total spending (0 = unlimited). Auto-resets every 24 hours.                 |
+| `addAllowedTarget(target)`    | Restrict sponsored calls to specific target contracts.                                |
+| `removeAllowedTarget(target)` | Remove a target from the allowlist.                                                   |
+| `disableTargetAllowlist()`    | Disable target restrictions (allow any target).                                       |
 
 #### Reimbursement Functions
 
-| Function | Description |
-|----------|-------------|
-| `claim(sponsor, amount)` | Authorized relayer claims a specific amount from a sponsor's balance (reentrancy-protected). |
+| Function                                      | Description                                                                                                                                            |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `claim(sponsor, amount)`                      | Authorized relayer claims a specific amount from a sponsor's balance (reentrancy-protected).                                                           |
 | `sponsoredCall(sponsor, target, value, data)` | Forward a call on behalf of a sponsor. Automatically meters gas, reimburses the relayer, and debits the sponsor. Target allowlist enforced if enabled. |
-| `topOff(sponsor, amount)` | GasManager guardian-only. Pull approved funds from GasManager into a sponsor's balance. |
+| `topOff(sponsor, amount)`                     | GasManager guardian-only. Pull approved funds from GasManager into a sponsor's balance.                                                                |
 
 #### Convenience View Functions
 
-| Function | Returns | Description |
-|----------|---------|-------------|
-| `getSponsorInfo(sponsor)` | `(balance, maxClaimPerTx, dailyLimit, dailySpent, active, useTargetAllowlist)` | Full state snapshot for a sponsor (daily spent auto-resets for the current day) |
-| `isAuthorizedRelayer(sponsor, relayer)` | `bool` | Whether a relayer is authorized for a sponsor |
-| `isAllowedTarget(sponsor, target)` | `bool` | Whether a target is on a sponsor's allowlist |
-| `GAS_MANAGER` | `address` | Genesis GasManager contract address (`0x...cafE`) |
+| Function                                | Returns                                                                        | Description                                                                     |
+| --------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `getSponsorInfo(sponsor)`               | `(balance, maxClaimPerTx, dailyLimit, dailySpent, active, useTargetAllowlist)` | Full state snapshot for a sponsor (daily spent auto-resets for the current day) |
+| `isAuthorizedRelayer(sponsor, relayer)` | `bool`                                                                         | Whether a relayer is authorized for a sponsor                                   |
+| `isAllowedTarget(sponsor, target)`      | `bool`                                                                         | Whether a target is on a sponsor's allowlist                                    |
+| `GAS_MANAGER`                           | `address`                                                                      | Genesis GasManager contract address (`0x...cafE`)                               |
 
 ---
 
@@ -664,39 +664,39 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 
 #### Status Derivation (no explicit state flags)
 
-| Status | Derivation |
-|--------|-----------|
-| **Frozen** | Inverse of CodeManager's mirrored active state |
+| Status       | Derivation                                                                            |
+| ------------ | ------------------------------------------------------------------------------------- |
+| **Frozen**   | Inverse of CodeManager's mirrored active state                                        |
 | **Redeemed** | Token exists AND is no longer held by the vault (`ownerOf(tokenId) != address(this)`) |
 
 #### Write Functions
 
-| Function | Access | Description |
-|----------|--------|-------------|
-| `buy(buyer, quantity, redeemedBaseURI)` | Anyone (payable) | Purchase cards — pays `pricePerCard × qty`. Mints into vault from pre-registered supply. |
-| `setMaxSaleSupply(supply)` | Owner (payable) | Increase max purchasable supply (can only increase). Atomically registers the delta UIDs on CodeManager — `registrationFee × delta` must be sent as msg.value. |
-| `recordRedemption(uniqueId, redeemer)` | CodeManager only (Pente router) | Route redemption from privacy group — transfers NFT from vault to redeemer. |
+| Function                                | Access                          | Description                                                                                                                                                    |
+| --------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `buy(buyer, quantity, redeemedBaseURI)` | Anyone (payable)                | Purchase cards — pays `pricePerCard × qty`. Mints into vault from pre-registered supply.                                                                       |
+| `setMaxSaleSupply(supply)`              | Owner (payable)                 | Increase max purchasable supply (can only increase). Atomically registers the delta UIDs on CodeManager — `registrationFee × delta` must be sent as msg.value. |
+| `recordRedemption(uniqueId, redeemer)`  | CodeManager only (Pente router) | Route redemption from privacy group — transfers NFT from vault to redeemer.                                                                                    |
 
 #### Convenience View Functions
 
-| Function | Returns | Description |
-|----------|---------|-------------|
-| `getCardStatus(uniqueId)` | `(tokenId, nftHolder, frozen, redeemed)` | Single-call full card status — use for UI status displays |
-| `tokenURI(tokenId)` | `string` | IPFS metadata URI — unredeemed: `baseTokenURI/tokenId.json`; redeemed: per-batch redeemed URI |
-| `contractURI()` | `string` | Collection-level metadata for marketplaces (OpenSea standard) |
-| `ownerOf(tokenId)` | `address` | Current holder — vault address if unredeemed, recipient if redeemed |
-| `totalSupply()` | `uint256` | Total minted tokens |
-| `availableSupply()` | `uint256` | Cards registered but not yet purchased |
-| `pricePerCard` | `uint256` | Current price per card (wei) |
-| `maxSaleSupply` | `uint256` | Maximum cards available for purchase |
-| `totalRedeems` | `uint256` | Total number of redeemed cards |
-| `getUniqueIdForToken(tokenId)` | `string` | Compute uniqueId from tokenId (deterministic, no storage) |
-| `getTokenForUniqueId(uniqueId)` | `uint256` | Parse tokenId from uniqueId (no storage) |
-| `cardBuyer(tokenId)` | `address` | Original purchaser (binary search through purchase segments) |
-| `isUniqueIdFrozen(uniqueId)` | `bool` | Compatibility alias: inverse of CodeManager mirrored active state |
-| `isUniqueIdRedeemed(uniqueId)` | `bool` | Derived redeemed status (IRedeemable implementation) |
-| `isValidUniqueId(uniqueId)` | `bool` | Validates against CodeManager registry (read-only pass-through) |
-| `getDetailsFromCodeManager(uniqueId)` | `(giftContract, chainId, counter)` | Fetches UID details from CodeManager (read-only pass-through) |
+| Function                              | Returns                                  | Description                                                                                   |
+| ------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `getCardStatus(uniqueId)`             | `(tokenId, nftHolder, frozen, redeemed)` | Single-call full card status — use for UI status displays                                     |
+| `tokenURI(tokenId)`                   | `string`                                 | IPFS metadata URI — unredeemed: `baseTokenURI/tokenId.json`; redeemed: per-batch redeemed URI |
+| `contractURI()`                       | `string`                                 | Collection-level metadata for marketplaces (OpenSea standard)                                 |
+| `ownerOf(tokenId)`                    | `address`                                | Current holder — vault address if unredeemed, recipient if redeemed                           |
+| `totalSupply()`                       | `uint256`                                | Total minted tokens                                                                           |
+| `availableSupply()`                   | `uint256`                                | Cards registered but not yet purchased                                                        |
+| `pricePerCard`                        | `uint256`                                | Current price per card (wei)                                                                  |
+| `maxSaleSupply`                       | `uint256`                                | Maximum cards available for purchase                                                          |
+| `totalRedeems`                        | `uint256`                                | Total number of redeemed cards                                                                |
+| `getUniqueIdForToken(tokenId)`        | `string`                                 | Compute uniqueId from tokenId (deterministic, no storage)                                     |
+| `getTokenForUniqueId(uniqueId)`       | `uint256`                                | Parse tokenId from uniqueId (no storage)                                                      |
+| `cardBuyer(tokenId)`                  | `address`                                | Original purchaser (binary search through purchase segments)                                  |
+| `isUniqueIdFrozen(uniqueId)`          | `bool`                                   | Compatibility alias: inverse of CodeManager mirrored active state                             |
+| `isUniqueIdRedeemed(uniqueId)`        | `bool`                                   | Derived redeemed status (IRedeemable implementation)                                          |
+| `isValidUniqueId(uniqueId)`           | `bool`                                   | Validates against CodeManager registry (read-only pass-through)                               |
+| `getDetailsFromCodeManager(uniqueId)` | `(giftContract, chainId, counter)`       | Fetches UID details from CodeManager (read-only pass-through)                                 |
 
 ---
 
@@ -739,18 +739,18 @@ python3 Tools/KeyWizard/dakota_keywizard.py \
 
 **All flags:**
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--out` | `~/dakota-keys` | Base output directory |
-| `--non-interactive` | off | Run without prompts (uses flags/defaults) |
-| `--no-eoa` | off | Disable EOA generation |
-| `--eoa-count` | 1 | Number of EOA accounts to generate |
-| `--eoa-keystore` | off | Also generate keystore V3 JSON |
-| `--eoa-keystore-pass` | prompt | Keystore password |
-| `--besu-count` | 0 | Number of Besu node keys to generate |
-| `--name-prefix-eoa` | `eoa-` | Folder prefix for EOA keys |
-| `--name-prefix-besu` | `besu-node-` | Folder prefix for Besu node keys |
-| `--scp` | off | Enable SCP distribution step |
+| Flag                  | Default         | Description                               |
+| --------------------- | --------------- | ----------------------------------------- |
+| `--out`               | `~/dakota-keys` | Base output directory                     |
+| `--non-interactive`   | off             | Run without prompts (uses flags/defaults) |
+| `--no-eoa`            | off             | Disable EOA generation                    |
+| `--eoa-count`         | 1               | Number of EOA accounts to generate        |
+| `--eoa-keystore`      | off             | Also generate keystore V3 JSON            |
+| `--eoa-keystore-pass` | prompt          | Keystore password                         |
+| `--besu-count`        | 0               | Number of Besu node keys to generate      |
+| `--name-prefix-eoa`   | `eoa-`          | Folder prefix for EOA keys                |
+| `--name-prefix-besu`  | `besu-node-`    | Folder prefix for Besu node keys          |
+| `--scp`               | off             | Enable SCP distribution step              |
 
 ### `Tools/BytecodeReplacer/replace_bytecode.py`
 
@@ -767,12 +767,12 @@ python3 Tools/BytecodeReplacer/replace_bytecode.py Contracts/Genesis/BesuGenesis
 
 **Options:**
 
-| Flag | Description |
-|------|-------------|
+| Flag                | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
 | `--old-file <path>` | Path to old bytecode file (default: `old.txt` in same directory) |
 | `--new-file <path>` | Path to new bytecode file (default: `new.txt` in same directory) |
-| `--dry-run` | Count matches without modifying the file |
-| `--no-backup` | Skip creating a `.bak` backup before replacing |
+| `--dry-run`         | Count matches without modifying the file                         |
+| `--no-backup`       | Skip creating a `.bak` backup before replacing                   |
 
 The tool automatically normalizes `0x` prefixes (strips them for matching, preserves them in the output), creates a backup by default, and verifies the replacement count after writing.
 
@@ -819,76 +819,76 @@ python3 Tools/TxSimulator/tx_simulator.py \
 
 **Distribution modes:**
 
-| Knob | Mode | Description |
-|------|------|-------------|
-| **Sender** | `round-robin` | A0, A1, A2, … rotate each tx *(default)* |
-| | `single` | One account sends all txs (`--single-sender-pos`) |
-| | `weighted` | Probability weights per account (`--sender-weights`) |
-| | `multi-hot` | First K accounts send, rest are recipient-only (`--hot-senders`) |
-| | `random` | Sender picked uniformly at random |
-| **Recipient** | `ring` | A[i] → A[i+1 mod n] *(default)* |
-| | `star-fan-out` | Hub → random other (overrides sender to hub; `--hub-pos`) |
-| | `star-fan-in` | Any non-hub → hub (`--hub-pos`) |
-| | `random-uniform` | Random pair, no self-send |
-| | `random-no-repeat` | Like uniform but no immediate repeat of same pair |
-| | `partitioned` | Only send within same group (`--partition-size`) |
-| | `bursty` | Target a random subset for T seconds, then switch (`--campaign-duration`) |
-| **Amount** | `fixed` | Constant amount every tx *(default)* |
-| | `uniform-random` | Uniform random in [min, max] |
-| | `log-normal` | Many small, occasional large (`--log-sigma`; clamped to [min, max]) |
-| | `step-schedule` | Cycle through amounts on a timer (`--step-amounts`, `--step-duration`) |
-| | `balance-aware` | Half of (balance − reserve), clamped to [min, max] |
-| **Timing** | `per-block` | One tx per new block *(default)* |
-| | `fixed-tps` | Constant transactions per second (`--target-tps`) |
-| | `poisson` | Exponential inter-arrival, average = target TPS |
-| | `bursts` | Send N rapidly, pause, repeat (`--burst-size`, `--burst-pause`) |
-| | `ramp` | Linearly increase TPS (`--ramp-start-tps` → `--ramp-end-tps` over `--ramp-duration`) |
-| | `jittered` | Base interval ± random jitter (`--jitter-base`, `--jitter-range`) |
+| Knob          | Mode               | Description                                                                          |
+| ------------- | ------------------ | ------------------------------------------------------------------------------------ |
+| **Sender**    | `round-robin`      | A0, A1, A2, … rotate each tx *(default)*                                             |
+|               | `single`           | One account sends all txs (`--single-sender-pos`)                                    |
+|               | `weighted`         | Probability weights per account (`--sender-weights`)                                 |
+|               | `multi-hot`        | First K accounts send, rest are recipient-only (`--hot-senders`)                     |
+|               | `random`           | Sender picked uniformly at random                                                    |
+| **Recipient** | `ring`             | A[i] → A[i+1 mod n] *(default)*                                                      |
+|               | `star-fan-out`     | Hub → random other (overrides sender to hub; `--hub-pos`)                            |
+|               | `star-fan-in`      | Any non-hub → hub (`--hub-pos`)                                                      |
+|               | `random-uniform`   | Random pair, no self-send                                                            |
+|               | `random-no-repeat` | Like uniform but no immediate repeat of same pair                                    |
+|               | `partitioned`      | Only send within same group (`--partition-size`)                                     |
+|               | `bursty`           | Target a random subset for T seconds, then switch (`--campaign-duration`)            |
+| **Amount**    | `fixed`            | Constant amount every tx *(default)*                                                 |
+|               | `uniform-random`   | Uniform random in [min, max]                                                         |
+|               | `log-normal`       | Many small, occasional large (`--log-sigma`; clamped to [min, max])                  |
+|               | `step-schedule`    | Cycle through amounts on a timer (`--step-amounts`, `--step-duration`)               |
+|               | `balance-aware`    | Half of (balance − reserve), clamped to [min, max]                                   |
+| **Timing**    | `per-block`        | One tx per new block *(default)*                                                     |
+|               | `fixed-tps`        | Constant transactions per second (`--target-tps`)                                    |
+|               | `poisson`          | Exponential inter-arrival, average = target TPS                                      |
+|               | `bursts`           | Send N rapidly, pause, repeat (`--burst-size`, `--burst-pause`)                      |
+|               | `ramp`             | Linearly increase TPS (`--ramp-start-tps` → `--ramp-end-tps` over `--ramp-duration`) |
+|               | `jittered`         | Base interval ± random jitter (`--jitter-base`, `--jitter-range`)                    |
 
 **All flags:**
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--rpc` | *(required)* | RPC endpoint URL |
-| `--mnemonic` | — | BIP-39 seed phrase (visible in shell history) |
-| `--prompt-mnemonic` | off | Prompt for mnemonic via hidden input |
-| `--indices` | `0,1,2` | Comma-separated HD derivation indices |
-| `--num-accounts` | — | Derive N accounts (indices 0..N-1); overrides `--indices` |
-| `--private-keys` | — | Comma-separated hex private keys (with or without `0x`) |
-| `--private-keys-file` | — | File with one hex private key per line (`#` comments OK) |
-| `--sender-mode` | `round-robin` | Sender selection strategy |
-| `--single-sender-pos` | `0` | Account position for `single` mode |
-| `--sender-weights` | — | Comma-separated weights for `weighted` mode |
-| `--hot-senders` | `1` | Hot sender count for `multi-hot` mode |
-| `--recipient-mode` | `ring` | Recipient selection strategy |
-| `--hub-pos` | `0` | Hub position for `star-fan-out` / `star-fan-in` |
-| `--partition-size` | `2` | Group size for `partitioned` mode |
-| `--campaign-duration` | `30` | Seconds per subset for `bursty` recipient mode |
-| `--campaign-subset` | half | Target subset size for `bursty` mode |
-| `--amount-mode` | `fixed` | Amount distribution strategy |
-| `--amount-eth` | `0.0001` | Fixed ETH per tx |
-| `--amount-min-eth` | `0.00001` | Min ETH for random / log-normal / balance-aware |
-| `--amount-max-eth` | `0.01` | Max ETH for random / log-normal / balance-aware |
-| `--log-sigma` | `1.0` | Sigma for log-normal (higher = heavier tail) |
-| `--step-amounts` | — | Comma-separated ETH amounts for `step-schedule` |
-| `--step-duration` | `60` | Seconds per step for `step-schedule` |
-| `--timing-mode` | `per-block` | Timing / rate strategy |
-| `--target-tps` | `5` | Target TPS for `fixed-tps` / `poisson` |
-| `--burst-size` | `50` | Txs per burst for `bursts` timing |
-| `--burst-pause` | `10` | Pause seconds between bursts |
-| `--ramp-start-tps` | `1` | Starting TPS for `ramp` mode |
-| `--ramp-end-tps` | `50` | Target TPS for `ramp` mode |
-| `--ramp-duration` | `300` | Ramp duration in seconds |
-| `--jitter-base` | `1.0` | Base interval seconds for `jittered` mode |
-| `--jitter-range` | `0.5` | ± jitter range seconds |
-| `--poll-interval` | `0.2` | Loop sleep when idle |
-| `--tip-wei` | `1000` | Priority fee (tip) in wei |
-| `--max-fee-multiplier` | `2` | `maxFee = baseFee × multiplier + tip` |
-| `--topup-enabled` | off | Auto-replenish underfunded accounts |
-| `--topup-funder-pos` | `0` | Funder account position |
-| `--topup-target-eth` | `0.01` | Top-up accounts to this ETH balance |
-| `--reserve-eth` | `0.001` | Reserve ETH kept per account |
-| `--max-inflight` | `64` | Max pending txs before pausing sends |
+| Flag                   | Default       | Description                                               |
+| ---------------------- | ------------- | --------------------------------------------------------- |
+| `--rpc`                | *(required)*  | RPC endpoint URL                                          |
+| `--mnemonic`           | —             | BIP-39 seed phrase (visible in shell history)             |
+| `--prompt-mnemonic`    | off           | Prompt for mnemonic via hidden input                      |
+| `--indices`            | `0,1,2`       | Comma-separated HD derivation indices                     |
+| `--num-accounts`       | —             | Derive N accounts (indices 0..N-1); overrides `--indices` |
+| `--private-keys`       | —             | Comma-separated hex private keys (with or without `0x`)   |
+| `--private-keys-file`  | —             | File with one hex private key per line (`#` comments OK)  |
+| `--sender-mode`        | `round-robin` | Sender selection strategy                                 |
+| `--single-sender-pos`  | `0`           | Account position for `single` mode                        |
+| `--sender-weights`     | —             | Comma-separated weights for `weighted` mode               |
+| `--hot-senders`        | `1`           | Hot sender count for `multi-hot` mode                     |
+| `--recipient-mode`     | `ring`        | Recipient selection strategy                              |
+| `--hub-pos`            | `0`           | Hub position for `star-fan-out` / `star-fan-in`           |
+| `--partition-size`     | `2`           | Group size for `partitioned` mode                         |
+| `--campaign-duration`  | `30`          | Seconds per subset for `bursty` recipient mode            |
+| `--campaign-subset`    | half          | Target subset size for `bursty` mode                      |
+| `--amount-mode`        | `fixed`       | Amount distribution strategy                              |
+| `--amount-eth`         | `0.0001`      | Fixed ETH per tx                                          |
+| `--amount-min-eth`     | `0.00001`     | Min ETH for random / log-normal / balance-aware           |
+| `--amount-max-eth`     | `0.01`        | Max ETH for random / log-normal / balance-aware           |
+| `--log-sigma`          | `1.0`         | Sigma for log-normal (higher = heavier tail)              |
+| `--step-amounts`       | —             | Comma-separated ETH amounts for `step-schedule`           |
+| `--step-duration`      | `60`          | Seconds per step for `step-schedule`                      |
+| `--timing-mode`        | `per-block`   | Timing / rate strategy                                    |
+| `--target-tps`         | `5`           | Target TPS for `fixed-tps` / `poisson`                    |
+| `--burst-size`         | `50`          | Txs per burst for `bursts` timing                         |
+| `--burst-pause`        | `10`          | Pause seconds between bursts                              |
+| `--ramp-start-tps`     | `1`           | Starting TPS for `ramp` mode                              |
+| `--ramp-end-tps`       | `50`          | Target TPS for `ramp` mode                                |
+| `--ramp-duration`      | `300`         | Ramp duration in seconds                                  |
+| `--jitter-base`        | `1.0`         | Base interval seconds for `jittered` mode                 |
+| `--jitter-range`       | `0.5`         | ± jitter range seconds                                    |
+| `--poll-interval`      | `0.2`         | Loop sleep when idle                                      |
+| `--tip-wei`            | `1000`        | Priority fee (tip) in wei                                 |
+| `--max-fee-multiplier` | `2`           | `maxFee = baseFee × multiplier + tip`                     |
+| `--topup-enabled`      | off           | Auto-replenish underfunded accounts                       |
+| `--topup-funder-pos`   | `0`           | Funder account position                                   |
+| `--topup-target-eth`   | `0.01`        | Top-up accounts to this ETH balance                       |
+| `--reserve-eth`        | `0.001`       | Reserve ETH kept per account                              |
+| `--max-inflight`       | `64`          | Max pending txs before pausing sends                      |
 
 ### `Tools/SolcCompiler/compile.py`
 
@@ -937,11 +937,11 @@ The compiler normalizes all source files to Unix LF line endings (`\n`) before c
 
 Normalization is applied at three points:
 
-| Stage | What happens |
-|-------|-------------|
+| Stage                 | What happens                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------- |
 | **Local source copy** | `_copy_normalized()` strips `\r\n` → `\n` when copying `.sol` files into the build directory |
-| **Import downloads** | Remote files fetched from GitHub are normalized on download |
-| **All output writes** | ABI, artifact, metadata, and manifest files are written with `newline="\n"` |
+| **Import downloads**  | Remote files fetched from GitHub are normalized on download                                  |
+| **All output writes** | ABI, artifact, metadata, and manifest files are written with `newline="\n"`                  |
 
 The compiler also exports each contract's **solc metadata JSON** (the JSON blob whose IPFS hash is embedded in the bytecode) as a `_metadata.json` file alongside the standard ABI and artifact outputs. This file can be published to IPFS or Sourcify for on-chain source verification:
 

@@ -531,7 +531,7 @@ contract PrivateComboStorage {
         bytes32[] calldata entropies,
         uint256[] memory validIndexes,
         uint256 validCount
-    ) internal returns (string[] memory assignedPins) {
+    ) internal view returns (string[] memory assignedPins) {
         assignedPins = new string[](validIndexes.length);
 
         for (uint256 i = 0; i < validCount; ) {
