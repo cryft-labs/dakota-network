@@ -42,9 +42,17 @@
   {
     "source": "CodeManagement\\PrivateComboStorage.sol",
     "contract": "PrivateComboStorage",
-    "runtime_bytes": 14649,
-    "creation_bytes": 14677,
+    "runtime_bytes": 14950,
+    "creation_bytes": 14978,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateComboStorage",
+    "over_limit": false
+  },
+  {
+    "source": "CodeManagement\\PrivateMetaTxRelay.sol",
+    "contract": "PrivateMetaTxRelay",
+    "runtime_bytes": 5140,
+    "creation_bytes": 5168,
+    "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\PrivateMetaTxRelay",
     "over_limit": false
   },
   {

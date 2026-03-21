@@ -116,6 +116,12 @@ contract PrivateComboStorage {
     ///      Update via contract upgrade.
     address public constant AUTHORIZED = address(0xc0dE49f742792913219DA0606f59a27431BCC0de);
 
+    /// @dev Trusted meta-transaction forwarder (ERC-2771). When this
+    ///      contract is called by the forwarder, the original signer's
+    ///      address is extracted from the last 20 bytes of msg.data.
+    ///      Update via contract upgrade.
+    address public constant TRUSTED_FORWARDER = address(0x0000000000000000000000000000000000F04D);
+
     /// @dev Default active state defined in CodeManager. Private status writes
     ///      only route deviations from this default.
     bool public constant DEFAULT_ACTIVE_STATE = true;
@@ -254,16 +260,37 @@ contract PrivateComboStorage {
     // ── Modifiers ─────────────────────────────────────────
 
     modifier onlyAuthorized() {
+        address sender = _msgSender();
         require(
-            msg.sender == ADMIN || msg.sender == AUTHORIZED,
+            sender == ADMIN || sender == AUTHORIZED,
             "Caller is not authorized"
         );
         _;
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == ADMIN, "Caller is not admin");
+        require(_msgSender() == ADMIN, "Caller is not admin");
         _;
+    }
+
+    // ── ERC-2771 Trusted Forwarder ────────────────────────
+
+    /// @notice Returns true if the given address is the trusted ERC-2771 forwarder.
+    function isTrustedForwarder(address forwarder) public pure returns (bool) {
+        return forwarder == TRUSTED_FORWARDER;
+    }
+
+    /// @dev ERC-2771: returns the original sender when called via the trusted
+    ///      forwarder. The forwarder appends the sender address (20 bytes) to
+    ///      msg.data. Direct callers return msg.sender unchanged.
+    function _msgSender() internal view returns (address sender) {
+        if (msg.sender == TRUSTED_FORWARDER && msg.data.length >= 20) {
+            assembly ("memory-safe") {
+                sender := shr(96, calldataload(sub(calldatasize(), 20)))
+            }
+        } else {
+            sender = msg.sender;
+        }
     }
 
     // ── Constructor ───────────────────────────────────────
@@ -417,7 +444,8 @@ contract PrivateComboStorage {
             request.uidManagers,
             request.mirrorStatuses,
             preparation.validIndexes,
-            preparation.validCount
+            preparation.validCount,
+            _msgSender()
         );
 
         storedCodeCount[contractIdHash] += preparation.validCount;
@@ -576,7 +604,8 @@ contract PrivateComboStorage {
         address[] calldata uidManagers,
         bool[] calldata mirrorStatuses,
         uint256[] memory validIndexes,
-        uint256 validCount
+        uint256 validCount,
+        address sender
     ) internal {
         for (uint256 i = 0; i < validCount; ) {
             uint256 index = validIndexes[i];
@@ -584,7 +613,7 @@ contract PrivateComboStorage {
             _knownUniqueIds[uidHash] = true;
             if (uidManagers[index] != address(0)) {
                 uniqueIdManager[uidHash] = uidManagers[index];
-                emit UniqueIdManagerUpdated(computedUniqueIds[i], uidManagers[index], msg.sender);
+                emit UniqueIdManagerUpdated(computedUniqueIds[i], uidManagers[index], sender);
             }
             if (!mirrorStatuses[index]) {
                 isUniqueIdStatusMirrorDisabled[uidHash] = true;
@@ -608,6 +637,8 @@ contract PrivateComboStorage {
         require(len == newManagers.length, "Array length mismatch");
         require(len > 0, "Empty batch");
 
+        address sender = _msgSender();
+
         for (uint256 i = 0; i < len; ) {
             if (bytes(uniqueIds[i]).length == 0) {
                 emit ActiveStatusFailed(i, "Empty uniqueId");
@@ -622,9 +653,9 @@ contract PrivateComboStorage {
             }
             address currentManager = uniqueIdManager[uidHash];
             if (
-                msg.sender != ADMIN &&
-                msg.sender != AUTHORIZED &&
-                (currentManager == address(0) || msg.sender != currentManager)
+                sender != ADMIN &&
+                sender != AUTHORIZED &&
+                (currentManager == address(0) || sender != currentManager)
             ) {
                 emit ActiveStatusFailed(i, "Caller is not authorized for uniqueId");
                 unchecked { ++i; }
@@ -632,7 +663,7 @@ contract PrivateComboStorage {
             }
 
             uniqueIdManager[uidHash] = newManagers[i];
-            emit UniqueIdManagerUpdated(uniqueIds[i], newManagers[i], msg.sender);
+            emit UniqueIdManagerUpdated(uniqueIds[i], newManagers[i], sender);
             unchecked { ++i; }
         }
     }
@@ -662,8 +693,10 @@ contract PrivateComboStorage {
             mirroredCount: 0
         });
 
+        address sender = _msgSender();
+
         for (uint256 i = 0; i < len; ) {
-            _processActiveStatusEntry(i, uniqueIds, activeStates, context);
+            _processActiveStatusEntry(i, uniqueIds, activeStates, context, sender);
             unchecked { ++i; }
         }
 
@@ -693,7 +726,8 @@ contract PrivateComboStorage {
         uint256 index,
         string[] calldata uniqueIds,
         bool[] calldata activeStates,
-        ActiveBatchContext memory context
+        ActiveBatchContext memory context,
+        address sender
     ) internal {
         if (bytes(uniqueIds[index]).length == 0) {
             emit ActiveStatusFailed(index, "Empty uniqueId");
@@ -718,9 +752,9 @@ contract PrivateComboStorage {
 
         address currentManager = uniqueIdManager[uidHash];
         if (
-            msg.sender != ADMIN &&
-            msg.sender != AUTHORIZED &&
-            (currentManager == address(0) || msg.sender != currentManager)
+            sender != ADMIN &&
+            sender != AUTHORIZED &&
+            (currentManager == address(0) || sender != currentManager)
         ) {
             emit ActiveStatusFailed(index, "Caller is not authorized for uniqueId");
             return;
