@@ -4,6 +4,44 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "ActiveStatusFailed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "contractIdentifier",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "allowed",
+        "type": "bool"
+      }
+    ],
+    "name": "ContractIdentifierWhitelistUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "string",
         "name": "uniqueId",
         "type": "string"
@@ -95,6 +133,75 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "uniqueId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "manager",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "updatedBy",
+        "type": "address"
+      }
+    ],
+    "name": "UniqueIdManagerUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "uniqueId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "mirrorStatusPublicly",
+        "type": "bool"
+      }
+    ],
+    "name": "UniqueIdStatusMirrorUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "uniqueId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "usesDefaultState",
+        "type": "bool"
+      }
+    ],
+    "name": "UniqueIdStatusUpdated",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "ADMIN",
     "outputs": [
@@ -135,12 +242,63 @@
   },
   {
     "inputs": [],
+    "name": "DEFAULT_ACTIVE_STATE",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "MAX_PER_PIN",
     "outputs": [
       {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isUniqueIdStatusMirrorDisabled",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isWhitelistedContractIdentifier",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -221,28 +379,99 @@
     "inputs": [
       {
         "internalType": "string[]",
+        "name": "contractIdentifiers",
+        "type": "string[]"
+      },
+      {
+        "internalType": "bool[]",
+        "name": "allowed",
+        "type": "bool[]"
+      }
+    ],
+    "name": "setContractIdentifierWhitelist",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string[]",
         "name": "uniqueIds",
         "type": "string[]"
       },
       {
-        "internalType": "bytes32[]",
-        "name": "codeHashes",
-        "type": "bytes32[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "pinLengths",
-        "type": "uint256[]"
-      },
-      {
         "internalType": "bool[]",
-        "name": "useSpecialChars",
+        "name": "activeStates",
         "type": "bool[]"
+      }
+    ],
+    "name": "setUniqueIdActiveBatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string[]",
+        "name": "uniqueIds",
+        "type": "string[]"
       },
       {
-        "internalType": "bytes32[]",
-        "name": "entropies",
-        "type": "bytes32[]"
+        "internalType": "address[]",
+        "name": "newManagers",
+        "type": "address[]"
+      }
+    ],
+    "name": "setUniqueIdManagersBatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "string[]",
+            "name": "uniqueIds",
+            "type": "string[]"
+          },
+          {
+            "internalType": "bytes32[]",
+            "name": "codeHashes",
+            "type": "bytes32[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "pinLengths",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bool[]",
+            "name": "useSpecialChars",
+            "type": "bool[]"
+          },
+          {
+            "internalType": "bytes32[]",
+            "name": "entropies",
+            "type": "bytes32[]"
+          },
+          {
+            "internalType": "address[]",
+            "name": "uidManagers",
+            "type": "address[]"
+          },
+          {
+            "internalType": "bool[]",
+            "name": "mirrorStatuses",
+            "type": "bool[]"
+          }
+        ],
+        "internalType": "struct PrivateComboStorage.StoreBatchRequest",
+        "name": "request",
+        "type": "tuple"
       }
     ],
     "name": "storeDataBatch",
@@ -254,6 +483,25 @@
       }
     ],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "uniqueIdManager",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   }
 ]

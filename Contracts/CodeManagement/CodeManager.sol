@@ -15,31 +15,51 @@ pragma solidity >=0.8.2 <0.9.0;
 
   Version 3.0 — Production Code Manager  [UPGRADEABLE]
 
-  ┌──────────────── Contract Architecture ───────────────┐
-  │                                                      │
-  │  PUBLIC REGISTRY + PENTE ROUTER                      │
-  │                                                      │
-  │  Minimal permissionless unique ID registry.          │
-  │  Fee-based registration, deterministic IDs via       │
-  │  keccak256(address(this), giftContract, chainId)     │
-  │  + incrementing counter.                             │
-  │                                                      │
-  │  2/3 supermajority quorum for all state changes.     │
-  │  Voter-pool changes frozen while any tally is active.│
-  │  Own voter set with pluggable external voter         │
-  │  contracts via otherVoterContracts[].                │
-  │                                                      │
-    │  PENTE INTEGRATION:                                  │
-    │  Authorized Pente privacy groups call the            │
-    │  redemption router (recordRedemption), which         │
-    │  resolves the UID to its gift                        │
-  │  contract and forward via IRedeemable. The gift      │
-  │  contract is the SOLE AUTHORITY on per-UID state.    │
-  │  CodeManager stores NO per-UID state — it is a       │
-  │  thin registry + router only.                        │
-  │                                                      │
-  │  Patent: U.S. App. Ser. No. 18/930,857               │
-  └──────────────────────────────────────────────────────┘
+  ┌──────────────── Contract Architecture ──────────────────────────┐
+  │                                                                 │
+  │  PUBLIC REGISTRY + PENTE ROUTER                                 │
+  │                                                                 │
+  │  Minimal permissionless unique ID registry.                     │
+  │  Fee-based registration, deterministic IDs via                  │
+  │  keccak256(address(this), giftContract, chainId)                │
+  │  + incrementing counter.                                        │
+  │                                                                 │
+  │  2/3 supermajority quorum for all state changes.                │
+  │  Voter-pool changes frozen while any tally is active.           │
+  │  Own voter set with pluggable external voter                    │
+  │  contracts via otherVoterContracts[].                           │
+  │                                                                 │
+  │  PENTE INTEGRATION:                                             │
+  │  Authorized Pente privacy groups call the                       │
+  │  router functions, which resolve UIDs to gift                   │
+  │  contracts and forward via IRedeemable:                         │
+  │    • recordRedemption(uid, redeemer)                            │
+  │      Routes to gift contract; marks UID terminally              │
+  │      redeemed. Reverts roll back the Pente transition.          │
+  │    • setUniqueIdActiveBatch(uids, states)                       │
+  │      Mirrors private active-state changes publicly.             │
+  │      Only UIDs whose mirror is enabled in ComboStorage          │
+  │      reach this function.                                       │
+  │    • validateUniqueIdsOrRevert(uids)                            │
+  │      Confirms UIDs are registered before private storage.       │
+  │                                                                 │
+  │  CodeManager stores sparse public UID status only.              │
+  │  Newly registered UIDs inherit DEFAULT_ACTIVE_STATE             │
+  │  with no per-UID write at registration time.                    │
+  │  Only deviations from that default consume storage.             │
+  │  A missing override (USE_DEFAULT_ACTIVE_STATE) means            │
+  │  no public deviation is recorded — for privacy-managed          │
+  │  redeemables, the active/frozen state may be managed            │
+  │  privately by PrivateComboStorage with mirroring                │
+  │  disabled, so absence of public state does not imply            │
+  │  the UID is active on the private execution side.               │
+  │                                                                 │
+  │  The gift contract remains the authority on                     │
+  │  redemption finality (already redeemed, vault                   │
+  │  ownership transfer, etc.).                                     │
+  │                                                                 │
+  │  Patent: U.S. App. Ser. No. 18/930,857                          │
+  └─────────────────────────────────────────────────────────────────┘
 */
 
 import "../Genesis/Upgradeable/Utils/StringsUpgradeable.sol";
@@ -56,6 +76,17 @@ interface IVoterChecker {
 
 contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager {
     using StringsUpgradeable for uint256;
+
+    // No explicit public override stored for this UID. This currently resolves
+    // to DEFAULT_ACTIVE_STATE in CodeManager. For privacy-managed redeemables,
+    // callers should interpret that absence of public state as "no public
+    // override recorded" rather than proof that no private active/frozen rules
+    // exist off-chain or inside the private contract flow.
+    enum UniqueIdStatus {
+        USE_DEFAULT_ACTIVE_STATE,
+        INACTIVE,
+        REDEEMED
+    }
 
     enum VoteType {
         ADD_WHITELISTED_ADDRESS,
@@ -85,9 +116,13 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     uint256 public voteTallyBlockThreshold;
     address public feeVault;
 
+    /// @dev Default active state applied to every valid UID unless an override exists.
+    bool public constant DEFAULT_ACTIVE_STATE = true;
+
     mapping(address => bool) public isWhitelistedAddress;
     mapping(string => uint256) private _identifierCounter;
     mapping(string => ContractData) private _contractIdentifierToData;
+    mapping(bytes32 => UniqueIdStatus) private _uniqueIdStatuses;
     mapping(VoteType => mapping(uint256 => VoteTally)) private _voteTallies;
     mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
 
@@ -104,6 +139,9 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     event VoteTallyBlockThresholdUpdated(uint256 newThreshold);
     event PrivacyGroupAuthorized(address indexed privacyGroup, bool authorized);
     event RedemptionRouted(string uniqueId, address indexed giftContract, address indexed redeemer);
+    event UniqueIdActiveStatusUpdated(string uniqueId, bool active, bool usesDefaultState);
+    event UniqueIdRedeemed(string uniqueId);
+    event UniqueIdActiveStatusRejected(uint256 index, string uniqueId, string reason);
 
 
     constructor() {
@@ -411,9 +449,8 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     // ── Pente Router Functions ────────────────────────────
     //
     //    Called by authorized Pente privacy groups via PenteExternalCall.
-    //    Each function resolves the UID → gift contract and forwards the
-    //    call via IRedeemable. CodeManager stores NO per-UID state.
-    //    The gift contract is the SOLE AUTHORITY on all per-UID state.
+    //    CodeManager owns sparse per-UID active state and routes valid
+    //    redemptions to the gift contract.
     //
     /// @notice Route a redemption from the Pente privacy group to the gift contract.
     ///         The gift contract decides how to handle the redemption — single-use,
@@ -421,25 +458,88 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     ///         Pente transition rolls back atomically.
     function recordRedemption(string memory uniqueId, address redeemer) external onlyAuthorizedPrivacyGroup {
         (address giftContract, , ) = getUniqueIdDetails(uniqueId);
+        require(isUniqueIdActive(uniqueId), "UniqueId is inactive");
         IRedeemable(giftContract).recordRedemption(uniqueId, redeemer);
+        _uniqueIdStatuses[keccak256(bytes(uniqueId))] = UniqueIdStatus.REDEEMED;
+        emit UniqueIdRedeemed(uniqueId);
         emit RedemptionRouted(uniqueId, giftContract, redeemer);
+    }
+
+    /// @notice Update active state overrides for one or more UIDs.
+    ///         Invalid or unregistered UIDs are skipped and reported via events.
+    ///         The default state is sparse: when `active == DEFAULT_ACTIVE_STATE`,
+    ///         any stored override is deleted instead of persisting a redundant value.
+    function setUniqueIdActiveBatch(
+        string[] calldata uniqueIds,
+        bool[] calldata activeStates
+    ) external onlyAuthorizedPrivacyGroup {
+        uint256 len = uniqueIds.length;
+        require(len == activeStates.length, "Array length mismatch");
+        require(len > 0, "Empty batch");
+
+        for (uint256 i = 0; i < len; ) {
+            if (bytes(uniqueIds[i]).length == 0) {
+                emit UniqueIdActiveStatusRejected(i, uniqueIds[i], "Empty uniqueId");
+                unchecked { ++i; }
+                continue;
+            }
+            if (!validateUniqueId(uniqueIds[i])) {
+                emit UniqueIdActiveStatusRejected(i, uniqueIds[i], "Invalid uniqueId");
+                unchecked { ++i; }
+                continue;
+            }
+
+            bytes32 uidHash = keccak256(bytes(uniqueIds[i]));
+            if (_uniqueIdStatuses[uidHash] == UniqueIdStatus.REDEEMED) {
+                emit UniqueIdActiveStatusRejected(i, uniqueIds[i], "UniqueId already redeemed");
+                unchecked { ++i; }
+                continue;
+            }
+
+            if (activeStates[i] == DEFAULT_ACTIVE_STATE) {
+                delete _uniqueIdStatuses[uidHash];
+                emit UniqueIdActiveStatusUpdated(uniqueIds[i], activeStates[i], true);
+            } else {
+                _uniqueIdStatuses[uidHash] = UniqueIdStatus.INACTIVE;
+                emit UniqueIdActiveStatusUpdated(uniqueIds[i], activeStates[i], false);
+            }
+
+            unchecked { ++i; }
+        }
     }
 
     // ── UID View Functions (read from gift contract) ──────
     //
-    //    These read per-UID state from the gift contract via IRedeemable.
-    //    CodeManager is a pass-through — it stores no per-UID state.
+    //    CodeManager owns active state directly and reads redemption state
+    //    from the gift contract via IRedeemable.
 
-    /// @notice Returns whether a UID is frozen, as reported by its gift contract.
-    function isUniqueIdFrozen(string memory uniqueId) external view returns (bool) {
-        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
-        return IRedeemable(giftContract).isUniqueIdFrozen(uniqueId);
+    /// @notice Returns CodeManager's public view of whether a UID is active.
+    ///         Invalid or unregistered UIDs return false.
+    ///         When the status is USE_DEFAULT_ACTIVE_STATE, this means there is
+    ///         no public override recorded in CodeManager. For privacy-managed
+    ///         redeemables, callers may infer that active/frozen control is
+    ///         being handled privately rather than mirrored publicly.
+    function isUniqueIdActive(string memory uniqueId) public view returns (bool) {
+        if (!validateUniqueId(uniqueId)) {
+            return false;
+        }
+
+        UniqueIdStatus status = _uniqueIdStatuses[keccak256(bytes(uniqueId))];
+        if (status == UniqueIdStatus.REDEEMED) {
+            return false;
+        }
+        if (status == UniqueIdStatus.INACTIVE) {
+            return false;
+        }
+        return DEFAULT_ACTIVE_STATE;
     }
 
-    /// @notice Returns whether a UID has been redeemed, as reported by its gift contract.
+    /// @notice Returns whether a UID has been redeemed.
     function isUniqueIdRedeemed(string memory uniqueId) external view returns (bool) {
-        (address giftContract, , ) = getUniqueIdDetails(uniqueId);
-        return IRedeemable(giftContract).isUniqueIdRedeemed(uniqueId);
+        if (!validateUniqueId(uniqueId)) {
+            return false;
+        }
+        return _uniqueIdStatuses[keccak256(bytes(uniqueId))] == UniqueIdStatus.REDEEMED;
     }
 
     // ── Unique ID Queries ─────────────────────────────────
@@ -456,7 +556,11 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     }
 
     function validateUniqueId(string memory uniqueId) public view returns (bool isValid) {
-        (string memory contractIdentifier, uint256 extractedCounter) = _splitUniqueId(uniqueId);
+        (bool ok, string memory contractIdentifier, uint256 extractedCounter) = _trySplitUniqueId(uniqueId);
+
+        if (!ok) {
+            return false;
+        }
 
         if (_identifierCounter[contractIdentifier] == 0) {
             return false;
@@ -472,10 +576,9 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         require(len > 0, "No uniqueIds provided");
 
         for (uint256 i = 0; i < len; ) {
-            // getUniqueIdDetails reverts on invalid format / unregistered UID
-            (address giftContract, , ) = getUniqueIdDetails(uniqueIds[i]);
+            require(validateUniqueId(uniqueIds[i]), "Invalid uniqueId");
             require(
-                !IRedeemable(giftContract).isUniqueIdRedeemed(uniqueIds[i]),
+                _uniqueIdStatuses[keccak256(bytes(uniqueIds[i]))] != UniqueIdStatus.REDEEMED,
                 "UniqueId already redeemed"
             );
             unchecked { ++i; }
@@ -483,7 +586,8 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     }
 
     function getUniqueIdDetails(string memory uniqueId) public view returns (address giftContract, string memory chainId, uint256 counter) {
-        (string memory contractIdentifier, uint256 extractedCounter) = _splitUniqueId(uniqueId);
+        (bool ok, string memory contractIdentifier, uint256 extractedCounter) = _trySplitUniqueId(uniqueId);
+        require(ok, "Invalid uniqueId format");
         ContractData memory data = getContractData(contractIdentifier);
 
         require(data.giftContract != address(0), "No matching uniqueId found.");
@@ -494,27 +598,38 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         return (data.giftContract, data.chainId, extractedCounter);
     }
 
-    function _splitUniqueId(string memory uniqueId) internal pure returns (string memory contractIdentifier, uint256 counter) {
+    function _trySplitUniqueId(string memory uniqueId) internal pure returns (bool ok, string memory contractIdentifier, uint256 counter) {
         uint256 delimiterIndex = bytes(uniqueId).length;
         for (uint256 i = 0; i < bytes(uniqueId).length; i++) {
-            if (bytes(uniqueId)[i] == "-") {
+            if (bytes(uniqueId)[i] == 0x2D) {
                 delimiterIndex = i;
                 break;
             }
         }
-        require(delimiterIndex != bytes(uniqueId).length, "Invalid uniqueId format");
+        if (delimiterIndex == 0 || delimiterIndex == bytes(uniqueId).length) {
+            return (false, "", 0);
+        }
 
         contractIdentifier = _substring(uniqueId, 0, delimiterIndex);
-        counter = _parseUint(_substring(uniqueId, delimiterIndex + 1, bytes(uniqueId).length));
+        (ok, counter) = _tryParseUint(_substring(uniqueId, delimiterIndex + 1, bytes(uniqueId).length));
+        if (!ok) {
+            return (false, "", 0);
+        }
+        return (true, contractIdentifier, counter);
     }
 
-    function _parseUint(string memory s) internal pure returns (uint256) {
+    function _tryParseUint(string memory s) internal pure returns (bool ok, uint256 value) {
+        if (bytes(s).length == 0) {
+            return (false, 0);
+        }
         uint256 res = 0;
         for (uint256 i = 0; i < bytes(s).length; i++) {
-            require(bytes(s)[i] >= "0" && bytes(s)[i] <= "9", "Non-numeric character");
+            if (bytes(s)[i] < 0x30 || bytes(s)[i] > 0x39) {
+                return (false, 0);
+            }
             res = res * 10 + (uint256(uint8(bytes(s)[i])) - 48);
         }
-        return res;
+        return (true, res);
     }
 
     function _substring(string memory str, uint256 startIndex, uint256 endIndex) internal pure returns (string memory) {

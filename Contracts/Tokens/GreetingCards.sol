@@ -15,7 +15,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
   Version 1.0 — Production Greeting Cards  [UPGRADEABLE]
 
-  ┌──────────────── IPFS Metadata Layout ────────────────┐
+  ┌──────────────── IPFS Metadata Layout ─────────────────┐
   │                                                       │
   │  Upload directories to IPFS per card type:            │
   │                                                       │
@@ -55,158 +55,182 @@ pragma solidity >=0.8.2 <0.9.0;
   │    Redeemed  → per-batch redeemed URI + tokenId       │
   └───────────────────────────────────────────────────────┘
 
-  ┌──────────────── Contract Architecture ───────────────┐
-  │                                                       │
-  │  CodeManager → unique ID registry + Pente router      │
-  │  This Contract → NFT mint + vault + IRedeemable       │
-  │                                                       │
-  │  Redemption is atomic: ComboStorage (Pente private)   │
-  │  emits PenteExternalCall → CodeManager routes to      │
-  │  this contract's recordRedemption() → NFT transfers   │
-  │  from vault to redeemer. If this contract reverts      │
-  │  (e.g. frozen or already redeemed), the entire Pente  │
-  │  transition rolls back.                               │
-  └───────────────────────────────────────────────────────┘
+  ┌──────────────── Contract Architecture ──────────────────────────┐
+  │                                                                 │
+  │  CodeManager → unique ID registry + Pente router                │
+  │  This Contract → NFT mint + vault + IRedeemable                 │
+  │  PrivateComboStorage → hash storage + private execution state   │
+  │                                                                 │
+  │  Redemption is atomic: ComboStorage (Pente private)             │
+  │  verifies the code hash, checks private active state,           │
+  │  then emits PenteExternalCall → CodeManager validates           │
+  │  public active status and routes to this contract's             │
+  │  recordRedemption() → NFT transfers from vault to               │
+  │  redeemer. If this contract reverts (e.g. already               │
+  │  redeemed), the entire Pente transition rolls back —            │
+  │  including the private state updates in ComboStorage.           │
+  │                                                                 │
+  │  Active-state authority lives in PrivateComboStorage            │
+  │  for execution-time decisions. Only UIDs with mirroring         │
+  │  enabled propagate state changes to CodeManager publicly.       │
+  │  This contract reads CodeManager's public mirror via            │
+  │  isUniqueIdActive() for view queries and getCardStatus().       │
+  └─────────────────────────────────────────────────────────────────┘
 
-  ┌──────────────── Purchase Flow (mint on buy) ─────────┐
-  │                                                       │
-  │  Setup (admin, one-time):                             │
-  │    1. Upload metadata to IPFS → set baseTokenURI      │
-  │    2. setMaxSaleSupply(quantity) on this contract      │
-  │                                                       │
-  │  Purchase (user or sponsor):                          │
-  │    3. Call buy(buyer, quantity, redeemedBaseURI)       │
-  │       → Pays pricePerCard + registrationFee per card  │
-  │       → Registers counter range on CodeManager        │
-  │       → Mints token(s) into vault                     │
-  │       → Records purchase segment (buyer + URI)        │
-  │       → Redeemed metadata locked in at purchase time  │
-  │       → All atomic in one transaction                 │
-  │                                                       │
-  │  Post-purchase (admin):                               │
-  │    4. Store redemption codes on ComboStorage           │
-  │       (uniqueIds must exist on CodeManager first)     │
-  │    5. Distribute codes to buyers                      │
-  │                                                       │
-  │  Token ID == uniqueId counter == IPFS JSON number     │
-  │  Fully deterministic, no off-chain coordination.      │
-  │  No per-token storage — segments + computation only.  │
-  └───────────────────────────────────────────────────────┘
+  ┌──────────────── Purchase Flow (mint on buy) ────────────────────┐
+  │                                                                 │
+  │  Setup (admin, one-time):                                       │
+  │    1. Upload metadata to IPFS → set baseTokenURI                │
+  │    2. setMaxSaleSupply(quantity) on this contract               │
+  │                                                                 │
+  │  Purchase (user or sponsor):                                    │
+  │    3. Call buy(buyer, quantity, redeemedBaseURI)                │
+  │       → Pays pricePerCard + registrationFee per card            │
+  │       → Registers counter range on CodeManager                  │
+  │       → Mints token(s) into vault                               │
+  │       → Records purchase segment (buyer + URI)                  │
+  │       → Redeemed metadata locked in at purchase time            │
+  │       → All atomic in one transaction                           │
+  │                                                                 │
+  │  Post-purchase (admin):                                         │
+  │    4. Whitelist contract identifier on ComboStorage             │
+  │    5. Store codes via storeDataBatch(StoreBatchRequest)         │
+  │       (uniqueIds must exist on CodeManager first)               │
+  │       mirrorStatuses[] controls per-UID public visibility       │
+  │    6. Distribute PINs + codes to buyers                         │
+  │                                                                 │
+  │  Token ID == uniqueId counter == IPFS JSON number               │
+  │  Fully deterministic, no off-chain coordination.                │
+  │  No per-token storage — segments + computation only.            │
+  └─────────────────────────────────────────────────────────────────┘
 
-  ┌──────────────── Redemption Flow ─────────────────────┐
-  │                                                       │
-  │  Status is DERIVED from on-chain state:               │
-  │                                                       │
-  │    Frozen   = not yet purchased (token not minted)    │
-  │             OR explicitly frozen (lost/stolen code)   │
-  │    Redeemed = token exists AND not in vault           │
-  │                                                       │
-  │  1. ComboStorage.redeemCode(pin, hash, redeemer)      │
-  │     → Verifies code in private Pente state            │
-  │     → Emits PenteExternalCall (atomic)                │
-  │  2. CodeManager.recordRedemption(uniqueId, redeemer)  │
-  │     → Resolves uniqueId → gift contract               │
-  │     → Calls this contract's recordRedemption()        │
-  │  3. recordRedemption(uniqueId, redeemer)               │
-  │     → Validates: not frozen, in vault                  │
-  │     → Transfers NFT from vault to redeemer             │
-  │     → tokenURI switches to redeemed metadata           │
-  │     → If reverts → entire Pente transition rolls back │
-  │                                                       │
-  │  Redeemer address is supplied directly — NOT assumed  │
-  │  to be msg.sender. Supports meta-transactions and     │
-  │  user-specified recipient wallets.                    │
-  │                                                       │
-  │  Admin or buyer can call setFrozen(tokenId, true)     │
-  │  to block redemption of a compromised code.           │
-  └───────────────────────────────────────────────────────┘
+  ┌──────────────── Redemption Flow ────────────────────────────────┐
+  │                                                                 │
+  │  Status is DERIVED from on-chain state:                         │
+  │                                                                 │
+  │    Active   = CodeManager says UID is active (public mirror)    │
+  │    Redeemed = token exists AND not in vault                     │
+  │                                                                 │
+  │  Note: if a UID's mirror is disabled in ComboStorage,           │
+  │  CodeManager returns DEFAULT_ACTIVE_STATE (active). The         │
+  │  private execution state in ComboStorage is authoritative       │
+  │  for redemption routing — inactive UIDs are blocked there       │
+  │  before PenteExternalCall is emitted.                           │
+  │                                                                 │
+  │  1. ComboStorage.redeemCodeBatch(pins, hashes, redeemers)       │
+  │     → Verifies code hash in private Pente state                 │
+  │     → Checks private active state (blocks inactive/redeemed)    │
+  │     → Deletes hash entry + marks UID redeemed privately         │
+  │     → Emits PenteExternalCall (atomic) per valid entry          │
+  │  2. CodeManager.recordRedemption(uniqueId, redeemer)            │
+  │     → Resolves uniqueId → gift contract                         │
+  │     → Verifies public active state mirror                       │
+  │     → Calls this contract's recordRedemption()                  │
+  │     → Marks UID terminally redeemed on CodeManager              │
+  │  3. recordRedemption(uniqueId, redeemer)                        │
+  │     → Validates: in vault                                       │
+  │     → Transfers NFT from vault to redeemer                      │
+  │     → tokenURI switches to redeemed metadata                    │
+  │     → If reverts → entire Pente transition rolls back           │
+  │       (private deletes + redeemed marks are undone)             │
+  │                                                                 │
+  │  Redeemer address is supplied directly — NOT assumed            │
+  │  to be msg.sender. Supports meta-transactions and               │
+  │  user-specified recipient wallets.                              │
+  │                                                                 │
+  │  Active status overrides live in CodeManager (public            │
+  │  mirror) and PrivateComboStorage (execution authority).         │
+  └─────────────────────────────────────────────────────────────────┘
 
-  ┌──────────────── External API Integration ────────────┐
-  │                                                       │
-  │  All functions below are public/external and can be   │
-  │  called by any off-chain API, dApp frontend, or       │
-  │  marketplace indexer.                                 │
-  │                                                       │
-  │  ── Read (view, no gas) ──────────────────────────── │
-  │                                                       │
-  │  tokenURI(tokenId) → string                           │
-  │    Returns IPFS metadata URI. Unredeemed cards return  │
-  │    the generic baseTokenURI; redeemed cards return     │
-  │    the per-batch redeemed URI set at purchase time.    │
-  │    Compatible with OpenSea / ERC721Metadata standard.  │
-  │                                                       │
-  │  contractURI() → string                               │
-  │    Collection-level metadata for marketplaces.         │
-  │                                                       │
-  │  ownerOf(tokenId) → address                           │
-  │    In vault (unredeemed) → returns contract address.   │
-  │    Redeemed → returns recipient's wallet address.      │
-  │                                                       │
-  │  getCardStatus(uniqueId) → (tokenId, holder,          │
-  │                              frozen, redeemed)         │
-  │    Single call to get full card state. Use this to     │
-  │    build UI status displays.                           │
-  │                                                       │
-  │  cardBuyer(tokenId) → address                         │
-  │    Who originally purchased the card.                  │
-  │                                                       │
-  │  getUniqueIdForToken(tokenId) → string                │
-  │  getTokenForUniqueId(uniqueId) → uint256              │
-  │    Convert between tokenId and uniqueId.               │
-  │    Computed on the fly — no storage reads.             │
-  │                                                       │
-  │  isUniqueIdFrozen(uniqueId) → bool                    │
-  │  isUniqueIdRedeemed(uniqueId) → bool                  │
-  │    Derived status checks.                              │
-  │                                                       │
-  │  totalSupply() → uint256                              │
-  │  availableSupply() → uint256                          │
-  │  pricePerCard() → uint256                             │
-  │                                                       │
-  │  ── Write (requires gas + payment) ───────────────── │
-  │                                                       │
-  │  buy(buyer, quantity, redeemedBaseURI)                 │
-  │    payable — send pricePerCard * qty + registration    │
-  │    fee. Mints cards into vault. Pass the IPFS CID     │
-  │    directory for redeemed metadata.                    │
-  │    msg.sender pays; buyer gets card attribution.       │
-  │    Emits: BatchPurchased(buyer, startTokenId, qty)     │
-  │    Emits: Transfer(0x0, contract, tokenId) per token   │
-  │                                                       │
-  │  setFrozen(tokenId, frozen)                           │
-  │    Buyer or admin freezes/unfreezes a card.            │
-  │    Use when a redemption code is lost or stolen.       │
-  │    Emits: TokenFrozen(tokenId, frozen)                 │
-  │                                                       │
-  │  ── Event Indexing ───────────────────────────────── │
-  │                                                       │
-  │  Listen for these events to track state changes:      │
-  │    BatchPurchased(buyer, startTokenId, quantity)       │
-  │      → New cards purchased. Token IDs are contiguous   │
-  │        from startTokenId to startTokenId + qty - 1.    │
-  │    CardRedeemed(tokenId, uniqueId, redeemer)           │
-  │      → Card claimed. tokenURI() now returns redeemed   │
-  │        metadata.                                       │
-  │    TokenFrozen(tokenId, frozen)                        │
-  │      → Card frozen/unfrozen by buyer or admin.         │
-  │    Transfer(from, to, tokenId)                         │
-  │      → Standard ERC721. from=0x0 is mint,              │
-  │        from=contract is redemption claim.               │
-  │                                                       │
-  │  ── Typical API Flow ─────────────────────────────── │
-  │                                                       │
-  │  1. Frontend calls buy(buyer, qty, redeemedURI)       │
-  │     with msg.value = (pricePerCard + regFee) * qty     │
-  │  2. Backend listens for BatchPurchased event           │
-  │  3. Backend distributes redemption codes to buyer      │
-  │  4. Recipient enters code on frontend                  │
-  │  5. Frontend calls ComboStorage.redeemCode(pin,        │
-  │     hash, redeemer) inside Pente privacy group         │
-  │  6. PenteExternalCall → CodeManager →                  │
-  │     recordRedemption() transfers NFT to redeemer       │
-  │  7. tokenURI(tokenId) now returns redeemed metadata    │
-  │  8. Marketplace auto-refreshes via Transfer event      │
-  └───────────────────────────────────────────────────────┘
+  ┌──────────────── External API Integration ───────────────────────┐
+  │                                                                 │
+  │  All functions below are public/external and can be             │
+  │  called by any off-chain API, dApp frontend, or                 │
+  │  marketplace indexer.                                           │
+  │                                                                 │
+  │  ── Read (view, no gas) ──────────────────────────────────────  │
+  │                                                                 │
+  │  tokenURI(tokenId) → string                                     │
+  │    Returns IPFS metadata URI. Unredeemed cards return           │
+  │    the generic baseTokenURI; redeemed cards return              │
+  │    the per-batch redeemed URI set at purchase time.             │
+  │    Compatible with OpenSea / ERC721Metadata standard.           │
+  │                                                                 │
+  │  contractURI() → string                                         │
+  │    Collection-level metadata for marketplaces.                  │
+  │                                                                 │
+  │  ownerOf(tokenId) → address                                     │
+  │    In vault (unredeemed) → returns contract address.            │
+  │    Redeemed → returns recipient's wallet address.               │
+  │                                                                 │
+  │  getCardStatus(uniqueId)                                        │
+  │    → (tokenId, holder, frozen, redeemed)                        │
+  │    Single call to get full card state. frozen reads             │
+  │    the CodeManager public mirror; if mirror is disabled         │
+  │    for this UID, it will show active by default.                │
+  │                                                                 │
+  │  cardBuyer(tokenId) → address                                   │
+  │    Who originally purchased the card.                           │
+  │                                                                 │
+  │  getUniqueIdForToken(tokenId) → string                          │
+  │  getTokenForUniqueId(uniqueId) → uint256                        │
+  │    Convert between tokenId and uniqueId.                        │
+  │    Computed on the fly — no storage reads.                      │
+  │                                                                 │
+  │  isUniqueIdFrozen(uniqueId) → bool                              │
+  │  isUniqueIdRedeemed(uniqueId) → bool                            │
+  │    Derived from CodeManager public state.                       │
+  │    Note: frozen reflects public mirror only — UIDs with         │
+  │    mirroring disabled always appear active here.                │
+  │                                                                 │
+  │  totalSupply() → uint256                                        │
+  │  availableSupply() → uint256                                    │
+  │  pricePerCard() → uint256                                       │
+  │                                                                 │
+  │  ── Write (requires gas + payment) ──────────────────────────   │
+  │                                                                 │
+  │  buy(buyer, quantity, redeemedBaseURI)                          │
+  │    payable — send pricePerCard * qty + registration             │
+  │    fee. Mints cards into vault. Pass the IPFS CID               │
+  │    directory for redeemed metadata.                             │
+  │    msg.sender pays; buyer gets card attribution.                │
+  │    Emits: BatchPurchased(buyer, startTokenId, qty)              │
+  │    Emits: Transfer(0x0, contract, tokenId) per token            │
+  │                                                                 │
+  │  recordRedemption(uniqueId, redeemer)                           │
+  │    Called by CodeManager after private prechecks.               │
+  │    Transfers the NFT out of the vault to redeemer.              │
+  │    Emits: CardRedeemed(tokenId, uniqueId, redeemer)             │
+  │                                                                 │
+  │  ── Event Indexing ──────────────────────────────────────────   │
+  │                                                                 │
+  │  Listen for these events to track state changes:                │
+  │    BatchPurchased(buyer, startTokenId, quantity)                │
+  │      → New cards purchased. Token IDs are contiguous            │
+  │        from startTokenId to startTokenId + qty - 1.             │
+  │    CardRedeemed(tokenId, uniqueId, redeemer)                    │
+  │      → Card claimed. tokenURI() now returns redeemed            │
+  │        metadata.                                                │
+  │    Transfer(from, to, tokenId)                                  │
+  │      → Standard ERC721. from=0x0 is mint,                       │
+  │        from=contract is redemption claim.                       │
+  │                                                                 │
+  │  ── Typical API Flow ────────────────────────────────────────   │
+  │                                                                 │
+  │  1. Frontend calls buy(buyer, qty, redeemedURI)                 │
+  │     with msg.value = (pricePerCard + regFee) * qty              │
+  │  2. Backend listens for BatchPurchased event                    │
+  │  3. Backend stores codes via ComboStorage.storeDataBatch()      │
+  │     with mirrorStatuses controlling public visibility           │
+  │  4. Backend distributes PINs + codes to buyers                  │
+  │  5. Recipient enters PIN + code on frontend                     │
+  │  6. Frontend calls ComboStorage.redeemCodeBatch(pins,           │
+  │     hashes, redeemers) inside Pente privacy group               │
+  │  7. PenteExternalCall → CodeManager →                           │
+  │     recordRedemption() transfers NFT to redeemer                │
+  │  8. tokenURI(tokenId) now returns redeemed metadata             │
+  │  9. Marketplace auto-refreshes via Transfer event               │
+  └─────────────────────────────────────────────────────────────────┘
 */
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v5.2.0/contracts/token/ERC721/ERC721Upgradeable.sol";
@@ -274,19 +298,12 @@ contract CryftGreetingCards is
     PurchaseSegment[] private _purchaseSegments;
 
 
-    // ──────────────────── Explicit Freeze ───────────────
-    /// @dev Admin can freeze individual tokens (e.g. lost/stolen code).
-    ///      Only affects tokens already in the vault — not a substitute for
-    ///      the "not yet purchased" frozen state which is derived automatically.
-    mapping(uint256 => bool) private _explicitlyFrozen;
-
     // ──────────────────── Events ────────────────────────
     event BatchPurchased(address indexed buyer, uint256 startTokenId, uint256 quantity);
     event CardRedeemed(uint256 indexed tokenId, string uniqueId, address indexed redeemer);
     event PriceUpdated(uint256 newPrice);
     event SupplyRegistered(uint256 supply);
     event BaseURIUpdated(string newBaseURI);
-    event TokenFrozen(uint256 indexed tokenId, bool frozen);
 
     // ──────────────────── Modifiers ─────────────────────
     modifier whenNotPaused() {
@@ -486,18 +503,15 @@ contract CryftGreetingCards is
     //        IRedeemable (gift contract authority)
     // ════════════════════════════════════════════════════
 
-    /// @inheritdoc IRedeemable
-    /// @dev Frozen when:
-    ///      1. UniqueId is invalid or token not yet minted (not purchased), OR
-    ///      2. Token is in the vault but explicitly frozen by admin
-    ///         (e.g. lost/stolen redemption code).
-    ///      Unfrozen (active) = token is in the vault and not explicitly frozen.
-    function isUniqueIdFrozen(string memory uniqueId)
-        public view override returns (bool)
-    {
-        (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
-        if (!valid || _ownerOf(tokenId) == address(0)) return true;
-        return _explicitlyFrozen[tokenId];
+    /// @notice Returns the current CodeManager-owned active state for a UID.
+    function isUniqueIdActive(string memory uniqueId) public view returns (bool) {
+        return ICodeManager(codeManagerAddress).isUniqueIdActive(uniqueId);
+    }
+
+    /// @notice Backward-compatible alias for consumers that still expect a frozen flag.
+    ///         Frozen is simply the inverse of CodeManager's active state.
+    function isUniqueIdFrozen(string memory uniqueId) public view returns (bool) {
+        return !isUniqueIdActive(uniqueId);
     }
 
     /// @inheritdoc IRedeemable
@@ -514,14 +528,13 @@ contract CryftGreetingCards is
     /// @inheritdoc IRedeemable
     /// @dev Records redemption by transferring the NFT from vault to redeemer.
     ///      Only CodeManager (acting as Pente router) can call this.
-    ///      Reverts if already redeemed, frozen, or invalid — causing the
+    ///      Reverts if already redeemed or invalid — causing the
     ///      Pente transition to roll back atomically.
     function recordRedemption(string memory uniqueId, address redeemer) external override {
         require(msg.sender == codeManagerAddress, "Only CodeManager");
         (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
         require(valid && _ownerOf(tokenId) != address(0), "Invalid uniqueId");
         require(ownerOf(tokenId) == address(this), "Not in vault");
-        require(!_explicitlyFrozen[tokenId], "Token is frozen");
 
         unchecked { ++totalRedeems; }
         _transfer(address(this), redeemer, tokenId);
@@ -612,7 +625,7 @@ contract CryftGreetingCards is
     /// @notice Get the full status of a card in a single call.
     /// @return tokenId      The ERC721 token ID (0 if not purchased)
     /// @return nftHolder    The current ERC721 holder (vault before redemption, recipient after)
-    /// @return frozen       Derived: not yet purchased (no token exists)
+    /// @return frozen       Inverse of CodeManager's active state
     /// @return redeemed     Derived: token exists and no longer in vault
     function getCardStatus(string calldata uniqueId)
         external view
@@ -625,7 +638,7 @@ contract CryftGreetingCards is
     {
         bool valid;
         (valid, tokenId) = _parseTokenId(uniqueId);
-        frozen = !valid || _ownerOf(tokenId) == address(0) || _explicitlyFrozen[tokenId];
+        frozen = !ICodeManager(codeManagerAddress).isUniqueIdActive(uniqueId);
         redeemed = valid && _ownerOf(tokenId) != address(0) && ownerOf(tokenId) != address(this);
 
         if (valid && _ownerOf(tokenId) != address(0)) {
@@ -668,23 +681,6 @@ contract CryftGreetingCards is
 
     function setPaused(bool paused_) external onlyOwner {
         paused = paused_;
-    }
-
-    /// @notice Freeze or unfreeze a token in the vault.
-    ///         Use this when a redemption code is lost or stolen to prevent
-    ///         unauthorized redemption via ComboStorage. The buyer or the
-    ///         contract owner can freeze/unfreeze it.
-    /// @param tokenId  The token to freeze/unfreeze
-    /// @param frozen   true = frozen (blocked), false = active (redeemable)
-    function setFrozen(uint256 tokenId, bool frozen) external {
-        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
-        require(
-            msg.sender == _buyerOf(tokenId) || msg.sender == owner(),
-            "Only buyer or owner"
-        );
-        require(ownerOf(tokenId) == address(this), "Not in vault");
-        _explicitlyFrozen[tokenId] = frozen;
-        emit TokenFrozen(tokenId, frozen);
     }
 
     // ════════════════════════════════════════════════════

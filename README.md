@@ -477,11 +477,11 @@ CodeManager (independent)
 
 | Contract | Purpose |
 |----------|---------|
-| **CodeManager** | **Patent-covered.** Permissionless unique ID registry. Own independent voter pool with pluggable `otherVoterContracts[]`, 2/3 supermajority quorum, voter-pool freeze while tallies are active. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`. |
-| **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, emits `PenteExternalCall` events to route state changes through CodeManager to the gift contract on the public chain. All configuration (admin, authorized caller, CodeManager address, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
+| **CodeManager** | **Patent-covered.** Permissionless unique ID registry with an independent voter pool, 2/3 supermajority quorum, public mirrored UID state, and Pente routing. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`. |
+| **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, tracks execution-time UID active state privately, and emits `PenteExternalCall` events to mirror UID status and route redemptions through CodeManager. All configuration (admin, authorized caller, CodeManager address, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
 | **DakotaDelegation** | EIP-7702 delegation target. EOAs delegate to this contract for smart-account capabilities: single/batch execution, sponsored execution (EIP-712), session keys, EIP-1271 signature validation. |
 | **GasSponsor** | On-chain gas sponsorship treasury. Per-sponsor deposits, authorized relayer management, daily/per-claim spending limits, optional target allowlisting, and integrated `sponsoredCall` forwarding with automatic gas metering and reimbursement. |
-| **CryftGreetingCards** | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase with atomic CodeManager registration. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Explicit freeze for lost/stolen codes. Interfacing with the redeemable-code service is permitted with proper fees or license. |
+| **CryftGreetingCards** | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase with atomic CodeManager registration. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license. |
 
 ---
 
@@ -489,7 +489,7 @@ CodeManager (independent)
 
 Permissionless unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`. Voter-pool changes are blocked while any tally is active (`activeVoteCount > 0`).
 
-Also serves as the Pente redemption router — authorized privacy groups call `recordRedemption`, which resolves the UID to its gift contract and forwards via `IRedeemable`. CodeManager stores **no per-UID state** — it is a thin registry + router only. The gift contract is the **sole authority** on per-UID state, including frozen status.
+Also serves as the public mirror and Pente router. Authorized privacy groups call `recordRedemption`, which resolves the UID to its gift contract, forwards via `IRedeemable`, and marks the UID terminally redeemed in CodeManager. Active/inactive state is mirrored publicly from the private contract using sparse per-UID overrides over a default active state.
 
 #### Governance Actions (all require voter supermajority)
 
@@ -512,6 +512,7 @@ Also serves as the Pente redemption router — authorized privacy groups call `r
 | Function | Description |
 |----------|-------------|
 | `recordRedemption(uniqueId, redeemer)` | Resolves UID → gift contract, calls `IRedeemable.recordRedemption()` |
+| `setUniqueIdActiveBatch(uniqueIds, activeStates)` | Mirrors sparse UID active-state changes from an authorized privacy group. Redeemed UIDs are rejected and left terminal. |
 
 #### Registration (permissionless)
 
@@ -532,9 +533,8 @@ Also serves as the Pente redemption router — authorized privacy groups call `r
 | `getUniqueIdDetails(uniqueId)` | `(giftContract, chainId, counter)` | Resolve a UID to its gift contract, chain, and counter |
 | `getContractData(contractIdentifier)` | `ContractData` | Look up the gift contract and chain ID for a contract identifier |
 | `getIdentifierCounter(giftContract, chainId)` | `(contractIdentifier, counter)` | Get the current counter for a gift contract + chain pair |
-| `isUniqueIdFrozen(uniqueId)` | `bool` | Router pass-through — reads frozen status from the gift contract |
-| `isUniqueIdRedeemed(uniqueId)` | `bool` | Router pass-through — reads redeemed status from the gift contract |
-| `getUniqueIdContent(uniqueId)` | `string` | Router pass-through — reads content ID from the gift contract |
+| `isUniqueIdActive(uniqueId)` | `bool` | Public mirrored active state for a UID |
+| `isUniqueIdRedeemed(uniqueId)` | `bool` | Public mirrored redeemed state for a UID |
 | `registrationFee` | `uint256` | Current per-UID registration fee (wei) |
 | `feeVault` | `address` | Address that receives registration fees |
 | `voteTallyBlockThreshold` | `uint256` | Blocks before a vote tally expires (default: 1,000) |
@@ -547,7 +547,7 @@ Also serves as the Pente redemption router — authorized privacy groups call `r
 
 ### PrivateComboStorage (Pente Privacy Group)
 
-Deployed inside a Paladin Pente privacy group. All state is private to privacy group members. Stores code hashes with contract-assigned PINs, verifies codes via hash comparison. On redemption, emits `PenteExternalCall` events that atomically route through CodeManager to the gift contract on the public chain.
+Deployed inside a Paladin Pente privacy group. All state is private to privacy group members. Stores code hashes with contract-assigned PINs, verifies codes via hash comparison, and is the execution-time source of truth for UID active state. Valid status changes are mirrored publicly through CodeManager. On redemption, inactive or already-redeemed UIDs are skipped privately before any external redemption route is emitted.
 
 All configuration is embedded as **compile-time constants** — no constructor, no initializer, no storage-based admin. Changes require recompilation and redeployment via proxy upgrade.
 
@@ -564,8 +564,10 @@ All configuration is embedded as **compile-time constants** — no constructor, 
 
 | Function | Description |
 |----------|-------------|
-| `storeDataBatch(uniqueIds[], codeHashes[], pinLengths[], useSpecialChars[], entropies[])` | Bulk store code hashes. Each entry supplies its own PIN length, special-character flag, and entropy seed. Contract assigns a PIN per entry and uses `keccak256(seed)` only as a retry path if the derived PIN collides or the slot is full. Returns `string[] assignedPins`. Emits `PenteExternalCall` to validate UIDs on CodeManager. |
-| `redeemCodeBatch(pins[], codeHashes[], redeemers[])` | Batch-verify codes, delete consumed entries, emit `PenteExternalCall` per entry to route `recordRedemption` through CodeManager. Fully atomic — any failure reverts the entire batch. |
+| `storeDataBatch(uniqueIds[], codeHashes[], pinLengths[], useSpecialChars[], entropies[], uidManagers[])` | Bulk store code hashes. Each entry supplies its own PIN length, special-character flag, entropy seed, and optional per-UID manager (`address(0)` means no dedicated manager). Contract assigns a PIN per entry and uses `keccak256(seed)` only as a retry path if the derived PIN collides or the slot is full. Returns `string[] assignedPins`. Emits `PenteExternalCall` to validate UIDs on CodeManager. |
+| `setUniqueIdManagersBatch(uniqueIds[], newManagers[])` | Reassign or clear per-UID managers. Current UID manager, `ADMIN`, or `AUTHORIZED` may update each UID. |
+| `setUniqueIdActiveBatch(uniqueIds[], activeStates[])` | Update private execution-time UID active state and mirror valid entries to CodeManager. UID manager, `ADMIN`, or `AUTHORIZED` may update each UID. |
+| `redeemCodeBatch(pins[], codeHashes[], redeemers[])` | Batch-verify codes, skip inactive/redeemed UIDs privately, delete consumed entries, mark redeemed locally, and emit `PenteExternalCall` per valid entry to route `recordRedemption` through CodeManager. External failures still roll back the Pente transition for routed entries. |
 
 #### View Functions
 
@@ -663,7 +665,7 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 
 | Status | Derivation |
 |--------|-----------|
-| **Frozen** | Token not yet minted (not purchased), OR explicitly frozen by admin/buyer |
+| **Frozen** | Inverse of CodeManager's mirrored active state |
 | **Redeemed** | Token exists AND is no longer held by the vault (`ownerOf(tokenId) != address(this)`) |
 
 #### Write Functions
@@ -672,7 +674,6 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 |----------|--------|-------------|
 | `buy(buyer, quantity, redeemedBaseURI)` | Anyone (payable) | Purchase cards — pays `pricePerCard × qty + registrationFee × qty`. Mints into vault, registers on CodeManager atomically. |
 | `claimRedemption(uniqueId, recipient)` | Verified redeemer (via PrivateComboStorage) | Transfer NFT from vault to recipient. Recipient ≠ msg.sender (gift flow). |
-| `setFrozen(tokenId, frozen)` | Buyer or owner | Freeze/unfreeze a card in the vault (lost/stolen code protection). |
 | `recordRedemption(uniqueId, redeemer)` | CodeManager only (Pente router) | Route redemption from privacy group — transfers NFT from vault to redeemer. |
 
 #### Convenience View Functions
@@ -692,7 +693,7 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 | `getTokenForUniqueId(uniqueId)` | `uint256` | Parse tokenId from uniqueId (no storage) |
 | `cardBuyer(tokenId)` | `address` | Original purchaser (binary search through purchase segments) |
 | `getCardCreator()` | `address` | Creator who registered the uniqueIds on CodeManager |
-| `isUniqueIdFrozen(uniqueId)` | `bool` | Derived frozen status (IRedeemable implementation) |
+| `isUniqueIdFrozen(uniqueId)` | `bool` | Compatibility alias: inverse of CodeManager mirrored active state |
 | `isUniqueIdRedeemed(uniqueId)` | `bool` | Derived redeemed status (IRedeemable implementation) |
 | `isValidUniqueId(uniqueId)` | `bool` | Validates against CodeManager registry (read-only pass-through) |
 | `getDetailsFromCodeManager(uniqueId)` | `(giftContract, chainId, counter)` | Fetches UID details from CodeManager (read-only pass-through) |

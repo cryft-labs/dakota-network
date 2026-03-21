@@ -38,7 +38,7 @@ pragma solidity >=0.8.2 <0.9.0;
   │    EIP-712 signature, nonce, and deadline.           │
   │                                                      │
   │  Upgradeable (Initializable + proxy pattern).        │
-  │  Can also re-delegate EOAs via a new type 0x04 tx.  │
+  │  Can also re-delegate EOAs via a new type 0x04 tx.   │
   └──────────────────────────────────────────────────────┘
 */
 

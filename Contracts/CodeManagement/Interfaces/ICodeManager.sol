@@ -9,8 +9,8 @@ pragma solidity >=0.8.2 <0.9.0;
 /**
  * @title ICodeManager
  * @notice Interface for the CodeManager contract.
- *         CodeManager is responsible ONLY for unique ID registration and validation.
- *         Status management (frozen, redeemed, ownership) is delegated to individual gift contracts.
+ *         CodeManager is responsible for unique ID registration, validation,
+ *         and sparse per-UID active-state overrides.
  */
 interface ICodeManager {
     struct ContractData {
@@ -30,6 +30,10 @@ interface ICodeManager {
 
     /// @notice Returns whether a unique ID was validly registered (valid counter, valid contract identifier).
     function validateUniqueId(string memory uniqueId) external view returns (bool isValid);
+
+    /// @notice Returns whether a unique ID is currently active.
+    ///         Invalid or unregistered UIDs return false.
+    function isUniqueIdActive(string memory uniqueId) external view returns (bool isActive);
 
     /// @notice Returns the contract data (giftContract, chainId) for a given contract identifier.
     function getContractData(string memory contractIdentifier)

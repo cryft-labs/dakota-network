@@ -550,16 +550,23 @@ def compile_contract(
 
     results = {}
     source_base = (IMPORT_CACHE_DIR / "source").resolve()
+    cache_base = IMPORT_CACHE_DIR.resolve()
     for key, contract_data in compiled.items():
         # key format: "path:ContractName"
         name = key.split(":")[-1]
 
-        # Determine source path relative to CONTRACTS_DIR
+        # Determine source path relative to the local Contracts tree first.
+        # External cached dependencies are grouped under External/<owner>/<repo>/
+        # <version>/..., so artifact layout stays deterministic and clearly
+        # separated from in-repo contracts.
         source_file = Path(key.rsplit(":", 1)[0]).resolve()
         try:
             source_rel = str(source_file.relative_to(source_base))
         except ValueError:
-            source_rel = f"{name}.sol"
+            try:
+                source_rel = str(normalize_external_source_rel_path(source_file.relative_to(cache_base)))
+            except ValueError:
+                source_rel = str(Path("External") / source_file.name)
 
         # Skip interfaces and abstract contracts (empty bytecode)
         runtime = contract_data.get("bin-runtime", "")
@@ -619,7 +626,6 @@ def save_results(results: dict, output_dir: str, quiet: bool = False):
     """Save compilation artifacts to files."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-
     for name, data in results.items():
         # Runtime bytecode
         (out / f"{name}_runtime.bin").write_text(data["runtime_bytecode"], newline="\n")
@@ -635,6 +641,52 @@ def save_results(results: dict, output_dir: str, quiet: bool = False):
 
     if not quiet:
         print(f"Artifacts saved to: {out.resolve()}")
+
+
+def normalize_external_source_rel_path(cache_relative_path: Path) -> Path:
+    """Map a cached dependency path into a readable External/ artifact path.
+
+    Cache layout uses:
+        <repo_slug>/<version>/<repo-relative source path>
+
+    Artifacts use:
+        External/<owner>/<repo>/<version>/<repo-relative source path>
+    or, for non-GitHub/non-owner_repo cache slugs:
+        External/Vendor/<slug>/<version>/<repo-relative source path>
+
+    Example:
+        OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Address.sol
+        -> External/OpenZeppelin/openzeppelin-contracts/v5.2.0/contracts/utils/Address.sol
+    """
+    parts = cache_relative_path.parts
+    if len(parts) < 3:
+        return Path("External") / cache_relative_path
+
+    repo_slug = parts[0]
+    version = parts[1]
+    remainder = Path(*parts[2:])
+
+    underscore_idx = repo_slug.find("_")
+    if underscore_idx == -1:
+        return Path("External") / "Vendor" / repo_slug / version / remainder
+
+    owner = repo_slug[:underscore_idx]
+    repo_name = repo_slug[underscore_idx + 1:]
+    return Path("External") / owner / repo_name / version / remainder
+
+
+def get_contract_output_dir(output_root: Path, source_rel_path: str, contract_name: str) -> Path:
+    """Build an artifact directory that mirrors the Contracts tree dynamically.
+
+    Artifacts are stored under:
+        compiled_output/<source parent directories>/<contract_name>/
+
+    This preserves the source directory hierarchy without hardcoded folder rules
+    and ensures each concrete contract gets its own directory even when multiple
+    contracts are compiled from the same Solidity file.
+    """
+    source_rel = Path(source_rel_path)
+    return output_root / source_rel.parent / contract_name
 
 
 # ────────────────────────────────────────────
@@ -756,16 +808,23 @@ def compile_all(
 
             if results:
                 print_results(results)
-                # Save each contract to a directory mirroring its own source path
+                # Save each contract to a directory mirroring its source tree
+                # and named after the concrete contract.
                 for cname, cdata in results.items():
-                    src_rel = Path(cdata.get("source_rel_path", f"{cname}.sol"))
-                    contract_out = OUTPUT_DIR / src_rel.parent / src_rel.stem
+                    contract_out = get_contract_output_dir(
+                        OUTPUT_DIR,
+                        cdata.get("source_rel_path", f"{cname}.sol"),
+                        cname,
+                    )
                     save_results({cname: cdata}, str(contract_out), quiet=True)
                 print(f"Artifacts saved to: {OUTPUT_DIR.resolve()}")
                 total_compiled += len(results)
                 for name, data in results.items():
-                    src_rel = Path(data.get("source_rel_path", f"{name}.sol"))
-                    contract_out = OUTPUT_DIR / src_rel.parent / src_rel.stem
+                    contract_out = get_contract_output_dir(
+                        OUTPUT_DIR,
+                        data.get("source_rel_path", f"{name}.sol"),
+                        name,
+                    )
                     summary.append({
                         "source": data.get("source_rel_path", str(rel_path)),
                         "contract": name,
@@ -896,14 +955,20 @@ def compile_selected(
             if results:
                 print_results(results)
                 for cname, cdata in results.items():
-                    src_rel = Path(cdata.get("source_rel_path", f"{cname}.sol"))
-                    contract_out = OUTPUT_DIR / src_rel.parent / src_rel.stem
+                    contract_out = get_contract_output_dir(
+                        OUTPUT_DIR,
+                        cdata.get("source_rel_path", f"{cname}.sol"),
+                        cname,
+                    )
                     save_results({cname: cdata}, str(contract_out), quiet=True)
                 print(f"Artifacts saved to: {OUTPUT_DIR.resolve()}")
                 total_compiled += len(results)
                 for name, data in results.items():
-                    src_rel = Path(data.get("source_rel_path", f"{name}.sol"))
-                    contract_out = OUTPUT_DIR / src_rel.parent / src_rel.stem
+                    contract_out = get_contract_output_dir(
+                        OUTPUT_DIR,
+                        data.get("source_rel_path", f"{name}.sol"),
+                        name,
+                    )
                     summary.append({
                         "source": data.get("source_rel_path", str(rel_path)),
                         "contract": name,

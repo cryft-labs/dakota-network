@@ -38,10 +38,10 @@ The patented system uses a three-layer architecture. No single layer holds all t
 │                      PUBLIC CHAIN (Besu)                            │
 │                                                                     │
 │  ┌──────────────────┐              ┌────────────────────────────┐   │
-│  │   CodeManager    │─── resolve ─▶│      Gift Contract         │   │
+│  │   CodeManager    │─── resolve ─▶│      Gift Contract        │   │
 │  │   (Registry +    │   UID→gift   │      (IRedeemable)         │   │
-│  │    Router)       │              │      SOLE STATE AUTHORITY   │   │
-│  │                  │◀── forward ──│                             │   │
+│  │    Router)       │              │      SOLE STATE AUTHORITY  │   │
+│  │                  │◀── forward ─│                            │   │
 │  │  • UID registry  │   calls via  │  • frozen / unfrozen state │   │
 │  │  • Governance    │  IRedeemable │  • redeemed tracking       │   │
 │  │  • Fee vault     │              │  • redemption behavior     │   │
@@ -52,12 +52,12 @@ The patented system uses a three-layer architecture. No single layer holds all t
 │           │ │ PenteExternalCall (atomic routing)                    │
 │           │ │                                                       │
 │  ┌────────▼─┴───────────────────────────────────────────────────┐   │
-│  │                  PENTE PRIVACY GROUP                          │   │
+│  │                  PENTE PRIVACY GROUP                         │   │
 │  │  ┌──────────────────────┐                                    │   │
-│  │  │ PrivateComboStorage  │  • Hash-only code storage (private) │   │
-│  │  │                      │  • Contract-assigned PIN routing    │   │
-│  │  │                      │  • Batch code storage + redemption  │   │
-│  │  │                      │  • Hash verification (no cleartext) │   │
+│  │  │ PrivateComboStorage  │  • Hash-only code storage (private)│   │
+│  │  │                      │  • Contract-assigned PIN routing   │   │
+│  │  │                      │  • Batch code storage + redemption │   │
+│  │  │                      │  • Hash verification (no cleartext)│   │
 │  │  └──────────────────────┘                                    │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
@@ -67,15 +67,18 @@ The patented system uses a three-layer architecture. No single layer holds all t
 
 | Layer | Contract | Responsibility |
 |-------|----------|----------------|
-| **Public Registry** | CodeManager | UID registration, deterministic ID generation, governance (2/3 supermajority), Pente router — forwards calls to gift contracts. Stores **no** per-UID state. |
-| **Public Authority** | Gift Contract (IRedeemable) | Sole authority on per-UID state: frozen status, redemption behavior. Decides how redemption works (single-use, multi-use, NFT transfer, etc.). If it reverts, the Pente transition rolls back. |
-| **Private Storage** | PrivateComboStorage | Hash-only code storage within a Pente privacy group. PINs are contract-assigned routing keys (not part of the hash). Verifies codes via hash comparison. Emits `PenteExternalCall` events to atomically route state changes through CodeManager to the gift contract. All configuration is compile-time constants — changes require a contract upgrade via proxy. |
+| **Public Registry / Mirror** | CodeManager | UID registration, deterministic ID generation, governance (2/3 supermajority), public mirrored UID state, and Pente routing. Tracks sparse active-state overrides plus terminal redeemed state. Only UIDs with mirroring enabled in PrivateComboStorage propagate state changes here — absence of a public override (USE_DEFAULT_ACTIVE_STATE) may indicate private-only management. |
+| **Public Authority** | Gift Contract (IRedeemable) | Authority on redemption finality and asset transfer. Decides how redemption works (single-use, multi-use, NFT transfer, etc.). If it reverts, the Pente transition rolls back atomically — including private state updates in ComboStorage. |
+| **Private Storage / Execution** | PrivateComboStorage | Hash-only code storage within a Pente privacy group. PINs are contract-assigned routing keys (not part of the hash). Verifies codes via hash comparison, tracks execution-time UID active state privately, and selectively mirrors valid status changes to CodeManager based on per-UID `mirrorStatuses` configuration. Supports per-UID manager delegation for fine-grained active-state control. Requires contract-identifier whitelisting before codes can be stored. All configuration is compile-time constants — changes require a contract upgrade via proxy. |
 
 ### Key Design Principles
 
 - **No cleartext codes on-chain.** Codes are represented as `keccak256(code)` hashes. The PIN is a contract-assigned routing key (not part of the hash) for O(1) bucket lookup.
-- **Gift contract authority.** CodeManager delegates all per-UID state management. If the gift contract reverts, the entire Pente transition rolls back atomically.
-- **Default frozen state.** New UIDs default to frozen until explicitly unfrozen, preventing premature redemption.
+- **Private execution authority.** PrivateComboStorage decides whether a UID is active for redemption routing. Inactive or redeemed UIDs are skipped before any external redemption call is emitted.
+- **Selective public mirroring.** Each UID's `mirrorStatuses` flag (set at store time) controls whether active-state changes propagate to CodeManager. When mirroring is disabled, the UID's active/frozen state remains private — CodeManager's public view returns `DEFAULT_ACTIVE_STATE` (active), but the private execution layer may independently freeze or block the UID.
+- **Per-UID manager delegation.** Each UID can optionally have a dedicated manager address authorized to update its active state in ComboStorage. If no manager is set, only ADMIN or AUTHORIZED can act.
+- **Public mirroring.** CodeManager mirrors private active-state changes publicly (for mirrored UIDs) and records redeemed UIDs as terminal state.
+- **Gift contract finality.** The gift contract still decides whether the routed redemption completes successfully. If it reverts, the entire Pente transition rolls back atomically.
 - **Privacy-preserving verification.** The Pente privacy group verifies codes privately, then triggers public state updates via `PenteExternalCall`.
 - **External calls.** The privacy group must be created with `externalCallsEnabled: "true"` (string, not boolean) so that `PenteExternalCall` events are processed by Paladin and forwarded to the base ledger.
 - **EVM version.** Pente privacy groups run `shanghai` EVM. Public chain may run a later EVM version. Private contracts must compile with `--evm-version shanghai`.
@@ -457,7 +460,40 @@ There are no `authorize()`, `deauthorize()`, or `transferAdmin()` functions. All
 
 Only `ADMIN` and `AUTHORIZED` can call `storeDataBatch` and `redeemCodeBatch`.
 
-### 10.3 Register UIDs on CodeManager
+### 10.3 Whitelist Contract Identifiers on PrivateComboStorage
+
+Before storing codes, the contract-identifier prefix must be whitelisted on PrivateComboStorage. The contract identifier is deterministic:
+```
+contractIdentifier = toHexString(keccak256(codeManagerAddress, giftContractAddress, chainId))
+```
+
+Whitelist it via `pente_invoke`:
+```bash
+curl -X POST http://localhost:31548/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "pente_invoke",
+    "params": [{
+      "group": {
+        "salt": "<PRIVACY_GROUP_SALT>",
+        "members": ["node1@node1"]
+      },
+      "from": "node1@node1",
+      "to": "<PRIVATE_CONTRACT_ADDRESS>",
+      "function": "setContractIdentifierWhitelist(string[],bool[])",
+      "inputs": [
+        ["<CONTRACT_IDENTIFIER>"],
+        [true]
+      ]
+    }]
+  }'
+```
+
+Only `ADMIN` can call this function. Codes with non-whitelisted contract identifiers will be rejected by `storeDataBatch` with a `StoreFailed` event.
+
+### 10.4 Register UIDs on CodeManager
 
 Before storing codes in the privacy group, the UID range must exist on CodeManager. Registration is permissionless — anyone can call it as long as they pay the registration fee.
 
@@ -481,22 +517,26 @@ contractIdentifier = toHexString(keccak256(codeManagerAddress, giftContractAddre
 
 The gift contract can also register UIDs atomically at purchase time via its `buy()` function, which calls `registerUniqueIds` internally and verifies counter sync.
 
-### 10.4 Authorization Order
+### 10.5 Authorization Order
 
 The complete authorization sequence:
 
 ```
-1. Deploy CodeManager + Gift Contract on public chain
-2. Create ext-calls privacy group
-3. Fund derived submitter
-4. Compile PrivateComboStorage with correct CODE_MANAGER, ADMIN, AUTHORIZED constants
-5. Deploy PrivateComboStorage in privacy group
-6. Verify CODE_MANAGER(), ADMIN(), AUTHORIZED()
-7. Authorize privacy group on CodeManager:
-     voteToAuthorizePrivacyGroup(privacyGroupAddress)
-8. Register UIDs on CodeManager (or let buy() do it)
-9. Store codes → storeDataBatch
-10. Redeem codes → redeemCodeBatch
+1.  Deploy CodeManager + Gift Contract on public chain
+2.  Create ext-calls privacy group
+3.  Fund derived submitter
+4.  Compile PrivateComboStorage with correct CODE_MANAGER, ADMIN, AUTHORIZED constants
+5.  Deploy PrivateComboStorage in privacy group
+6.  Verify CODE_MANAGER(), ADMIN(), AUTHORIZED()
+7.  Authorize privacy group on CodeManager:
+      voteToAuthorizePrivacyGroup(privacyGroupAddress)
+8.  Whitelist contract identifier on PrivateComboStorage:
+      setContractIdentifierWhitelist([contractId], [true])
+9.  Register UIDs on CodeManager (or let buy() do it)
+10. Configure per-UID options (optional):
+      setUniqueIdManagersBatch / setUniqueIdActiveBatch with mirrorStatuses
+11. Store codes → storeDataBatch
+12. Redeem codes → redeemCodeBatch
 ```
 
 ---
@@ -519,6 +559,8 @@ The contract assigns a PIN to each code during `storeDataBatch`. The PIN is retu
 
 ### 11.2 Calling storeDataBatch
 
+The function now accepts a `StoreBatchRequest` struct containing all per-entry arrays. This includes `mirrorStatuses` to control whether each UID's active state is mirrored publicly on CodeManager, and `uidManagers` to optionally assign per-UID manager addresses.
+
 ```bash
 curl -X POST http://localhost:31548/rpc \
   -H "Content-Type: application/json" \
@@ -533,17 +575,32 @@ curl -X POST http://localhost:31548/rpc \
       },
       "from": "node1@node1",
       "to": "<PRIVATE_CONTRACT_ADDRESS>",
-      "function": "storeDataBatch(string[],bytes32[],uint256[],bool[],bytes32[])",
+      "function": "storeDataBatch((string[],bytes32[],uint256[],bool[],bytes32[],address[],bool[]))",
       "inputs": [
-        ["<UNIQUE_ID_1>", "<UNIQUE_ID_2>"],
-        ["0xabc123...", "0xdef456..."],
-        [3, 4],
-        [false, true],
-        ["0x<RANDOM_32_BYTES_1>", "0x<RANDOM_32_BYTES_2>"]
+        [
+          ["<UNIQUE_ID_1>", "<UNIQUE_ID_2>"],
+          ["0xabc123...", "0xdef456..."],
+          [3, 4],
+          [false, true],
+          ["0x<RANDOM_32_BYTES_1>", "0x<RANDOM_32_BYTES_2>"],
+          ["0x<UID_MANAGER_1_OR_ZERO>", "0x<UID_MANAGER_2_OR_ZERO>"],
+          [true, false]
+        ]
       ]
     }]
   }'
 ```
+
+**StoreBatchRequest fields:**
+- `uniqueIds` — registered UID strings (must exist on CodeManager)
+- `codeHashes` — keccak256(code) hashes computed off-chain
+- `pinLengths` — PIN character length per entry (1-8)
+- `useSpecialChars` — whether to include special characters in the PIN
+- `entropies` — random 32-byte seeds for PIN derivation
+- `uidManagers` — optional per-UID manager addresses (zero = no manager)
+- `mirrorStatuses` — per-UID public mirror control:
+  - `true` → active-state changes mirror to CodeManager publicly
+  - `false` → active state stays private; CodeManager returns DEFAULT_ACTIVE_STATE
 
 The function returns `string[] assignedPins` — the contract-assigned PIN for each entry. Store these PINs alongside the codes in your off-chain database.
 
@@ -551,22 +608,26 @@ The function returns `string[] assignedPins` — the contract-assigned PIN for e
 
 `storeDataBatch` executes three phases atomically:
 
-1. **Phase 1 — Local preflight:** Validates arrays, checks for empty values, zero hashes, invalid per-entry PIN lengths, zero entropies, and duplicate UIDs.
+1. **Phase 1 — Local preflight:** Validates arrays, checks for empty values, invalid UID format, non-whitelisted contract identifiers, zero hashes, invalid per-entry PIN lengths, zero entropies, duplicate UIDs, and UIDs already stored in private state.
 
 2. **Phase 2 — Public registry validation:** Emits `PenteExternalCall` → `CodeManager.validateUniqueIdsOrRevert(uniqueIds)`. If any uniqueId is not registered on CodeManager, the entire Pente transition reverts.
 
-3. **Phase 3 — Assign PINs and store entries:** For each entry, derives a PIN from that entry's supplied entropy, PIN length, and charset choice. If a collision occurs (same codeHash at derived PIN, or slot is full at MAX_PER_PIN=32), the entry seed is re-chained via `keccak256(seed)` until an open slot is found — no revert, no information leakage. Stores `(pin, codeHash) → CodeMetadata{ uniqueId, exists: true }`. Emits `DataStoredStatus(uniqueId, assignedPin)` per entry.
+3. **Phase 3 — Assign PINs and store entries:** For each entry, derives a PIN from that entry's supplied entropy, PIN length, and charset choice. If a collision occurs (same codeHash at derived PIN, or slot is full at MAX_PER_PIN=32), the entry seed is re-chained via `keccak256(seed)` until an open slot is found — no revert, no information leakage. Stores `(pin, codeHash) → CodeMetadata{ uniqueId, exists: true }` and emits `DataStoredStatus(uniqueId, assignedPin)` per entry.
+
+4. **Phase 4 — Per-UID configuration:** Records per-UID managers (if provided) and mirror preferences. UIDs with `mirrorStatuses[i] == false` have their `isUniqueIdStatusMirrorDisabled` flag set — future active-state changes via `setUniqueIdActiveBatch()` will update private execution state but will not propagate to CodeManager. Emits `UniqueIdManagerUpdated` and `UniqueIdStatusMirrorUpdated` events as applicable.
 
 ### 11.4 Failure Modes
 
 | Failure | Cause | Fix |
 |---------|-------|-----|
-| `"Array length mismatch"` | `uniqueIds`, `codeHashes`, `pinLengths`, and `entropies` arrays have different lengths | Ensure all per-entry arrays are the same length |
+| `"Array length mismatch"` | `uniqueIds`, `codeHashes`, `pinLengths`, `useSpecialChars`, `entropies`, `uidManagers`, and `mirrorStatuses` arrays have different lengths | Ensure all per-entry arrays in the StoreBatchRequest are the same length |
+| `"Contract identifier not whitelisted"` | The UID prefix is not approved in PrivateComboStorage | Whitelist the contract identifier first |
 | `"Empty uniqueId"` | One of the uniqueIds is an empty string | Check your UID generation |
 | `"Zero code hash"` | A codeHash is `bytes32(0)` | Check your hash computation |
 | `"PIN length must be 1-8"` | An entry has an invalid `pinLengths[i]` | Use a value between 1 and 8 for each entry |
 | `"Zero entropy"` | An entry entropy is `bytes32(0)` | Supply random 32 bytes per entry |
 | `"Duplicate uniqueId in batch"` | The same UID appears more than once in a store batch | Deduplicate before calling |
+| `"UniqueId already has manager"` | The UID was already initialized in private storage | Do not re-store the same UID |
 | `"PIN space exhausted"` | 100 retries failed to find an open PIN slot | Increase PIN length or reduce stored codes |
 | `"Invalid uniqueId in batch"` | The uniqueId is not registered on CodeManager | Register UIDs first via `registerUniqueIds` |
 | `"Caller is not an authorized privacy group"` | The privacy group is not authorized on CodeManager | Call `voteToAuthorizePrivacyGroup` |
@@ -594,10 +655,14 @@ PrivateComboStorage (inside Pente privacy group), for each entry:
   1. Looks up pinToHash[pin][codeHash] → CodeMetadata
   2. Requires: exists == true
   3. Reads uniqueId from the metadata
-  4. Deletes the hash entry (code is consumed)
-  5. Decrements pinSlotCount[pin]
-  6. Emits RedeemStatus(uniqueId, redeemer)
-  7. Emits PenteExternalCall(CODE_MANAGER,
+  4. Checks private UID execution state: active and not already redeemed
+     (UIDs marked inactive or redeemed in private state are skipped —
+      even if CodeManager's public mirror shows active)
+  5. Deletes the hash entry (code is consumed)
+  6. Decrements pinSlotCount[pin]
+  7. Marks the UID redeemed in private state
+  8. Emits RedeemStatus(uniqueId, redeemer)
+  9. Emits PenteExternalCall(CODE_MANAGER,
        abi.encodeWithSignature("recordRedemption(string,address)", uniqueId, redeemer))
          │
          ▼
@@ -607,18 +672,23 @@ Pente processes the transition, sees PenteExternalCall(s):
          ▼
 CodeManager.recordRedemption(uniqueId, redeemer) [onlyAuthorizedPrivacyGroup]:
   1. Calls getUniqueIdDetails(uniqueId) → resolves to gift contract
-  2. Calls IRedeemable(giftContract).recordRedemption(uniqueId, redeemer)
-  3. Emits RedemptionRouted(uniqueId, giftContract, redeemer)
+  2. Verifies the public UID state is still active
+     (if mirror was disabled, this defaults to active)
+  3. Calls IRedeemable(giftContract).recordRedemption(uniqueId, redeemer)
+  4. Marks the UID terminally redeemed in public state (REDEEMED enum)
+  5. Emits UniqueIdRedeemed(uniqueId)
+  6. Emits RedemptionRouted(uniqueId, giftContract, redeemer)
          │
          ▼
 Gift Contract.recordRedemption(uniqueId, redeemer) [onlyCodeManager]:
   1. Parses uniqueId → tokenId
-  2. Requires: valid, minted, in vault, not frozen
+  2. Requires: valid, minted, in vault
   3. Transfers NFT from vault (contract) to redeemer
   4. Increments totalRedeems
   5. Emits CardRedeemed(tokenId, uniqueId, redeemer)
   6. If any require fails → revert → entire Pente transition rolls back
      → the delete in PrivateComboStorage is undone
+     → the private redeemed mark is undone
      → code remains usable
 ```
 
@@ -653,6 +723,7 @@ curl -X POST http://localhost:31548/rpc \
 The key property: **if the gift contract reverts, the entire Pente transition rolls back.** This means:
 - The `delete` of the hash entry in PrivateComboStorage is undone
 - The `pinSlotCount` decrement is undone
+- The private redeemed mark is undone
 - The code remains usable for a future redemption attempt
 - No partial state changes on either chain
 
@@ -675,7 +746,7 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 | `"Only CodeManager"` (on gift contract) | CodeManager is not the caller | Privacy group not authorized, or CODE_MANAGER constant is wrong |
 | `"Invalid uniqueId"` (on gift contract) | Token was never minted / uniqueId doesn't parse | UID registered but token not yet minted via `buy()` |
 | `"Not in vault"` (on gift contract) | Token already redeemed (left the vault) | Code was already used |
-| `"Token is frozen"` (on gift contract) | Admin froze the token | Unfreeze via `setFrozen(tokenId, false)` if appropriate |
+| `"UniqueId is inactive"` | Private execution state blocked the UID before routing | Mirror or inspect the UID active state and re-enable it if appropriate |
 | `insufficient funds for gas` | Derived submitter out of gas | Fund the address in the error |
 
 ---
@@ -695,7 +766,7 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 | `"Invalid uniqueId in batch"` during `storeDataBatch` | UIDs not registered on CodeManager | Check `validateUniqueId(uid)` on CodeManager | Call `registerUniqueIds` or `buy()` first |
 | `"No matching uniqueId found."` during redemption | UID not registered on CodeManager | Call `getUniqueIdDetails(uid)` — should revert | Register UIDs first |
 | `"Not in vault"` during redemption | Token already redeemed | Check `ownerOf(tokenId)` — not the contract address | Code was already used; cannot re-redeem |
-| `"Token is frozen"` during redemption | Admin explicitly froze the token | Check `isUniqueIdFrozen(uid)` | Unfreeze if appropriate |
+| `"UniqueId is inactive"` during redemption | Private execution state marks the UID inactive | Check private status flow and CodeManager mirror | Re-enable via `setUniqueIdActiveBatch` if appropriate |
 | `"Counter drift: CodeManager out of sync"` during `buy()` | External registration changed the counter | Check `getIdentifierCounter` on CodeManager | Ensure only `buy()` registers UIDs for this contract, or adjust `maxSaleSupply` |
 | `"Payment must equal price + registration fee"` during `buy()` | Incorrect `msg.value` | Calculate: `(pricePerCard * qty) + (registrationFee * qty)` | Send exact amount |
 | Pente invoke returns success but no event on public chain | Group not ext-calls-enabled, or gas insufficient | Check group config; check derived submitter balance | Recreate group with string `"true"` or fund submitter |
@@ -752,6 +823,12 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 
 9. **Atomicity is the safety net.** If the gift contract reverts during `recordRedemption` (frozen, already redeemed, invalid UID), the entire Pente transition rolls back. The code hash deletion in PrivateComboStorage is undone. No manual cleanup needed.
 
+10. **Whitelist contract identifiers before storing.** `storeDataBatch` rejects codes whose contract identifier is not whitelisted. Call `setContractIdentifierWhitelist` first. This is a per-PrivateComboStorage setting — each deployment needs its own whitelisting.
+
+11. **Selective mirroring is opt-in per UID.** When calling `setUniqueIdActiveBatch`, the `mirrorStatuses` array controls whether active-state changes are forwarded to the public CodeManager. If mirroring is disabled for a UID, `getActiveStatus` on CodeManager returns `USE_DEFAULT_ACTIVE_STATE`, hiding the private state from public view.
+
+12. **Per-UID managers don't affect freeze/redeem authority.** `setUniqueIdManagersBatch` only controls who can call `setUniqueIdActiveBatch` for specific UIDs. Freeze/unfreeze authority remains with the gift contract, and redeem authority remains with `AUTHORIZED`.
+
 ### Operational Checklist — End-to-End Verification
 
 ```
@@ -767,7 +844,10 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 □ AUTHORIZED() returns intended authorized address
 □ CODE_MANAGER() returns correct address
 □ Privacy group authorized on CodeManager
+□ Contract identifier whitelisted on PrivateComboStorage
 □ UIDs registered (via buy() or registerUniqueIds)
+□ Per-UID managers configured if needed (setUniqueIdManagersBatch)
+□ mirrorStatuses decided per UID (selective mirroring)
 □ Codes generated off-chain: code → codeHash = keccak256(code)
 □ storeDataBatch succeeds → PINs assigned → validateUniqueIdsOrRevert passes
 □ redeemCodeBatch succeeds → recordRedemption routes to gift contract → NFT transferred

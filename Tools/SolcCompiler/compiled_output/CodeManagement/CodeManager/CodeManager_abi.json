@@ -116,6 +116,69 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "uniqueId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "UniqueIdActiveStatusRejected",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "uniqueId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "usesDefaultState",
+        "type": "bool"
+      }
+    ],
+    "name": "UniqueIdActiveStatusUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "uniqueId",
+        "type": "string"
+      }
+    ],
+    "name": "UniqueIdRedeemed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": true,
         "internalType": "address",
         "name": "giftContract",
@@ -212,6 +275,19 @@
     ],
     "name": "VoterUpdated",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "DEFAULT_ACTIVE_STATE",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
@@ -469,7 +545,7 @@
         "type": "string"
       }
     ],
-    "name": "isUniqueIdFrozen",
+    "name": "isUniqueIdActive",
     "outputs": [
       {
         "internalType": "bool",
@@ -624,6 +700,24 @@
       }
     ],
     "name": "resetExpiredTally",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string[]",
+        "name": "uniqueIds",
+        "type": "string[]"
+      },
+      {
+        "internalType": "bool[]",
+        "name": "activeStates",
+        "type": "bool[]"
+      }
+    ],
+    "name": "setUniqueIdActiveBatch",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
