@@ -1548,8 +1548,8 @@ curl -s "$PALADIN_RPC" \
 - `contractIdentifier` — deterministic public identifier already registered on CodeManager
 - `counters` — exact pre-registered UID counters to store privately
 - `codeHashes` — keccak256(code) hashes computed off-chain
-- `pinLength` — batch PIN character length (1-8)
-- `useSpecialChars` — batch PIN charset choice
+- `pinLength` — batch PIN character length (1-8). Per-batch, not per-contract — different batches for the same `contractIdentifier` can use different PIN lengths, allowing callers to choose their security level per batch (e.g., 4-char PINs for low-friction consumer codes, 8-char PINs with special characters for high-value codes)
+- `useSpecialChars` — batch PIN charset choice (alphanumeric-only or alphanumeric + special characters). Per-batch like `pinLength`
 - `entropies` — random 32-byte seeds for PIN derivation
 - `uidManagers` — optional per-UID manager addresses (zero = no manager)
 - `mirrorStatuses` — per-UID public mirror control:
