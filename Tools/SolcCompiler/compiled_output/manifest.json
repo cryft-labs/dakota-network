@@ -2,8 +2,8 @@
   {
     "source": "CodeManagement\\CodeManager.sol",
     "contract": "CodeManager",
-    "runtime_bytes": 18393,
-    "creation_bytes": 18617,
+    "runtime_bytes": 18855,
+    "creation_bytes": 19079,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\CodeManagement\\CodeManager",
     "over_limit": false
   },
@@ -250,8 +250,8 @@
   {
     "source": "Tokens\\GreetingCards.sol",
     "contract": "CryftGreetingCards",
-    "runtime_bytes": 14741,
-    "creation_bytes": 14955,
+    "runtime_bytes": 15510,
+    "creation_bytes": 15724,
     "output": "C:\\Users\\Chad\\Documents\\dakota-network\\Tools\\SolcCompiler\\compiled_output\\Tokens\\CryftGreetingCards",
     "over_limit": false
   }

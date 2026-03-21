@@ -16,14 +16,16 @@ pragma solidity >=0.8.2 <0.9.0;
  *
  *         When the Pente privacy group emits an external call, CodeManager
  *         resolves the UID to its gift contract and forwards the redemption
- *         here after validating the mirrored public state.
+ *         here after marking the UID as terminally REDEEMED in its own state.
  *
  *         The gift contract decides:
  *           - What redemption does (boolean flip, counter, NFT transfer, etc.)
  *           - Whether multi-use redemptions are allowed
  *
- *         If the gift contract reverts on redemption, the entire
- *         Pente transition rolls back atomically.
+ *         If the gift contract reverts, CodeManager catches the error and emits
+ *         a RedemptionFailed event. The UID remains REDEEMED at every layer
+ *         (private + public). Admin should monitor for RedemptionFailed events
+ *         and resolve the gift-contract side effect manually if needed.
  *
  */
 interface IRedeemable {
@@ -42,8 +44,10 @@ interface IRedeemable {
     ///           - Multi-use: allow multiple, track count
     ///           - Ownership transfer: mint/transfer NFT
     ///           - Conditional: only allow after a date, etc.
-    ///         If the gift contract does not allow the redemption, it MUST
-    ///         revert — causing the entire Pente transition to roll back.
+    ///         If the gift contract does not allow the redemption, it SHOULD
+    ///         revert — CodeManager catches the revert and emits a
+    ///         RedemptionFailed event. The UID remains terminally REDEEMED
+    ///         in both private and public state regardless.
     /// @param uniqueId The unique identifier being redeemed.
     /// @param redeemer The address performing the redemption.
     function recordRedemption(string memory uniqueId, address redeemer) external;

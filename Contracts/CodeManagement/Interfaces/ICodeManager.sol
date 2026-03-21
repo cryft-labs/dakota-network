@@ -35,6 +35,9 @@ interface ICodeManager {
     ///         Invalid or unregistered UIDs return false.
     function isUniqueIdActive(string memory uniqueId) external view returns (bool isActive);
 
+    /// @notice Returns whether a unique ID has been redeemed.
+    function isUniqueIdRedeemed(string memory uniqueId) external view returns (bool);
+
     /// @notice Returns the contract data (giftContract, chainId) for a given contract identifier.
     function getContractData(string memory contractIdentifier)
         external

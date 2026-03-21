@@ -34,8 +34,9 @@ pragma solidity >=0.8.2 <0.9.0;
   │  router functions, which resolve UIDs to gift                   │
   │  contracts and forward via IRedeemable:                         │
   │    • recordRedemption(uid, redeemer)                            │
-  │      Routes to gift contract; marks UID terminally              │
-  │      redeemed. Reverts roll back the Pente transition.          │
+  │      Marks UID terminally redeemed then routes to gift          │
+  │      contract via try/catch. Gift contract failures             │
+  │      emit RedemptionFailed — no Pente rollback.                 │
   │    • setUniqueIdActiveBatch(uids, states)                       │
   │      Mirrors private active-state changes publicly.             │
   │      Only UIDs whose mirror is enabled in ComboStorage          │
@@ -139,6 +140,7 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     event VoteTallyBlockThresholdUpdated(uint256 newThreshold);
     event PrivacyGroupAuthorized(address indexed privacyGroup, bool authorized);
     event RedemptionRouted(string uniqueId, address indexed giftContract, address indexed redeemer);
+    event RedemptionFailed(string uniqueId, address indexed giftContract, address indexed redeemer, string reason);
     event UniqueIdActiveStatusUpdated(string uniqueId, bool active, bool usesDefaultState);
     event UniqueIdRedeemed(string uniqueId);
     event UniqueIdActiveStatusRejected(uint256 index, string uniqueId, string reason);
@@ -454,15 +456,33 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     //
     /// @notice Route a redemption from the Pente privacy group to the gift contract.
     ///         The gift contract decides how to handle the redemption — single-use,
-    ///         multi-use, NFT mint, etc. If the gift contract reverts, the entire
-    ///         Pente transition rolls back atomically.
+    ///         multi-use, NFT mint, etc.
+    ///
+    ///         CodeManager marks the UID as REDEEMED before calling the gift contract.
+    ///         If the gift contract reverts, CodeManager catches the error and emits
+    ///         a RedemptionFailed event instead of propagating the revert. This
+    ///         prevents a faulty or misconfigured gift contract from rolling back
+    ///         the entire Pente transition (which would also undo private state
+    ///         changes in PrivateComboStorage).
+    ///
+    ///         The UID remains terminally REDEEMED in CodeManager regardless of
+    ///         gift contract outcome. Admin monitoring should watch for
+    ///         RedemptionFailed events and resolve the gift-contract side effect
+    ///         (e.g., manual NFT transfer) separately.
     function recordRedemption(string memory uniqueId, address redeemer) external onlyAuthorizedPrivacyGroup {
         (address giftContract, , ) = getUniqueIdDetails(uniqueId);
         require(isUniqueIdActive(uniqueId), "UniqueId is inactive");
-        IRedeemable(giftContract).recordRedemption(uniqueId, redeemer);
+
         _uniqueIdStatuses[keccak256(bytes(uniqueId))] = UniqueIdStatus.REDEEMED;
         emit UniqueIdRedeemed(uniqueId);
-        emit RedemptionRouted(uniqueId, giftContract, redeemer);
+
+        try IRedeemable(giftContract).recordRedemption(uniqueId, redeemer) {
+            emit RedemptionRouted(uniqueId, giftContract, redeemer);
+        } catch Error(string memory reason) {
+            emit RedemptionFailed(uniqueId, giftContract, redeemer, reason);
+        } catch {
+            emit RedemptionFailed(uniqueId, giftContract, redeemer, "Unknown gift contract error");
+        }
     }
 
     /// @notice Update active state overrides for one or more UIDs.

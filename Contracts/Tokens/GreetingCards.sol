@@ -61,14 +61,14 @@ pragma solidity >=0.8.2 <0.9.0;
   │  This Contract → NFT mint + vault + IRedeemable                 │
   │  PrivateComboStorage → hash storage + private execution state   │
   │                                                                 │
-  │  Redemption is atomic: ComboStorage (Pente private)             │
-  │  verifies the code hash, checks private active state,           │
-  │  then emits PenteExternalCall → CodeManager validates           │
-  │  public active status and routes to this contract's             │
-  │  recordRedemption() → NFT transfers from vault to               │
-  │  redeemer. If this contract reverts (e.g. already               │
-  │  redeemed), the entire Pente transition rolls back —            │
-  │  including the private state updates in ComboStorage.           │
+  │  Redemption flow: ComboStorage (Pente private) verifies         │
+  │  the code hash, checks private active state, then emits         │
+  │  PenteExternalCall → CodeManager marks UID as REDEEMED          │
+  │  and calls this contract's recordRedemption() via               │
+  │  try/catch → NFT transfers from vault to redeemer.              │
+  │  If this contract reverts, CodeManager catches it and           │
+  │  emits RedemptionFailed — private state is preserved.           │
+  │  Admin recovers via syncRedemption(uniqueId, redeemer).         │
   │                                                                 │
   │  Active-state authority lives in PrivateComboStorage            │
   │  for execution-time decisions. Only UIDs with mirroring         │
@@ -125,14 +125,18 @@ pragma solidity >=0.8.2 <0.9.0;
   │  2. CodeManager.recordRedemption(uniqueId, redeemer)            │
   │     → Resolves uniqueId → gift contract                         │
   │     → Verifies public active state mirror                       │
-  │     → Calls this contract's recordRedemption()                  │
   │     → Marks UID terminally redeemed on CodeManager              │
+  │     → Calls this contract's recordRedemption() via try/catch    │
   │  3. recordRedemption(uniqueId, redeemer)                        │
   │     → Validates: in vault                                       │
   │     → Transfers NFT from vault to redeemer                      │
   │     → tokenURI switches to redeemed metadata                    │
-  │     → If reverts → entire Pente transition rolls back           │
-  │       (private deletes + redeemed marks are undone)             │
+  │     → If reverts → CodeManager catches it and emits             │
+  │       RedemptionFailed (private state is preserved)             │
+  │                                                                 │
+  │  Recovery: if recordRedemption fails, admin calls               │
+  │  syncRedemption(uniqueId, redeemer) to retry the NFT            │
+  │  transfer. Requires UID is REDEEMED on CodeManager.             │
   │                                                                 │
   │  Redeemer address is supplied directly — NOT assumed            │
   │  to be msg.sender. Supports meta-transactions and               │
@@ -202,6 +206,11 @@ pragma solidity >=0.8.2 <0.9.0;
   │    Transfers the NFT out of the vault to redeemer.              │
   │    Emits: CardRedeemed(tokenId, uniqueId, redeemer)             │
   │                                                                 │
+  │  syncRedemption(uniqueId, redeemer)  [onlyOwner]                │
+  │    Admin recovery for failed recordRedemption calls.            │
+  │    Verifies UID is REDEEMED on CodeManager, NFT in vault.       │
+  │    Emits: RedemptionSynced(tokenId, uniqueId, redeemer)         │
+  │                                                                 │
   │  ── Event Indexing ──────────────────────────────────────────   │
   │                                                                 │
   │  Listen for these events to track state changes:                │
@@ -211,6 +220,9 @@ pragma solidity >=0.8.2 <0.9.0;
   │    CardRedeemed(tokenId, uniqueId, redeemer)                    │
   │      → Card claimed. tokenURI() now returns redeemed            │
   │        metadata.                                                │
+  │    RedemptionSynced(tokenId, uniqueId, redeemer)                │
+  │      → Admin recovery: NFT transferred after a failed           │
+  │        recordRedemption was caught by CodeManager.              │
   │    Transfer(from, to, tokenId)                                  │
   │      → Standard ERC721. from=0x0 is mint,                       │
   │        from=contract is redemption claim.                       │
@@ -301,6 +313,7 @@ contract CryftGreetingCards is
     // ──────────────────── Events ────────────────────────
     event BatchPurchased(address indexed buyer, uint256 startTokenId, uint256 quantity);
     event CardRedeemed(uint256 indexed tokenId, string uniqueId, address indexed redeemer);
+    event RedemptionSynced(uint256 indexed tokenId, string uniqueId, address indexed redeemer);
     event PriceUpdated(uint256 newPrice);
     event SupplyRegistered(uint256 supply);
     event BaseURIUpdated(string newBaseURI);
@@ -528,8 +541,9 @@ contract CryftGreetingCards is
     /// @inheritdoc IRedeemable
     /// @dev Records redemption by transferring the NFT from vault to redeemer.
     ///      Only CodeManager (acting as Pente router) can call this.
-    ///      Reverts if already redeemed or invalid — causing the
-    ///      Pente transition to roll back atomically.
+    ///      Reverts if already redeemed or invalid — CodeManager catches
+    ///      the revert via try/catch and emits RedemptionFailed.
+    ///      The UID remains terminally REDEEMED at every layer regardless.
     function recordRedemption(string memory uniqueId, address redeemer) external override {
         require(msg.sender == codeManagerAddress, "Only CodeManager");
         (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
@@ -681,6 +695,33 @@ contract CryftGreetingCards is
 
     function setPaused(bool paused_) external onlyOwner {
         paused = paused_;
+    }
+
+    /// @notice Sync a redemption that was marked REDEEMED on CodeManager but
+    ///         failed to process on this contract (caught by CodeManager's
+    ///         try/catch). Transfers the NFT from vault to the intended redeemer.
+    ///
+    ///         Safety checks:
+    ///           - Only owner can call
+    ///           - UID must be terminally REDEEMED on CodeManager
+    ///           - NFT must still be in vault (not already transferred)
+    ///
+    ///         Admin should monitor for CodeManager's RedemptionFailed events
+    ///         and call this function to complete the gift-contract side effect.
+    function syncRedemption(string calldata uniqueId, address redeemer) external onlyOwner {
+        require(redeemer != address(0), "Redeemer cannot be zero address");
+        require(
+            ICodeManager(codeManagerAddress).isUniqueIdRedeemed(uniqueId),
+            "UniqueId not redeemed on CodeManager"
+        );
+
+        (bool valid, uint256 tokenId) = _parseTokenId(uniqueId);
+        require(valid && _ownerOf(tokenId) != address(0), "Invalid uniqueId");
+        require(ownerOf(tokenId) == address(this), "Not in vault");
+
+        unchecked { ++totalRedeems; }
+        _transfer(address(this), redeemer, tokenId);
+        emit RedemptionSynced(tokenId, uniqueId, redeemer);
     }
 
     // ════════════════════════════════════════════════════

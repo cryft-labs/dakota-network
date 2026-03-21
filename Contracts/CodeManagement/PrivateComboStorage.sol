@@ -50,6 +50,9 @@ pragma solidity >=0.8.2 <0.9.0;
   │  Redemption checks private UID state first, so                  │
   │  inactive or redeemed UIDs are skipped before any               │
   │  external redemption transition is emitted.                     │
+  │  CodeManager catches gift contract reverts via                  │
+  │  try/catch — private state is never rolled back                 │
+  │  by a faulty downstream contract.                               │
   │                                                                 │
   │  ── Per-UID Manager Delegation ───────────────────────────────  │
   │                                                                 │
@@ -739,9 +742,12 @@ contract PrivateComboStorage {
     ///         Entries that pass local validation are deleted from private
     ///         state, marked redeemed locally, and routed to the public chain.
     ///         Inactive or already redeemed UIDs are skipped before they can
-    ///         hit the external transition. If the gift contract reverts for
-    ///         any routed entry, the entire Pente transition still rolls back —
-    ///         including the local redeemed marking and deletes above.
+    ///         hit the external transition. CodeManager marks the UID as
+    ///         terminally REDEEMED then calls the gift contract via try/catch.
+    ///         If the gift contract reverts, CodeManager emits a
+    ///         RedemptionFailed event instead of propagating the revert, so
+    ///         the Pente transition succeeds and private state changes
+    ///         (code-hash deletion, REDEEMED marking) are preserved.
     /// @param pins      Array of PINs (assigned during storage).
     /// @param codeHashes Array of keccak256(code) hashes.
     /// @param redeemers  Array of redeemer addresses to receive the NFTs.
@@ -820,9 +826,11 @@ contract PrivateComboStorage {
 
             // Route redemption to public chain via CodeManager → gift contract.
             // Only entries that pass local validation reach this point.
-            // CodeManager mirrors redeemed state publicly, and the gift contract
-            // enforces redemption finality. If either layer reverts, the entire
-            // Pente transition rolls back — including the local updates above.
+            // CodeManager marks the UID as REDEEMED before calling the gift
+            // contract via try/catch. If the gift contract reverts, CodeManager
+            // emits RedemptionFailed but does NOT propagate the revert — the
+            // Pente transition succeeds and all private state changes above
+            // (code-hash deletion, REDEEMED marking) are preserved.
             emit PenteExternalCall(
                 CODE_MANAGER,
                 abi.encodeWithSignature(

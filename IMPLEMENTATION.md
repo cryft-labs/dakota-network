@@ -68,7 +68,7 @@ The patented system uses a three-layer architecture. No single layer holds all t
 | Layer | Contract | Responsibility |
 |-------|----------|----------------|
 | **Public Registry / Mirror** | CodeManager | UID registration, deterministic ID generation, governance (2/3 supermajority), public mirrored UID state, and Pente routing. Tracks sparse active-state overrides plus terminal redeemed state. Only UIDs with mirroring enabled in PrivateComboStorage propagate state changes here — absence of a public override (USE_DEFAULT_ACTIVE_STATE) may indicate private-only management. |
-| **Public Authority** | Gift Contract (IRedeemable) | Authority on redemption finality and asset transfer. Decides how redemption works (single-use, multi-use, NFT transfer, etc.). If it reverts, the Pente transition rolls back atomically — including private state updates in ComboStorage. |
+| **Public Authority** | Gift Contract (IRedeemable) | Authority on redemption side effects and asset transfer. Decides how redemption works (single-use, multi-use, NFT transfer, etc.). Called by CodeManager via try/catch — reverts are caught and logged as RedemptionFailed events, not propagated. The UID remains terminally REDEEMED at every layer regardless. |
 | **Private Storage / Execution** | PrivateComboStorage | Hash-only code storage within a Pente privacy group. PINs are contract-assigned routing keys (not part of the hash). Verifies codes via hash comparison, tracks execution-time UID active state privately, and selectively mirrors valid status changes to CodeManager based on per-UID `mirrorStatuses` configuration. Supports per-UID manager delegation for fine-grained active-state control. Requires contract-identifier whitelisting before codes can be stored. All configuration is compile-time constants — changes require a contract upgrade via proxy. |
 
 ### Key Design Principles
@@ -78,7 +78,7 @@ The patented system uses a three-layer architecture. No single layer holds all t
 - **Selective public mirroring.** Each UID's `mirrorStatuses` flag (set at store time) controls whether active-state changes propagate to CodeManager. When mirroring is disabled, the UID's active/frozen state remains private — CodeManager's public view returns `DEFAULT_ACTIVE_STATE` (active), but the private execution layer may independently freeze or block the UID.
 - **Per-UID manager delegation.** Each UID can optionally have a dedicated manager address authorized to update its active state in ComboStorage. If no manager is set, only ADMIN or AUTHORIZED can act.
 - **Public mirroring.** CodeManager mirrors private active-state changes publicly (for mirrored UIDs) and records redeemed UIDs as terminal state.
-- **Gift contract finality.** The gift contract still decides whether the routed redemption completes successfully. If it reverts, the entire Pente transition rolls back atomically.
+- **Gift contract isolation.** CodeManager marks the UID as REDEEMED before calling the gift contract, and wraps the call in try/catch. If the gift contract reverts (bug, misconfiguration), CodeManager emits a RedemptionFailed event instead of propagating the revert. The Pente transition succeeds and all private state changes are preserved. Admin monitoring should watch for RedemptionFailed events and resolve the gift-contract side effect manually.
 - **Privacy-preserving verification.** The Pente privacy group verifies codes privately, then triggers public state updates via `PenteExternalCall`.
 - **External calls.** The privacy group must be created with `externalCallsEnabled: "true"` (string, not boolean) so that `PenteExternalCall` events are processed by Paladin and forwarded to the base ledger.
 - **EVM version.** Pente privacy groups run `shanghai` EVM. Public chain may run a later EVM version. Private contracts must compile with `--evm-version shanghai`.
@@ -674,10 +674,11 @@ CodeManager.recordRedemption(uniqueId, redeemer) [onlyAuthorizedPrivacyGroup]:
   1. Calls getUniqueIdDetails(uniqueId) → resolves to gift contract
   2. Verifies the public UID state is still active
      (if mirror was disabled, this defaults to active)
-  3. Calls IRedeemable(giftContract).recordRedemption(uniqueId, redeemer)
-  4. Marks the UID terminally redeemed in public state (REDEEMED enum)
-  5. Emits UniqueIdRedeemed(uniqueId)
-  6. Emits RedemptionRouted(uniqueId, giftContract, redeemer)
+  3. Marks the UID terminally redeemed in public state (REDEEMED enum)
+  4. Emits UniqueIdRedeemed(uniqueId)
+  5. Calls giftContract.recordRedemption via try/catch:
+     • Success → emits RedemptionRouted(uniqueId, giftContract, redeemer)
+     • Failure → emits RedemptionFailed(uniqueId, giftContract, redeemer, reason)
          │
          ▼
 Gift Contract.recordRedemption(uniqueId, redeemer) [onlyCodeManager]:
@@ -686,10 +687,11 @@ Gift Contract.recordRedemption(uniqueId, redeemer) [onlyCodeManager]:
   3. Transfers NFT from vault (contract) to redeemer
   4. Increments totalRedeems
   5. Emits CardRedeemed(tokenId, uniqueId, redeemer)
-  6. If any require fails → revert → entire Pente transition rolls back
-     → the delete in PrivateComboStorage is undone
-     → the private redeemed mark is undone
-     → code remains usable
+  6. If any require fails → revert → caught by CodeManager
+     → RedemptionFailed event emitted
+     → UID remains REDEEMED at all layers
+     → private state (code-hash deletion) is preserved
+     → admin resolves gift-contract side effect manually
 ```
 
 ### 12.2 Calling redeemCodeBatch
@@ -720,21 +722,52 @@ curl -X POST http://localhost:31548/rpc \
 
 ### 12.3 Atomicity Guarantee
 
-The key property: **if the gift contract reverts, the entire Pente transition rolls back.** This means:
-- The `delete` of the hash entry in PrivateComboStorage is undone
-- The `pinSlotCount` decrement is undone
-- The private redeemed mark is undone
-- The code remains usable for a future redemption attempt
-- No partial state changes on either chain
+The key property: **CodeManager marks the UID as REDEEMED before calling the gift contract, and wraps the gift contract call in try/catch.** This means:
+- If the gift contract succeeds: normal flow, NFT transferred, all state consistent
+- If the gift contract reverts: CodeManager emits `RedemptionFailed` but does NOT propagate the revert
+- The Pente transition always succeeds for locally-validated entries
+- Private state changes (code-hash deletion, REDEEMED marking) are preserved
+- The UID is terminally REDEEMED at every layer (private, CodeManager, gift contract may be inconsistent)
+- Admin should monitor `RedemptionFailed` events and resolve the gift-contract side effect manually (e.g., manual NFT transfer)
 
-### 12.4 Redeemer Address
+**Why this is safe:** PrivateComboStorage already validates active/frozen/redeemed state locally before emitting the external call. The only scenario where the gift contract can revert is a bug, misconfiguration, or race condition on the gift contract itself — not a state the private contract could have prevented. By catching the revert, CodeManager ensures that a faulty gift contract never poisons the Pente privacy group's state.
+
+### 12.4 Redemption Recovery — syncRedemption
+
+When CodeManager's try/catch catches a gift contract revert, the UID is terminally REDEEMED at every layer but the gift contract never processed its side effect (e.g., the NFT was never transferred from the vault). The gift contract exposes a dedicated admin recovery function for this scenario:
+
+```solidity
+function syncRedemption(string calldata uniqueId, address redeemer) external onlyOwner
+```
+
+**Safety checks:**
+- Only the contract owner can call it
+- Verifies `isUniqueIdRedeemed(uniqueId)` on CodeManager — prevents unauthorized transfers
+- Verifies the NFT is still in the vault (not already transferred)
+
+**Recovery flow:**
+1. Admin monitors for `RedemptionFailed` events on CodeManager
+2. Identifies the `uniqueId` and `redeemer` from the event data
+3. Diagnoses and fixes the root cause if applicable (e.g., contract bug, state issue)
+4. Calls `syncRedemption(uniqueId, redeemer)` on the gift contract
+5. NFT transfers from vault to redeemer
+6. `RedemptionSynced(tokenId, uniqueId, redeemer)` event is emitted
+
+**Important:** `syncRedemption` emits `RedemptionSynced` (not `CardRedeemed`) so indexers and monitoring can distinguish normal redemptions from admin-recovered ones.
+
+```bash
+# Example: recover a failed redemption
+cast send <GIFT_CONTRACT> "syncRedemption(string,address)" "0xabc...-42" "0xRedeemer..." --private-key <OWNER_KEY>
+```
+
+### 12.5 Redeemer Address
 
 The redeemer address is an explicit parameter, **not** `msg.sender`. This supports:
 - Meta-transactions (someone else pays gas)
 - User-specified recipient wallets (redeem to a different address)
 - Sponsored/delegated redemptions
 
-### 12.5 Failure Modes
+### 12.6 Failure Modes
 
 | Failure | Cause | Fix |
 |---------|-------|-----|
@@ -766,6 +799,7 @@ The redeemer address is an explicit parameter, **not** `msg.sender`. This suppor
 | `"Invalid uniqueId in batch"` during `storeDataBatch` | UIDs not registered on CodeManager | Check `validateUniqueId(uid)` on CodeManager | Call `registerUniqueIds` or `buy()` first |
 | `"No matching uniqueId found."` during redemption | UID not registered on CodeManager | Call `getUniqueIdDetails(uid)` — should revert | Register UIDs first |
 | `"Not in vault"` during redemption | Token already redeemed | Check `ownerOf(tokenId)` — not the contract address | Code was already used; cannot re-redeem |
+| `RedemptionFailed` event on CodeManager | Gift contract reverted during `recordRedemption` | Read event `reason` field; check gift contract state | Fix root cause, then call `syncRedemption(uniqueId, redeemer)` on the gift contract |
 | `"UniqueId is inactive"` during redemption | Private execution state marks the UID inactive | Check private status flow and CodeManager mirror | Re-enable via `setUniqueIdActiveBatch` if appropriate |
 | `"Counter drift: CodeManager out of sync"` during `buy()` | External registration changed the counter | Check `getIdentifierCounter` on CodeManager | Ensure only `buy()` registers UIDs for this contract, or adjust `maxSaleSupply` |
 | `"Payment must equal price + registration fee"` during `buy()` | Incorrect `msg.value` | Calculate: `(pricePerCard * qty) + (registrationFee * qty)` | Send exact amount |
@@ -792,6 +826,16 @@ const isAuth = await codeManager.isAuthorizedPrivacyGroup(privacyGroupAddress);
 **Check card status (single call):**
 ```javascript
 const [tokenId, holder, frozen, redeemed] = await giftContract.getCardStatus("0xabc...-1");
+```
+
+**Check if a UID is redeemed on CodeManager:**
+```javascript
+const isRedeemed = await codeManager.isUniqueIdRedeemed("0xabc...-1");
+```
+
+**Recover a failed redemption:**
+```javascript
+await giftContract.syncRedemption("0xabc...-1", redeemerAddress);
 ```
 
 **Check identifier counter:**
@@ -821,7 +865,7 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 
 8. **Redeemed state is derived.** A card is redeemed if the token exists AND is not held by the vault (the contract itself). Once transferred out, the transfer guard prevents returning it.
 
-9. **Atomicity is the safety net.** If the gift contract reverts during `recordRedemption` (frozen, already redeemed, invalid UID), the entire Pente transition rolls back. The code hash deletion in PrivateComboStorage is undone. No manual cleanup needed.
+9. **Gift contract isolation is the safety net.** CodeManager wraps the gift contract call in try/catch. If the gift contract reverts during `recordRedemption` (frozen, already redeemed, bug), CodeManager emits a `RedemptionFailed` event but does NOT roll back the Pente transition. The code hash deletion in PrivateComboStorage and the REDEEMED marking in CodeManager are preserved. Admin calls `syncRedemption(uniqueId, redeemer)` on the gift contract to complete the side effect after diagnosing the issue.
 
 10. **Whitelist contract identifiers before storing.** `storeDataBatch` rejects codes whose contract identifier is not whitelisted. Call `setContractIdentifierWhitelist` first. This is a per-PrivateComboStorage setting — each deployment needs its own whitelisting.
 
@@ -851,6 +895,7 @@ const [contractIdentifier, counter] = await codeManager.getIdentifierCounter(gif
 □ Codes generated off-chain: code → codeHash = keccak256(code)
 □ storeDataBatch succeeds → PINs assigned → validateUniqueIdsOrRevert passes
 □ redeemCodeBatch succeeds → recordRedemption routes to gift contract → NFT transferred
+□ If RedemptionFailed emitted → syncRedemption(uniqueId, redeemer) recovers the NFT transfer
 □ tokenURI switches from unredeemed to redeemed metadata
 ```
 
