@@ -808,7 +808,7 @@ Before deploying `PrivateComboStorage` (or any implementation contract) into the
 1. **CodeManager is deployed** on the public chain and its proxy address is known
 2. **Privacy group is created** with `externalCallsEnabled: "true"` and verified via `pgroup_getGroupById`
 3. **`CODE_MANAGER` constant is set** in the `PrivateComboStorage` source to the CodeManager proxy address
-4. **`ADMIN` and `AUTHORIZED` constants are set** to Paladin-signable addresses (see [Section 11](#11-signer--admin-strategy))
+4. **`ADMIN` constant is set** to a Paladin-signable address; **`AUTHORIZED` constant is set** to the external EOA used for relay signing (see [Section 11](#11-signer--admin-strategy))
 5. **`TRUSTED_FORWARDER` constant is set** to the PrivateMetaTxRelay proxy address (if relay is already deployed), or a placeholder address to be updated later via proxy upgrade after relay deployment (see [Section 17](#17-private-meta-transaction-relay--eip-712--erc-2771-architecture))
 
 ### 7.2 Compile for Shanghai EVM
@@ -1255,13 +1255,13 @@ Verify the access control constants match your intended addresses. Use the same 
 # Check AUTHORIZED — same pgroup_call pattern, change function name to "AUTHORIZED"
 ```
 
-Both should return Paladin-signable addresses (see [Section 11](#11-signer--admin-strategy)).
+`ADMIN` should return a Paladin-signable address. `AUTHORIZED` should return the external EOA whose private key is held by the API backend for relay signing (see [Section 11](#11-signer--admin-strategy)).
 
 ### 10.3 Verification Checklist
 
 - [ ] `CODE_MANAGER()` returns the correct CodeManager proxy address
 - [ ] `ADMIN()` returns a Paladin-signable admin address
-- [ ] `AUTHORIZED()` returns the meta-tx processing service address (Paladin-signable)
+- [ ] `AUTHORIZED()` returns the external EOA for relay-based batch operations (key held by API backend)
 - [ ] `TRUSTED_FORWARDER()` returns the PrivateMetaTxRelay proxy address
 - [ ] `isTrustedForwarder(relayProxyAddr)` returns `true`
 - [ ] Privacy group has `externalCallsEnabled: "true"` (string) — verified via `pgroup_getGroupById`
@@ -1283,9 +1283,15 @@ Observed Paladin-derived signer addresses:
 - `0x937e2ac50b1f7a0e60da888a0cba52db29535508`
 - `0xa907edf98de35db39cdbb42e1a6bdabe7e6c3c1b`
 
-**Rule:** If a private contract uses `msg.sender`-based authorization (e.g., `require(msg.sender == ADMIN || msg.sender == AUTHORIZED)`), both `ADMIN` and `AUTHORIZED` must be addresses that Paladin can produce as `msg.sender` — not unrelated external EOAs.
+**Rule (without relay):** If a private contract uses `msg.sender`-based authorization (e.g., `require(msg.sender == ADMIN || msg.sender == AUTHORIZED)`), both `ADMIN` and `AUTHORIZED` must be addresses that Paladin can produce as `msg.sender` — not unrelated external EOAs.
 
-> `ADMIN` is the administrative authority (configuration, whitelisting, manager assignment). `AUTHORIZED` is the **meta-transaction processing service** — the identity responsible for receiving forwarded store/redeem requests, recovering the original caller's intent, and executing the actual `storeDataBatch` / `redeemCodeBatch` calls within the privacy group. The Paladin signer provides the `msg.sender` authority for both roles. In a single-node deployment, `ADMIN` and `AUTHORIZED` may resolve to the same Paladin signer address, but they represent distinct operational roles.
+**Rule (with PrivateMetaTxRelay):** Only `ADMIN` must be a Paladin-signable address, because admin-only functions (`setContractIdentifierWhitelist`, `setUniqueIdManagersBatch`, `setUniqueIdActiveBatch`) are called **directly** via Paladin (msg.sender = Paladin signer = ADMIN). `AUTHORIZED` can be **any external EOA** — its authority flows through the relay via EIP-712 signature → `ecrecover` → ERC-2771 → `_msgSender()`. The AUTHORIZED private key is held by the API backend server for off-chain signing, never by Paladin. See [Section 17](#17-private-meta-transaction-relay--eip-712--erc-2771-architecture) for the full relay architecture.
+
+> **Operational model — dual access paths:**
+> - **ADMIN** uses the **direct path**: Paladin calls PrivateComboStorage directly → `msg.sender` = Paladin signer = ADMIN constant. Used for configuration, whitelisting, and manager assignment. Can also call `storeDataBatch` / `redeemCodeBatch`.
+> - **AUTHORIZED** uses the **relay path**: API backend signs EIP-712 ForwardRequest with the AUTHORIZED private key → submits to PrivateMetaTxRelay via Paladin → relay verifies signature → ERC-2771 forwards → `_msgSender()` = AUTHORIZED. Used for batch store/redeem operations on behalf of end users.
+>
+> In a single-node deployment, ADMIN = Paladin signer and AUTHORIZED = external EOA are distinct addresses serving distinct operational roles.
 
 ### 11.2 Hard-Coded Constants vs. Storage-Based Auth
 
@@ -1295,18 +1301,19 @@ The current `PrivateComboStorage` uses compile-time constant addresses for acces
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | **Flexibility**           | Cannot change after deployment. Fixed at compile time.                                                                                                         | Can be updated via `authorize()` / `transferAdmin()` functions.          |
 | **Upgrade path**          | Requires new implementation + proxy upgrade to change roles.                                                                                                   | Role changes are a simple transaction.                                   |
-| **Paladin compatibility** | `ADMIN` (admin) and `AUTHORIZED` (meta-tx processor) must be set to Paladin-signable addresses before compilation. If wrong, requires full redeployment cycle. | Roles can be reassigned to any address at runtime.                       |
+| **Paladin compatibility** | `ADMIN` must be a Paladin-signable address. `AUTHORIZED` can be any external EOA when using the meta-transaction relay (see Section 17). If ADMIN is wrong, requires full redeployment cycle. | Roles can be reassigned to any address at runtime.                       |
 | **Security**              | Simpler — no runtime mutation surface.                                                                                                                         | More surface area — role management functions must be access-controlled. |
 | **Recommended for**       | Stable deployments where roles are known in advance.                                                                                                           | Environments with dynamic API-driven authorization needs.                |
 
-**Consequence:** If the `ADMIN` or `AUTHORIZED` constant is set to an external address whose private key is not in Paladin's keystore:
-- That address is effectively unusable for privileged private-group actions
-- It may exist as an on-chain value, but Paladin cannot act as that address
-- A new implementation must be compiled with the correct addresses and upgraded via the proxy
+**Consequence:** If the `ADMIN` constant is set to an external address whose private key is not in Paladin's keystore:
+- That address is effectively unusable for admin-only private-group actions (whitelisting, manager assignment)
+- A new implementation must be compiled with the correct address and upgraded via the proxy
+
+**Note:** This constraint does **not** apply to `AUTHORIZED` when using the PrivateMetaTxRelay. The AUTHORIZED key is an external EOA whose private key is held by the API backend — not in Paladin's keystore. Authority flows through EIP-712 → relay → ERC-2771, bypassing the need for Paladin to sign as AUTHORIZED.
 
 ### 11.3 External Admin Key Not in Paladin's Keystore
 
-> **Production lesson:** An external admin address that is not signable by Paladin is effectively unusable for privileged private-group actions. It may exist as a stored owner value, but Paladin cannot submit transactions from that address unless the key is configured in Paladin or a supported external signing path is integrated.
+> **Production lesson:** An external admin address that is not signable by Paladin is effectively unusable for admin-only functions (`onlyAdmin` modifier). However, for the `AUTHORIZED` role, this constraint is intentionally bypassed by the PrivateMetaTxRelay — AUTHORIZED signs EIP-712 off-chain and its authority flows through the relay's ERC-2771 forwarding. Only `ADMIN` must be in Paladin's keystore.
 
 **Rule:** For any admin flow that must operate through Paladin, the admin address must be a Paladin-signable address.
 
@@ -1387,13 +1394,15 @@ Example: `0xf3cdb5de53edc04e1aea1a211ac586bb84faf8e4`
 `PrivateComboStorage` uses compile-time constant addresses for access control:
 
 - **`ADMIN`** — The administrative authority. Controls configuration functions (`setContractIdentifierWhitelist`, `setUniqueIdManagersBatch`, `setUniqueIdActiveBatch`). Also permitted to call `storeDataBatch` and `redeemCodeBatch`.
-- **`AUTHORIZED`** — The meta-transaction processing service. This is the identity responsible for processing and recovering forwarded store/redeem requests on behalf of external callers. It calls `storeDataBatch` and `redeemCodeBatch` within the privacy group, with the Paladin signer providing the `msg.sender` authority for the actual transactions.
+- **`AUTHORIZED`** — The batch processing key. This is an **external EOA** whose private key is held by the API backend server. It calls `storeDataBatch` and `redeemCodeBatch` **through the PrivateMetaTxRelay** — signing EIP-712 ForwardRequests off-chain, which the relay verifies and forwards via ERC-2771. AUTHORIZED does **not** need to be a Paladin-signable address.
 
 Both are compile-time constants set in the contract source before compilation and cannot be changed at runtime — changing them requires deploying a new implementation and upgrading the proxy.
 
 There are no `authorize()`, `deauthorize()`, or `transferAdmin()` functions. All configuration updates are performed via contract upgrade.
 
-Both `ADMIN` and `AUTHORIZED` must be Paladin-signable addresses (see [Section 11](#11-signer--admin-strategy)).
+`ADMIN` must be a Paladin-signable address (see [Section 11](#11-signer--admin-strategy)). `AUTHORIZED` can be any external EOA — its authority flows through the relay (see [Section 17](#17-private-meta-transaction-relay--eip-712--erc-2771-architecture)).
+
+> **AUTHORIZED key custody:** The private key for the AUTHORIZED address must be securely held by the API backend server (e.g., via environment variable `AUTHORIZED_PRIVATE_KEY` or a KMS). It is used to sign EIP-712 `ForwardRequest` structs off-chain. This key is never imported into Paladin's keystore.
 
 ### 12.4 Whitelist Contract Identifiers on PrivateComboStorage
 
@@ -1477,7 +1486,7 @@ The complete authorization sequence:
 2.  Create ext-calls privacy group (pgroup_createGroup with "externalCallsEnabled": "true")
 3.  Verify group config (pgroup_getGroupById) and record group contract address
 4.  Compile PrivateComboStorage with correct CODE_MANAGER, ADMIN, AUTHORIZED, TRUSTED_FORWARDER constants
-      (ADMIN and AUTHORIZED must be Paladin-signable addresses)
+      (ADMIN must be Paladin-signable; AUTHORIZED = external EOA for relay signing)
       (TRUSTED_FORWARDER = PrivateMetaTxRelay proxy address — set after step 10b or use placeholder + upgrade)
 5.  Deploy implementation in privacy group (pgroup_sendTransaction)
 6.  Poll receipt for implementation address (ptx_getTransactionReceiptFull)
