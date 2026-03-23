@@ -77,7 +77,7 @@ contract PrivateMetaTxRelay is IPrivateMetaTxRelay {
     /// @dev Target contract — PrivateComboStorage proxy address within
     ///      the Pente privacy group. All forwarded calls are routed here.
     ///      Update via contract upgrade.
-    address public constant PRIVATE_COMBO_STORAGE = address(0x000000000000000000000000000000000000c0b0);
+    address public constant PRIVATE_COMBO_STORAGE = address(0x000000000000000000000000000000000000c0DE);
 
     // ── EIP-712 Type Hashes ────────────────────────────────
 
