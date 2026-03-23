@@ -7,55 +7,55 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 /*
-   ___       _            __       __  ___     __       _____       ___       __
-  / _ \____(_)  _____ _  / /____  /  |/  /__ / /____ _/_  _/_ __ / _ \___ _/ /__ ___ __
- / ___/ __/ / |/ / _ `/ / __/ -_) /|_/ / -_) __/ _ `/ / / \\ \/ / , _/ -_) / _ `/ // /
-/_/  /_/ /_/|___/\_,_/  \__/\__/_/  /_/\__/\__/\_,_/ /_/ /___/ /_/|_|\__/_/\_,_/\_, /
-                                                                                /___/ By: CryftCreator
+   ___      _            __        ___       __
+  / _ \____(_)  _____ _ / /____   / _ \___ _/ /__ __  _
+ / ___/ __/ / |/ / _ `// __/ -_) /   _/ -_) / _ `/ // /
+/_/  /_/ /_/|___/\_,_/ \__/\__/ /_/|_|\__/_/\_,_/\_, /
+                                                /___/ By: CryftCreator
 
   Version 1.0 — Private Meta-Transaction Relay  [PENTE PRIVACY GROUP]
 
-  ┌──────────────── Contract Architecture ──────────────────────────────┐
-  │                                                                     │
-  │  DEPLOYED INSIDE A PALADIN PENTE PRIVACY GROUP.                     │
-  │  All state is private to privacy group members.                     │
-  │  All configuration is compile-time constant — changes               │
-  │  require a contract upgrade via proxy.                              │
-  │                                                                     │
-  │  Meta-transaction relay for PrivateComboStorage. Enables            │
-  │  gas-covered operations where the Paladin signer pays gas           │
-  │  on behalf of end users. Users sign EIP-712 typed data              │
-  │  off-chain; the admin (Paladin signer) submits the signed           │
-  │  payload to this relay, which recovers the original signer          │
-  │  and forwards the call using the ERC-2771 trusted forwarder         │
-  │  pattern.                                                           │
-  │                                                                     │
-  │  Flow:                                                              │
-  │    1. User signs ForwardRequest (EIP-712) off-chain                 │
-  │    2. Any privacy group member calls execute(request, signature)    │
-  │    3. Relay verifies signature, increments nonce                    │
-  │    4. Relay calls PrivateComboStorage with appended sender          │
-  │       (ERC-2771: last 20 bytes of calldata = original signer)      │
-  │    5. PrivateComboStorage extracts real sender via _msgSender()     │
-  │       and enforces its own access control (ADMIN / AUTHORIZED /    │
-  │       UID manager) against the recovered signer                    │
-  │                                                                     │
-  │  Security model:                                                    │
-  │    • The relay itself is open — any privacy group member may        │
-  │      submit signed requests on behalf of a signer                  │
-  │    • Authorization is enforced by PrivateComboStorage, not the      │
-  │      relay — the recovered signer must satisfy the target           │
-  │      function's access control (onlyAdmin / onlyAuthorized /       │
-  │      per-UID manager check)                                        │
-  │    • EIP-712 signatures with per-signer nonces prevent replay       │
-  │    • Deadline enforcement prevents stale request execution          │
-  │    • EIP-2 low-s check prevents signature malleability              │
-  │    • ERC-2771 appended sender preserves authorization semantics     │
-  │      in PrivateComboStorage's _msgSender()                         │
-  │                                                                     │
-  │  Upgradeable via TransparentUpgradeableProxy (OZ 5.2).             │
-  │  Patent: U.S. App. Ser. No. 18/930,857                              │
-  └─────────────────────────────────────────────────────────────────────┘
+  ┌──────────────── Contract Architecture ───────────────────────────────┐
+  │                                                                      │
+  │  DEPLOYED INSIDE A PALADIN PENTE PRIVACY GROUP.                      │
+  │  All state is private to privacy group members.                      │
+  │  All configuration is compile-time constant — changes                │
+  │  require a contract upgrade via proxy.                               │
+  │                                                                      │
+  │  Meta-transaction relay for PrivateComboStorage. Enables             │
+  │  gas-covered operations where the Paladin signer pays gas            │
+  │  on behalf of end users. Users sign EIP-712 typed data               │
+  │  off-chain; the admin (Paladin signer) submits the signed            │
+  │  payload to this relay, which recovers the original signer           │
+  │  and forwards the call using the ERC-2771 trusted forwarder          │
+  │  pattern.                                                            │
+  │                                                                      │
+  │  Flow:                                                               │
+  │    1. User signs ForwardRequest (EIP-712) off-chain                  │
+  │    2. Any privacy group member calls execute(request, signature)     │
+  │    3. Relay verifies signature, increments nonce                     │
+  │    4. Relay calls PrivateComboStorage with appended sender           │
+  │       (ERC-2771: last 20 bytes of calldata = original signer)        │
+  │    5. PrivateComboStorage extracts real sender via _msgSender()      │
+  │       and enforces its own access control (ADMIN / AUTHORIZED /      │
+  │       UID manager) against the recovered signer                      │
+  │                                                                      │
+  │  Security model:                                                     │
+  │    • The relay itself is open — any privacy group member may         │
+  │      submit signed requests on behalf of a signer                    │
+  │    • Authorization is enforced by PrivateComboStorage, not the       │
+  │      relay — the recovered signer must satisfy the target            │
+  │      function's access control (onlyAdmin / onlyAuthorized /         │
+  │      per-UID manager check)                                          │
+  │    • EIP-712 signatures with per-signer nonces prevent replay        │
+  │    • Deadline enforcement prevents stale request execution           │
+  │    • EIP-2 low-s check prevents signature malleability               │
+  │    • ERC-2771 appended sender preserves authorization semantics      │
+  │      in PrivateComboStorage's _msgSender()                           │
+  │                                                                      │
+  │  Upgradeable via TransparentUpgradeableProxy (OZ 5.2).               │
+  │  Patent: U.S. App. Ser. No. 18/930,857                               │
+  └──────────────────────────────────────────────────────────────────────┘
 */
 
 import "./Interfaces/IPrivateMetaTxRelay.sol";
