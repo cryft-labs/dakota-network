@@ -1,0 +1,10 @@
+{
+  "runtime_bytecode": "0x730000000000000000000000000000000000000000301460806040525f5ffdfea264697066735822122024877212be0f3fe721edc642a6e3064f05a966da62fa7821562191721633de9964736f6c63430008220033",
+  "creation_bytecode": "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea264697066735822122024877212be0f3fe721edc642a6e3064f05a966da62fa7821562191721633de9964736f6c63430008220033",
+  "abi": [],
+  "opcodes": "PUSH1 0x55 PUSH1 0x32 PUSH1 0xB DUP3 DUP3 DUP3 CODECOPY DUP1 MLOAD PUSH0 BYTE PUSH1 0x73 EQ PUSH1 0x26 JUMPI PUSH4 0x4E487B71 PUSH1 0xE0 SHL PUSH0 MSTORE PUSH0 PUSH1 0x4 MSTORE PUSH1 0x24 PUSH0 REVERT JUMPDEST ADDRESS PUSH0 MSTORE PUSH1 0x73 DUP2 MSTORE8 DUP3 DUP2 RETURN INVALID PUSH20 0x0 ADDRESS EQ PUSH1 0x80 PUSH1 0x40 MSTORE PUSH0 PUSH0 REVERT INVALID LOG2 PUSH5 0x6970667358 0x22 SLT KECCAK256 0x24 DUP8 PUSH19 0x12BE0F3FE721EDC642A6E3064F05A966DA62FA PUSH25 0x21562191721633DE9964736F6C634300082200330000000000 ",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.34+commit.80d5c536\"},\"language\":\"Solidity\",\"output\":{\"abi\":[],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"notice\":\"Minimal ECDSA recovery shared by Dakota's EIP-7702 contracts.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\".import_cache/source/Genesis/7702/Libraries/DakotaECDSA.sol\":\"DakotaECDSA\"},\"evmVersion\":\"osaka\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\".import_cache/source/Genesis/7702/Libraries/DakotaECDSA.sol\":{\"keccak256\":\"0x745dbb1a50369851bf2d22fb9436bd8a8d64fe06f4fd4904bc1bab16cc802866\",\"license\":\"Apache-2.0\",\"urls\":[\"bzz-raw://84b5e04a97bc392515911b2667e439f0dc9c60462222839084786715c4010699\",\"dweb:/ipfs/Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp\"]}},\"version\":1}",
+  "runtime_size_bytes": 85,
+  "creation_size_bytes": 135,
+  "source_rel_path": "Genesis\\7702\\Libraries\\DakotaECDSA.sol"
+}

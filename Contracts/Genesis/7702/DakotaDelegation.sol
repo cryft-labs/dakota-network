@@ -4,364 +4,418 @@
 // This software is part of a patented system. See LICENSE and PATENT NOTICE.
 // Licensed under the Apache License, Version 2.0.
 
-pragma solidity >=0.8.2 <0.9.0;
+pragma solidity >=0.8.20 <0.9.0;
 
 /*
-   ___       __        __       ___      __              __  _
-  / _ \___ _/ /_____  / /____ _/ _ \___ / /__ ___ ____ _/ /_(_)__  ___
- / // / _ `/  '_/ _ \/ __/ _ `/ // / -_) / -_) _ `/ _ `/ __/ / _ \/ _ \
-/____/\_,_/_/\_\\___/\__/\_,_/____/\__/_/\__/\_, /\_,_/\__/_/\___/_//_/
-                                            /___/  By: CryftCreator
+  ___       _        _          ___      _                 _   _
+ |   \ __ _| | _____| |_ __ _  |   \ ___| |___ __ _ __ _| |_(_)___ _ _
+ | |) / _` | |/ / _ \  _/ _` | | |) / -_) / -_) _` / _` |  _| / _ \ ' \
+ |___/\__,_|_|\_\___/\__\__,_| |___/\___|_\___\__, \__,_|\__|_\___/_||_|
+                                               |___/ By: CryftCreator
 
-  Version 1.0 — EIP-7702 Delegation Target  [UPGRADEABLE]
+  Version 1.0.0 — Production Dakota Delegation  [BEACON-UPGRADEABLE]
 
-  ┌──────────────── Contract Architecture ───────────────┐
-  │                                                      │
-  │  Delegation target for EIP-7702 (tx type 0x04).      │
-  │  EOAs delegate to this contract to gain smart-       │
-  │  account capabilities without creating a separate    │
-  │  smart-contract wallet.                              │
-  │                                                      │
-  │  Features:                                           │
-  │    • Single & batch call execution                   │
-  │    • Sponsored execution (EIP-712 signed)            │
-  │    • Session keys with expiry                        │
-  │    • EIP-1271 signature validation                   │
-  │    • ERC-721 / ERC-1155 token receiving              │
-  │    • ERC-7201 namespaced storage                     │
-  │    • Reentrancy protection                           │
-  │                                                      │
-  │  Security model:                                     │
-  │    Only the EOA owner (address(this) in delegated    │
-  │    context) or valid session keys can initiate       │
-  │    calls.  Sponsored execution requires the owner's  │
-  │    EIP-712 signature, nonce, and deadline.           │
-  │                                                      │
-  │  Upgradeable (Initializable + proxy pattern).        │
-  │  Can also re-delegate EOAs via a new type 0x04 tx.   │
-  └──────────────────────────────────────────────────────┘
+  ┌──────────────── Contract Architecture ─────────────────────────────┐
+  │                                                                    │
+  │  NATIVE EIP-7702 SPONSORED EXECUTION                               │
+  │                                                                    │
+  │  Fixed delegation entry: 0x0000...de1E6A7E                         │
+  │  Per-account route:                                                │
+  │    user EOA → genesis entry → EIP-1967 dispatcher                  │
+  │    → shared beacon → this implementation                           │
+  │                                                                    │
+  │  Signed execution contract:                                        │
+  │    • EIP-712 domain is bound to each delegated user account        │
+  │    • owner signature must recover to address(this)                 │
+  │    • executor, operation ID, nonce, deadline, calls, and           │
+  │      execution gas limit are all signature-bound                   │
+  │    • 1-32 calls per operation; 5,000,000 execution-gas ceiling     │
+  │                                                                    │
+  │  Security rails:                                                   │
+  │    • direct implementation execution is rejected                   │
+  │    • strict low-s ECDSA with 65-byte and EIP-2098 signatures       │
+  │    • per-account nonce, reentrancy guard, and post-call reserve    │
+  │    • zero targets are rejected and target reverts are preserved    │
+  │                                                                    │
+  │  Compatibility:                                                    │
+  │    • EIP-1271 signature validation                                 │
+  │    • native token, ERC-721, and ERC-1155 receiving                 │
+  │                                                                    │
+  │  Storage and upgrades:                                             │
+  │    • ERC-7201 namespace: dakota.storage.DakotaDelegation           │
+  │    • only nonce and reentrancy state live in the user account      │
+  │    • normal upgrades change the shared beacon implementation       │
+  │    • protocol ID: dakota.delegation.sponsored-execution.v1         │
+  └────────────────────────────────────────────────────────────────────┘
 */
 
-import "../Upgradeable/ReentrancyGuardUpgradeable.sol";
-import "../Upgradeable/Initializable.sol";
-
 import "./Interfaces/IDakotaDelegation.sol";
+import "./Libraries/DakotaECDSA.sol";
 
-contract DakotaDelegation is Initializable, ReentrancyGuardUpgradeable, IDakotaDelegation {
+/// @title DakotaDelegation
+/// @notice Shared account logic for widget-driven, relayed EIP-7702 execution.
+/// @dev User EOAs delegate to the fixed genesis entry at 0x...de1E6A7E. The
+///      entry reads the account's EIP-1967 dispatcher, which resolves this
+///      implementation through the shared Dakota delegation beacon.
+contract DakotaDelegation is IDakotaDelegation {
+    using DakotaECDSA for bytes32;
 
-    // ═══════════════════════════════════════════════════════
-    //  ERC-7201 Namespaced Storage
-    //
-    //  Avoids slot collisions if the EOA later re-delegates
-    //  to a different contract implementation.
-    //  Slot = keccak256("dakota.delegation.v1")
-    // ═══════════════════════════════════════════════════════
+    error DirectImplementationCall();
+    error EmptyOperationId();
+    error InvalidExecutor();
+    error InvalidNonce(uint256 expected, uint256 supplied);
+    error Expired();
+    error InvalidSignature();
+    error InvalidCallCount();
+    error InvalidTarget(uint256 callIndex);
+    error ReentrantExecution();
+    error InsufficientExecutionGas(uint256 available, uint256 required);
+    error ExecutionGasBudgetExceeded(uint256 consumed, uint256 limit);
+    error CallReverted(uint256 callIndex);
 
-    bytes32 private constant _STORAGE_SLOT =
-        keccak256("dakota.delegation.v1");
-
-    /// @dev All mutable state lives here, anchored at _STORAGE_SLOT.
-    struct DelegationState {
-        uint256 nonce;                                // sponsored-exec nonce
-        mapping(address => bool)    isSessionKey;     // active session keys
-        mapping(address => uint256) sessionKeyExpiry;  // expiry timestamps
-    }
-
-    // ── EIP-712 Type Hashes ────────────────────────────────
-
-    bytes32 private constant _DOMAIN_TYPEHASH =
-        keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
-
-    bytes32 private constant _NAME_HASH =
-        keccak256("DakotaDelegation");
-
-    bytes32 private constant _VERSION_HASH =
-        keccak256("1");
-
-    bytes32 private constant _CALL_TYPEHASH =
-        keccak256(
-            "Call(address target,uint256 value,bytes data)"
-        );
-
-    bytes32 private constant _EXECUTE_SPONSORED_TYPEHASH =
-        keccak256(
-            "ExecuteSponsored(Call[] calls,uint256 nonce,uint256 deadline)"
-            "Call(address target,uint256 value,bytes data)"
-        );
-
-    // ── EIP-1271 ───────────────────────────────────────────
-
+    uint256 private constant _MAX_CALLS = 32;
+    uint256 private constant _MAX_EXECUTION_GAS_LIMIT = 5_000_000;
+    uint256 private constant _POST_EXECUTION_GAS_RESERVE = 30_000;
     bytes4 private constant _EIP1271_MAGIC = 0x1626ba7e;
 
-    // ═══════════════════════════════════════════════════════
-    //  Initialization
-    // ═══════════════════════════════════════════════════════
+    bytes32 private constant _DOMAIN_TYPEHASH = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    bytes32 private constant _NAME_HASH = keccak256("DakotaDelegation");
+    bytes32 private constant _VERSION_HASH = keccak256("1");
+    bytes32 private constant _CALL_TYPEHASH = keccak256(
+        "Call(address target,uint256 value,bytes data)"
+    );
+    bytes32 private constant _EXECUTION_TYPEHASH = keccak256(
+        "ExecuteSponsored(bytes32 operationId,address executor,bytes32 callsHash,uint256 nonce,uint256 deadline,uint256 executionGasLimit)"
+    );
 
-    /// @dev Prevent the implementation contract from being initialised.
+    /// @custom:storage-location erc7201:dakota.storage.DakotaDelegation
+    struct DelegationStorage {
+        uint256 nonce;
+        uint256 reentrancyStatus;
+    }
+
+    bytes32 private constant _DELEGATION_STORAGE_LOCATION =
+        0x2d5df833376e6c9531b3cb92f5745ecf8ad8197730684ec3db99cc12d4e93d00;
+    bytes32 private constant _DELEGATION_PROTOCOL_ID =
+        keccak256("dakota.delegation.sponsored-execution.v1");
+
+    address private immutable _implementationAddress;
+
     constructor() {
-        _disableInitializers();
+        _implementationAddress = address(this);
     }
 
-    /// @notice Initializes the reentrancy guard.  Called once by the proxy.
-    function initialize() public virtual initializer {
-        __ReentrancyGuard_init();
-    }
-
-    // ═══════════════════════════════════════════════════════
-    //  Modifiers
-    // ═══════════════════════════════════════════════════════
-
-    /// @dev Only the EOA owner.
-    ///      In delegated EIP-7702 context, address(this) == the EOA.
-    ///      Self-calls occur when the EOA sends a tx to its own address.
-    modifier onlySelf() {
-        require(
-            msg.sender == address(this),
-            "DakotaDelegation: caller is not the account owner"
-        );
-        _;
-    }
-
-    /// @dev Account owner OR a valid (non-expired) session key.
-    modifier onlyAuthorized() {
-        if (msg.sender != address(this)) {
-            DelegationState storage s = _state();
-            require(
-                s.isSessionKey[msg.sender] &&
-                    s.sessionKeyExpiry[msg.sender] > block.timestamp,
-                "DakotaDelegation: unauthorized"
-            );
+    modifier onlyDelegated() {
+        if (address(this) == _implementationAddress) {
+            revert DirectImplementationCall();
         }
         _;
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  Execution
-    // ═══════════════════════════════════════════════════════
-
-    /// @inheritdoc IDakotaDelegation
-    function execute(
-        address target,
-        uint256 value,
-        bytes calldata data
-    )
-        external
-        payable
-        override
-        onlyAuthorized
-        nonReentrant
-        returns (bytes memory result)
-    {
-        result = _call(target, value, data);
-        emit Executed(target, value, data);
+    modifier nonReentrant() {
+        DelegationStorage storage state = _delegationStorage();
+        if (state.reentrancyStatus == 1) {
+            revert ReentrantExecution();
+        }
+        state.reentrancyStatus = 1;
+        _;
+        state.reentrancyStatus = 0;
     }
-
-    /// @inheritdoc IDakotaDelegation
-    function executeBatch(Call[] calldata calls)
-        external
-        payable
-        override
-        onlyAuthorized
-        nonReentrant
-        returns (bytes[] memory results)
-    {
-        results = _batchCall(calls);
-        emit BatchExecuted(calls.length);
-    }
-
-    // ═══════════════════════════════════════════════════════
-    //  Sponsored Execution
-    // ═══════════════════════════════════════════════════════
 
     /// @inheritdoc IDakotaDelegation
     function executeSponsored(
-        Call[] calldata calls,
-        uint256 nonce,
-        uint256 deadline,
+        SponsoredExecutionRequest calldata execution,
         bytes calldata ownerSignature
     )
         external
         payable
         override
+        onlyDelegated
         nonReentrant
         returns (bytes[] memory results)
     {
-        require(block.timestamp <= deadline, "DakotaDelegation: expired");
+        if (execution.operationId == bytes32(0)) {
+            revert EmptyOperationId();
+        }
+        if (
+            execution.executor == address(0) ||
+            msg.sender != execution.executor
+        ) {
+            revert InvalidExecutor();
+        }
+        if (block.timestamp > execution.deadline) revert Expired();
 
-        DelegationState storage s = _state();
-        require(nonce == s.nonce, "DakotaDelegation: invalid nonce");
-        unchecked { s.nonce++; }
+        uint256 callCount = execution.calls.length;
+        if (callCount == 0 || callCount > _MAX_CALLS) {
+            revert InvalidCallCount();
+        }
 
-        // Build EIP-712 digest and verify the owner's signature
-        bytes32 digest = _sponsoredDigest(calls, nonce, deadline);
-        address signer  = _recoverSigner(digest, ownerSignature);
-        require(
-            signer == address(this),
-            "DakotaDelegation: invalid sponsor signature"
+        DelegationStorage storage state = _delegationStorage();
+        if (execution.nonce != state.nonce) {
+            revert InvalidNonce(state.nonce, execution.nonce);
+        }
+
+        bytes32 callsHash = _hashCalls(execution.calls);
+        bytes32 digest = _executionDigest(
+            execution.operationId,
+            execution.executor,
+            callsHash,
+            execution.nonce,
+            execution.deadline,
+            execution.executionGasLimit
+        );
+        if (digest.tryRecover(ownerSignature) != address(this)) {
+            revert InvalidSignature();
+        }
+
+        unchecked {
+            state.nonce = execution.nonce + 1;
+        }
+
+        uint256 availableGas = gasleft();
+        uint256 requiredGas =
+            execution.executionGasLimit +
+            (execution.executionGasLimit / 63) +
+            _POST_EXECUTION_GAS_RESERVE;
+        if (
+            execution.executionGasLimit == 0 ||
+            execution.executionGasLimit > _MAX_EXECUTION_GAS_LIMIT ||
+            availableGas < requiredGas
+        ) {
+            revert InsufficientExecutionGas(
+                availableGas,
+                requiredGas
+            );
+        }
+
+        results = _executeCalls(
+            execution.operationId,
+            execution.calls,
+            execution.executionGasLimit
         );
 
-        results = _batchCall(calls);
-        emit SponsoredExecution(msg.sender, nonce, calls.length);
+        emit SponsoredExecution(
+            execution.operationId,
+            execution.executor,
+            execution.nonce,
+            callsHash,
+            callCount
+        );
     }
-
-    // ═══════════════════════════════════════════════════════
-    //  Session Keys
-    // ═══════════════════════════════════════════════════════
-
-    /// @inheritdoc IDakotaDelegation
-    function addSessionKey(address key, uint256 expiry)
-        external
-        override
-        onlySelf
-    {
-        require(key != address(0), "DakotaDelegation: zero address");
-        require(expiry > block.timestamp, "DakotaDelegation: past expiry");
-
-        DelegationState storage s = _state();
-        s.isSessionKey[key]     = true;
-        s.sessionKeyExpiry[key] = expiry;
-        emit SessionKeyAdded(key, expiry);
-    }
-
-    /// @inheritdoc IDakotaDelegation
-    function removeSessionKey(address key) external override onlySelf {
-        DelegationState storage s = _state();
-        s.isSessionKey[key]     = false;
-        s.sessionKeyExpiry[key] = 0;
-        emit SessionKeyRemoved(key);
-    }
-
-    // ═══════════════════════════════════════════════════════
-    //  EIP-1271 Signature Validation
-    // ═══════════════════════════════════════════════════════
-
-    /// @inheritdoc IDakotaDelegation
-    function isValidSignature(
-        bytes32 hash,
-        bytes calldata signature
-    ) external view override returns (bytes4) {
-        if (
-            signature.length == 65 &&
-            _recoverSigner(hash, signature) == address(this)
-        ) {
-            return _EIP1271_MAGIC;
-        }
-        return 0xffffffff;
-    }
-
-    // ═══════════════════════════════════════════════════════
-    //  Views
-    // ═══════════════════════════════════════════════════════
 
     /// @inheritdoc IDakotaDelegation
     function getNonce() external view override returns (uint256) {
-        return _state().nonce;
+        return _delegationStorage().nonce;
     }
 
     /// @inheritdoc IDakotaDelegation
-    function isValidSessionKey(address key)
-        external
-        view
-        override
-        returns (bool)
-    {
-        DelegationState storage s = _state();
-        return s.isSessionKey[key] &&
-               s.sessionKeyExpiry[key] > block.timestamp;
+    function hashCalls(
+        Call[] calldata calls
+    ) external pure override returns (bytes32) {
+        return _hashCalls(calls);
     }
 
-    /// @notice Returns the EIP-712 domain separator for this account.
-    /// @dev    In EIP-7702 context, address(this) is the delegating EOA,
-    ///         so each account has a unique domain separator.
-    function domainSeparator() external view returns (bytes32) {
+    /// @inheritdoc IDakotaDelegation
+    function getExecutionDigest(
+        bytes32 operationId,
+        address executor,
+        Call[] calldata calls,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 executionGasLimit
+    ) external view override returns (bytes32) {
+        return _executionDigest(
+            operationId,
+            executor,
+            _hashCalls(calls),
+            nonce,
+            deadline,
+            executionGasLimit
+        );
+    }
+
+    /// @inheritdoc IDakotaDelegation
+    function domainSeparator() external view override returns (bytes32) {
         return _domainSeparator();
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  Token Receivers
-    // ═══════════════════════════════════════════════════════
+    /// @inheritdoc IDakotaDelegation
+    function isValidSignature(
+        bytes32 digest,
+        bytes calldata signature
+    ) external view override returns (bytes4) {
+        return digest.tryRecover(signature) == address(this)
+            ? _EIP1271_MAGIC
+            : bytes4(0xffffffff);
+    }
 
-    /// @notice Accept native token transfers.
-    receive() external payable {}
+    /// @inheritdoc IDakotaDelegation
+    function delegationStorageLocation()
+        external
+        pure
+        override
+        returns (bytes32)
+    {
+        return _DELEGATION_STORAGE_LOCATION;
+    }
 
-    /// @notice ERC-721 safeTransfer callback.
+    /// @inheritdoc IDakotaDelegation
+    function delegationProtocolId()
+        external
+        pure
+        override
+        returns (bytes32)
+    {
+        return _DELEGATION_PROTOCOL_ID;
+    }
+
+    /// @inheritdoc IDakotaDelegation
+    function implementationVersion()
+        external
+        pure
+        override
+        returns (string memory)
+    {
+        return "1.0.0";
+    }
+
+    receive() external payable {
+        if (address(this) == _implementationAddress) {
+            revert DirectImplementationCall();
+        }
+    }
+
     function onERC721Received(
-        address, address, uint256, bytes calldata
+        address,
+        address,
+        uint256,
+        bytes calldata
     ) external pure returns (bytes4) {
         return 0x150b7a02;
     }
 
-    /// @notice ERC-1155 single transfer callback.
     function onERC1155Received(
-        address, address, uint256, uint256, bytes calldata
+        address,
+        address,
+        uint256,
+        uint256,
+        bytes calldata
     ) external pure returns (bytes4) {
         return 0xf23a6e61;
     }
 
-    /// @notice ERC-1155 batch transfer callback.
     function onERC1155BatchReceived(
-        address, address, uint256[] calldata, uint256[] calldata, bytes calldata
+        address,
+        address,
+        uint256[] calldata,
+        uint256[] calldata,
+        bytes calldata
     ) external pure returns (bytes4) {
         return 0xbc197c81;
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  Internal Helpers
-    // ═══════════════════════════════════════════════════════
-
-    /// @dev Execute a single low-level call; bubble up revert on failure.
-    function _call(
-        address target,
-        uint256 value,
-        bytes calldata data
-    ) internal returns (bytes memory) {
-        (bool ok, bytes memory ret) = target.call{value: value}(data);
-        if (!ok) _bubbleRevert(ret);
-        return ret;
-    }
-
-    /// @dev Execute an array of low-level calls sequentially.
-    function _batchCall(Call[] calldata calls)
-        internal
-        returns (bytes[] memory results)
-    {
-        uint256 len = calls.length;
-        results = new bytes[](len);
-        for (uint256 i; i < len; ) {
-            (bool ok, bytes memory ret) =
-                calls[i].target.call{value: calls[i].value}(calls[i].data);
-            if (!ok) _bubbleRevert(ret);
-            results[i] = ret;
-            unchecked { ++i; }
-        }
-    }
-
-    /// @dev Re-throw the revert reason from a failed low-level call.
-    function _bubbleRevert(bytes memory returnData) internal pure {
-        if (returnData.length > 0) {
-            assembly ("memory-safe") {
-                revert(add(returnData, 32), mload(returnData))
+    function _hashCalls(
+        Call[] calldata calls
+    ) private pure returns (bytes32) {
+        uint256 callCount = calls.length;
+        bytes32[] memory callHashes = new bytes32[](callCount);
+        for (uint256 i; i < callCount; ) {
+            callHashes[i] = keccak256(
+                abi.encode(
+                    _CALL_TYPEHASH,
+                    calls[i].target,
+                    calls[i].value,
+                    keccak256(calls[i].data)
+                )
+            );
+            unchecked {
+                ++i;
             }
         }
-        revert("DakotaDelegation: call reverted");
+        return keccak256(abi.encode(callHashes));
     }
 
-    /// @dev ERC-7201 namespaced storage accessor.
-    function _state()
-        internal
-        pure
-        returns (DelegationState storage s)
-    {
-        bytes32 slot = _STORAGE_SLOT;
-        assembly ("memory-safe") { s.slot := slot }
+    function _executeCalls(
+        bytes32 operationId,
+        Call[] calldata calls,
+        uint256 executionGasLimit
+    ) private returns (bytes[] memory results) {
+        uint256 callCount = calls.length;
+        uint256 executionStartGas = gasleft();
+        results = new bytes[](callCount);
+        for (uint256 i; i < callCount; ) {
+            Call calldata callItem = calls[i];
+            if (
+                callItem.target == address(0) ||
+                callItem.target == address(this)
+            ) {
+                revert InvalidTarget(i);
+            }
+
+            uint256 consumedGas = executionStartGas - gasleft();
+            if (consumedGas >= executionGasLimit) {
+                revert ExecutionGasBudgetExceeded(
+                    consumedGas,
+                    executionGasLimit
+                );
+            }
+            uint256 remainingGas = executionGasLimit - consumedGas;
+            (bool success, bytes memory result) = callItem.target.call{
+                value: callItem.value,
+                gas: remainingGas
+            }(callItem.data);
+            if (!success) {
+                _bubbleRevert(result, i);
+            }
+
+            results[i] = result;
+            emit CallExecuted(
+                operationId,
+                i,
+                callItem.target,
+                callItem.value,
+                keccak256(result)
+            );
+            unchecked {
+                ++i;
+            }
+        }
+        uint256 totalExecutionGas = executionStartGas - gasleft();
+        if (totalExecutionGas > executionGasLimit) {
+            revert ExecutionGasBudgetExceeded(
+                totalExecutionGas,
+                executionGasLimit
+            );
+        }
     }
 
-    /// @dev Compute the EIP-712 domain separator.
-    ///      Uses address(this) as verifyingContract — in EIP-7702 context
-    ///      this is the delegating EOA, giving each account a unique domain.
-    function _domainSeparator() internal view returns (bytes32) {
+    function _executionDigest(
+        bytes32 operationId,
+        address executor,
+        bytes32 callsHash,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 executionGasLimit
+    ) private view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _EXECUTION_TYPEHASH,
+                operationId,
+                executor,
+                callsHash,
+                nonce,
+                deadline,
+                executionGasLimit
+            )
+        );
+        return keccak256(
+            abi.encodePacked("\x19\x01", _domainSeparator(), structHash)
+        );
+    }
+
+    function _domainSeparator() private view returns (bytes32) {
         return keccak256(
             abi.encode(
                 _DOMAIN_TYPEHASH,
@@ -373,69 +427,26 @@ contract DakotaDelegation is Initializable, ReentrancyGuardUpgradeable, IDakotaD
         );
     }
 
-    /// @dev Build the EIP-712 typed-data digest for executeSponsored.
-    function _sponsoredDigest(
-        Call[] calldata calls,
-        uint256 nonce,
-        uint256 deadline
-    ) internal view returns (bytes32) {
-        uint256 len = calls.length;
-        bytes32[] memory callHashes = new bytes32[](len);
-        for (uint256 i; i < len; ) {
-            callHashes[i] = keccak256(
-                abi.encode(
-                    _CALL_TYPEHASH,
-                    calls[i].target,
-                    calls[i].value,
-                    keccak256(calls[i].data)
-                )
-            );
-            unchecked { ++i; }
+    function _delegationStorage()
+        private
+        pure
+        returns (DelegationStorage storage state)
+    {
+        bytes32 location = _DELEGATION_STORAGE_LOCATION;
+        assembly ("memory-safe") {
+            state.slot := location
         }
-
-        return keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                _domainSeparator(),
-                keccak256(
-                    abi.encode(
-                        _EXECUTE_SPONSORED_TYPEHASH,
-                        keccak256(abi.encodePacked(callHashes)),
-                        nonce,
-                        deadline
-                    )
-                )
-            )
-        );
     }
 
-    /// @dev Recover the signer address from a 65-byte ECDSA signature.
-    ///      Enforces EIP-2 low-s requirement.
-    function _recoverSigner(
-        bytes32 digest,
-        bytes calldata sig
-    ) internal pure returns (address) {
-        require(sig.length == 65, "DakotaDelegation: bad sig length");
-
-        bytes32 r;
-        bytes32 s;
-        uint8   v;
-        assembly ("memory-safe") {
-            r := calldataload(sig.offset)
-            s := calldataload(add(sig.offset, 0x20))
-            v := byte(0, calldataload(add(sig.offset, 0x40)))
+    function _bubbleRevert(
+        bytes memory returnData,
+        uint256 callIndex
+    ) private pure {
+        if (returnData.length != 0) {
+            assembly ("memory-safe") {
+                revert(add(returnData, 0x20), mload(returnData))
+            }
         }
-
-        // EIP-2: restrict s to lower half of secp256k1 curve order
-        require(
-            uint256(s) <=
-                0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
-            "DakotaDelegation: malleable s"
-        );
-        require(v == 27 || v == 28, "DakotaDelegation: invalid v");
-
-        address recovered = ecrecover(digest, v, r, s);
-        require(recovered != address(0), "DakotaDelegation: invalid sig");
-        return recovered;
+        revert CallReverted(callIndex);
     }
 }

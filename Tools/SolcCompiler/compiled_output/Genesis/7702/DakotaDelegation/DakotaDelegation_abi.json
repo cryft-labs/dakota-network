@@ -5,21 +5,125 @@
     "type": "constructor"
   },
   {
-    "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
         "internalType": "uint256",
-        "name": "callCount",
+        "name": "callIndex",
         "type": "uint256"
       }
     ],
-    "name": "BatchExecuted",
-    "type": "event"
+    "name": "CallReverted",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DirectImplementationCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "EmptyOperationId",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "consumed",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "limit",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExecutionGasBudgetExceeded",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "Expired",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "available",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "required",
+        "type": "uint256"
+      }
+    ],
+    "name": "InsufficientExecutionGas",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidCallCount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidExecutor",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expected",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "supplied",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidNonce",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidSignature",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "callIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidTarget",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReentrantExecution",
+    "type": "error"
   },
   {
     "anonymous": false,
     "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "operationId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "callIndex",
+        "type": "uint256"
+      },
       {
         "indexed": true,
         "internalType": "address",
@@ -34,25 +138,12 @@
       },
       {
         "indexed": false,
-        "internalType": "bytes",
-        "name": "data",
-        "type": "bytes"
+        "internalType": "bytes32",
+        "name": "resultHash",
+        "type": "bytes32"
       }
     ],
-    "name": "Executed",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint8",
-        "name": "version",
-        "type": "uint8"
-      }
-    ],
-    "name": "Initialized",
+    "name": "CallExecuted",
     "type": "event"
   },
   {
@@ -60,47 +151,27 @@
     "inputs": [
       {
         "indexed": true,
+        "internalType": "bytes32",
+        "name": "operationId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
         "internalType": "address",
-        "name": "key",
+        "name": "executor",
         "type": "address"
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "expiry",
-        "type": "uint256"
-      }
-    ],
-    "name": "SessionKeyAdded",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
-        "internalType": "address",
-        "name": "key",
-        "type": "address"
-      }
-    ],
-    "name": "SessionKeyRemoved",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "relayer",
-        "type": "address"
-      },
-      {
-        "indexed": false,
         "internalType": "uint256",
         "name": "nonce",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "callsHash",
+        "type": "bytes32"
       },
       {
         "indexed": false,
@@ -113,21 +184,29 @@
     "type": "event"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "delegationProtocolId",
+    "outputs": [
       {
-        "internalType": "address",
-        "name": "key",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "expiry",
-        "type": "uint256"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
-    "name": "addSessionKey",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "delegationStorageLocation",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -146,58 +225,66 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "target",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "value",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes",
-        "name": "data",
-        "type": "bytes"
-      }
-    ],
-    "name": "execute",
-    "outputs": [
-      {
-        "internalType": "bytes",
-        "name": "result",
-        "type": "bytes"
-      }
-    ],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "components": [
           {
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          },
+          {
             "internalType": "address",
-            "name": "target",
+            "name": "executor",
             "type": "address"
           },
           {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct IDakotaDelegation.Call[]",
+            "name": "calls",
+            "type": "tuple[]"
+          },
+          {
             "internalType": "uint256",
-            "name": "value",
+            "name": "nonce",
             "type": "uint256"
           },
           {
-            "internalType": "bytes",
-            "name": "data",
-            "type": "bytes"
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "executionGasLimit",
+            "type": "uint256"
           }
         ],
-        "internalType": "struct IDakotaDelegation.Call[]",
-        "name": "calls",
-        "type": "tuple[]"
+        "internalType": "struct IDakotaDelegation.SponsoredExecutionRequest",
+        "name": "execution",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes",
+        "name": "ownerSignature",
+        "type": "bytes"
       }
     ],
-    "name": "executeBatch",
+    "name": "executeSponsored",
     "outputs": [
       {
         "internalType": "bytes[]",
@@ -210,6 +297,16 @@
   },
   {
     "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "operationId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "executor",
+        "type": "address"
+      },
       {
         "components": [
           {
@@ -243,20 +340,20 @@
         "type": "uint256"
       },
       {
-        "internalType": "bytes",
-        "name": "ownerSignature",
-        "type": "bytes"
+        "internalType": "uint256",
+        "name": "executionGasLimit",
+        "type": "uint256"
       }
     ],
-    "name": "executeSponsored",
+    "name": "getExecutionDigest",
     "outputs": [
       {
-        "internalType": "bytes[]",
-        "name": "results",
-        "type": "bytes[]"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
-    "stateMutability": "payable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -273,36 +370,59 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "initialize",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "target",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "data",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct IDakotaDelegation.Call[]",
+        "name": "calls",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "hashCalls",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "key",
-        "type": "address"
-      }
-    ],
-    "name": "isValidSessionKey",
+    "inputs": [],
+    "name": "implementationVersion",
     "outputs": [
       {
-        "internalType": "bool",
+        "internalType": "string",
         "name": "",
-        "type": "bool"
+        "type": "string"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "hash",
+        "name": "digest",
         "type": "bytes32"
       },
       {
@@ -432,19 +552,6 @@
       }
     ],
     "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "key",
-        "type": "address"
-      }
-    ],
-    "name": "removeSessionKey",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

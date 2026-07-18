@@ -18,14 +18,15 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ## Quick Reference
 
-| Component      | Version | Notes                                       |
-| -------------- | ------- | ------------------------------------------- |
-| **Besu**       | 26.1.0  | Java 21, QBFT consensus                     |
-| **solc**       | 0.8.34  | All contracts except validator contracts    |
-| **solc**       | 0.8.19  | Validator contracts only (pragma `<0.8.20`) |
-| **EVM target** | Osaka   | All contracts compiled with solc 0.8.34     |
-| **EVM target** | London  | Validator contracts (solc 0.8.19 maximum)   |
-| **Paladin**    | latest  | Pente privacy domain (replaces Tessera)     |
+| Component                | Version | Notes                                                        |
+| ------------------------ | ------- | ------------------------------------------------------------ |
+| **Besu**                 | 26.1.0  | Java 21, QBFT consensus                                      |
+| **solc**                 | 0.8.34  | All contracts except validator contracts                     |
+| **solc**                 | 0.8.19  | Validator contracts only (pragma `<0.8.20`)                  |
+| **EVM target**           | Osaka   | All contracts compiled with solc 0.8.34                      |
+| **EVM target**           | London  | Validator contracts (solc 0.8.19 maximum)                    |
+| **Paladin**              | latest  | Pente privacy domain (replaces Tessera)                      |
+| **Native sponsorship**   | 1.0.0   | EIP-7702; no ERC-4337, bundler, EntryPoint, or paymaster     |
 
 > **Full installation instructions** — Besu setup, Paladin deployment (Docker / build-from-source / k3s+Helm), genesis configuration, security notes, and documentation references — are in the **[Implementation Guide](IMPLEMENTATION.md#3-layer-1--besu-network-setup)**.
 
@@ -99,8 +100,8 @@ All Ethereum hard forks through Osaka are activated from genesis (block 0 / time
 | `0x0000...c0DE`     | CodeManager smart contract | `CodeManager` — official Dakota code management service (patent-covered)      |
 | `0x0000...Face`     | ERC-8004 Agent Registry    | Official ERC-8004 agent identity contract                                     |
 | `0x0000...FacAdE`   | ProxyAdmin smart contract  | `ProxyAdmin` — guardian-gated ERC1967 upgrade dispatch                        |
-| `0x0000...de1E6A7E` | DakotaDelegation           | EIP-7702 delegation target (upgradeable — TransparentUpgradeableProxy)        |
-| `0x0000...FEeD`     | GasSponsor                 | Gas sponsorship treasury (upgradeable — TransparentUpgradeableProxy)          |
+| `0x0000...de1E6A7E` | EIP-7702 delegation entry  | Fixed custom genesis proxy targeted by user authorization; each delegated EOA links its own dispatcher slot |
+| `0x0000...FEeD`     | GasSponsor proxy           | Fixed custom genesis proxy; first-linked once with `GasSponsor.initialize(...)` |
 
 ---
 
@@ -108,19 +109,19 @@ All Ethereum hard forks through Osaka are activated from genesis (block 0 / time
 
 ### Upgradeability & OpenZeppelin Compatibility
 
-Dakota genesis slots use **OpenZeppelin 4.9.6 TransparentUpgradeableProxy** contracts embedded directly in the genesis file. Vendored copies of the OZ 4.9.6 `Initializable`, `ReentrancyGuardUpgradeable`, and `AddressUpgradeable` contracts are provided under `Contracts/Genesis/Upgradeable/` with Osaka-level `assembly ("memory-safe")` annotations.
+Dakota genesis slots use a **Cryft Labs-modified transparent proxy derived from OpenZeppelin 4.9.x**, embedded directly in the genesis file. It is not a stock OpenZeppelin proxy: it adds namespaced overlord/guardian governance, dynamic root-overlord recognition through `0x...1111`, a custom first-link initialization flag, and guardian-gated upgrade dispatch through the fixed ProxyAdmin. Vendored OZ 4.9.6 implementation helpers such as `Initializable`, `ReentrancyGuardUpgradeable`, and `AddressUpgradeable` are provided under `Contracts/Genesis/Upgradeable/` with Osaka-level `assembly ("memory-safe")` annotations.
 
 > **For clients deploying implementation contracts behind a reserved genesis proxy slot:**
 >
 > | Scenario | Compatible? | Notes |
 > |----------|:-----------:|-------|
-> | Fresh implementation using **OZ 5.x** base contracts | **Yes** | The 4.9.6 proxy is a pure `delegatecall` forwarder — it has no knowledge of the implementation's imports or inheritance. OZ 5.x `OwnableUpgradeable`, `ERC721Upgradeable`, etc. work identically behind a 4.9.6 proxy. |
+> | Fresh implementation using **OZ 5.x** base contracts | **Yes** | The proxy boundary does not depend on the implementation's imports or inheritance. OZ 5.x implementation contracts can run behind the genesis shell when their own storage is collision-safe. |
 > | Upgrade from a **4.9.6-based** impl to a **5.x-based** impl | **No** | OZ 5.x uses ERC-7201 namespaced storage (slots at `keccak256("openzeppelin.storage.<Name>") - 1`). OZ 4.9.6 uses sequential storage (slot 0, 1, 2…). Swapping base versions causes all existing state to appear zeroed — the old state becomes orphaned in unreachable slots. |
 > | Upgrading between two **5.x-based** implementations | **Yes** | As long as both share the same ERC-7201 namespaced layout, upgrades work normally through the existing `ProxyAdmin`. |
 > | Upgrading between two **4.9.6-based** implementations | **Yes** | Standard sequential-storage upgrade path. Use the vendored contracts under `Contracts/Genesis/Upgradeable/` for Osaka compatibility. |
-> | Replacing the 4.9.6 proxy itself with a 5.x proxy | **No** | Proxy bytecode is embedded in genesis. A proxy-level swap would require a network hard fork. |
+> | Replacing the genesis proxy itself with a 5.x proxy | **No** | Proxy bytecode is embedded in genesis. A proxy-level swap would require a network hard fork. |
 >
-> **Rule of thumb:** Pick one OZ version for your implementation's base contracts and stick with it for the lifetime of that proxy slot. The proxy shell version (4.9.6) does not constrain your choice — only consistency between upgrades matters.
+> **Rule of thumb:** Pick one storage model for an implementation family and preserve it for every later upgrade. The genesis proxy shell does not constrain the implementation's import version, but every implementation upgrade must preserve its predecessor's storage contract.
 >
 > The Dakota 4.9.6 proxy uses a **compile-time constant** admin address (`_PROXY_ADMIN`) embedded directly in the bytecode — reads cost 3 gas (`PUSH20`) instead of 2,100 gas (cold `SLOAD`). The admin **cannot be changed at runtime** — it is permanent. The `_changeAdmin` / `_setAdmin` / `_getAdmin` functions and `AdminChanged` event from stock OZ 4.9.6 have been removed as dead code.
 
@@ -130,8 +131,8 @@ Dakota genesis slots use **OpenZeppelin 4.9.6 TransparentUpgradeableProxy** cont
 | ----------------------------------- | ------------------- | ------------ | -------------------------------------------------------------------------- |
 | **ValidatorSmartContractAllowList** | `0x0000...1111`     | 20,565 B     | QBFT validator, voter, and root overlord governance (solc 0.8.19 / London) |
 | **GasManager**                      | Genesis beneficiary | 14,163 B     | Voter-governed gas funding, token burns, and native coin burns             |
-| **TransparentUpgradeableProxy**     | Per-contract        | 15,246 B     | Multi-party overlord/guardian transparent proxy                            |
-| **ProxyAdmin**                      | Per-proxy           | 3,200 B      | Guardian-gated ERC1967 upgrade dispatch                                    |
+| **Dakota transparent proxy**        | Per-contract        | 15,246 B     | Modified transparent proxy with namespaced overlord/guardian governance    |
+| **ProxyAdmin**                      | `0x0000...FacAdE`   | 3,200 B      | Guardian-gated ERC1967 upgrade dispatch                                    |
 
 ---
 
@@ -480,8 +481,10 @@ CodeManager (independent)
 | **CodeManager**         | **Patent-covered.** Permissionless unique ID registry with an independent voter pool, 2/3 supermajority quorum, public mirrored UID state, and Pente routing. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`.                                                                                                                                                                      |
 | **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, tracks execution-time UID active state privately, and emits `PenteExternalCall` events to mirror UID status and route redemptions through CodeManager. Supports ERC-2771 trusted forwarder for meta-transactions via PrivateMetaTxRelay. All configuration (admin, authorized caller, CodeManager address, trusted forwarder, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
 | **PrivateMetaTxRelay**  | **Patent-covered.** Pente privacy group deployment. EIP-712 / ERC-2771 meta-transaction relay for PrivateComboStorage. Any privacy group member can submit signed requests; the relay verifies the signature, increments a per-signer nonce, and forwards the call with the recovered signer appended per ERC-2771. Authorization is enforced by PrivateComboStorage, not the relay. |
-| **DakotaDelegation**    | EIP-7702 delegation target. EOAs delegate to this contract for smart-account capabilities: single/batch execution, sponsored execution (EIP-712), session keys, EIP-1271 signature validation.                                                                                                                                                                                                                                                                                                    |
-| **GasSponsor**          | On-chain gas sponsorship treasury. Per-sponsor deposits, authorized relayer management, daily/per-claim spending limits, optional target allowlisting, and integrated `sponsoredCall` forwarding with automatic gas metering and reimbursement.                                                                                                                                                                                                                                                   |
+| **DakotaDelegation**    | Initial v1 EIP-7702 execution logic. Verifies an account-owner EIP-712 signature, enforces per-account nonces/deadlines/execution gas budgets, executes bounded call batches, and supports EIP-1271 validation. It intentionally exposes no generic owner/session-key execution API.                                                                                                                                                                                                              |
+| **DakotaDelegationBeacon** | Owner-controlled implementation beacon shared by delegated accounts. Normal delegation upgrades call `upgradeTo(newImplementation)` once on the beacon.                                                                                                                                                                                                                                                                                                                                    |
+| **DakotaDelegationBeaconDispatcher** | Immutable, stateless per-account dispatcher. Each delegated EOA stores this dispatcher in its own EIP-1967 implementation slot; the dispatcher resolves current logic through the beacon.                                                                                                                                                                                                                                                                                         |
+| **GasSponsor**          | Initial v1 platform-managed sponsorship treasury. Validates platform-signed vouchers, approved EIP-7702 delegation, allowlisted relayers, tenant/sponsor limits, operation replay protection, gas envelopes, and bounded reimbursement.                                                                                                                                                                                                                                                           |
 | **CryftGreetingCards**  | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase from pre-registered supply. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license.                                                                                                                                     |
 
 ---
@@ -649,79 +652,161 @@ struct ForwardRequest {
 
 ---
 
-### DakotaDelegation (EIP-7702 Delegation Target)
+### Native EIP-7702 Delegation and Gas Sponsorship
 
-EIP-7702 delegation target for EOA smart-account capabilities. EOAs delegate to this contract via a type `0x04` transaction to gain execution batching, sponsored execution, session keys, and EIP-1271 signature validation — without creating a separate smart-contract wallet.
+The current sponsorship stack is an initial v1 deployment built directly on EIP-7702. It does **not** use ERC-4337, a bundler, an EntryPoint, or a paymaster. The authoritative deployment and canary procedure is [Contracts/Genesis/7702/GAS-SPONSORSHIP.md](Contracts/Genesis/7702/GAS-SPONSORSHIP.md).
 
-Uses ERC-7201 namespaced storage (`keccak256("dakota.delegation.v1")`) to avoid slot collisions if the EOA later re-delegates to a different implementation.
+#### Fixed Deployment Anchors
 
-#### Access Control
+| Purpose | Address |
+| --- | --- |
+| Chain ID | `112311` |
+| Validator/root registry | `0x0000000000000000000000000000000000001111` |
+| ProxyAdmin | `0x0000000000000000000000000000000000FacAdE` |
+| EIP-7702 delegation entry | `0x00000000000000000000000000000000de1E6A7E` |
+| GasSponsor proxy | `0x000000000000000000000000000000000000FEeD` |
+| Retained root overlord | `0x2B7361056b31D2bf201E6764e7825fd31c0D223A` |
 
-| Role                                             | How                                  | Powers                                           |
-| ------------------------------------------------ | ------------------------------------ | ------------------------------------------------ |
-| **Owner** (`address(this)` = the delegating EOA) | EIP-7702 delegation                  | All account operations, session key management   |
-| **Session Key**                                  | Added by owner via `addSessionKey()` | Execute calls (single + batch) until expiry      |
-| **Sponsor** (anyone)                             | Provides owner's EIP-712 signature   | Execute sponsored batches on behalf of the owner |
+The retained root is already an overlord and guardian on both custom genesis proxies. Do not add it again or revoke it during this deployment.
 
-#### Write Functions
+#### Runtime Route
 
-| Function                                                     | Access                                      | Description                                                                  |
-| ------------------------------------------------------------ | ------------------------------------------- | ---------------------------------------------------------------------------- |
-| `execute(target, value, data)`                               | Owner or session key                        | Single call execution with reentrancy protection                             |
-| `executeBatch(calls[])`                                      | Owner or session key                        | Batch call execution                                                         |
-| `executeSponsored(calls[], nonce, deadline, ownerSignature)` | Anyone (with valid EIP-712 owner signature) | Sponsored batch execution — relayer pays gas, owner authorizes via signature |
-| `addSessionKey(key, expiry)`                                 | Owner only                                  | Grant temporary execution rights                                             |
-| `removeSessionKey(key)`                                      | Owner only                                  | Revoke session key                                                           |
+```text
+relayer
+  -> GasSponsor at 0x...FEeD
+  -> delegated user EOA
+  -> EIP-7702 indicator: 0xef0100 || 0x...de1E6A7E
+  -> genesis proxy code executing in the user account context
+  -> user EIP-1967 implementation slot
+  -> DakotaDelegationBeaconDispatcher
+  -> DakotaDelegationBeacon
+  -> DakotaDelegation
+  -> authorized target calls
+```
 
-#### Convenience View Functions
+`0x...de1E6A7E` remains the fixed EIP-7702 entry and is not linked to the dispatcher at its own address. Each authorized user account stores the dispatcher in that account's EIP-1967 implementation slot. The dispatcher is immutable and stateless; normal upgrades update the shared beacon once.
 
-| Function                            | Returns   | Description                                                                                        |
-| ----------------------------------- | --------- | -------------------------------------------------------------------------------------------------- |
-| `getNonce()`                        | `uint256` | Current sponsored-execution nonce (increments per `executeSponsored` call)                         |
-| `isValidSessionKey(address)`        | `bool`    | Whether a key is an active, non-expired session key                                                |
-| `domainSeparator()`                 | `bytes32` | EIP-712 domain separator (unique per delegating EOA since `verifyingContract = address(this)`)     |
-| `isValidSignature(hash, signature)` | `bytes4`  | EIP-1271: returns `0x1626ba7e` if signature is valid for the account owner, `0xffffffff` otherwise |
+#### Initial-Release and Storage Rules
 
-#### Token Receiving
+- Before first deployment, both reserved genesis proxies must report `proxy_getIsInit() == false` and a zero EIP-1967 implementation slot.
+- `GasSponsor` uses `initialize(...)` with `initializer`. There is no `initializeV2(...)`, numbered reinitializer, or prior implementation state to migrate.
+- The `GasSponsor` implementation constructor disables direct initialization.
+- Direct execution against the `DakotaDelegation` implementation is rejected; it must execute through a delegated account.
+- Genesis proxy governance state is namespaced and implementation routing uses the EIP-1967 slot.
+- Sponsorship state uses `erc7201:dakota.storage.GasSponsor`.
+- Per-user nonce and reentrancy state use `erc7201:dakota.storage.DakotaDelegation`.
 
-Supports `receive()` (native tokens), `onERC721Received()` (ERC-721 safe transfers), `onERC1155Received()` and `onERC1155BatchReceived()` (ERC-1155 transfers).
+#### Contract Set
 
----
+| Contract | Responsibility |
+| --- | --- |
+| `DakotaDelegation` | Verifies the user-account EIP-712 signature, account nonce, deadline, executor, call count, and execution gas budget before executing up to 32 calls. |
+| `DakotaDelegationBeacon` | Ownable shared beacon for delegation implementation upgrades. Do not renounce ownership. |
+| `DakotaDelegationBeaconDispatcher` | Stateless resolver stored in each delegated account's EIP-1967 implementation slot. |
+| `GasSponsor` | Validates sponsorship vouchers and delegation readiness, enforces global pause/relayer controls plus sponsor and tenant limits, prevents operation replay, executes the signed account calldata, and reimburses the relayer within the signed cap. |
 
-### GasSponsor (On-Chain Gas Sponsorship Treasury)
+#### Build and Deployment
 
-Per-sponsor gas deposit and reimbursement contract. Sponsors deposit native tokens and authorize relayers to claim reimbursement for sponsored transactions. Designed for use alongside DakotaDelegation and EIP-7702 delegation targets. Not voter-governed — each sponsor independently manages their own relayers and limits.
+Compile with Solidity `0.8.34`, Osaka, optimizer enabled, and `200` runs. The deployment gate is:
 
-#### Sponsor Management Functions
+```bash
+python Tools/SolcCompiler/check_gas_sponsor.py
+```
 
-| Function                      | Description                                                                           |
-| ----------------------------- | ------------------------------------------------------------------------------------- |
-| `deposit()`                   | Payable. Deposit native tokens as a sponsor. Also accepts bare `receive()` transfers. |
-| `withdraw(amount)`            | Withdraw deposited funds (reentrancy-protected).                                      |
-| `authorizeRelayer(relayer)`   | Authorize an address to claim gas reimbursement from your deposit.                    |
-| `revokeRelayer(relayer)`      | Revoke a relayer's authorization.                                                     |
-| `setMaxClaimPerTx(amount)`    | Cap the maximum reimbursement per single claim (0 = unlimited).                       |
-| `setDailyLimit(amount)`       | Cap daily total spending (0 = unlimited). Auto-resets every 24 hours.                 |
-| `addAllowedTarget(target)`    | Restrict sponsored calls to specific target contracts.                                |
-| `removeAllowedTarget(target)` | Remove a target from the allowlist.                                                   |
-| `disableTargetAllowlist()`    | Disable target restrictions (allow any target).                                       |
+The gate checks initial-release naming and initializer semantics, ERC-7201 storage locations, linear storage, retired selector absence, proxy selector collisions, dispatcher statelessness, and runtime size. Archive and verify the exact Standard JSON input; flattened sources are not the deployment source of truth.
 
-#### Reimbursement Functions
+Deploy in this order:
 
-| Function                                      | Description                                                                                                                                            |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `claim(sponsor, amount)`                      | Authorized relayer claims a specific amount from a sponsor's balance (reentrancy-protected).                                                           |
-| `sponsoredCall(sponsor, target, value, data)` | Forward a call on behalf of a sponsor. Automatically meters gas, reimburses the relayer, and debits the sponsor. Target allowlist enforced if enabled. |
-| `topOff(sponsor, amount)`                     | GasManager guardian-only. Pull approved funds from GasManager into a sponsor's balance.                                                                |
+1. `DakotaDelegation()`
+2. `DakotaDelegationBeacon(delegationImplementation, ROOT)`
+3. `DakotaDelegationBeaconDispatcher(beacon)`
+4. `GasSponsor()`
 
-#### Convenience View Functions
+Encode the initial sponsor state:
 
-| Function                                | Returns                                                                        | Description                                                                     |
-| --------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| `getSponsorInfo(sponsor)`               | `(balance, maxClaimPerTx, dailyLimit, dailySpent, active, useTargetAllowlist)` | Full state snapshot for a sponsor (daily spent auto-resets for the current day) |
-| `isAuthorizedRelayer(sponsor, relayer)` | `bool`                                                                         | Whether a relayer is authorized for a sponsor                                   |
-| `isAllowedTarget(sponsor, target)`      | `bool`                                                                         | Whether a target is on a sponsor's allowlist                                    |
-| `GAS_MANAGER`                           | `address`                                                                      | Genesis GasManager contract address (`0x...cafE`)                               |
+```solidity
+GasSponsor.initialize(
+    PLATFORM_ADMIN,
+    VOUCHER_SIGNER,
+    0x00000000000000000000000000000000de1E6A7E,
+    100000
+)
+```
+
+Then `ROOT` performs the one-time first link at `0x...FEeD`:
+
+```solidity
+proxy_linkLogicAdmin(GAS_SPONSOR_IMPLEMENTATION, INITIALIZE_CALLDATA)
+```
+
+Do not use `ProxyAdmin.upgrade(...)` for this first link: it would not set the custom genesis initialization flag. After linking, `implementationVersion()` must return `"1.0.0"` and sponsorship must remain paused until configuration and exact-transaction simulation are complete.
+
+#### User Onboarding
+
+The user signs an EIP-7702 authorization for chain `112311`, contract `0x...de1E6A7E`, and the user's current account nonce. The user never provides a private key. `ROOT` submits the type-4 transaction to the user account with:
+
+```solidity
+proxy_linkLogicAdmin(DAKOTA_DELEGATION_DISPATCHER, hex"")
+```
+
+After onboarding, confirm the EIP-7702 code indicator, custom proxy initialization flag, per-account dispatcher slot, retained root authority, `implementationVersion() == "1.0.0"`, and `GasSponsor.isDelegationReady(account) == true`.
+
+#### DakotaDelegation API
+
+| Function | Description |
+| --- | --- |
+| `executeSponsored(request, ownerSignature)` | Executes the signed, nonce-bound, executor-bound call batch through the delegated user account. |
+| `getNonce()` | Returns the current per-account sponsored-execution nonce. |
+| `hashCalls(calls)` | Produces the canonical hash of the call array. |
+| `getExecutionDigest(...)` | Produces the user EIP-712 digest before signing. |
+| `domainSeparator()` | Returns the account-specific `DakotaDelegation` / version `1` domain separator. |
+| `isValidSignature(hash, signature)` | Implements EIP-1271 for the delegated account. |
+| `delegationProtocolId()` | Returns the initial sponsored-execution protocol identifier. |
+| `implementationVersion()` | Returns `"1.0.0"`. |
+
+#### GasSponsor API
+
+| Scope | Functions | Purpose |
+| --- | --- | --- |
+| Platform admin | `setVoucherSigner`, `setApprovedDelegate`, `setRelayer`, `setPaused`, `setFixedOverheadGas` | Controls the global signing, delegation, relayer, pause, and gas-overhead policy. |
+| Platform admin | `configureSponsor`, `setSponsorManager`, `setSponsorAdminEnabled` | Binds a stable sponsor address to a canonical tenant ID hash, manager, hard limits, and platform enable switch. |
+| Sponsor manager | `setTenantLimits`, `setTenantEnabled`, `withdrawSponsor` | Applies tenant limits no greater than platform limits, controls the tenant enable switch, and withdraws sponsor funds. |
+| Any funder | `depositFor` | Deposits native currency into an already configured sponsor account. |
+| Allowlisted relayer | `executeSponsored` | Submits signed execution calldata plus a platform-signed voucher and receives bounded reimbursement. |
+| Read paths | `getSponsorAccount`, `voucherDigest`, `isDelegationReady`, `isOperationConsumed`, `isRelayer` | Exposes configuration and readiness checks needed by the router, dashboard, and relayer. |
+
+Use a stable tenant-owned address, normally its tenant registry, as `SPONSOR`. Derive `tenantId` consistently as `keccak256(bytes(canonicalTenantId))`. Effective per-operation and daily limits are the lower of the platform and tenant values, and both platform and tenant enable switches must remain active.
+
+The user signs `SponsoredExecutionRequest` under:
+
+```text
+name = DakotaDelegation
+version = 1
+chainId = 112311
+verifyingContract = user account
+executor = 0x...FEeD
+```
+
+The platform signs `SponsorshipVoucher` under:
+
+```text
+name = DakotaGasSponsor
+version = 1
+chainId = 112311
+verifyingContract = 0x...FEeD
+delegate = 0x...de1E6A7E
+executionHash = keccak256(executionData)
+relayer = allowlisted relayer
+```
+
+The relayer calls `GasSponsor.executeSponsored(voucher, executionData, voucherSignature)`. Each `operationId` is single-use. A failed user execution still consumes the operation and reimburses the relayer within the signed cap.
+
+#### Upgrade Paths
+
+- Delegation logic: pause sponsorship, deploy and verify compatible logic, call `DakotaDelegationBeacon.upgradeTo(newImplementation)`, then confirm existing-account nonce preservation before unpausing.
+- GasSponsor without migration: pause sponsorship, deploy and verify storage-compatible logic, then call `ProxyAdmin.upgrade(GAS_SPONSOR_PROXY, newImplementation)`.
+- GasSponsor with a future migration: use `ProxyAdmin.upgradeAndCall(...)` and introduce a numbered reinitializer only in that future implementation.
+- Per-account dispatcher replacement is a recovery path, not the normal delegation upgrade mechanism.
 
 ---
 
@@ -1014,12 +1099,13 @@ The compiler also exports each contract's **solc metadata JSON** (the JSON blob 
 
 ```
 compiled_output/
-  7702/
-    DakotaDelegation/
-      DakotaDelegation_abi.json
-      DakotaDelegation_artifact.json
-      DakotaDelegation_metadata.json    # solc metadata (IPFS-verifiable)
-      ...
+  Genesis/
+    7702/
+      DakotaDelegation/
+        DakotaDelegation_abi.json
+        DakotaDelegation_artifact.json
+        DakotaDelegation_metadata.json    # solc metadata (IPFS-verifiable)
+        ...
 ```
 
 As long as all parties compile from LF-normalized sources, the resulting bytecode — including the metadata tail — will be identical regardless of operating system.
@@ -1036,12 +1122,17 @@ dakota-network/
 │   ├── Genesis/
 │   │   ├── BesuGenesis.7z             # Besu genesis file (7z-compressed; extract before use)
 │   │   ├── 7702/
-│   │   │   ├── DakotaDelegation.sol  # EIP-7702 delegation target (session keys, EIP-1271)
-│   │   │   ├── EIP-7702-Instructions.md  # EIP-7702 deployment guide
-│   │   │   ├── GasSponsor.sol        # On-chain gas sponsorship treasury
-│   │   │   └── Interfaces/
-│   │   │       ├── IDakotaDelegation.sol
-│   │   │       └── IGasSponsor.sol
+│   │   │   ├── DakotaDelegation.sol  # Signed sponsored-execution logic for delegated EOAs
+│   │   │   ├── DakotaDelegationBeacon.sol  # Shared implementation beacon
+│   │   │   ├── DakotaDelegationBeaconDispatcher.sol  # Stateless per-account dispatcher
+│   │   │   ├── GasSponsor.sol        # Platform-voucher sponsorship treasury
+│   │   │   ├── GAS-SPONSORSHIP.md    # Authoritative deployment/canary/upgrade runbook
+│   │   │   ├── EIP-7702-Instructions.md  # Broader EIP-7702 integration guide
+│   │   │   ├── Interfaces/
+│   │   │   │   ├── IDakotaDelegation.sol
+│   │   │   │   └── IGasSponsor.sol
+│   │   │   └── Libraries/
+│   │   │       └── DakotaECDSA.sol   # Strict ECDSA recovery helper
 │   │   ├── GasManager/
 │   │   │   └── GasManager.sol        # Gas beneficiary — voter-governed funding & burns
 │   │   ├── ValidatorContracts/
@@ -1082,6 +1173,7 @@ dakota-network/
 │   │   └── tx_simulator.py            # Block-paced ETH transfer loop (QBFT/PoA)
 │   └── SolcCompiler/
 │       ├── compile.py                # Local Solidity compiler (py-solc-x)
+│       ├── check_gas_sponsor.py      # Initial v1 storage/selector/runtime gate
 │       └── compiled_output/          # ABI and artifact output
 └── README.md
 ```

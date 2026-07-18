@@ -5,28 +5,287 @@
     "type": "constructor"
   },
   {
-    "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "sponsor",
-        "type": "address"
+        "internalType": "uint256",
+        "name": "expected",
+        "type": "uint256"
       },
       {
-        "indexed": true,
+        "internalType": "uint256",
+        "name": "supplied",
+        "type": "uint256"
+      }
+    ],
+    "name": "CostEnvelopeMismatch",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "limit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "requested",
+        "type": "uint256"
+      }
+    ],
+    "name": "CostLimitExceeded",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "limit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "requested",
+        "type": "uint256"
+      }
+    ],
+    "name": "DailyLimitExceeded",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DirectNativeTransferDisabled",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "actual",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maximum",
+        "type": "uint256"
+      }
+    ],
+    "name": "GasPriceTooHigh",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "available",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "required",
+        "type": "uint256"
+      }
+    ],
+    "name": "InsufficientExecutionGas",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "available",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "required",
+        "type": "uint256"
+      }
+    ],
+    "name": "InsufficientSponsorBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "gasLimit",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidCallGasLimit",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidConfiguration",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "InvalidDelegation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidExecutionEnvelope",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "length",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidExecutionLength",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidVoucher",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidVoucherSignature",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NativeTransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      }
+    ],
+    "name": "NotInitializationAuthority",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotPendingPlatformAdmin",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotPlatformAdmin",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotSponsorManager",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "operationId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "OperationAlreadyConsumed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "relayer",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
       }
     ],
-    "name": "Claimed",
+    "name": "RelayerNotAuthorized",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      }
+    ],
+    "name": "SponsorDisabled",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      }
+    ],
+    "name": "SponsorNotConfigured",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SponsorshipIsPaused",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "expected",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "supplied",
+        "type": "bytes32"
+      }
+    ],
+    "name": "TenantMismatch",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "VoucherExpired",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroValue",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousDelegate",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newDelegate",
+        "type": "address"
+      }
+    ],
+    "name": "ApprovedDelegateUpdated",
     "type": "event"
   },
   {
@@ -39,28 +298,9 @@
         "type": "address"
       },
       {
-        "indexed": false,
-        "internalType": "string",
-        "name": "param",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "value",
-        "type": "uint256"
-      }
-    ],
-    "name": "ConfigUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "internalType": "address",
-        "name": "sponsor",
+        "name": "depositor",
         "type": "address"
       },
       {
@@ -71,6 +311,56 @@
       }
     ],
     "name": "Deposited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "previousOverheadGas",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newOverheadGas",
+        "type": "uint256"
+      }
+    ],
+    "name": "FixedOverheadGasUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "platformAdmin",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "voucherSigner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "approvedDelegate",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "fixedOverheadGas",
+        "type": "uint256"
+      }
+    ],
+    "name": "GasSponsorInitialized",
     "type": "event"
   },
   {
@@ -92,17 +382,17 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "sponsor",
+        "name": "currentAdmin",
         "type": "address"
       },
       {
         "indexed": true,
         "internalType": "address",
-        "name": "relayer",
+        "name": "pendingAdmin",
         "type": "address"
       }
     ],
-    "name": "RelayerAuthorized",
+    "name": "PlatformAdminTransferProposed",
     "type": "event"
   },
   {
@@ -111,17 +401,17 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "sponsor",
+        "name": "previousAdmin",
         "type": "address"
       },
       {
         "indexed": true,
         "internalType": "address",
-        "name": "relayer",
+        "name": "newAdmin",
         "type": "address"
       }
     ],
-    "name": "RelayerRevoked",
+    "name": "PlatformAdminTransferred",
     "type": "event"
   },
   {
@@ -129,30 +419,36 @@
     "inputs": [
       {
         "indexed": true,
-        "internalType": "address",
-        "name": "sponsor",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "operationId",
+        "type": "bytes32"
       },
       {
         "indexed": true,
         "internalType": "address",
         "name": "relayer",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "target",
         "type": "address"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "totalCost",
+        "name": "reimbursement",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "measuredGas",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "reimbursementCapped",
+        "type": "bool"
       }
     ],
-    "name": "SponsoredCallExecuted",
+    "name": "RelayerReimbursed",
     "type": "event"
   },
   {
@@ -161,36 +457,17 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "sponsor",
+        "name": "relayer",
         "type": "address"
       },
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "target",
-        "type": "address"
+        "indexed": false,
+        "internalType": "bool",
+        "name": "allowed",
+        "type": "bool"
       }
     ],
-    "name": "TargetAllowed",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "sponsor",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "target",
-        "type": "address"
-      }
-    ],
-    "name": "TargetRemoved",
+    "name": "RelayerUpdated",
     "type": "event"
   },
   {
@@ -204,12 +481,12 @@
       },
       {
         "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
+        "internalType": "bool",
+        "name": "enabled",
+        "type": "bool"
       }
     ],
-    "name": "ToppedOff",
+    "name": "SponsorAdminStatusUpdated",
     "type": "event"
   },
   {
@@ -219,6 +496,224 @@
         "indexed": true,
         "internalType": "address",
         "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "tenantId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "manager",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "adminMaxCostPerOperation",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "adminDailyLimit",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "adminEnabled",
+        "type": "bool"
+      }
+    ],
+    "name": "SponsorConfigured",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousManager",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newManager",
+        "type": "address"
+      }
+    ],
+    "name": "SponsorManagerUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "enabled",
+        "type": "bool"
+      }
+    ],
+    "name": "SponsorTenantStatusUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "operationId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "tenantId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "campaignId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "success",
+        "type": "bool"
+      }
+    ],
+    "name": "SponsoredOperation",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "operationId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "returnDataSize",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "returnedDataHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "SponsoredReturnData",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "paused",
+        "type": "bool"
+      }
+    ],
+    "name": "SponsorshipPaused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxCostPerOperation",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "dailyLimit",
+        "type": "uint256"
+      }
+    ],
+    "name": "TenantLimitsUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousSigner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newSigner",
+        "type": "address"
+      }
+    ],
+    "name": "VoucherSignerUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
         "type": "address"
       },
       {
@@ -233,7 +728,14 @@
   },
   {
     "inputs": [],
-    "name": "GAS_MANAGER",
+    "name": "acceptPlatformAdmin",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "approvedDelegate",
     "outputs": [
       {
         "internalType": "address",
@@ -248,24 +750,36 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "target",
+        "name": "sponsor",
         "type": "address"
-      }
-    ],
-    "name": "addAllowedTarget",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+      },
+      {
+        "internalType": "bytes32",
+        "name": "tenantId",
+        "type": "bytes32"
+      },
       {
         "internalType": "address",
-        "name": "relayer",
+        "name": "manager",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "adminMaxCostPerOperation",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "adminDailyLimit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "adminEnabled",
+        "type": "bool"
       }
     ],
-    "name": "authorizeRelayer",
+    "name": "configureSponsor",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -276,30 +790,144 @@
         "internalType": "address",
         "name": "sponsor",
         "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
       }
     ],
-    "name": "claim",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "deposit",
+    "name": "depositFor",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "disableTargetAllowlist",
-    "outputs": [],
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "tenantId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "campaignId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "sponsor",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "relayer",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "delegate",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "executionHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "callGasLimit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxFeePerGas",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxCost",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IGasSponsor.SponsorshipVoucher",
+        "name": "voucher",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes",
+        "name": "executionData",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes",
+        "name": "voucherSignature",
+        "type": "bytes"
+      }
+    ],
+    "name": "executeSponsored",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "success",
+        "type": "bool"
+      },
+      {
+        "internalType": "bytes",
+        "name": "boundedReturnData",
+        "type": "bytes"
+      },
+      {
+        "internalType": "uint256",
+        "name": "reimbursement",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "delegate",
+        "type": "address"
+      }
+    ],
+    "name": "expectedDelegationCodeHash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fixedOverheadGas",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -310,37 +938,74 @@
         "type": "address"
       }
     ],
-    "name": "getSponsorInfo",
+    "name": "getSponsorAccount",
     "outputs": [
       {
-        "internalType": "uint256",
-        "name": "balance",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "maxClaimPerTx",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "dailyLimit",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "dailySpent",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "active",
-        "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "useTargetAllowlist",
-        "type": "bool"
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "tenantId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "manager",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "balance",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "adminMaxCostPerOperation",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tenantMaxCostPerOperation",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "effectiveMaxCostPerOperation",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "adminDailyLimit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tenantDailyLimit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "effectiveDailyLimit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "dailySpent",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "adminEnabled",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "tenantEnabled",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct IGasSponsor.SponsorAccount",
+        "name": "account",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -348,6 +1013,40 @@
   },
   {
     "inputs": [],
+    "name": "implementationVersion",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "platformAdmin_",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "voucherSigner_",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "approvedDelegate_",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "fixedOverheadGas_",
+        "type": "uint256"
+      }
+    ],
     "name": "initialize",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -357,16 +1056,30 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "sponsor",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "target",
+        "name": "account",
         "type": "address"
       }
     ],
-    "name": "isAllowedTarget",
+    "name": "isDelegationReady",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "operationId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isOperationConsumed",
     "outputs": [
       {
         "internalType": "bool",
@@ -381,16 +1094,11 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "sponsor",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
         "name": "relayer",
         "type": "address"
       }
     ],
-    "name": "isAuthorizedRelayer",
+    "name": "isRelayer",
     "outputs": [
       {
         "internalType": "bool",
@@ -402,14 +1110,92 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "paused",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pendingPlatformAdmin",
+    "outputs": [
       {
         "internalType": "address",
-        "name": "target",
+        "name": "",
         "type": "address"
       }
     ],
-    "name": "removeAllowedTarget",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "platformAdmin",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "pendingAdmin_",
+        "type": "address"
+      }
+    ],
+    "name": "proposePlatformAdmin",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "delegate",
+        "type": "address"
+      }
+    ],
+    "name": "setApprovedDelegate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "overheadGas",
+        "type": "uint256"
+      }
+    ],
+    "name": "setFixedOverheadGas",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "paused_",
+        "type": "bool"
+      }
+    ],
+    "name": "setPaused",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -420,9 +1206,14 @@
         "internalType": "address",
         "name": "relayer",
         "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "allowed",
+        "type": "bool"
       }
     ],
-    "name": "revokeRelayer",
+    "name": "setRelayer",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -430,25 +1221,17 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "setDailyLimit",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
       {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
+        "internalType": "bool",
+        "name": "enabled",
+        "type": "bool"
       }
     ],
-    "name": "setMaxClaimPerTx",
+    "name": "setSponsorAdminEnabled",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -462,29 +1245,174 @@
       },
       {
         "internalType": "address",
-        "name": "target",
+        "name": "manager",
+        "type": "address"
+      }
+    ],
+    "name": "setSponsorManager",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "enabled",
+        "type": "bool"
+      }
+    ],
+    "name": "setTenantEnabled",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sponsor",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "value",
+        "name": "maxCostPerOperation",
         "type": "uint256"
       },
       {
-        "internalType": "bytes",
-        "name": "data",
-        "type": "bytes"
+        "internalType": "uint256",
+        "name": "dailyLimit",
+        "type": "uint256"
       }
     ],
-    "name": "sponsoredCall",
+    "name": "setTenantLimits",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "signer",
+        "type": "address"
+      }
+    ],
+    "name": "setVoucherSigner",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "sponsorStorageLocation",
     "outputs": [
       {
-        "internalType": "bytes",
-        "name": "result",
-        "type": "bytes"
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "tenantId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "campaignId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "sponsor",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "relayer",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "delegate",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "executionHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "callGasLimit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxFeePerGas",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxCost",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IGasSponsor.SponsorshipVoucher",
+        "name": "voucher",
+        "type": "tuple"
+      }
+    ],
+    "name": "voucherDigest",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "voucherSigner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -495,25 +1423,17 @@
         "type": "address"
       },
       {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "topOff",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+        "internalType": "address payable",
+        "name": "recipient",
+        "type": "address"
+      },
       {
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
       }
     ],
-    "name": "withdraw",
+    "name": "withdrawSponsor",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

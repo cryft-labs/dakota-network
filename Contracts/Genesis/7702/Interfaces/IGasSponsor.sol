@@ -4,178 +4,215 @@
 // This software is part of a patented system. See LICENSE and PATENT NOTICE.
 // Licensed under the Apache License, Version 2.0.
 
-pragma solidity >=0.8.2 <0.9.0;
+pragma solidity >=0.8.20 <0.9.0;
 
-/**
- * @title IGasSponsor
- * @notice Interface for the on-chain gas sponsorship treasury.
- *
- *         Sponsors deposit native tokens and authorise relayer addresses.
- *         Relayers execute transactions on behalf of users (typically via
- *         DakotaDelegation.executeSponsored) and claim gas reimbursement
- *         from the sponsor's balance.
- *
- *         Complements thirdweb's hosted gas sponsorship with
- *         a self-hosted, on-chain alternative for Dakota chain 112311.
- */
+/// @title IGasSponsor
+/// @notice Managed native EIP-7702 gas sponsorship for Dakota tenants.
 interface IGasSponsor {
+    struct SponsorshipVoucher {
+        bytes32 operationId;
+        bytes32 tenantId;
+        bytes32 campaignId;
+        address sponsor;
+        address account;
+        address relayer;
+        address delegate;
+        bytes32 executionHash;
+        uint256 callGasLimit;
+        uint256 maxFeePerGas;
+        uint256 maxCost;
+        uint256 deadline;
+    }
 
-    // ── Events ─────────────────────────────────────────────
+    struct SponsorAccount {
+        bytes32 tenantId;
+        address manager;
+        uint256 balance;
+        uint256 adminMaxCostPerOperation;
+        uint256 tenantMaxCostPerOperation;
+        uint256 effectiveMaxCostPerOperation;
+        uint256 adminDailyLimit;
+        uint256 tenantDailyLimit;
+        uint256 effectiveDailyLimit;
+        uint256 dailySpent;
+        bool adminEnabled;
+        bool tenantEnabled;
+    }
 
-    /// @notice Emitted when a sponsor deposits native tokens.
-    event Deposited(address indexed sponsor, uint256 amount);
-
-    /// @notice Emitted when a sponsor withdraws native tokens.
-    event Withdrawn(address indexed sponsor, uint256 amount);
-
-    /// @notice Emitted when a relayer is authorised by a sponsor.
-    event RelayerAuthorized(
-        address indexed sponsor,
-        address indexed relayer
+    event GasSponsorInitialized(
+        address indexed platformAdmin,
+        address indexed voucherSigner,
+        address indexed approvedDelegate,
+        uint256 fixedOverheadGas
     );
-
-    /// @notice Emitted when a relayer is revoked by a sponsor.
-    event RelayerRevoked(
-        address indexed sponsor,
-        address indexed relayer
+    event PlatformAdminTransferProposed(
+        address indexed currentAdmin,
+        address indexed pendingAdmin
     );
-
-    /// @notice Emitted when a sponsor updates a configuration parameter.
-    event ConfigUpdated(
-        address indexed sponsor,
-        string param,
-        uint256 value
+    event PlatformAdminTransferred(
+        address indexed previousAdmin,
+        address indexed newAdmin
     );
-
-    /// @notice Emitted when a target contract is added to the allowlist.
-    event TargetAllowed(
-        address indexed sponsor,
-        address indexed target
+    event VoucherSignerUpdated(
+        address indexed previousSigner,
+        address indexed newSigner
     );
-
-    /// @notice Emitted when a target contract is removed from the allowlist.
-    event TargetRemoved(
-        address indexed sponsor,
-        address indexed target
+    event ApprovedDelegateUpdated(
+        address indexed previousDelegate,
+        address indexed newDelegate
     );
-
-    /// @notice Emitted when a relayer claims gas reimbursement.
-    event Claimed(
+    event RelayerUpdated(address indexed relayer, bool allowed);
+    event SponsorshipPaused(bool paused);
+    event FixedOverheadGasUpdated(
+        uint256 previousOverheadGas,
+        uint256 newOverheadGas
+    );
+    event SponsorConfigured(
         address indexed sponsor,
-        address indexed relayer,
+        bytes32 indexed tenantId,
+        address indexed manager,
+        uint256 adminMaxCostPerOperation,
+        uint256 adminDailyLimit,
+        bool adminEnabled
+    );
+    event SponsorManagerUpdated(
+        address indexed sponsor,
+        address indexed previousManager,
+        address indexed newManager
+    );
+    event TenantLimitsUpdated(
+        address indexed sponsor,
+        uint256 maxCostPerOperation,
+        uint256 dailyLimit
+    );
+    event SponsorAdminStatusUpdated(address indexed sponsor, bool enabled);
+    event SponsorTenantStatusUpdated(address indexed sponsor, bool enabled);
+    event Deposited(
+        address indexed sponsor,
+        address indexed depositor,
         uint256 amount
     );
-
-    /// @notice Emitted when a sponsored call is forwarded and reimbursed.
-    event SponsoredCallExecuted(
+    event Withdrawn(
         address indexed sponsor,
+        address indexed recipient,
+        uint256 amount
+    );
+    event SponsoredOperation(
+        bytes32 indexed operationId,
+        bytes32 indexed tenantId,
+        address indexed account,
+        address sponsor,
+        bytes32 campaignId,
+        bool success
+    );
+    event RelayerReimbursed(
+        bytes32 indexed operationId,
         address indexed relayer,
-        address indexed target,
-        uint256 totalCost
+        uint256 reimbursement,
+        uint256 measuredGas,
+        bool reimbursementCapped
+    );
+    event SponsoredReturnData(
+        bytes32 indexed operationId,
+        uint256 returnDataSize,
+        bytes32 returnedDataHash
     );
 
-    /// @notice Emitted when a sponsor tops off from the GasManager.
-    event ToppedOff(address indexed sponsor, uint256 amount);
+    function initialize(
+        address platformAdmin_,
+        address voucherSigner_,
+        address approvedDelegate_,
+        uint256 fixedOverheadGas_
+    ) external;
 
-    // ── Sponsor Management ─────────────────────────────────
+    function proposePlatformAdmin(address pendingAdmin_) external;
 
-    /// @notice Deposit native tokens as a sponsor.
-    function deposit() external payable;
+    function acceptPlatformAdmin() external;
 
-    /// @notice Withdraw native tokens from the sponsor's balance.
-    /// @param amount Amount of native tokens to withdraw.
-    function withdraw(uint256 amount) external;
+    function setVoucherSigner(address signer) external;
 
-    /// @notice Authorise a relayer address to claim reimbursements.
-    /// @param relayer Address of the relayer.
-    function authorizeRelayer(address relayer) external;
+    function setApprovedDelegate(address delegate) external;
 
-    /// @notice Revoke a relayer's authorisation.
-    /// @param relayer Address of the relayer.
-    function revokeRelayer(address relayer) external;
+    function setRelayer(address relayer, bool allowed) external;
 
-    /// @notice Set the maximum claimable amount per transaction.
-    ///         Set to 0 for no limit.
-    /// @param amount Max amount in wei.
-    function setMaxClaimPerTx(uint256 amount) external;
+    function setPaused(bool paused_) external;
 
-    /// @notice Set the maximum daily spend across all relayers.
-    ///         Set to 0 for no limit.  Resets at midnight UTC.
-    /// @param amount Max daily amount in wei.
-    function setDailyLimit(uint256 amount) external;
+    function setFixedOverheadGas(uint256 overheadGas) external;
 
-    /// @notice Add a target contract to the sponsor's allowlist.
-    ///         Enabling the allowlist restricts sponsored calls to
-    ///         only the listed targets.
-    /// @param target Contract address.
-    function addAllowedTarget(address target) external;
-
-    /// @notice Remove a target from the sponsor's allowlist.
-    /// @param target Contract address.
-    function removeAllowedTarget(address target) external;
-
-    /// @notice Disable the target allowlist entirely (all targets allowed).
-    function disableTargetAllowlist() external;
-
-    // ── Top-Off ────────────────────────────────────────────
-
-    /// @notice Pull voter-approved funds from the GasManager contract
-    ///         and credit them to a sponsor's balance.
-    ///         Only callable by a GasManager guardian.
-    ///         Requires an approved fund in GasManager for this contract
-    ///         address and the requested amount.
-    /// @param sponsor Address of the sponsor to credit.
-    /// @param amount  Amount of native tokens to pull.
-    function topOff(address sponsor, uint256 amount) external;
-
-    // ── Reimbursement ──────────────────────────────────────
-
-    /// @notice Claim gas reimbursement from a sponsor.
-    ///         The caller must be an authorised relayer.
-    /// @param sponsor Address of the sponsor to debit.
-    /// @param amount  Amount of native tokens to claim.
-    function claim(address sponsor, uint256 amount) external;
-
-    /// @notice Forward a call to a target and automatically reimburse
-    ///         the relayer for gas spent.  The caller must be an
-    ///         authorised relayer.
-    /// @param sponsor Address of the sponsor to debit.
-    /// @param target  Address to call.
-    /// @param value   Native tokens to send with the call.
-    /// @param data    Calldata to forward.
-    /// @return result The raw return data from the call.
-    function sponsoredCall(
+    function configureSponsor(
         address sponsor,
-        address target,
-        uint256 value,
-        bytes calldata data
-    ) external returns (bytes memory result);
+        bytes32 tenantId,
+        address manager,
+        uint256 adminMaxCostPerOperation,
+        uint256 adminDailyLimit,
+        bool adminEnabled
+    ) external;
 
-    // ── Views ──────────────────────────────────────────────
+    function setSponsorManager(address sponsor, address manager) external;
 
-    /// @notice Get a sponsor's current configuration and balances.
-    function getSponsorInfo(address sponsor)
+    function setSponsorAdminEnabled(address sponsor, bool enabled) external;
+
+    function setTenantLimits(
+        address sponsor,
+        uint256 maxCostPerOperation,
+        uint256 dailyLimit
+    ) external;
+
+    function setTenantEnabled(address sponsor, bool enabled) external;
+
+    function depositFor(address sponsor) external payable;
+
+    function withdrawSponsor(
+        address sponsor,
+        address payable recipient,
+        uint256 amount
+    ) external;
+
+    function executeSponsored(
+        SponsorshipVoucher calldata voucher,
+        bytes calldata executionData,
+        bytes calldata voucherSignature
+    )
         external
-        view
         returns (
-            uint256 balance,
-            uint256 maxClaimPerTx,
-            uint256 dailyLimit,
-            uint256 dailySpent,
-            bool    active,
-            bool    useTargetAllowlist
+            bool success,
+            bytes memory boundedReturnData,
+            uint256 reimbursement
         );
 
-    /// @notice Check whether an address is an authorised relayer for a
-    ///         given sponsor.
-    function isAuthorizedRelayer(
-        address sponsor,
-        address relayer
+    function getSponsorAccount(
+        address sponsor
+    ) external view returns (SponsorAccount memory);
+
+    function voucherDigest(
+        SponsorshipVoucher calldata voucher
+    ) external view returns (bytes32);
+
+    function expectedDelegationCodeHash(
+        address delegate
+    ) external pure returns (bytes32);
+
+    function isDelegationReady(address account) external view returns (bool);
+
+    function isOperationConsumed(
+        bytes32 operationId
     ) external view returns (bool);
 
-    /// @notice Check whether an address is on a sponsor's target allowlist.
-    function isAllowedTarget(
-        address sponsor,
-        address target
-    ) external view returns (bool);
+    function isRelayer(address relayer) external view returns (bool);
+
+    function platformAdmin() external view returns (address);
+
+    function pendingPlatformAdmin() external view returns (address);
+
+    function voucherSigner() external view returns (address);
+
+    function approvedDelegate() external view returns (address);
+
+    function fixedOverheadGas() external view returns (uint256);
+
+    function paused() external view returns (bool);
+
+    function sponsorStorageLocation() external pure returns (bytes32);
+
+    function implementationVersion() external pure returns (string memory);
 }
