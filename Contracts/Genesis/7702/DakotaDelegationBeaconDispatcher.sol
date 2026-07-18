@@ -6,6 +6,48 @@
 
 pragma solidity >=0.8.20 <0.9.0;
 
+/*
+  ___       _        _          ___  _              _      _
+ |   \ __ _| | _____| |_ __ _  |   \(_)____ __  __ _| |_ __| |_  ___ _ _
+ | |) / _` | |/ / _ \  _/ _` | | |) | (_-< '_ \/ _` |  _/ _| ' \/ -_) '_|
+ |___/\__,_|_|\_\___/\__\__,_| |___/|_/__/ .__/\__,_|\__\__|_||_\___|_|
+                                          |_|      By: CryftCreator
+
+  Version 1.0.0 — Production Delegation Dispatcher  [IMMUTABLE]
+
+  ┌──────────────── Contract Architecture ─────────────────────────────┐
+  │                                                                    │
+  │  NATIVE EIP-7702 BEACON DISPATCH                                   │
+  │                                                                    │
+  │  Per-account route:                                                │
+  │    user EOA → 0x0000...de1E6A7E genesis entry                      │
+  │    → user EIP-1967 implementation slot → this dispatcher           │
+  │    → shared beacon → DakotaDelegation implementation               │
+  │                                                                    │
+  │  Selector surface:                                                 │
+  │    • payable fallback only                                         │
+  │    • intentionally empty external ABI                              │
+  │    • no management, initialization, or upgrade selectors           │
+  │                                                                    │
+  │  Construction checks:                                              │
+  │    • beacon must be nonzero and contain runtime code               │
+  │    • beacon must resolve valid implementation code at deployment   │
+  │    • immutable self and beacon addresses prevent dispatch cycles   │
+  │                                                                    │
+  │  Dispatch guarantees:                                              │
+  │    • resolves IBeacon.implementation() on every call               │
+  │    • rejects zero, beacon, self, and code-free implementations     │
+  │    • delegates with original calldata, caller, value, and storage  │
+  │    • returns or reverts with the implementation's exact data       │
+  │                                                                    │
+  │  Storage and upgrades:                                             │
+  │    • no mutable dispatcher storage                                 │
+  │    • execution remains in the delegated user account context       │
+  │    • normal logic upgrades occur once at the shared beacon         │
+  │    • per-account dispatcher replacement is recovery-only           │
+  └────────────────────────────────────────────────────────────────────┘
+*/
+
 import "../Upgradeable/Proxy/Beacon/IBeacon.sol";
 
 /// @title DakotaDelegationBeaconDispatcher
