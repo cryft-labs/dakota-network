@@ -32,6 +32,19 @@ DISPATCHER = (
     / "7702"
     / "DakotaDelegationBeaconDispatcher.sol"
 )
+REGISTRY = (
+    CONTRACTS_DIR
+    / "Genesis"
+    / "7702"
+    / "DakotaDelegationRegistry.sol"
+)
+CAPABILITIES = (
+    CONTRACTS_DIR
+    / "Genesis"
+    / "7702"
+    / "Libraries"
+    / "DakotaDelegationCapabilities.sol"
+)
 GENESIS_PROXY = (
     CONTRACTS_DIR
     / "Genesis"
@@ -46,6 +59,9 @@ EXPECTED_SPONSOR_NAMESPACE = (
 )
 EXPECTED_DELEGATE_NAMESPACE = (
     "0x2d5df833376e6c9531b3cb92f5745ecf8ad8197730684ec3db99cc12d4e93d00"
+)
+EXPECTED_REGISTRY_NAMESPACE = (
+    "0xab4cfcf4b885f9dbbc02cc8800e34faa6a47500834aa5c49ef09aafea9c84000"
 )
 
 RETIRED_SPONSOR_FUNCTIONS = {
@@ -93,7 +109,36 @@ REQUIRED_DELEGATE_FUNCTIONS = {
     "getExecutionDigest",
     "delegationStorageLocation",
     "delegationProtocolId",
+    "delegationCapabilities",
+    "supportsInterface",
     "implementationVersion",
+}
+
+REQUIRED_REGISTRY_FUNCTIONS = {
+    "acceptAdmin",
+    "accountStatus",
+    "cancelAdminTransfer",
+    "currentRelease",
+    "currentSnapshot",
+    "getAccountDomainSeparator",
+    "getAccountExecutionDigest",
+    "getAccountNonce",
+    "genesisProxyAdmin",
+    "initialize",
+    "isAccountReady",
+    "pendingRegistryAdmin",
+    "proposeAdmin",
+    "recordCurrentImplementation",
+    "registryAdmin",
+    "registryImplementation",
+    "registryStorageLocation",
+    "registryVersion",
+    "releaseAt",
+    "releaseCount",
+    "supportsCurrentCapability",
+    "transferBeaconOwnership",
+    "upgradeDelegation",
+    "validatorRootRegistry",
 }
 
 REQUIRED_BEACON_FUNCTIONS = {
@@ -103,11 +148,17 @@ REQUIRED_BEACON_FUNCTIONS = {
     "transferOwnership",
 }
 
-EXPECTED_LINEAR_STORAGE = [
+EXPECTED_SPONSOR_LINEAR_STORAGE = [
     {"label": "_initialized", "slot": "0", "offset": 0},
     {"label": "_initializing", "slot": "0", "offset": 1},
     {"label": "_status", "slot": "1", "offset": 0},
     {"label": "__gap", "slot": "2", "offset": 0},
+]
+
+EXPECTED_REGISTRY_LINEAR_STORAGE = [
+    {"label": "_initialized", "slot": "0", "offset": 0},
+    {"label": "_initializing", "slot": "0", "offset": 1},
+    {"label": "__gap", "slot": "1", "offset": 0},
 ]
 
 
@@ -161,6 +212,8 @@ def _selector_collisions(
 def _assert_source_contract() -> None:
     sponsor_source = SPONSOR.read_text(encoding="utf-8")
     delegate_source = DELEGATE.read_text(encoding="utf-8")
+    registry_source = REGISTRY.read_text(encoding="utf-8")
+    capabilities_source = CAPABILITIES.read_text(encoding="utf-8")
 
     required_sponsor_fragments = (
         "function initialize(",
@@ -176,7 +229,38 @@ def _assert_source_contract() -> None:
         EXPECTED_DELEGATE_NAMESPACE,
         "dakota.delegation.sponsored-execution.v1",
         'keccak256("1")',
-        'return "1.0.0";',
+        'return "1.1.0";',
+        "function delegationCapabilities()",
+        "function supportsInterface(",
+    )
+    required_registry_fragments = (
+        "UPGRADEABLE CONTROL PLANE",
+        "function initialize(",
+        ") external override initializer {",
+        "_disableInitializers();",
+        "erc7201:dakota.storage.DakotaDelegationRegistry",
+        EXPECTED_REGISTRY_NAMESPACE,
+        "address(this) != _DELEGATION_ENTRY",
+        "0x00000000000000000000000000000000de1E6A7E",
+        "state.registryAdmin = msg.sender;",
+        ").isRootOverlord(caller)",
+        "error EmptyCodeHash();",
+        "function upgradeDelegation(",
+        "expectedCodeHash == bytes32(0)",
+        "beaconControl.upgradeTo(newImplementation);",
+        "_recordRelease(newImplementation, metadata);",
+        "DakotaDelegationCapabilities.REQUIRED_V1",
+    )
+    required_capability_fragments = (
+        "library DakotaDelegationCapabilities",
+        "SPONSORED_EXECUTION = 1 << 0",
+        "BATCHED_CALLS = 1 << 1",
+        "EIP1271 = 1 << 2",
+        "NATIVE_RECEIVE = 1 << 3",
+        "ERC721_RECEIVE = 1 << 4",
+        "ERC1155_RECEIVE = 1 << 5",
+        "TYPED_DATA_HELPERS = 1 << 6",
+        "REPLAY_PROTECTION = 1 << 7",
     )
     for fragment in required_sponsor_fragments:
         if fragment not in sponsor_source:
@@ -188,6 +272,24 @@ def _assert_source_contract() -> None:
             raise RuntimeError(
                 f"DakotaDelegation source contract missing: {fragment}"
             )
+    for fragment in required_registry_fragments:
+        if fragment not in registry_source:
+            raise RuntimeError(
+                f"DakotaDelegationRegistry source missing: {fragment}"
+            )
+    for fragment in required_capability_fragments:
+        if fragment not in capabilities_source:
+            raise RuntimeError(
+                f"Delegation capability source missing: {fragment}"
+            )
+    if "delegatecall(" in registry_source:
+        raise RuntimeError(
+            "Delegation registry must not execute through delegatecall"
+        )
+    if "reinitializer(" in registry_source:
+        raise RuntimeError(
+            "Initial delegation registry release must not use reinitializer"
+        )
     if "reinitializer(" in sponsor_source:
         raise RuntimeError(
             "Initial GasSponsor release must not use reinitializer"
@@ -227,6 +329,7 @@ def main() -> None:
             DELEGATE,
             BEACON,
             DISPATCHER,
+            REGISTRY,
             GENESIS_PROXY,
         )
     ]
@@ -251,6 +354,7 @@ def main() -> None:
     sponsor = _find_contract(compiled, "GasSponsor")
     delegate = _find_contract(compiled, "DakotaDelegation")
     beacon = _find_contract(compiled, "DakotaDelegationBeacon")
+    registry = _find_contract(compiled, "DakotaDelegationRegistry")
     dispatcher = _find_contract(
         compiled,
         "DakotaDelegationBeaconDispatcher",
@@ -272,6 +376,12 @@ def main() -> None:
         RETIRED_DELEGATE_FUNCTIONS,
         "delegate",
     )
+    _assert_function_surface(
+        registry,
+        REQUIRED_REGISTRY_FUNCTIONS,
+        set(),
+        "delegation registry",
+    )
 
     beacon_functions = _function_names(beacon)
     missing_beacon = REQUIRED_BEACON_FUNCTIONS - beacon_functions
@@ -286,17 +396,30 @@ def main() -> None:
             f"{sorted(dispatcher_functions)}"
         )
 
-    linear_storage = [
+    sponsor_linear_storage = [
         {
             key: entry[key]
             for key in ("label", "slot", "offset")
         }
         for entry in sponsor["storage-layout"]["storage"]
     ]
-    if linear_storage != EXPECTED_LINEAR_STORAGE:
+    if sponsor_linear_storage != EXPECTED_SPONSOR_LINEAR_STORAGE:
         raise RuntimeError(
             "Unexpected GasSponsor linear storage; implementation state "
-            f"must remain namespaced: {linear_storage}"
+            f"must remain namespaced: {sponsor_linear_storage}"
+        )
+
+    registry_linear_storage = [
+        {
+            key: entry[key]
+            for key in ("label", "slot", "offset")
+        }
+        for entry in registry["storage-layout"]["storage"]
+    ]
+    if registry_linear_storage != EXPECTED_REGISTRY_LINEAR_STORAGE:
+        raise RuntimeError(
+            "Unexpected delegation registry linear storage; registry state "
+            f"must remain namespaced: {registry_linear_storage}"
         )
 
     sponsor_collisions = _selector_collisions(
@@ -305,6 +428,10 @@ def main() -> None:
     )
     delegate_collisions = _selector_collisions(
         delegate,
+        genesis_proxy,
+    )
+    registry_collisions = _selector_collisions(
+        registry,
         genesis_proxy,
     )
     if sponsor_collisions:
@@ -317,6 +444,11 @@ def main() -> None:
             "Delegation/genesis proxy selector collision: "
             f"{delegate_collisions}"
         )
+    if registry_collisions:
+        raise RuntimeError(
+            "Delegation registry/genesis proxy selector collision: "
+            f"{registry_collisions}"
+        )
 
     sizes = {
         "GasSponsor": len(bytes.fromhex(sponsor["bin-runtime"])),
@@ -326,6 +458,9 @@ def main() -> None:
         ),
         "DakotaDelegationBeaconDispatcher": len(
             bytes.fromhex(dispatcher["bin-runtime"])
+        ),
+        "DakotaDelegationRegistry": len(
+            bytes.fromhex(registry["bin-runtime"])
         ),
     }
     oversized = {
@@ -342,9 +477,11 @@ def main() -> None:
                 "solc": DEFAULT_SOLC_VERSION,
                 "evm": DEFAULT_EVM_VERSION,
                 "runtime_bytes": sizes,
-                "linear_storage": linear_storage,
+                "sponsor_linear_storage": sponsor_linear_storage,
+                "registry_linear_storage": registry_linear_storage,
                 "sponsor_namespace": EXPECTED_SPONSOR_NAMESPACE,
                 "delegate_namespace": EXPECTED_DELEGATE_NAMESPACE,
+                "registry_namespace": EXPECTED_REGISTRY_NAMESPACE,
                 "retired_sponsor_functions": sorted(
                     RETIRED_SPONSOR_FUNCTIONS
                 ),
@@ -353,6 +490,7 @@ def main() -> None:
                 ),
                 "sponsor_proxy_selector_collisions": {},
                 "delegate_proxy_selector_collisions": {},
+                "registry_proxy_selector_collisions": {},
                 "dispatcher_functions": [],
             },
             indent=2,

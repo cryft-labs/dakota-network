@@ -1,0 +1,109 @@
+{
+  "status": "pass",
+  "archive": "build-info (6).zip",
+  "target_builds": 5,
+  "exact_nested_inputs": true,
+  "all_bytecode_and_metadata_match": true,
+  "results": [
+    {
+      "contract": "DakotaDelegation",
+      "source": "contracts/contracts/Contracts/Genesis/7702/DakotaDelegation.sol",
+      "build_info": "28c3739c3d26c785f5e3c2d02232fb42.json",
+      "build_id": "28c3739c3d26c785f5e3c2d02232fb42",
+      "solc_version": "0.8.34+commit.80d5c536",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "evm_version_explicit": null,
+      "source_count": 4,
+      "standard_input_file": "DakotaDelegation.remix-build-info-6.standard-input.json",
+      "standard_input_sha256": "31cca32da7fe05cf7f9932230273452d38735e4b632ecaec6981309c7424044a",
+      "exact_nested_input": true,
+      "all_compiled_contract_outputs_match": true,
+      "creation_bytes": 5390,
+      "runtime_bytes": 5341,
+      "contracts_compared": 4
+    },
+    {
+      "contract": "DakotaDelegationBeacon",
+      "source": "contracts/contracts/Contracts/Genesis/7702/DakotaDelegationBeacon.sol",
+      "build_info": "24378d62ebb655fa2ff7efbc0b6e315a.json",
+      "build_id": "24378d62ebb655fa2ff7efbc0b6e315a",
+      "solc_version": "0.8.34+commit.80d5c536",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "evm_version_explicit": null,
+      "source_count": 5,
+      "standard_input_file": "DakotaDelegationBeacon.remix-build-info-6.standard-input.json",
+      "standard_input_sha256": "8c9ee944bb467952e196d640ddaee73c1ebe8aeedf7d8a8877d2e4f805d5b2aa",
+      "exact_nested_input": true,
+      "all_compiled_contract_outputs_match": true,
+      "creation_bytes": 1061,
+      "runtime_bytes": 644,
+      "contracts_compared": 5
+    },
+    {
+      "contract": "DakotaDelegationBeaconDispatcher",
+      "source": "contracts/contracts/Contracts/Genesis/7702/DakotaDelegationBeaconDispatcher.sol",
+      "build_info": "0f58ebe0fb99221a70258b063e7f8722.json",
+      "build_id": "0f58ebe0fb99221a70258b063e7f8722",
+      "solc_version": "0.8.34+commit.80d5c536",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "evm_version_explicit": null,
+      "source_count": 2,
+      "standard_input_file": "DakotaDelegationBeaconDispatcher.remix-build-info-6.standard-input.json",
+      "standard_input_sha256": "2426201bc2aad604b88f67821fb4266793b5b4b1a52bde970fc6ac6d67beeb35",
+      "exact_nested_input": true,
+      "all_compiled_contract_outputs_match": true,
+      "creation_bytes": 1279,
+      "runtime_bytes": 644,
+      "contracts_compared": 2
+    },
+    {
+      "contract": "DakotaDelegationRegistry",
+      "source": "contracts/contracts/Contracts/Genesis/7702/DakotaDelegationRegistry.sol",
+      "build_info": "e007eff91a1670fc5cb97c529ebb9236.json",
+      "build_id": "e007eff91a1670fc5cb97c529ebb9236",
+      "solc_version": "0.8.34+commit.80d5c536",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "evm_version_explicit": null,
+      "source_count": 7,
+      "standard_input_file": "DakotaDelegationRegistry.remix-build-info-6.standard-input.json",
+      "standard_input_sha256": "dd43bf652c155fa19ed8ca518579c85a22b223ad84abcde50f6e254b35bb65f5",
+      "exact_nested_input": true,
+      "all_compiled_contract_outputs_match": true,
+      "creation_bytes": 12476,
+      "runtime_bytes": 12252,
+      "contracts_compared": 9
+    },
+    {
+      "contract": "GasSponsor",
+      "source": "contracts/contracts/Contracts/Genesis/7702/GasSponsor.sol",
+      "build_info": "4ebd96b3d30c8e67e587af43da47352c.json",
+      "build_id": "4ebd96b3d30c8e67e587af43da47352c",
+      "solc_version": "0.8.34+commit.80d5c536",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "evm_version_explicit": null,
+      "source_count": 7,
+      "standard_input_file": "GasSponsor.remix-build-info-6.standard-input.json",
+      "standard_input_sha256": "d1d95ba8e58e4ff50268fb6a0824caeffdb87cdc16afdfa0220438617b7eb03f",
+      "exact_nested_input": true,
+      "all_compiled_contract_outputs_match": true,
+      "creation_bytes": 11958,
+      "runtime_bytes": 11734,
+      "contracts_compared": 9
+    }
+  ]
+}

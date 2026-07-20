@@ -7,12 +7,14 @@
 > The older `DakotaDelegation` and `GasSponsor` function references later in
 > this broad integration guide describe retired prototypes and must not be
 > used for deployment. The authoritative native sponsorship and deployment
-> contract is [`GAS-SPONSORSHIP.md`](./GAS-SPONSORSHIP.md). The initial release keeps
-> `0x00000000000000000000000000000000de1E6A7E` as the EIP-7702 entry, routes
-> each initialized account through `DakotaDelegationBeaconDispatcher` and
-> `DakotaDelegationBeacon`, and first-links the `0x...FEeD` GasSponsor proxy
-> with `GasSponsor.initialize(...)`. It does not expose session-key, claim, top-off, or
-> unrestricted forwarding functions.
+> runbook is [`GAS-SPONSORSHIP.md`](./GAS-SPONSORSHIP.md). The initial release
+> first-links `0x00000000000000000000000000000000de1E6A7E` to the upgradeable
+> `DakotaDelegationRegistry` control plane, then transfers beacon ownership to
+> that fixed entry. Each initialized user account independently routes through
+> `DakotaDelegationBeaconDispatcher` and `DakotaDelegationBeacon`. The
+> `0x...FEeD` proxy is first-linked with `GasSponsor.initialize(...)`. This
+> release does not expose session-key, claim, top-off, or unrestricted
+> forwarding functions.
 
 > **PATENT & LICENSING NOTICE**
 >
@@ -65,7 +67,7 @@
 | `0x000000000000000000000000000000000000c0DE` | CodeManager | Official Dakota code management service (patent-covered) |
 | `0x000000000000000000000000000000000000Face` | ERC-8004 Agent Registry | Official ERC-8004 agent identity contract |
 | `0x0000000000000000000000000000000000FacAdE` | ProxyAdmin | Guardian-gated ERC1967 upgrade dispatch |
-| `0x00000000000000000000000000000000de1E6A7E` | DakotaDelegation | EIP-7702 delegation target (upgradeable — TransparentUpgradeableProxy) |
+| `0x00000000000000000000000000000000de1E6A7E` | DakotaDelegationRegistry | EIP-7702 entry and upgradeable shared control plane |
 | `0x000000000000000000000000000000000000FEeD` | GasSponsor | Gas sponsorship treasury (upgradeable — TransparentUpgradeableProxy) |
 
 ### 1.3 Genesis Configuration
@@ -141,7 +143,8 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 **Required:**
 - ✅ Prague/Pectra fork activated (`pragueTime: 0` — done)
 - ✅ Besu **26.1.0**
-- ✅ `DakotaDelegation` contract deployed (delegation target)
+- ✅ `DakotaDelegationRegistry` first-linked at the fixed delegation entry
+- ✅ `DakotaDelegationBeaconDispatcher`, beacon, and implementation deployed
 - ✅ *(Optional)* `GasSponsor` contract for self-hosted gas sponsorship
 
 ---
@@ -154,7 +157,9 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 
 | Contract | Source File | Upgradeable | Proxy Address |
 |---|---|---|---|
-| **DakotaDelegation** | `Contracts/Genesis/7702/DakotaDelegation.sol` | Yes (TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
+| **DakotaDelegationRegistry** | `Contracts/Genesis/7702/DakotaDelegationRegistry.sol` | Yes (fixed TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
+| **DakotaDelegation** | `Contracts/Genesis/7702/DakotaDelegation.sol` | Yes (shared beacon) | `<beacon_implementation>` |
+| **DakotaDelegationBeaconDispatcher** | `Contracts/Genesis/7702/DakotaDelegationBeaconDispatcher.sol` | Immutable | `<dispatcher_address>` |
 | **GasSponsor** | `Contracts/Genesis/7702/GasSponsor.sol` | Yes (TransparentUpgradeableProxy) | `0x...FEeD` (genesis) |
 | **CodeManager** | `Contracts/CodeManagement/CodeManager.sol` | Yes | `<proxy_address>` |
 | **CryftGreetingCards** | `Contracts/Tokens/GreetingCards.sol` | Yes | `<proxy_address>` |

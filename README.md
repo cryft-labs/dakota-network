@@ -100,7 +100,7 @@ All Ethereum hard forks through Osaka are activated from genesis (block 0 / time
 | `0x0000...c0DE`     | CodeManager smart contract | `CodeManager` — official Dakota code management service (patent-covered)      |
 | `0x0000...Face`     | ERC-8004 Agent Registry    | Official ERC-8004 agent identity contract                                     |
 | `0x0000...FacAdE`   | ProxyAdmin smart contract  | `ProxyAdmin` — guardian-gated ERC1967 upgrade dispatch                        |
-| `0x0000...de1E6A7E` | EIP-7702 delegation entry  | Fixed custom genesis proxy targeted by user authorization; each delegated EOA links its own dispatcher slot |
+| `0x0000...de1E6A7E` | EIP-7702 delegation entry  | Fixed custom genesis proxy hosting the shared registry; each delegated EOA links its own dispatcher slot |
 | `0x0000...FEeD`     | GasSponsor proxy           | Fixed custom genesis proxy; first-linked once with `GasSponsor.initialize(...)` |
 
 ---
@@ -684,15 +684,19 @@ relayer
   -> authorized target calls
 ```
 
-`0x...de1E6A7E` remains the fixed EIP-7702 entry and is not linked to the dispatcher at its own address. Each authorized user account stores the dispatcher in that account's EIP-1967 implementation slot. The dispatcher is immutable and stateless; normal upgrades update the shared beacon once.
+At its own address, `0x...de1E6A7E` is first-linked to the upgradeable `DakotaDelegationRegistry` control plane. Direct calls to the fixed entry expose canonical component addresses, the current registry and delegation implementations, verified release history, capabilities, and delegated-account readiness.
+
+Each authorized user account has separate proxy storage and links `DakotaDelegationBeaconDispatcher` in that account's EIP-1967 implementation slot. The dispatcher is immutable and stateless; user execution therefore bypasses registry logic and normal delegation upgrades update the shared beacon once. The fixed entry owns that beacon and registry calls validate and record each implementation activation atomically.
 
 #### Initial-Release and Storage Rules
 
 - Before first deployment, both reserved genesis proxies must report `proxy_getIsInit() == false` and a zero EIP-1967 implementation slot.
+- `DakotaDelegationRegistry` uses `initialize(...)` with `initializer`, and its implementation constructor disables direct initialization.
 - `GasSponsor` uses `initialize(...)` with `initializer`. There is no `initializeV2(...)`, numbered reinitializer, or prior implementation state to migrate.
 - The `GasSponsor` implementation constructor disables direct initialization.
 - Direct execution against the `DakotaDelegation` implementation is rejected; it must execute through a delegated account.
 - Genesis proxy governance state is namespaced and implementation routing uses the EIP-1967 slot.
+- Delegation registry state uses `erc7201:dakota.storage.DakotaDelegationRegistry`.
 - Sponsorship state uses `erc7201:dakota.storage.GasSponsor`.
 - Per-user nonce and reentrancy state use `erc7201:dakota.storage.DakotaDelegation`.
 
@@ -703,6 +707,7 @@ relayer
 | `DakotaDelegation` | Verifies the user-account EIP-712 signature, account nonce, deadline, executor, call count, and execution gas budget before executing up to 32 calls. |
 | `DakotaDelegationBeacon` | Ownable shared beacon for delegation implementation upgrades. Do not renounce ownership. |
 | `DakotaDelegationBeaconDispatcher` | Stateless resolver stored in each delegated account's EIP-1967 implementation slot. |
+| `DakotaDelegationRegistry` | Upgradeable implementation first-linked at `0x...de1E6A7E`; the fixed entry owns the beacon and exposes the verified release ledger, current implementation directory, capability surface, and delegated-account readiness view. |
 | `GasSponsor` | Validates sponsorship vouchers and delegation readiness, enforces global pause/relayer controls plus sponsor and tenant limits, prevents operation replay, executes the signed account calldata, and reimburses the relayer within the signed cap. |
 
 #### Build and Deployment
@@ -713,14 +718,30 @@ Compile with Solidity `0.8.34`, Osaka, optimizer enabled, and `200` runs. The de
 python Tools/SolcCompiler/check_gas_sponsor.py
 ```
 
-The gate checks initial-release naming and initializer semantics, ERC-7201 storage locations, linear storage, retired selector absence, proxy selector collisions, dispatcher statelessness, and runtime size. Archive and verify the exact Standard JSON input; flattened sources are not the deployment source of truth.
+The gate checks initial-release naming and initializer semantics, ERC-7201 storage locations, linear storage, retired selector absence, proxy selector collisions, shared capability assignments, registry control-plane invariants, dispatcher statelessness, and runtime size. Archive and verify the exact Standard JSON input; flattened sources are not the deployment source of truth.
 
 Deploy in this order:
 
-1. `DakotaDelegation()`
+1. `DakotaDelegation()` version `1.1.0`
 2. `DakotaDelegationBeacon(delegationImplementation, ROOT)`
 3. `DakotaDelegationBeaconDispatcher(beacon)`
-4. `GasSponsor()`
+4. `DakotaDelegationRegistry()`
+5. `GasSponsor()`
+
+Encode `DakotaDelegationRegistry.initialize(dispatcher, beacon, 0x...FEeD)`;
+the live root caller becomes registry admin. Then `ROOT` first-links `0x...de1E6A7E` with:
+
+```solidity
+proxy_linkLogicAdmin(
+    DAKOTA_DELEGATION_REGISTRY_IMPLEMENTATION,
+    REGISTRY_INITIALIZE_CALLDATA
+)
+```
+
+Transfer beacon ownership to `0x...de1E6A7E`. The fixed entry must report one
+initial release and `currentSnapshot().registryControlsBeacon == true`. Normal
+delegation upgrades call `upgradeDelegation(newImplementation,
+expectedRuntimeCodeHash)` through the registry ABI at `0x...de1E6A7E`.
 
 Encode the initial sponsor state:
 
@@ -749,7 +770,7 @@ The user signs an EIP-7702 authorization for chain `112311`, contract `0x...de1E
 proxy_linkLogicAdmin(DAKOTA_DELEGATION_DISPATCHER, hex"")
 ```
 
-After onboarding, confirm the EIP-7702 code indicator, custom proxy initialization flag, per-account dispatcher slot, retained root authority, `implementationVersion() == "1.0.0"`, and `GasSponsor.isDelegationReady(account) == true`.
+After onboarding, confirm the EIP-7702 code indicator, custom proxy initialization flag, per-account dispatcher slot, retained root authority, `implementationVersion() == "1.1.0"`, the required capability bitmap, registry readiness, and `GasSponsor.isDelegationReady(account) == true`.
 
 #### DakotaDelegation API
 
@@ -762,7 +783,22 @@ After onboarding, confirm the EIP-7702 code indicator, custom proxy initializati
 | `domainSeparator()` | Returns the account-specific `DakotaDelegation` / version `1` domain separator. |
 | `isValidSignature(hash, signature)` | Implements EIP-1271 for the delegated account. |
 | `delegationProtocolId()` | Returns the initial sponsored-execution protocol identifier. |
-| `implementationVersion()` | Returns `"1.0.0"`. |
+| `delegationCapabilities()` | Returns the stable v1 capability bitmap for dashboard and router feature discovery. |
+| `implementationVersion()` | Returns `"1.1.0"`. |
+| `supportsInterface(interfaceId)` | Reports the delegation, ERC-165, EIP-1271, ERC-721 receiver, and ERC-1155 receiver surfaces. |
+
+#### DakotaDelegationRegistry API
+
+| Scope | Functions | Purpose |
+| --- | --- | --- |
+| Initial link | `initialize` | Binds the dispatcher, beacon, sponsor, initial admin, protocol, and first verified release at the fixed delegation entry. |
+| Registry admin | `proposeAdmin`, `acceptAdmin`, `cancelAdminTransfer` | Two-step control-plane administration without an ownerless state. |
+| Registry admin | `upgradeDelegation` | Validates the exact runtime code hash, protocol, required capabilities, and interfaces before atomically upgrading and recording. |
+| Registry admin | `recordCurrentImplementation` | Captures an implementation changed before the fixed delegation entry acquired beacon ownership. |
+| Registry admin | `transferBeaconOwnership` | Explicit migration escape hatch to a replacement control plane. |
+| Read paths | `currentSnapshot`, `currentRelease`, `releaseAt`, `releaseCount` | Exposes canonical routing and release history. |
+| Entry reads | `registryImplementation`, `registryVersion`, `registryStorageLocation`, `genesisProxyAdmin` | Exposes the control-plane implementation and fixed proxy integration details. |
+| Account reads | `accountStatus`, `isAccountReady`, `getAccountNonce`, `getAccountDomainSeparator`, `getAccountExecutionDigest` | Consolidates EIP-7702, proxy, protocol, capability, signer, and sponsor readiness. |
 
 #### GasSponsor API
 
@@ -803,7 +839,8 @@ The relayer calls `GasSponsor.executeSponsored(voucher, executionData, voucherSi
 
 #### Upgrade Paths
 
-- Delegation logic: pause sponsorship, deploy and verify compatible logic, call `DakotaDelegationBeacon.upgradeTo(newImplementation)`, then confirm existing-account nonce preservation before unpausing.
+- Delegation logic: pause sponsorship, deploy and verify compatible logic, derive its runtime code hash from the archived artifact, call `upgradeDelegation(newImplementation, expectedCodeHash)` at `0x...de1E6A7E`, then confirm the release record and existing-account nonce preservation before unpausing.
+- Delegation control plane: preserve the `Initializable` linear prefix and `erc7201:dakota.storage.DakotaDelegationRegistry`, then use the fixed ProxyAdmin to upgrade `0x...de1E6A7E`; use `upgradeAndCall` only if a future implementation introduces a numbered migration.
 - GasSponsor without migration: pause sponsorship, deploy and verify storage-compatible logic, then call `ProxyAdmin.upgrade(GAS_SPONSOR_PROXY, newImplementation)`.
 - GasSponsor with a future migration: use `ProxyAdmin.upgradeAndCall(...)` and introduce a numbered reinitializer only in that future implementation.
 - Per-account dispatcher replacement is a recovery path, not the normal delegation upgrade mechanism.
@@ -1125,13 +1162,16 @@ dakota-network/
 │   │   │   ├── DakotaDelegation.sol  # Signed sponsored-execution logic for delegated EOAs
 │   │   │   ├── DakotaDelegationBeacon.sol  # Shared implementation beacon
 │   │   │   ├── DakotaDelegationBeaconDispatcher.sol  # Stateless per-account dispatcher
+│   │   │   ├── DakotaDelegationRegistry.sol  # Fixed-entry control plane and release directory
 │   │   │   ├── GasSponsor.sol        # Platform-voucher sponsorship treasury
 │   │   │   ├── GAS-SPONSORSHIP.md    # Authoritative deployment/canary/upgrade runbook
 │   │   │   ├── EIP-7702-Instructions.md  # Broader EIP-7702 integration guide
 │   │   │   ├── Interfaces/
 │   │   │   │   ├── IDakotaDelegation.sol
+│   │   │   │   ├── IDakotaDelegationRegistry.sol
 │   │   │   │   └── IGasSponsor.sol
 │   │   │   └── Libraries/
+│   │   │       ├── DakotaDelegationCapabilities.sol  # Shared stable feature bitmap
 │   │   │       └── DakotaECDSA.sol   # Strict ECDSA recovery helper
 │   │   ├── GasManager/
 │   │   │   └── GasManager.sol        # Gas beneficiary — voter-governed funding & burns

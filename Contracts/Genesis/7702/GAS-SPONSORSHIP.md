@@ -25,16 +25,18 @@ Neither genesis proxy has ever had an implementation. Before deployment,
 confirm that both report `proxy_getIsInit() == false` and have a zero EIP-1967
 implementation slot.
 
-`GasSponsor` therefore uses `initialize(...)` with the `initializer` guard.
-There is no prior implementation state to migrate and no reinitializer to
-call. The implementation constructor disables initialization on the logic
-contract itself.
+`DakotaDelegationRegistry` and `GasSponsor` therefore use `initialize(...)`
+with the `initializer` guard. There is no prior implementation state to
+migrate and no reinitializer to call. Both implementation constructors
+disable initialization on the logic contracts themselves.
 
 Proxy state is still collision-sensitive. The custom genesis proxy stores its
 governance state in namespaced slots and its implementation in the EIP-1967
-slot. `GasSponsor` keeps sponsorship state under
-`erc7201:dakota.storage.GasSponsor`, while `DakotaDelegation` keeps each
-user's nonce and reentrancy state under
+slot. `DakotaDelegationRegistry` keeps the fixed entry's directory and
+release state under `erc7201:dakota.storage.DakotaDelegationRegistry`,
+`GasSponsor` keeps sponsorship state under
+`erc7201:dakota.storage.GasSponsor`, and `DakotaDelegation` keeps each user's
+nonce and reentrancy state under
 `erc7201:dakota.storage.DakotaDelegation`.
 
 ## Delegation Route
@@ -49,9 +51,19 @@ user EOA
   -> DakotaDelegation
 ```
 
-The dispatcher is immutable and stateless. Normal delegation upgrades use
-`DakotaDelegationBeacon.upgradeTo(newImplementation)`. ProxyAdmin is reserved
-for replacing an individual account's dispatcher if recovery is ever needed.
+The dispatcher is immutable and stateless. At its own address, the fixed
+`0x...de1E6A7E` genesis proxy is first-linked to
+`DakotaDelegationRegistry`. Direct calls to the fixed address therefore expose
+the shared control plane: current components, verified release history,
+capabilities, and delegated-account readiness.
+
+The fixed entry owns the beacon after deployment. Registry calls validate the
+implementation code hash, protocol ID, required capabilities, and interfaces,
+then update the beacon and record the release atomically. ProxyAdmin upgrades
+the registry implementation itself. Each authorized user account has separate
+proxy storage and independently links `DakotaDelegationBeaconDispatcher`, so
+linking the fixed entry to the registry does not route user execution through
+the registry.
 
 ## Build Gate
 
@@ -62,9 +74,10 @@ and `200` runs. Run:
 python Tools/SolcCompiler/check_gas_sponsor.py
 ```
 
-The gate verifies initial-release naming, `initializer` semantics, ERC-7201
-namespace constants, linear storage, removed prototype selectors, proxy
-selector collisions, the stateless dispatcher ABI, and runtime size.
+The gate verifies initial-release naming, both fixed-proxy initializers,
+ERC-7201 namespace constants, linear storage, removed prototype selectors,
+proxy selector collisions, delegation introspection, the registry surface,
+the stateless dispatcher ABI, and runtime size.
 
 Archive the exact compiler Standard JSON input used for deployment. Verify
 contracts from that input rather than flattened source.
@@ -81,6 +94,7 @@ RELAYER
 DAKOTA_DELEGATION_IMPLEMENTATION
 DAKOTA_DELEGATION_BEACON
 DAKOTA_DELEGATION_DISPATCHER
+DAKOTA_DELEGATION_REGISTRY_IMPLEMENTATION
 GAS_SPONSOR_IMPLEMENTATION
 ```
 
@@ -89,21 +103,77 @@ separate voucher signer and relayer in production.
 
 ## Contract Deployment Order
 
-1. Deploy `DakotaDelegation()`.
+1. Deploy `DakotaDelegation()` version `1.1.0`.
 2. Deploy `DakotaDelegationBeacon(delegationImplementation, ROOT)`.
 3. Deploy `DakotaDelegationBeaconDispatcher(beacon)`.
-4. Deploy `GasSponsor()`.
-5. Verify all four deployments with their exact Standard JSON input.
+4. Deploy `DakotaDelegationRegistry()`.
+5. Deploy `GasSponsor()`.
+6. Verify all five deployments with their exact Standard JSON input.
 
 Confirm:
 
-- Beacon `owner() == ROOT`.
 - Beacon `implementation() == delegationImplementation`.
 - Dispatcher construction succeeds against that beacon.
 - Direct calls to `DakotaDelegation.executeSponsored(...)` revert.
+- Direct calls to `DakotaDelegationRegistry.initialize(...)` revert.
 - Direct calls to `GasSponsor.initialize(...)` revert.
 
-Do not call `renounceOwnership()` on the beacon.
+## First-Link Delegation Control Plane
+
+Encode:
+
+```solidity
+DakotaDelegationRegistry.initialize(
+    DAKOTA_DELEGATION_DISPATCHER,
+    DAKOTA_DELEGATION_BEACON,
+    0x000000000000000000000000000000000000FEeD
+)
+```
+
+From `ROOT`, call the fixed delegation proxy at `0x...de1E6A7E`:
+
+```solidity
+proxy_linkLogicAdmin(
+    DAKOTA_DELEGATION_REGISTRY_IMPLEMENTATION,
+    REGISTRY_INITIALIZE_CALLDATA
+)
+```
+
+`ROOT` is not encoded in the initializer. The fixed proxy and registry both
+resolve the authorized caller from the validator/root registry at `0x...1111`.
+
+This must be the fixed entry's first link. Do not use
+`ProxyAdmin.upgrade(...)` for the initial link because that would not set the
+custom genesis initialization flag.
+
+After the first link, transfer the beacon to the fixed entry:
+
+```solidity
+DakotaDelegationBeacon.transferOwnership(
+    0x00000000000000000000000000000000de1E6A7E
+)
+```
+
+Confirm by calling the registry ABI at `0x...de1E6A7E`:
+
+- `proxy_getIsInit() == true`
+- EIP-1967 implementation equals
+  `DAKOTA_DELEGATION_REGISTRY_IMPLEMENTATION`
+- `registryVersion() == "1.0.0"`
+- `registryAdmin() == ROOT`
+- `validatorRootRegistry() == 0x...1111`
+- `delegationEntry() == 0x...de1E6A7E`
+- `beacon() == DAKOTA_DELEGATION_BEACON`
+- `dispatcher() == DAKOTA_DELEGATION_DISPATCHER`
+- Beacon `owner() == 0x...de1E6A7E`
+- `releaseCount() == 1`
+- `currentRelease().implementation == DAKOTA_DELEGATION_IMPLEMENTATION`
+- `currentSnapshot().implementationCompatible == true`
+- `currentSnapshot().registryControlsBeacon == true`
+
+Do not call the beacon's `upgradeTo(...)` directly after ownership transfer.
+All normal delegation upgrades must call `upgradeDelegation(...)` at
+`0x...de1E6A7E`.
 
 ## First-Link GasSponsor
 
@@ -176,8 +246,12 @@ Confirm:
 - `proxy_isGuardian(ROOT) == true`.
 - `proxy_isRootOverlordRevoked() == false`.
 - `delegationProtocolId()` matches the initial protocol ID.
-- `implementationVersion() == "1.0.0"`.
+- `implementationVersion() == "1.1.0"`.
+- `delegationCapabilities()` contains every required capability bit.
+- `supportsInterface(type(IDakotaDelegation).interfaceId) == true`.
 - `GasSponsor.isDelegationReady(account) == true`.
+- `IDakotaDelegationRegistry(0x...de1E6A7E).isAccountReady(account) ==
+  true`.
 
 An accepted EIP-7702 authorization can remain applied even if transaction
 execution reverts. Inspect the account code, implementation slot, proxy
@@ -290,10 +364,38 @@ Delegation:
 
 1. Call `GasSponsor.setPaused(true)`.
 2. Deploy and verify the compatible new delegation implementation.
-3. Confirm the ERC-7201 namespace, signature domain, and selector gates.
-4. `ROOT` calls `DakotaDelegationBeacon.upgradeTo(newImplementation)`.
-5. Smoke an existing delegated account and confirm nonce preservation.
-6. Call `GasSponsor.setPaused(false)` only after verification.
+3. Confirm the ERC-7201 namespace, signature domain, selector gates,
+   protocol ID, capability bitmap, and ERC-165 interface support.
+4. Compute `EXPECTED_RUNTIME_CODE_HASH = extcodehash(newImplementation)` and
+   compare it to the archived deployment artifact.
+5. `ROOT` calls:
+
+   ```solidity
+   IDakotaDelegationRegistry(
+       0x00000000000000000000000000000000de1E6A7E
+   ).upgradeDelegation(
+       newImplementation,
+       EXPECTED_RUNTIME_CODE_HASH
+   )
+   ```
+
+6. Confirm the new release record and registry snapshot.
+7. Smoke an existing delegated account and confirm nonce preservation.
+8. Call `GasSponsor.setPaused(false)` only after verification.
+
+Delegation control plane:
+
+1. Keep sponsorship paused.
+2. Deploy and verify a registry implementation that preserves the
+   `Initializable` linear prefix and
+   `erc7201:dakota.storage.DakotaDelegationRegistry`.
+3. With no migration, the fixed ProxyAdmin calls
+   `upgrade(0x...de1E6A7E, newRegistryImplementation)`.
+4. If a future release adds state that requires migration, use
+   `upgradeAndCall(0x...de1E6A7E, newRegistryImplementation, data)` with a
+   numbered reinitializer introduced only in that future implementation.
+5. Confirm the registry implementation and version changed while the admin,
+   component bindings, release history, and beacon ownership remained intact.
 
 GasSponsor:
 
@@ -317,7 +419,9 @@ Stop before broadcasting if:
 - Either proxy reports `ROOT` is not an overlord or guardian.
 - The root-revoked flag is true.
 - Deployment bytecode differs from the archived compiler artifact.
-- Beacon owner or implementation is incorrect.
+- Beacon implementation is incorrect.
+- Beacon owner is not `0x...de1E6A7E`.
+- Registry snapshot compatibility, control, or release-match flags are false.
 - Any post-link getter differs from its encoded initialization value.
 - `isDelegationReady(account)` is false.
 - A canary simulation differs from the transaction that will be submitted.

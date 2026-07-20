@@ -13,7 +13,7 @@ pragma solidity >=0.8.20 <0.9.0;
  |___/\__,_|_|\_\___/\__\__,_| |___/\___|_\___\__, \__,_|\__|_\___/_||_|
                                                |___/ By: CryftCreator
 
-  Version 1.0.0 — Production Dakota Delegation  [BEACON-UPGRADEABLE]
+  Version 1.1.0 — Production Dakota Delegation  [BEACON-UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ─────────────────────────────┐
   │                                                                    │
@@ -50,6 +50,7 @@ pragma solidity >=0.8.20 <0.9.0;
 */
 
 import "./Interfaces/IDakotaDelegation.sol";
+import "./Libraries/DakotaDelegationCapabilities.sol";
 import "./Libraries/DakotaECDSA.sol";
 
 /// @title DakotaDelegation
@@ -272,13 +273,35 @@ contract DakotaDelegation is IDakotaDelegation {
     }
 
     /// @inheritdoc IDakotaDelegation
+    function delegationCapabilities()
+        external
+        pure
+        override
+        returns (uint256)
+    {
+        return DakotaDelegationCapabilities.ALL_V1;
+    }
+
+    /// @inheritdoc IDakotaDelegation
     function implementationVersion()
         external
         pure
         override
         returns (string memory)
     {
-        return "1.0.0";
+        return "1.1.0";
+    }
+
+    /// @inheritdoc IDakotaDelegation
+    function supportsInterface(
+        bytes4 interfaceId
+    ) external pure override returns (bool) {
+        return
+            interfaceId == 0x01ffc9a7 ||
+            interfaceId == type(IDakotaDelegation).interfaceId ||
+            interfaceId == _EIP1271_MAGIC ||
+            interfaceId == 0x150b7a02 ||
+            interfaceId == 0x4e2312e0;
     }
 
     receive() external payable {

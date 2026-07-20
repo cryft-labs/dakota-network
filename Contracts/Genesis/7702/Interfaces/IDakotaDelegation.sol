@@ -69,5 +69,17 @@ interface IDakotaDelegation {
 
     function delegationProtocolId() external pure returns (bytes32);
 
+    /// @notice Capability bitmap implemented by the current account logic.
+    /// @dev Bits are stable within a protocol generation:
+    ///      0 sponsored execution, 1 batched calls, 2 EIP-1271,
+    ///      3 native-token receive, 4 ERC-721 receive, 5 ERC-1155 receive,
+    ///      6 typed-data digest helpers, 7 replay-protected account nonce.
+    function delegationCapabilities() external pure returns (uint256);
+
     function implementationVersion() external pure returns (string memory);
+
+    /// @notice ERC-165 style introspection for account and receiver surfaces.
+    function supportsInterface(
+        bytes4 interfaceId
+    ) external pure returns (bool);
 }
