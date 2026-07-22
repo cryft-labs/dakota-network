@@ -1,0 +1,33 @@
+{
+  "status": "pass",
+  "contract": "ProxyAdmin",
+  "genesis_address": "0x0000000000000000000000000000000000FacAdE",
+  "blockscout_api": "https://explore.dakota.cards/api/v2/smart-contracts/0x0000000000000000000000000000000000FacAdE",
+  "source_unit": "Tools/SolcCompiler/.import_cache/source/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol",
+  "historical_artifact_commit": "dd83ef75fcd5cd16aba09529bcdec4a0ea1f48b7",
+  "compiler": "0.8.34+commit.80d5c536",
+  "evm_version": "osaka",
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  },
+  "metadata_bytecode_hash": "ipfs",
+  "deployed_metadata_cid": "QmdFwbityoERoRR1ryMNHQYZ9uQT98KAaTB5RFbRT368Ki",
+  "source_count": 10,
+  "constructor_inputs": [],
+  "historical_output_matches": {
+    "creation_bytecode": true,
+    "runtime_bytecode": true,
+    "metadata": true,
+    "abi": true
+  },
+  "live_runtime_match": true,
+  "creation_size_bytes": 3228,
+  "runtime_size_bytes": 3200,
+  "standard_input_file": "ProxyAdmin.genesis-facade.standard-input.json",
+  "standard_input_sha256": "a8f7c0bf4957755342349ff0f1ee5b412f5f8fedf453aa16d241a4b79585083b",
+  "creation_bytecode_sha256": "378b94d6a595c3cb8031df20fd85436189537303f4522f3ee0778d29db99f521",
+  "runtime_bytecode_sha256": "4d9a1ed9d493e7b401737b6fe3a51b56aeeadfcbb8f72951180a45f72fe81ba8",
+  "metadata_sha256": "03997f82fa3e1e0aa9697b644c74db62f7a793c112b46ecbe157d46fb7d4b31c",
+  "note": "The historical Tools/SolcCompiler/.import_cache/source prefix is required to reproduce the deployed IPFS metadata trailer."
+}

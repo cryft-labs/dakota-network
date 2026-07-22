@@ -104,7 +104,10 @@ separate voucher signer and relayer in production.
 ## Contract Deployment Order
 
 1. Deploy `DakotaDelegation()` version `1.1.0`.
-2. Deploy `DakotaDelegationBeacon(delegationImplementation, ROOT)`.
+2. From `ROOT`, deploy
+   `DakotaDelegationBeacon(delegationImplementation)`. The constructor
+   resolves deployment authority from the validator/root registry at
+   `0x...1111`; there is no caller-supplied owner argument.
 3. Deploy `DakotaDelegationBeaconDispatcher(beacon)`.
 4. Deploy `DakotaDelegationRegistry()`.
 5. Deploy `GasSponsor()`.
@@ -113,6 +116,8 @@ separate voucher signer and relayer in production.
 Confirm:
 
 - Beacon `implementation() == delegationImplementation`.
+- Beacon `owner() == ROOT`.
+- Beacon `validatorRootRegistry() == 0x...1111`.
 - Dispatcher construction succeeds against that beacon.
 - Direct calls to `DakotaDelegation.executeSponsored(...)` revert.
 - Direct calls to `DakotaDelegationRegistry.initialize(...)` revert.
@@ -276,8 +281,30 @@ configureSponsor(
 )
 
 setRelayer(RELAYER, true)
-depositFor{value: AMOUNT}(SPONSOR)
 ```
+
+Platform allocations come from the voter-governed GasManager at `0x...caFE`:
+
+```solidity
+(bytes32 fundKey, ) = proposeSponsorFunding(
+    FUNDING_ID,
+    SPONSOR,
+    AMOUNT,
+    NOTE
+);
+
+// Each remaining voter calls this with the same fundKey.
+voteToFundGasV2(fundKey);
+
+// After approval, a GasManager guardian or SPONSOR executes it.
+executeSponsorFunding(fundKey);
+```
+
+The proposer casts the first vote automatically. `caFE` binds `SPONSOR` before
+voting starts and calls `FEeD.depositFor{value: AMOUNT}(SPONSOR)` only after the
+proposal is approved. The generic `executeFundGasV2` path rejects these
+sponsor-bound proposals. Tenants may still self-fund an already configured
+ledger by calling `FEeD.depositFor{value: AMOUNT}(SPONSOR)` directly.
 
 Tenant manager:
 

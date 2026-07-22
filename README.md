@@ -130,7 +130,7 @@ Dakota genesis slots use a **Cryft Labs-modified transparent proxy derived from 
 | Contract                            | Address             | Runtime Size | Purpose                                                                    |
 | ----------------------------------- | ------------------- | ------------ | -------------------------------------------------------------------------- |
 | **ValidatorSmartContractAllowList** | `0x0000...1111`     | 20,565 B     | QBFT validator, voter, and root overlord governance (solc 0.8.19 / London) |
-| **GasManager**                      | Genesis beneficiary | 14,163 B     | Voter-governed gas funding, token burns, and native coin burns             |
+| **GasManager**                      | Genesis beneficiary | 24,026 B     | Voter-governed direct and sponsor-ledger funding, token burns, and native coin burns |
 | **Dakota transparent proxy**        | Per-contract        | 15,246 B     | Modified transparent proxy with namespaced overlord/guardian governance    |
 | **ProxyAdmin**                      | `0x0000...FacAdE`   | 3,200 B      | Guardian-gated ERC1967 upgrade dispatch                                    |
 
@@ -259,13 +259,34 @@ Destructive operations (funding, burns) require two phases:
 1. **Vote phase**: Voters reach supermajority quorum on the operation. On passing, a `bytes32` approval key is stored.
 2. **Execute phase**: A guardian (or the funded address for gas funds) calls the execute function, which checks the approval key, clears it, and performs the transfer.
 
-| Operation           | Vote Function                     | Execute Function                  | Who Can Execute          |
-| ------------------- | --------------------------------- | --------------------------------- | ------------------------ |
-| Fund gas to address | `voteToFundGas(to, amount)`       | `executeFundGas(to, amount)`      | Guardian or `to` address |
-| Burn ERC-20 tokens  | `voteToBurnTokens(token, amount)` | `executeTokenBurn(token, amount)` | Guardian only            |
-| Burn native coin    | `voteToBurnNativeCoin(amount)`    | `executeCoinBurn(amount)`         | Guardian only            |
+| Operation | Propose/Vote Function | Execute Function | Who Can Execute |
+| --- | --- | --- | --- |
+| Legacy direct funding | `voteToFundGasV1(to, amount)` | `executeFundGasV1(to, amount)` | Guardian or `to` address |
+| Nonce-bound direct funding | `proposeFundGasV2(...)`, then `voteToFundGasV2(fundKey)` | `executeFundGasV2(fundKey)` | Guardian or funded address |
+| Sponsor-ledger funding | `proposeSponsorFunding(...)`, then `voteToFundGasV2(fundKey)` | `executeSponsorFunding(fundKey)` | Guardian or bound sponsor |
+| Burn ERC-20 tokens | `voteToBurnTokens(token, amount)` | `executeTokenBurn(token, amount)` | Guardian only |
+| Burn native coin | `voteToBurnNativeCoin(amount)` | `executeCoinBurn(amount)` | Guardian only |
 
-All execute functions are protected by `ReentrancyGuard` and use `.call{value:}` for transfers. The `executeFundGas` function also verifies the exact balance delta after transfer.
+All execute functions are protected by `ReentrancyGuard`. Direct funding uses
+`.call{value:}`, while sponsor funding invokes the typed `depositFor` entry
+point and verifies the exact balance deltas on both contracts.
+
+#### Sponsor-Ledger Funding (`caFE` -> `FEeD`)
+
+`0x...caFE` is the voter-governed source of platform sponsorship funds.
+Sponsor funding never uses the generic native-transfer executor because
+`0x...FEeD` intentionally rejects unclassified native transfers. A voter calls
+`proposeSponsorFunding(fundingId, sponsor, amount, note)`, remaining voters use
+`voteToFundGasV2(fundKey)`, and a guardian or the proposal-bound sponsor calls
+`executeSponsorFunding(fundKey)`. Execution invokes
+`GasSponsor.depositFor{value: amount}(sponsor)` at `0x...FEeD`.
+
+The sponsor address is stored in the
+`erc7201:dakota.storage.GasManagerSponsorFunding` namespace before voting
+starts. It cannot be supplied or changed at execution time. The executor also
+checks the exact `caFE` debit and `FEeD` retained-balance increase. Ordinary V2
+execution rejects sponsor-bound proposals, so an approved sponsor payment
+cannot fall through to a plain transfer.
 
 #### Guardian Management
 
@@ -482,7 +503,7 @@ CodeManager (independent)
 | **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, tracks execution-time UID active state privately, and emits `PenteExternalCall` events to mirror UID status and route redemptions through CodeManager. Supports ERC-2771 trusted forwarder for meta-transactions via PrivateMetaTxRelay. All configuration (admin, authorized caller, CodeManager address, trusted forwarder, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
 | **PrivateMetaTxRelay**  | **Patent-covered.** Pente privacy group deployment. EIP-712 / ERC-2771 meta-transaction relay for PrivateComboStorage. Any privacy group member can submit signed requests; the relay verifies the signature, increments a per-signer nonce, and forwards the call with the recovered signer appended per ERC-2771. Authorization is enforced by PrivateComboStorage, not the relay. |
 | **DakotaDelegation**    | Initial v1 EIP-7702 execution logic. Verifies an account-owner EIP-712 signature, enforces per-account nonces/deadlines/execution gas budgets, executes bounded call batches, and supports EIP-1271 validation. It intentionally exposes no generic owner/session-key execution API.                                                                                                                                                                                                              |
-| **DakotaDelegationBeacon** | Owner-controlled implementation beacon shared by delegated accounts. Normal delegation upgrades call `upgradeTo(newImplementation)` once on the beacon.                                                                                                                                                                                                                                                                                                                                    |
+| **DakotaDelegationBeacon** | Shared implementation beacon whose constructor accepts only the implementation and derives its temporary owner from the root caller validated by `0x...1111`. After bootstrap, the fixed delegation entry owns it and Registry upgrades call `upgradeTo(newImplementation)` once.                                                                                                                                                                                                                  |
 | **DakotaDelegationBeaconDispatcher** | Immutable, stateless per-account dispatcher. Each delegated EOA stores this dispatcher in its own EIP-1967 implementation slot; the dispatcher resolves current logic through the beacon.                                                                                                                                                                                                                                                                                         |
 | **GasSponsor**          | Initial v1 platform-managed sponsorship treasury. Validates platform-signed vouchers, approved EIP-7702 delegation, allowlisted relayers, tenant/sponsor limits, operation replay protection, gas envelopes, and bounded reimbursement.                                                                                                                                                                                                                                                           |
 | **CryftGreetingCards**  | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase from pre-registered supply. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license.                                                                                                                                     |
@@ -705,7 +726,7 @@ Each authorized user account has separate proxy storage and links `DakotaDelegat
 | Contract | Responsibility |
 | --- | --- |
 | `DakotaDelegation` | Verifies the user-account EIP-712 signature, account nonce, deadline, executor, call count, and execution gas budget before executing up to 32 calls. |
-| `DakotaDelegationBeacon` | Ownable shared beacon for delegation implementation upgrades. Do not renounce ownership. |
+| `DakotaDelegationBeacon` | Shared beacon with root-validated bootstrap ownership. Deploy it directly from a root recognized by `0x...1111`, then transfer ownership to the fixed delegation entry. Do not renounce ownership. |
 | `DakotaDelegationBeaconDispatcher` | Stateless resolver stored in each delegated account's EIP-1967 implementation slot. |
 | `DakotaDelegationRegistry` | Upgradeable implementation first-linked at `0x...de1E6A7E`; the fixed entry owns the beacon and exposes the verified release ledger, current implementation directory, capability surface, and delegated-account readiness view. |
 | `GasSponsor` | Validates sponsorship vouchers and delegation readiness, enforces global pause/relayer controls plus sponsor and tenant limits, prevents operation replay, executes the signed account calldata, and reimburses the relayer within the signed cap. |
@@ -723,7 +744,9 @@ The gate checks initial-release naming and initializer semantics, ERC-7201 stora
 Deploy in this order:
 
 1. `DakotaDelegation()` version `1.1.0`
-2. `DakotaDelegationBeacon(delegationImplementation, ROOT)`
+2. From `ROOT`, `DakotaDelegationBeacon(delegationImplementation)`; the
+   constructor validates `msg.sender` against `0x...1111` and makes that
+   validated caller the temporary owner.
 3. `DakotaDelegationBeaconDispatcher(beacon)`
 4. `DakotaDelegationRegistry()`
 5. `GasSponsor()`
@@ -807,7 +830,7 @@ After onboarding, confirm the EIP-7702 code indicator, custom proxy initializati
 | Platform admin | `setVoucherSigner`, `setApprovedDelegate`, `setRelayer`, `setPaused`, `setFixedOverheadGas` | Controls the global signing, delegation, relayer, pause, and gas-overhead policy. |
 | Platform admin | `configureSponsor`, `setSponsorManager`, `setSponsorAdminEnabled` | Binds a stable sponsor address to a canonical tenant ID hash, manager, hard limits, and platform enable switch. |
 | Sponsor manager | `setTenantLimits`, `setTenantEnabled`, `withdrawSponsor` | Applies tenant limits no greater than platform limits, controls the tenant enable switch, and withdraws sponsor funds. |
-| Any funder | `depositFor` | Deposits native currency into an already configured sponsor account. |
+| Any funder | `depositFor` | Directly deposits native currency into an already configured sponsor account; platform allocations should use the governed `caFE` sponsor-funding flow. |
 | Allowlisted relayer | `executeSponsored` | Submits signed execution calldata plus a platform-signed voucher and receives bounded reimbursement. |
 | Read paths | `getSponsorAccount`, `voucherDigest`, `isDelegationReady`, `isOperationConsumed`, `isRelayer` | Exposes configuration and readiness checks needed by the router, dashboard, and relayer. |
 
@@ -843,6 +866,7 @@ The relayer calls `GasSponsor.executeSponsored(voucher, executionData, voucherSi
 - Delegation control plane: preserve the `Initializable` linear prefix and `erc7201:dakota.storage.DakotaDelegationRegistry`, then use the fixed ProxyAdmin to upgrade `0x...de1E6A7E`; use `upgradeAndCall` only if a future implementation introduces a numbered migration.
 - GasSponsor without migration: pause sponsorship, deploy and verify storage-compatible logic, then call `ProxyAdmin.upgrade(GAS_SPONSOR_PROXY, newImplementation)`.
 - GasSponsor with a future migration: use `ProxyAdmin.upgradeAndCall(...)` and introduce a numbered reinitializer only in that future implementation.
+- GasManager sponsor funding: deploy and verify the storage-compatible implementation, confirm its linear layout still ends at slot `71`, then call `ProxyAdmin.upgrade(GAS_MANAGER_PROXY, newImplementation)`. No reinitializer is required because sponsor bindings use a new ERC-7201 namespace with valid zero-state defaults. Confirm `implementationVersion() == "2.5.0"` and `gasSponsor() == 0x...FEeD` through the `0x...caFE` proxy after upgrading.
 - Per-account dispatcher replacement is a recovery path, not the normal delegation upgrade mechanism.
 
 ---

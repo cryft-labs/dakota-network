@@ -1,0 +1,22 @@
+{
+  "status": "pass",
+  "contract": "DakotaDelegationBeacon",
+  "source_unit": "contracts/contracts/Contracts/Genesis/7702/DakotaDelegationBeacon.sol",
+  "compiler": "0.8.34+commit.80d5c536",
+  "evm_version": "osaka",
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  },
+  "constructor_inputs": [
+    "address"
+  ],
+  "runtime_size_bytes": 663,
+  "creation_size_bytes": 1228,
+  "standard_input_file": "DakotaDelegationBeacon.root-validated.standard-input.json",
+  "standard_input_sha256": "e7a7ff94d98d050c3d95fdbbdd029f95554ca23ec8f025c3d4d87698f99d74e4",
+  "creation_bytecode_sha256": "883053c9e40454b220eec5349af7a9700415581482a4252c906e23b90c7395b7",
+  "runtime_bytecode_sha256": "ddba5b7379ad6f925dcd72b7f23dd2f5fd28e437b91f3eb084fc913253822628",
+  "metadata_sha256": "e05bc9dea7678e3be7cfad183b1d5c7679ac5836db5639ef23a40aa8fd90c0bc",
+  "historical_input_preserved": "DakotaDelegationBeacon.remix-build-info-6.standard-input.json"
+}

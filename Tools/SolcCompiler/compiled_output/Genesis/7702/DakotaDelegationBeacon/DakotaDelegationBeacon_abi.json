@@ -5,11 +5,6 @@
         "internalType": "address",
         "name": "implementation_",
         "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "initialOwner_",
-        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -24,6 +19,17 @@
       }
     ],
     "name": "BeaconInvalidImplementation",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      }
+    ],
+    "name": "NotRootOverlord",
     "type": "error"
   },
   {
@@ -137,6 +143,19 @@
     "name": "upgradeTo",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "validatorRootRegistry",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   }
 ]

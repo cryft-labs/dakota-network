@@ -13,7 +13,7 @@ pragma solidity >=0.8.2 <0.9.0;
  \___/\_,_/___//_/  /_/\_,_/_//_/\_,_/\_, /\_ /_/
                                      /___/ By: CryftCreator
 
-    Version 2.4 — Production Gas Manager  [UPGRADEABLE]
+    Version 2.5 — Production Gas Manager  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ───────────────┐
   │                                                      │
@@ -36,6 +36,11 @@ pragma solidity >=0.8.2 <0.9.0;
   │    fundKey = keccak256(abi.encode(fundingId, nonce)) │
   │    Clear-text note emitted on proposal creation      │
   │    noteHash stored on-chain                          │
+  │                                                      │
+  │  Sponsor funding:                                    │
+  │    caFE deposits approved funds into FEeD            │
+  │    Sponsor address is bound before voting begins     │
+  │    Generic transfer execution is blocked             │
   │                                                      │
   │  Shared approval expiry model:                       │
   │    approvalBlock + thresholdAtApproval               │
@@ -60,7 +65,7 @@ pragma solidity >=0.8.2 <0.9.0;
   │    Old storage slots are not reordered.              │
   │    approvedFunds safely serves both V1 and V2 keys.  │
   │                                                      │
-  │  Uses .call{value:} for all ETH transfers.           │
+  │  Direct funds use .call; sponsor funds use depositFor│
   │  ReentrancyGuard on all execute functions.           │
   └──────────────────────────────────────────────────────┘
 */
@@ -78,7 +83,18 @@ interface IVoterChecker {
     function getVoters() external view returns (address[] memory);
 }
 
+interface IGasSponsorDepository {
+    function depositFor(address sponsor) external payable;
+}
+
 contract GasManager is Initializable, ReentrancyGuardUpgradeable {
+    error InvalidSponsor();
+    error InvalidSponsorFundingProposal();
+    error SponsorFundingExecutorRequired();
+    error UnauthorizedSponsorFundingExecutor();
+    error GasSponsorUnavailable();
+    error SponsorFundingTransferMismatch();
+
     uint256 public voteTallyBlockThreshold;
     uint256 public totalGasFunded;
     uint256 public activeVoteCount;
@@ -99,6 +115,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     mapping(bytes32 => bool) public approvedCoinBurns;
 
     address constant _DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+    address constant _GAS_SPONSOR = 0x000000000000000000000000000000000000FEeD;
 
     // ── Appended Storage (safe append-only upgrade) ────────────────────────
 
@@ -111,6 +128,14 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         bool executed;
         bool exists;
     }
+
+    /// @custom:storage-location erc7201:dakota.storage.GasManagerSponsorFunding
+    struct SponsorFundingStorage {
+        mapping(bytes32 => address) sponsorByFundKey;
+    }
+
+    bytes32 private constant _SPONSOR_FUNDING_STORAGE_LOCATION =
+        0x2a467852670f144839bf1fd02ad0393580187791ab471304d92161a3bee88100;
 
     // V2 proposals keyed by fundKey = keccak256(abi.encode(fundingId, nonce))
     mapping(bytes32 => FundProposal) private _fundProposals;
@@ -211,6 +236,25 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         uint256 indexed nonce,
         bytes32 indexed fundKey,
         address to,
+        uint256 amount
+    );
+
+    event SponsorFundingProposalCreated(
+        bytes32 indexed fundKey,
+        address indexed sponsor,
+        uint256 amount
+    );
+
+    event SponsorFundingProposalApproved(
+        bytes32 indexed fundKey,
+        address indexed sponsor,
+        uint256 approvalBlock,
+        uint256 thresholdAtApproval
+    );
+
+    event SponsorFundingExecuted(
+        bytes32 indexed fundKey,
+        address indexed sponsor,
         uint256 amount
     );
 
@@ -546,6 +590,30 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         return _getFundProposalByFundingId(_stringToBytes32(fundingId), nonce);
     }
 
+    /// @notice Fixed GasSponsor proxy that receives governed sponsor deposits.
+    function gasSponsor() public pure returns (address) {
+        return _GAS_SPONSOR;
+    }
+
+    function implementationVersion() public pure returns (string memory) {
+        return "2.5.0";
+    }
+
+    /// @notice ERC-7201 location used for sponsor-funding proposal bindings.
+    function sponsorFundingStorageLocation() public pure returns (bytes32) {
+        return _SPONSOR_FUNDING_STORAGE_LOCATION;
+    }
+
+    /// @notice Returns the immutable sponsor bound to a funding proposal.
+    function getSponsorFundingTarget(bytes32 fundKey)
+        public
+        view
+        returns (address sponsor, bool isSponsorFunding)
+    {
+        sponsor = _sponsorFundingStorage().sponsorByFundKey[fundKey];
+        isSponsorFunding = sponsor != address(0);
+    }
+
     // ── Internal Vote Engine ──────────────────────────────
 
     function _castVote(VoteType voteType, uint256 target) internal {
@@ -827,14 +895,44 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         onlyVoters
         returns (bytes32 fundKey, uint256 nonce)
     {
-        return _proposeFundGas(_stringToBytes32(fundingId), to, amount, note);
+        return _proposeFundGas(
+            _stringToBytes32(fundingId),
+            to,
+            amount,
+            note,
+            address(0)
+        );
+    }
+
+    /// @notice Proposes a governed deposit from caFE into a FEeD sponsor ledger.
+    /// @dev The sponsor is bound to the proposal before voting begins and cannot
+    ///      be replaced by the executor.
+    function proposeSponsorFunding(
+        string calldata fundingId,
+        address sponsor,
+        uint256 amount,
+        string calldata note
+    )
+        external
+        onlyVoters
+        returns (bytes32 fundKey, uint256 nonce)
+    {
+        if (sponsor == address(0)) revert InvalidSponsor();
+        return _proposeFundGas(
+            _stringToBytes32(fundingId),
+            payable(_GAS_SPONSOR),
+            amount,
+            note,
+            sponsor
+        );
     }
 
     function _proposeFundGas(
         bytes32 fundingId,
         address payable to,
         uint256 amount,
-        string calldata note
+        string calldata note,
+        address sponsor
     )
         internal
         returns (bytes32 fundKey, uint256 nonce)
@@ -861,6 +959,12 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
             exists: true
         });
 
+        if (sponsor != address(0)) {
+            if (to != _GAS_SPONSOR) revert InvalidSponsorFundingProposal();
+            _sponsorFundingStorage().sponsorByFundKey[fundKey] = sponsor;
+            emit SponsorFundingProposalCreated(fundKey, sponsor, amount);
+        }
+
         emit GasFundProposalCreated(
             fundingId,
             nonce,
@@ -885,6 +989,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                 fundApprovalBlock[fundKey],
                 fundApprovalThresholdAtApproval[fundKey]
             );
+            _emitSponsorFundingApproved(fundKey);
         }
     }
 
@@ -911,6 +1016,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                 fundApprovalBlock[fundKey],
                 fundApprovalThresholdAtApproval[fundKey]
             );
+            _emitSponsorFundingApproved(fundKey);
         }
     }
 
@@ -920,6 +1026,9 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
         require(proposal.exists, "Fund proposal not found");
         require(!proposal.executed, "Fund proposal already executed");
+        if (_sponsorFundingStorage().sponsorByFundKey[fundKey] != address(0)) {
+            revert SponsorFundingExecutorRequired();
+        }
         require(
             isGuardian[msg.sender] || msg.sender == proposal.to,
             "Only guardian or funded address"
@@ -958,6 +1067,59 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     // ── Governed Expired Funding Cleanup ──────────────────
+
+    /// @notice Executes an approved deposit from caFE into the proposal-bound
+    ///         sponsor ledger held by FEeD.
+    function executeSponsorFunding(bytes32 fundKey) public nonReentrant {
+        FundProposal storage proposal = _fundProposals[fundKey];
+        address sponsor = _sponsorFundingStorage().sponsorByFundKey[fundKey];
+
+        require(proposal.exists, "Fund proposal not found");
+        require(!proposal.executed, "Fund proposal already executed");
+        if (sponsor == address(0) || proposal.to != _GAS_SPONSOR) {
+            revert InvalidSponsorFundingProposal();
+        }
+        if (!isGuardian[msg.sender] && msg.sender != sponsor) {
+            revert UnauthorizedSponsorFundingExecutor();
+        }
+
+        _clearFundApprovalIfExpiredOrInvalid(fundKey);
+        require(approvedFunds[fundKey], "Fund not approved");
+        if (!_isContract(_GAS_SPONSOR)) revert GasSponsorUnavailable();
+        require(address(this).balance >= proposal.amount, "Insufficient balance");
+
+        _consumeFundApproval(fundKey);
+        proposal.executed = true;
+
+        uint256 managerBalanceBefore = address(this).balance;
+        uint256 gasSponsorBalanceBefore = _GAS_SPONSOR.balance;
+
+        IGasSponsorDepository(_GAS_SPONSOR).depositFor{value: proposal.amount}(
+            sponsor
+        );
+
+        uint256 managerBalanceAfter = address(this).balance;
+        uint256 gasSponsorBalanceAfter = _GAS_SPONSOR.balance;
+        if (managerBalanceBefore - managerBalanceAfter != proposal.amount) {
+            revert SponsorFundingTransferMismatch();
+        }
+        if (
+            gasSponsorBalanceAfter < gasSponsorBalanceBefore ||
+            gasSponsorBalanceAfter - gasSponsorBalanceBefore != proposal.amount
+        ) revert SponsorFundingTransferMismatch();
+
+        totalGasFunded += proposal.amount;
+
+        emit GasFunded(_GAS_SPONSOR, proposal.amount);
+        emit GasFundProposalExecuted(
+            proposal.fundingId,
+            proposal.nonce,
+            fundKey,
+            _GAS_SPONSOR,
+            proposal.amount
+        );
+        emit SponsorFundingExecuted(fundKey, sponsor, proposal.amount);
+    }
 
     /// @notice Guardian executes a bounded sweep over active approved fund keys.
     ///         Removes approvals that are expired or invalid.
@@ -1162,6 +1324,29 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     // ── Utilities ─────────────────────────────────────────
+
+    function _emitSponsorFundingApproved(bytes32 fundKey) internal {
+        address sponsor = _sponsorFundingStorage().sponsorByFundKey[fundKey];
+        if (sponsor != address(0)) {
+            emit SponsorFundingProposalApproved(
+                fundKey,
+                sponsor,
+                fundApprovalBlock[fundKey],
+                fundApprovalThresholdAtApproval[fundKey]
+            );
+        }
+    }
+
+    function _sponsorFundingStorage()
+        private
+        pure
+        returns (SponsorFundingStorage storage state)
+    {
+        bytes32 location = _SPONSOR_FUNDING_STORAGE_LOCATION;
+        assembly ("memory-safe") {
+            state.slot := location
+        }
+    }
 
     function _containsAddress(
         address[] memory addresses,

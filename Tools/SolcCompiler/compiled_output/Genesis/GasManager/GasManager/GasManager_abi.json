@@ -5,6 +5,36 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "GasSponsorUnavailable",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidSponsor",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidSponsorFundingProposal",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SponsorFundingExecutorRequired",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SponsorFundingTransferMismatch",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnauthorizedSponsorFundingExecutor",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -390,6 +420,87 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "fundKey",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "SponsorFundingExecuted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "fundKey",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "approvalBlock",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "thresholdAtApproval",
+        "type": "uint256"
+      }
+    ],
+    "name": "SponsorFundingProposalApproved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "fundKey",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "SponsorFundingProposalCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": false,
         "internalType": "enum GasManager.VoteType",
         "name": "voteType",
@@ -655,6 +766,19 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "fundKey",
+        "type": "bytes32"
+      }
+    ],
+    "name": "executeSponsorFunding",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "tokenAddress",
         "type": "address"
@@ -745,6 +869,19 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "gasSponsor",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -1117,6 +1254,30 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "fundKey",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getSponsorFundingTarget",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "isSponsorFunding",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "getSupermajorityThreshold",
     "outputs": [
@@ -1263,6 +1424,19 @@
   },
   {
     "inputs": [],
+    "name": "implementationVersion",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "initialize",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -1393,6 +1567,45 @@
   {
     "inputs": [
       {
+        "internalType": "string",
+        "name": "fundingId",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "note",
+        "type": "string"
+      }
+    ],
+    "name": "proposeSponsorFunding",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "fundKey",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "nonce",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "enum GasManager.VoteType",
         "name": "voteType",
         "type": "uint8"
@@ -1406,6 +1619,19 @@
     "name": "resetExpiredTally",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "sponsorFundingStorageLocation",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   },
   {

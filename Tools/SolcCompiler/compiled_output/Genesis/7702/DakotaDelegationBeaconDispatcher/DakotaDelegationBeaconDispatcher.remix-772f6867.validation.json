@@ -1,0 +1,28 @@
+{
+  "status": "pass",
+  "build_info_file": "772f686736cfd565b38a6fa5b40a23c6.json",
+  "build_id": "772f686736cfd565b38a6fa5b40a23c6",
+  "contract": "DakotaDelegationBeaconDispatcher",
+  "source_unit": "contracts/contracts/Contracts/Genesis/7702/DakotaDelegationBeaconDispatcher.sol",
+  "compiler": "0.8.34+commit.80d5c536",
+  "evm_version": "osaka",
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  },
+  "exact_nested_input": true,
+  "local_source_matches_build_input": true,
+  "output_matches": {
+    "creation_bytecode": true,
+    "runtime_bytecode": true,
+    "metadata": true,
+    "abi": true
+  },
+  "runtime_size_bytes": 644,
+  "creation_size_bytes": 1279,
+  "standard_input_file": "DakotaDelegationBeaconDispatcher.remix-772f6867.standard-input.json",
+  "standard_input_sha256": "590a5b5068793b06e7b239b6d598fa268aeb690262702b9346097febd0eff826",
+  "creation_bytecode_sha256": "29202863d1711cb89ba3b7f3d6f7acd4bf4a1ce2d63fb5c3552223f7cfdce301",
+  "runtime_bytecode_sha256": "42a647eaa9a6fb44ff42e464d8589ecf9bd808f6b1af5c8baa66882d261cc88f",
+  "metadata_sha256": "7c2a16d38711efb9f36edea66f00739166fec97f090dd3f9b46ea735a8d944df"
+}

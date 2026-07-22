@@ -19,6 +19,12 @@ import solcx
 
 
 SPONSOR = CONTRACTS_DIR / "Genesis" / "7702" / "GasSponsor.sol"
+GAS_MANAGER = (
+    CONTRACTS_DIR
+    / "Genesis"
+    / "GasManager"
+    / "GasManager.sol"
+)
 DELEGATE = CONTRACTS_DIR / "Genesis" / "7702" / "DakotaDelegation.sol"
 BEACON = (
     CONTRACTS_DIR
@@ -62,6 +68,9 @@ EXPECTED_DELEGATE_NAMESPACE = (
 )
 EXPECTED_REGISTRY_NAMESPACE = (
     "0xab4cfcf4b885f9dbbc02cc8800e34faa6a47500834aa5c49ef09aafea9c84000"
+)
+EXPECTED_GAS_MANAGER_SPONSOR_FUNDING_NAMESPACE = (
+    "0x2a467852670f144839bf1fd02ad0393580187791ab471304d92161a3bee88100"
 )
 
 RETIRED_SPONSOR_FUNCTIONS = {
@@ -146,6 +155,18 @@ REQUIRED_BEACON_FUNCTIONS = {
     "upgradeTo",
     "owner",
     "transferOwnership",
+    "validatorRootRegistry",
+}
+
+REQUIRED_GAS_MANAGER_FUNCTIONS = {
+    "executeFundGasV2",
+    "executeSponsorFunding",
+    "gasSponsor",
+    "getSponsorFundingTarget",
+    "implementationVersion",
+    "proposeSponsorFunding",
+    "sponsorFundingStorageLocation",
+    "voteToFundGasV2",
 }
 
 EXPECTED_SPONSOR_LINEAR_STORAGE = [
@@ -159,6 +180,46 @@ EXPECTED_REGISTRY_LINEAR_STORAGE = [
     {"label": "_initialized", "slot": "0", "offset": 0},
     {"label": "_initializing", "slot": "0", "offset": 1},
     {"label": "__gap", "slot": "1", "offset": 0},
+]
+
+EXPECTED_GAS_MANAGER_LINEAR_STORAGE = [
+    {"label": "_initialized", "slot": "0", "offset": 0},
+    {"label": "_initializing", "slot": "0", "offset": 1},
+    {"label": "_status", "slot": "1", "offset": 0},
+    {"label": "__gap", "slot": "2", "offset": 0},
+    {"label": "voteTallyBlockThreshold", "slot": "51", "offset": 0},
+    {"label": "totalGasFunded", "slot": "52", "offset": 0},
+    {"label": "activeVoteCount", "slot": "53", "offset": 0},
+    {"label": "votersArray", "slot": "54", "offset": 0},
+    {"label": "otherVoterContracts", "slot": "55", "offset": 0},
+    {"label": "guardiansArray", "slot": "56", "offset": 0},
+    {"label": "isGuardian", "slot": "57", "offset": 0},
+    {"label": "_voteTallies", "slot": "58", "offset": 0},
+    {"label": "hasVoted", "slot": "59", "offset": 0},
+    {"label": "approvedBurns", "slot": "60", "offset": 0},
+    {"label": "approvedFunds", "slot": "61", "offset": 0},
+    {"label": "approvedCoinBurns", "slot": "62", "offset": 0},
+    {"label": "_fundProposals", "slot": "63", "offset": 0},
+    {"label": "_lastFundingNonceByFundingId", "slot": "64", "offset": 0},
+    {"label": "fundApprovalBlockThreshold", "slot": "65", "offset": 0},
+    {"label": "fundApprovalBlock", "slot": "66", "offset": 0},
+    {
+        "label": "fundApprovalThresholdAtApproval",
+        "slot": "67",
+        "offset": 0,
+    },
+    {"label": "_activeApprovedFundKeys", "slot": "68", "offset": 0},
+    {
+        "label": "_activeApprovedFundKeyIndexPlusOne",
+        "slot": "69",
+        "offset": 0,
+    },
+    {
+        "label": "expiredFundCleanupAuthorized",
+        "slot": "70",
+        "offset": 0,
+    },
+    {"label": "expiredFundCleanupCursor", "slot": "71", "offset": 0},
 ]
 
 
@@ -211,7 +272,9 @@ def _selector_collisions(
 
 def _assert_source_contract() -> None:
     sponsor_source = SPONSOR.read_text(encoding="utf-8")
+    gas_manager_source = GAS_MANAGER.read_text(encoding="utf-8")
     delegate_source = DELEGATE.read_text(encoding="utf-8")
+    beacon_source = BEACON.read_text(encoding="utf-8")
     registry_source = REGISTRY.read_text(encoding="utf-8")
     capabilities_source = CAPABILITIES.read_text(encoding="utf-8")
 
@@ -232,6 +295,25 @@ def _assert_source_contract() -> None:
         'return "1.1.0";',
         "function delegationCapabilities()",
         "function supportsInterface(",
+    )
+    required_gas_manager_fragments = (
+        "erc7201:dakota.storage.GasManagerSponsorFunding",
+        EXPECTED_GAS_MANAGER_SPONSOR_FUNDING_NAMESPACE,
+        "0x000000000000000000000000000000000000FEeD",
+        "function proposeSponsorFunding(",
+        "function executeSponsorFunding(",
+        'return "2.5.0";',
+        "IGasSponsorDepository(_GAS_SPONSOR).depositFor",
+        "revert SponsorFundingExecutorRequired();",
+        "gasSponsorBalanceAfter - gasSponsorBalanceBefore != proposal.amount",
+    )
+    required_beacon_fragments = (
+        "ROOT-VALIDATED SHARED UPGRADE BEACON",
+        "error NotRootOverlord(address caller);",
+        "0x0000000000000000000000000000000000001111",
+        "UpgradeableBeacon(implementation_, msg.sender)",
+        ").isRootOverlord(caller)",
+        "function validatorRootRegistry()",
     )
     required_registry_fragments = (
         "UPGRADEABLE CONTROL PLANE",
@@ -272,6 +354,21 @@ def _assert_source_contract() -> None:
             raise RuntimeError(
                 f"DakotaDelegation source contract missing: {fragment}"
             )
+    for fragment in required_gas_manager_fragments:
+        if fragment not in gas_manager_source:
+            raise RuntimeError(
+                f"GasManager sponsor-funding bridge missing: {fragment}"
+            )
+    for fragment in required_beacon_fragments:
+        if fragment not in beacon_source:
+            raise RuntimeError(
+                f"DakotaDelegationBeacon source contract missing: {fragment}"
+            )
+    if "initialOwner_" in beacon_source:
+        raise RuntimeError(
+            "DakotaDelegationBeacon must derive bootstrap ownership from "
+            "the validator-approved deployment caller"
+        )
     for fragment in required_registry_fragments:
         if fragment not in registry_source:
             raise RuntimeError(
@@ -321,11 +418,20 @@ def _assert_function_surface(
 
 def main() -> None:
     _assert_source_contract()
+    namespaces = {
+        EXPECTED_SPONSOR_NAMESPACE,
+        EXPECTED_DELEGATE_NAMESPACE,
+        EXPECTED_REGISTRY_NAMESPACE,
+        EXPECTED_GAS_MANAGER_SPONSOR_FUNDING_NAMESPACE,
+    }
+    if len(namespaces) != 4:
+        raise RuntimeError("ERC-7201 storage namespace collision")
     install_solc(DEFAULT_SOLC_VERSION)
     work_files = [
         prepare_source(str(source), IMPORT_CACHE_DIR)
         for source in (
             SPONSOR,
+            GAS_MANAGER,
             DELEGATE,
             BEACON,
             DISPATCHER,
@@ -352,6 +458,7 @@ def main() -> None:
     )
 
     sponsor = _find_contract(compiled, "GasSponsor")
+    gas_manager = _find_contract(compiled, "GasManager")
     delegate = _find_contract(compiled, "DakotaDelegation")
     beacon = _find_contract(compiled, "DakotaDelegationBeacon")
     registry = _find_contract(compiled, "DakotaDelegationRegistry")
@@ -371,6 +478,12 @@ def main() -> None:
         "sponsor",
     )
     _assert_function_surface(
+        gas_manager,
+        REQUIRED_GAS_MANAGER_FUNCTIONS,
+        set(),
+        "gas manager",
+    )
+    _assert_function_surface(
         delegate,
         REQUIRED_DELEGATE_FUNCTIONS,
         RETIRED_DELEGATE_FUNCTIONS,
@@ -388,6 +501,17 @@ def main() -> None:
     if missing_beacon:
         raise RuntimeError(
             f"Required beacon functions missing: {sorted(missing_beacon)}"
+        )
+    beacon_constructor = next(
+        entry for entry in beacon["abi"] if entry["type"] == "constructor"
+    )
+    beacon_constructor_types = [
+        item["type"] for item in beacon_constructor["inputs"]
+    ]
+    if beacon_constructor_types != ["address"]:
+        raise RuntimeError(
+            "DakotaDelegationBeacon constructor must accept only the "
+            f"delegation implementation: {beacon_constructor_types}"
         )
     dispatcher_functions = _function_names(dispatcher)
     if dispatcher_functions:
@@ -409,6 +533,19 @@ def main() -> None:
             f"must remain namespaced: {sponsor_linear_storage}"
         )
 
+    gas_manager_linear_storage = [
+        {
+            key: entry[key]
+            for key in ("label", "slot", "offset")
+        }
+        for entry in gas_manager["storage-layout"]["storage"]
+    ]
+    if gas_manager_linear_storage != EXPECTED_GAS_MANAGER_LINEAR_STORAGE:
+        raise RuntimeError(
+            "Unexpected GasManager linear storage; sponsor funding must use "
+            f"its ERC-7201 namespace: {gas_manager_linear_storage}"
+        )
+
     registry_linear_storage = [
         {
             key: entry[key]
@@ -426,6 +563,10 @@ def main() -> None:
         sponsor,
         genesis_proxy,
     )
+    gas_manager_collisions = _selector_collisions(
+        gas_manager,
+        genesis_proxy,
+    )
     delegate_collisions = _selector_collisions(
         delegate,
         genesis_proxy,
@@ -438,6 +579,11 @@ def main() -> None:
         raise RuntimeError(
             "GasSponsor/genesis proxy selector collision: "
             f"{sponsor_collisions}"
+        )
+    if gas_manager_collisions:
+        raise RuntimeError(
+            "GasManager/genesis proxy selector collision: "
+            f"{gas_manager_collisions}"
         )
     if delegate_collisions:
         raise RuntimeError(
@@ -452,6 +598,7 @@ def main() -> None:
 
     sizes = {
         "GasSponsor": len(bytes.fromhex(sponsor["bin-runtime"])),
+        "GasManager": len(bytes.fromhex(gas_manager["bin-runtime"])),
         "DakotaDelegation": len(bytes.fromhex(delegate["bin-runtime"])),
         "DakotaDelegationBeacon": len(
             bytes.fromhex(beacon["bin-runtime"])
@@ -478,8 +625,12 @@ def main() -> None:
                 "evm": DEFAULT_EVM_VERSION,
                 "runtime_bytes": sizes,
                 "sponsor_linear_storage": sponsor_linear_storage,
+                "gas_manager_linear_storage": gas_manager_linear_storage,
                 "registry_linear_storage": registry_linear_storage,
                 "sponsor_namespace": EXPECTED_SPONSOR_NAMESPACE,
+                "gas_manager_sponsor_funding_namespace": (
+                    EXPECTED_GAS_MANAGER_SPONSOR_FUNDING_NAMESPACE
+                ),
                 "delegate_namespace": EXPECTED_DELEGATE_NAMESPACE,
                 "registry_namespace": EXPECTED_REGISTRY_NAMESPACE,
                 "retired_sponsor_functions": sorted(
@@ -489,6 +640,7 @@ def main() -> None:
                     RETIRED_DELEGATE_FUNCTIONS
                 ),
                 "sponsor_proxy_selector_collisions": {},
+                "gas_manager_proxy_selector_collisions": {},
                 "delegate_proxy_selector_collisions": {},
                 "registry_proxy_selector_collisions": {},
                 "dispatcher_functions": [],

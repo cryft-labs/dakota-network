@@ -159,6 +159,7 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 |---|---|---|---|
 | **DakotaDelegationRegistry** | `Contracts/Genesis/7702/DakotaDelegationRegistry.sol` | Yes (fixed TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
 | **DakotaDelegation** | `Contracts/Genesis/7702/DakotaDelegation.sol` | Yes (shared beacon) | `<beacon_implementation>` |
+| **DakotaDelegationBeacon** | `Contracts/Genesis/7702/DakotaDelegationBeacon.sol` | Root-validated bootstrap, then Registry-owned | `<beacon_address>` |
 | **DakotaDelegationBeaconDispatcher** | `Contracts/Genesis/7702/DakotaDelegationBeaconDispatcher.sol` | Immutable | `<dispatcher_address>` |
 | **GasSponsor** | `Contracts/Genesis/7702/GasSponsor.sol` | Yes (TransparentUpgradeableProxy) | `0x...FEeD` (genesis) |
 | **CodeManager** | `Contracts/CodeManagement/CodeManager.sol` | Yes | `<proxy_address>` |
@@ -567,25 +568,33 @@ Response: { "isAllowed": true, "reason": "approved" }
 
 ### 6.3 Self-Hosted Gas Sponsorship (GasSponsor Contract)
 
-For independent gas sponsorship without thirdweb:
+The fixed `0x...FEeD` proxy holds per-sponsor ledgers and executes
+platform-signed vouchers. Platform allocations originate from the
+voter-governed GasManager at `0x...caFE`:
 
 ```solidity
-// GasSponsor key functions:
-function deposit() external payable;                         // Deposit CRYFT
-function withdraw(uint256 amount) external;                  // Withdraw
-function authorizeRelayer(address relayer) external;          // Authorize a relayer
-function setMaxClaimPerTx(uint256 amount) external;          // Per-claim cap
-function setDailyLimit(uint256 amount) external;             // Daily spend cap
-function addAllowedTarget(address target) external;          // Restrict to specific contracts
-function claim(address sponsor, uint256 amount) external;    // Relayer claims reimbursement
-function sponsoredCall(address sponsor, address target,      // Forward call + auto-reimburse
-    uint256 value, bytes calldata data) external;
-function topOff(address sponsor, uint256 amount) external;   // Guardian pulls GasManager funds
+(bytes32 fundKey, ) = GasManager(0x000000000000000000000000000000000000cafE)
+    .proposeSponsorFunding(FUNDING_ID, SPONSOR, AMOUNT, NOTE);
+
+// Each remaining GasManager voter:
+GasManager(0x000000000000000000000000000000000000cafE)
+    .voteToFundGasV2(fundKey);
+
+// After approval, a GasManager guardian or SPONSOR:
+GasManager(0x000000000000000000000000000000000000cafE)
+    .executeSponsorFunding(fundKey);
 ```
 
-**GasSponsor is upgradeable** via TransparentUpgradeableProxy, enabling emergency patches for fund security.
+The proposer casts the first vote automatically. The sponsor is bound to the
+proposal before voting and is not accepted as an execution argument. On
+execution, `caFE` calls `FEeD.depositFor{value: AMOUNT}(SPONSOR)`. Direct native
+transfers to `FEeD` revert, and the generic GasManager executor rejects
+sponsor-bound proposals. A tenant can also self-fund its configured ledger by
+calling `depositFor` directly.
 
-The `topOff` function connects GasSponsor to GasManager: GasManager voters approve a fund, then a GasManager guardian calls `topOff(sponsor, amount)` to pull the approved funds into a sponsor's balance. The GasManager address is hardcoded: `0x000000000000000000000000000000000000cafE`.
+Both GasManager and GasSponsor are upgradeable through their fixed genesis
+proxies. Sponsor funding adds no linear GasManager storage and requires no
+reinitializer.
 
 ---
 
@@ -639,42 +648,60 @@ The delegation target implements:
 
 **Source:** `Contracts/Genesis/7702/GasSponsor.sol`
 **Upgradeable:** Yes (Initializable + TransparentUpgradeableProxy)
-**GasManager:** hardcoded at `0x000000000000000000000000000000000000cafE`
+**Platform funding source:** GasManager at `0x000000000000000000000000000000000000cafE`
 
 ### Functions
 
 | Function | Access | Description |
 |---|---|---|
-| `initialize()` | Once (proxy) | Init ReentrancyGuard |
-| `deposit()` | Anyone | Deposit CRYFT as a sponsor |
-| `withdraw(uint256)` | Sponsor | Withdraw own balance |
-| `authorizeRelayer(address)` | Sponsor | Authorize a relayer |
-| `revokeRelayer(address)` | Sponsor | Revoke a relayer |
-| `setMaxClaimPerTx(uint256)` | Sponsor | Set per-claim cap (0 = unlimited) |
-| `setDailyLimit(uint256)` | Sponsor | Set daily cap (0 = unlimited) |
-| `addAllowedTarget(address)` | Sponsor | Restrict to specific targets |
-| `removeAllowedTarget(address)` | Sponsor | Remove from target allowlist |
-| `disableTargetAllowlist()` | Sponsor | Allow all targets |
-| `topOff(address, uint256)` | GasManager Guardian | Pull approved GasManager funds into sponsor balance |
-| `claim(address, uint256)` | Authorized Relayer | Claim gas reimbursement |
-| `sponsoredCall(address, address, uint256, bytes)` | Authorized Relayer | Forward call + auto-reimburse |
-| `getSponsorInfo(address)` | View | Balance, limits, daily spent, flags |
-| `isAuthorizedRelayer(address, address)` | View | Check relayer authorization |
-| `isAllowedTarget(address, address)` | View | Check target allowlist |
+| `initialize(platformAdmin, voucherSigner, approvedDelegate, fixedOverheadGas)` | Once through proxy | Initializes the first implementation and starts paused |
+| `configureSponsor(...)` | Platform admin | Binds a sponsor to its tenant, manager, platform limits, and enable state |
+| `depositFor(sponsor)` | Any funder or governed `caFE` flow | Credits native currency to an already configured sponsor ledger |
+| `withdrawSponsor(sponsor, recipient, amount)` | Sponsor manager | Withdraws from that sponsor ledger |
+| `setRelayer(relayer, allowed)` | Platform admin | Controls transaction submitters |
+| `setTenantLimits(...)`, `setTenantEnabled(...)` | Sponsor manager | Applies tenant-side limits and enable state |
+| `executeSponsored(voucher, executionData, voucherSignature)` | Allowlisted relayer | Executes the signed delegation request and pays bounded reimbursement |
+| `getSponsorAccount(sponsor)` | View | Returns balance, limits, spend, manager, tenant, and enable state |
+| `voucherDigest(voucher)` | View | Returns the canonical platform voucher digest |
+| `isDelegationReady(account)` | View | Checks the account's active delegation integration |
 
 ### Events
 
 ```solidity
-event Deposited(address indexed sponsor, uint256 amount);
-event Withdrawn(address indexed sponsor, uint256 amount);
-event RelayerAuthorized(address indexed sponsor, address indexed relayer);
-event RelayerRevoked(address indexed sponsor, address indexed relayer);
-event ConfigUpdated(address indexed sponsor, string param, uint256 value);
-event TargetAllowed(address indexed sponsor, address indexed target);
-event TargetRemoved(address indexed sponsor, address indexed target);
-event Claimed(address indexed sponsor, address indexed relayer, uint256 amount);
-event SponsoredCallExecuted(address indexed sponsor, address indexed relayer, address indexed target, uint256 totalCost);
-event ToppedOff(address indexed sponsor, uint256 amount);
+event Deposited(
+    address indexed sponsor,
+    address indexed depositor,
+    uint256 amount
+);
+event Withdrawn(
+    address indexed sponsor,
+    address indexed recipient,
+    uint256 amount
+);
+event SponsorConfigured(
+    address indexed sponsor,
+    bytes32 indexed tenantId,
+    address indexed manager,
+    uint256 adminMaxCostPerOperation,
+    uint256 adminDailyLimit,
+    bool adminEnabled
+);
+event RelayerUpdated(address indexed relayer, bool allowed);
+event SponsoredOperation(
+    bytes32 indexed operationId,
+    bytes32 indexed tenantId,
+    address indexed account,
+    address sponsor,
+    bytes32 campaignId,
+    bool success
+);
+event RelayerReimbursed(
+    bytes32 indexed operationId,
+    address indexed relayer,
+    uint256 reimbursement,
+    uint256 measuredGas,
+    bool reimbursementCapped
+);
 ```
 
 ---
