@@ -128,6 +128,8 @@ interface IGasSponsor {
     function proposePlatformAdmin(address pendingAdmin_) external;
 
     function acceptPlatformAdmin() external;
+    /// @notice Cancel a pending handover without changing the active administrator.
+    function cancelPlatformAdminTransfer() external;
 
     function setVoucherSigner(address signer) external;
 

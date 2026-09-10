@@ -102,6 +102,9 @@ RETIRED_DELEGATE_FUNCTIONS = {
 }
 
 REQUIRED_SPONSOR_FUNCTIONS = {
+    "proposePlatformAdmin",
+    "acceptPlatformAdmin",
+    "cancelPlatformAdminTransfer",
     "initialize",
     "executeSponsored",
     "isDelegationReady",
@@ -124,6 +127,8 @@ REQUIRED_DELEGATE_FUNCTIONS = {
 }
 
 REQUIRED_REGISTRY_FUNCTIONS = {
+    "acceptBeaconOwnership",
+    "cancelBeaconOwnershipTransfer",
     "acceptAdmin",
     "accountStatus",
     "cancelAdminTransfer",
@@ -151,6 +156,9 @@ REQUIRED_REGISTRY_FUNCTIONS = {
 }
 
 REQUIRED_BEACON_FUNCTIONS = {
+    "pendingOwner",
+    "acceptOwnership",
+    "cancelOwnershipTransfer",
     "implementation",
     "upgradeTo",
     "owner",
@@ -159,6 +167,9 @@ REQUIRED_BEACON_FUNCTIONS = {
 }
 
 REQUIRED_GAS_MANAGER_FUNCTIONS = {
+    "initializeWithVoter",
+    "getProposalSnapshot",
+    "voteToSetVoterConfiguration",
     "executeFundGasV2",
     "executeSponsorFunding",
     "gasSponsor",
@@ -189,13 +200,14 @@ EXPECTED_GAS_MANAGER_LINEAR_STORAGE = [
     {"label": "__gap", "slot": "2", "offset": 0},
     {"label": "voteTallyBlockThreshold", "slot": "51", "offset": 0},
     {"label": "totalGasFunded", "slot": "52", "offset": 0},
-    {"label": "activeVoteCount", "slot": "53", "offset": 0},
+    # The old fields remain reserved at their exact slots; callable getters now use snapshots.
+    {"label": "__legacyActiveVoteCount", "slot": "53", "offset": 0},
     {"label": "votersArray", "slot": "54", "offset": 0},
     {"label": "otherVoterContracts", "slot": "55", "offset": 0},
     {"label": "guardiansArray", "slot": "56", "offset": 0},
     {"label": "isGuardian", "slot": "57", "offset": 0},
     {"label": "_voteTallies", "slot": "58", "offset": 0},
-    {"label": "hasVoted", "slot": "59", "offset": 0},
+    {"label": "__legacyHasVoted", "slot": "59", "offset": 0},
     {"label": "approvedBurns", "slot": "60", "offset": 0},
     {"label": "approvedFunds", "slot": "61", "offset": 0},
     {"label": "approvedCoinBurns", "slot": "62", "offset": 0},
@@ -611,10 +623,10 @@ def main() -> None:
         ),
     }
     oversized = {
-        name: size for name, size in sizes.items() if size > 24_576
+        name: size for name, size in sizes.items() if size > 32_768
     }
     if oversized:
-        raise RuntimeError(f"EIP-170 runtime limit exceeded: {oversized}")
+        raise RuntimeError(f"Dakota 32 KiB runtime limit exceeded: {oversized}")
 
     print(
         json.dumps(
@@ -624,6 +636,7 @@ def main() -> None:
                 "solc": DEFAULT_SOLC_VERSION,
                 "evm": DEFAULT_EVM_VERSION,
                 "runtime_bytes": sizes,
+                "runtime_limit_bytes": 32_768,
                 "sponsor_linear_storage": sponsor_linear_storage,
                 "gas_manager_linear_storage": gas_manager_linear_storage,
                 "registry_linear_storage": registry_linear_storage,

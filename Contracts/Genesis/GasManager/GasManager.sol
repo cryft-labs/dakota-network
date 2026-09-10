@@ -19,7 +19,7 @@ pragma solidity >=0.8.2 <0.9.0;
   │                                                      │
   │  Gas beneficiary — voter-governed funding & burns.   │
   │  2/3 supermajority quorum for all state changes.     │
-  │  Voter-pool changes frozen while any tally is active.│
+  │  Approved voter changes invalidate pending ballots.│
   │  Own voter set with pluggable external voter         │
   │  contracts via otherVoterContracts[].                │
   │                                                      │
@@ -70,6 +70,9 @@ pragma solidity >=0.8.2 <0.9.0;
   └──────────────────────────────────────────────────────┘
 */
 
+import "../Governance/GovernanceMembers.sol";
+import "../Governance/GovernanceVotes.sol";
+
 import "../Upgradeable/ReentrancyGuardUpgradeable.sol";
 import "../Upgradeable/Initializable.sol";
 
@@ -88,6 +91,37 @@ interface IGasSponsorDepository {
 }
 
 contract GasManager is Initializable, ReentrancyGuardUpgradeable {
+    error GasManagerAlreadyAGuardian();
+    error GasManagerAmountMustBeGreaterThanZero();
+    error GasManagerBurnFailed();
+    error GasManagerBurnNotApproved();
+    error GasManagerCoinBurnNotApproved();
+    error GasManagerExactAmountNotTransferred();
+    error GasManagerExpiredFundCleanupNotAuthorized();
+    error GasManagerFundAlreadyApproved();
+    error GasManagerFundNotApproved();
+    error GasManagerFundProposalAlreadyExecuted();
+    error GasManagerFundProposalAlreadyExists();
+    error GasManagerFundProposalNotFound();
+    error GasManagerFundingIDShouldNotBeZero();
+    error GasManagerGuardianAddressShouldNotBeZero();
+    error GasManagerInsufficientBalance();
+    error GasManagerInvalidCleanupBatchSize();
+    error GasManagerInvalidRecipientAddress();
+    error GasManagerInvalidTokenAddress();
+    error GasManagerNoApprovedFundingsToScan();
+    error GasManagerNoGuardiansToClear();
+    error GasManagerNoVotersAvailable();
+    error GasManagerNonceMustBeGreaterThanZero();
+    error GasManagerNotAGuardian();
+    error GasManagerNoteTooLong();
+    error GasManagerOnlyGuardian();
+    error GasManagerOnlyGuardianOrFundedAddress();
+    error GasManagerOnlyVotersCanCallThisFunction();
+    error GasManagerStartOutOfRange();
+    error GasManagerStringMustBe132Bytes();
+    error GasManagerTokenBurnFailed();
+    error GasManagerTransferFailed();
     error InvalidSponsor();
     error InvalidSponsorFundingProposal();
     error SponsorFundingExecutorRequired();
@@ -97,7 +131,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     uint256 public voteTallyBlockThreshold;
     uint256 public totalGasFunded;
-    uint256 public activeVoteCount;
+    uint256 private __legacyActiveVoteCount; // Slot retained; use activeVoteCount().
 
     address[] public votersArray;
     address[] public otherVoterContracts;
@@ -105,7 +139,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     mapping(address => bool) public isGuardian;
     mapping(VoteType => mapping(uint256 => VoteTally)) private _voteTallies;
-    mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
+    mapping(VoteType => mapping(uint256 => mapping(address => bool))) private __legacyHasVoted;
     mapping(bytes32 => bool) public approvedBurns;
 
     // Existing storage slot retained in-place.
@@ -172,7 +206,9 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         FUND_GAS,
         BURN_NATIVE_COIN,
         UPDATE_FUND_APPROVAL_BLOCK_THRESHOLD,
-        AUTHORIZE_EXPIRED_FUND_CLEANUP
+        AUTHORIZE_EXPIRED_FUND_CLEANUP,
+        REFRESH_VOTERS,
+        SET_VOTER_CONFIGURATION
     }
 
     struct VoteTally {
@@ -267,7 +303,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     );
 
     modifier onlyVoters() {
-        require(isVoter(msg.sender), "Only voters can call this function");
+        if (!isVoter(msg.sender)) revert GasManagerOnlyVotersCanCallThisFunction();
         _;
     }
 
@@ -276,8 +312,19 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     function initialize() public virtual initializer {
+        _initializeVoter(msg.sender);
+    }
+
+    /// @notice Atomic proxy/factory setup with an explicit usable governance identity.
+    function initializeWithVoter(address initialVoter) external initializer {
+        _initializeVoter(initialVoter);
+    }
+
+    function _initializeVoter(address initialVoter) private {
+        if (initialVoter == address(0) || initialVoter == address(this)
+            || initialVoter == 0x0000000000000000000000000000000000FacAdE) revert GovernanceVotes.SelfAdministration();
         __ReentrancyGuard_init();
-        votersArray.push(msg.sender);
+        votersArray.push(initialVoter);
         voteTallyBlockThreshold = 1000;
         fundApprovalBlockThreshold = 1000;
     }
@@ -293,85 +340,66 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     // ── Voter Queries ─────────────────────────────────────
 
     function isVoter(address potentialVoter) public view returns (bool) {
-        for (uint256 i = 0; i < votersArray.length; i++) {
-            if (votersArray[i] == potentialVoter) {
-                return true;
-            }
-        }
-        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-            try IVoterChecker(otherVoterContracts[i]).isVoter(potentialVoter) returns (bool result) {
-                if (result) return true;
-            } catch {}
-        }
-        return false;
+        return GovernanceMembers.contains(getVoters(), potentialVoter);
     }
 
     function getVoters() public view returns (address[] memory) {
-        uint256 totalLen = votersArray.length;
-        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
-                totalLen += ext.length;
-            } catch {}
-        }
-
-        address[] memory allVoters = new address[](totalLen);
-        uint256 counter = 0;
-        for (uint256 i = 0; i < votersArray.length; i++) {
-            if (!_containsAddress(allVoters, counter, votersArray[i])) {
-                allVoters[counter] = votersArray[i];
-                counter++;
-            }
-        }
-        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
-                for (uint256 j = 0; j < ext.length; j++) {
-                    if (!_containsAddress(allVoters, counter, ext[j])) {
-                        allVoters[counter] = ext[j];
-                        counter++;
-                    }
-                }
-            } catch {}
-        }
-
-        address[] memory uniqueVoters = new address[](counter);
-        for (uint256 i = 0; i < counter; i++) {
-            uniqueVoters[i] = allVoters[i];
-        }
-
-        return uniqueVoters;
+        if (GovernanceVotes.state().votersInitialized) return GovernanceVotes.state().approvedVoters;
+        return _readVoters();
     }
 
     /// @notice Returns the total number of unique voters (local + external).
+    function _readVoters() private view returns (address[] memory) {
+        return GovernanceMembers.collect(votersArray, otherVoterContracts, bytes4(keccak256("getVoters()")));
+    }
+    function previewVoters() external view returns (address[] memory members, bytes32 membersHash) {
+        members = _readVoters();
+        membersHash = keccak256(abi.encode(members));
+    }
+    function voteToRefreshVoters(bytes32 expectedHash) external {
+        _castVote(VoteType.REFRESH_VOTERS, uint256(expectedHash));
+    }
+    /// @notice Atomic handover/recovery; approvals bind both configuration and resulting membership.
+    function voteToSetVoterConfiguration(address[] calldata local, address[] calldata providers, bytes32 expectedHash) external {
+        uint256 target = GovernanceVotes.configure(GovernanceVotes.state(), local, providers, expectedHash);
+        _castVote(VoteType.SET_VOTER_CONFIGURATION, target);
+    }
+
     function getVoterCount() public view returns (uint256) {
         return getVoters().length;
     }
 
     // ── Vote Tally & Thresholds ───────────────────────────
 
-    function getVoteTally(VoteType voteType, uint256 target)
-        public
-        view
-        returns (
-            uint256 totalVotes,
-            uint256 startVoteBlock,
-            uint256 voteExpirationBlock,
-            address[] memory votedAddresses
-        )
+    function getVoteTally(VoteType voteType, uint256 target) public view
+        returns (uint256 totalVotes, uint256 startVoteBlock, uint256 voteExpirationBlock, address[] memory votedAddresses)
     {
-        VoteTally memory tally = _voteTallies[voteType][target];
-        totalVotes = tally.totalVotes;
-        startVoteBlock = tally.startVoteBlock;
-        if (startVoteBlock != 0) {
-            voteExpirationBlock = startVoteBlock + voteTallyBlockThreshold;
-        } else {
-            voteExpirationBlock = 0;
-        }
-        votedAddresses = tally.voters;
+        return GovernanceVotes.tally(GovernanceVotes.state(), _voteKey(voteType, target));
+    }
+
+    function getProposalSnapshot(VoteType voteType, uint256 target) external view
+        returns (uint256 threshold, uint256 expires, uint256 epoch, address[] memory electorate)
+    {
+        return GovernanceVotes.snapshot(GovernanceVotes.state(), _voteKey(voteType, target));
+    }
+
+    function activeVoteCount() public view returns (uint256) { return GovernanceVotes.state().active; }
+    function governanceEpoch() external view returns (uint256) { return GovernanceVotes.state().epoch; }
+    function hasVoted(VoteType voteType, uint256 target, address voter) external view returns (bool) {
+        return GovernanceVotes.voted(GovernanceVotes.state(), _voteKey(voteType, target), voter);
+    }
+    function _voteKey(VoteType voteType, uint256 target) private pure returns (bytes32) {
+        return keccak256(abi.encode(voteType, target));
+    }
+    function _changesVoters(VoteType voteType) private pure returns (bool) {
+        return voteType == VoteType.REFRESH_VOTERS || voteType == VoteType.SET_VOTER_CONFIGURATION
+            || voteType == VoteType.ADD_VOTER || voteType == VoteType.REMOVE_VOTER
+            || voteType == VoteType.ADD_OTHER_VOTER_CONTRACT || voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT;
     }
 
     function getSupermajorityThreshold() public view returns (uint256) {
         uint256 totalVoterCount = getVoterCount();
-        require(totalVoterCount > 0, "No voters available");
+        if (totalVoterCount <= 0) revert GasManagerNoVotersAvailable();
         return (totalVoterCount * 2 + 2) / 3;
     }
 
@@ -419,7 +447,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         view
         returns (bytes32[] memory keys)
     {
-        require(start < _activeApprovedFundKeys.length || _activeApprovedFundKeys.length == 0, "Start out of range");
+        if (!(start < _activeApprovedFundKeys.length || _activeApprovedFundKeys.length == 0)) revert GasManagerStartOutOfRange();
 
         uint256 len = _activeApprovedFundKeys.length;
         if (start >= len) {
@@ -446,8 +474,8 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     // ── V1 Legacy Funding Queries ─────────────────────────
 
     function getLegacyFundKey(address to, uint256 amount) public pure returns (bytes32) {
-        require(to != address(0), "Invalid recipient address");
-        require(amount > 0, "Amount must be greater than zero");
+        if (to == address(0)) revert GasManagerInvalidRecipientAddress();
+        if (amount <= 0) revert GasManagerAmountMustBeGreaterThanZero();
         return keccak256(abi.encodePacked(to, amount));
     }
 
@@ -485,8 +513,8 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     function _getFundKey(bytes32 fundingId, uint256 nonce) internal pure returns (bytes32) {
-        require(fundingId != bytes32(0), "Funding ID should not be zero");
-        require(nonce > 0, "Nonce must be greater than zero");
+        if (fundingId == bytes32(0)) revert GasManagerFundingIDShouldNotBeZero();
+        if (nonce <= 0) revert GasManagerNonceMustBeGreaterThanZero();
         return keccak256(abi.encode(fundingId, nonce));
     }
 
@@ -617,53 +645,19 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     // ── Internal Vote Engine ──────────────────────────────
 
     function _castVote(VoteType voteType, uint256 target) internal {
-        require(target != 0, "Target should not be zero");
-
-        VoteTally storage tally = _voteTallies[voteType][target];
-
-        if (
-            tally.startVoteBlock != 0 &&
-            block.number > tally.startVoteBlock + voteTallyBlockThreshold
-        ) {
-            for (uint256 i = 0; i < tally.voters.length; i++) {
-                hasVoted[voteType][target][tally.voters[i]] = false;
-            }
-            tally.totalVotes = 0;
-            tally.voters = new address[](0);
-            tally.startVoteBlock = 0;
-            activeVoteCount--;
-            emit VoteTallyReset(voteType, target);
-        }
-
-        require(
-            !hasVoted[voteType][target][msg.sender],
-            "Voter has already voted for this target"
-        );
-
-        if (tally.voters.length == 0) {
-            tally.startVoteBlock = block.number;
-            activeVoteCount++;
-        }
-
-        tally.totalVotes++;
-        tally.voters.push(msg.sender);
-        hasVoted[voteType][target][msg.sender] = true;
-
-        if (tally.totalVotes >= getSupermajorityThreshold()) {
+        if (target == 0) revert GovernanceVotes.InvalidVoteTarget();
+        bytes32 key = _voteKey(voteType, target);
+        address[] memory electorate;
+        if (!GovernanceVotes.live(GovernanceVotes.state(), key)) electorate = getVoters();
+        if (GovernanceVotes.cast(GovernanceVotes.state(), key, electorate, voteTallyBlockThreshold, msg.sender)) {
             emit StateChanged(voteType, target);
 
             if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
-                require(
-                    target > 0 && target <= 100000,
-                    "Threshold must be 1 to 100000"
-                );
+                if (!(target > 0 && target <= 100000)) revert GovernanceVotes.InvalidExpiry();
                 voteTallyBlockThreshold = target;
                 emit VoteTallyBlockThresholdUpdated(target);
             } else if (voteType == VoteType.UPDATE_FUND_APPROVAL_BLOCK_THRESHOLD) {
-                require(
-                    target > 0 && target <= 100000,
-                    "Funding approval threshold must be 1 to 100000"
-                );
+                if (!(target > 0 && target <= 100000)) revert GovernanceVotes.InvalidExpiry();
                 fundApprovalBlockThreshold = target;
                 emit FundApprovalBlockThresholdUpdated(target);
             } else if (voteType == VoteType.AUTHORIZE_EXPIRED_FUND_CLEANUP) {
@@ -674,12 +668,12 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                 address targetAddress = address(uint160(target));
 
                 if (voteType == VoteType.ADD_GUARDIAN) {
-                    require(!isGuardian[targetAddress], "Already a guardian");
+                    if (isGuardian[targetAddress]) revert GasManagerAlreadyAGuardian();
                     isGuardian[targetAddress] = true;
                     guardiansArray.push(targetAddress);
                     emit GuardianUpdated(targetAddress, true);
                 } else if (voteType == VoteType.REMOVE_GUARDIAN) {
-                    require(isGuardian[targetAddress], "Not a guardian");
+                    if (!isGuardian[targetAddress]) revert GasManagerNotAGuardian();
                     isGuardian[targetAddress] = false;
                     for (uint256 i = 0; i < guardiansArray.length; i++) {
                         if (guardiansArray[i] == targetAddress) {
@@ -697,7 +691,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                     delete guardiansArray;
                     emit GuardiansCleared(count);
                 } else if (voteType == VoteType.ADD_VOTER) {
-                    require(!isVoter(targetAddress), "Voter already in the list");
+                    if (isVoter(targetAddress)) revert GovernanceVotes.VoterAlreadyPresent();
                     votersArray.push(targetAddress);
                     emit VoterUpdated(targetAddress, true);
                 } else if (voteType == VoteType.REMOVE_VOTER) {
@@ -710,22 +704,16 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                             break;
                         }
                     }
-                    require(found, "Voter not found");
+                    if (!found) revert GovernanceVotes.VoterNotFound();
                     emit VoterUpdated(targetAddress, false);
                 } else if (voteType == VoteType.ADD_OTHER_VOTER_CONTRACT) {
                     for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-                        require(
-                            otherVoterContracts[i] != targetAddress,
-                            "Voter contract already in list"
-                        );
+                        if (otherVoterContracts[i] == targetAddress) revert GovernanceVotes.ProviderAlreadyPresent();
                     }
                     otherVoterContracts.push(targetAddress);
                     emit OtherVoterContractUpdated(targetAddress, true);
                 } else if (voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT) {
-                    require(
-                        votersArray.length > 0 || otherVoterContracts.length > 1,
-                        "Cannot remove: would leave no voters in the system"
-                    );
+                    if (!(votersArray.length > 0 || otherVoterContracts.length > 1)) revert GovernanceVotes.EmptyVoterSet();
                     bool found = false;
                     for (uint256 i = 0; i < otherVoterContracts.length; i++) {
                         if (otherVoterContracts[i] == targetAddress) {
@@ -735,7 +723,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                             break;
                         }
                     }
-                    require(found, "Voter contract not found");
+                    if (!found) revert GovernanceVotes.ProviderNotFound();
                     emit OtherVoterContractUpdated(targetAddress, false);
                 }
             }
@@ -752,64 +740,65 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
                 approvedCoinBurns[bytes32(target)] = true;
             }
 
-            for (uint256 i = 0; i < tally.voters.length; i++) {
-                hasVoted[voteType][target][tally.voters[i]] = false;
-            }
-            delete _voteTallies[voteType][target];
-            activeVoteCount--;
-        }
+            if (_changesVoters(voteType)) {
+                if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
 
+                    GovernanceVotes.Configuration storage config = GovernanceVotes.state().configurations[target];
+                    votersArray = config.local;
+                    otherVoterContracts = config.providers;
+                }
+                address[] memory members = _readVoters();
+                if (members.length <= 0) revert GovernanceVotes.EmptyVoterSet();
+                bytes32 membersHash = keccak256(abi.encode(members));
+                if (voteType == VoteType.REFRESH_VOTERS) if (membersHash != bytes32(target)) revert GovernanceVotes.MembershipChanged();
+                if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
+                    if (membersHash != GovernanceVotes.state().configurations[target].membersHash) revert GovernanceVotes.MembershipChanged();
+                    delete GovernanceVotes.state().configurations[target];
+                }
+                GovernanceVotes.approveVoters(GovernanceVotes.state(), members);
+            }
+            GovernanceVotes.complete(GovernanceVotes.state(), key);
+            if (_changesVoters(voteType)) GovernanceVotes.invalidate(GovernanceVotes.state());
+        }
         emit VoteCast(msg.sender, voteType, target);
     }
 
     // ── Voter Management ──────────────────────────────────
 
-    function voteToAddVoter(address voter) external onlyVoters {
-        require(voter != address(0), "Voter address should not be zero");
-        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+    function voteToAddVoter(address voter) external {
+        if (voter == address(0)) revert GovernanceVotes.InvalidVoteTarget();
         _castVote(VoteType.ADD_VOTER, uint256(uint160(voter)));
     }
 
-    function voteToRemoveVoter(address voter) external onlyVoters {
-        require(voter != address(0), "Voter address should not be zero");
-        require(activeVoteCount == 0, "Cannot remove voter while votes are active");
-        require(getVoters().length > 1, "Cannot remove the last voter");
+    function voteToRemoveVoter(address voter) external {
+        if (voter == address(0)) revert GovernanceVotes.InvalidVoteTarget();
         _castVote(VoteType.REMOVE_VOTER, uint256(uint160(voter)));
     }
 
-    function voteToAddOtherVoterContract(address voterContract) external onlyVoters {
-        require(voterContract != address(0), "Voter contract address should not be zero");
-        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
-        require(_isContract(voterContract), "Provided address does not point to a valid contract");
-        try IVoterChecker(voterContract).getVoters() {} catch {
-            revert("Contract does not implement required getVoters function");
-        }
-        try IVoterChecker(voterContract).isVoter(msg.sender) {} catch {
-            revert("Contract does not implement required isVoter function");
-        }
+    function voteToAddOtherVoterContract(address voterContract) external {
+        GovernanceMembers.read(voterContract, bytes4(keccak256("getVoters()")));
         _castVote(VoteType.ADD_OTHER_VOTER_CONTRACT, uint256(uint160(voterContract)));
     }
 
-    function voteToRemoveOtherVoterContract(address voterContract) external onlyVoters {
-        require(voterContract != address(0), "Voter contract address should not be zero");
-        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+    function voteToRemoveOtherVoterContract(address voterContract) external {
+        if (voterContract == address(0)) revert GovernanceVotes.InvalidVoteTarget();
         _castVote(VoteType.REMOVE_OTHER_VOTER_CONTRACT, uint256(uint160(voterContract)));
     }
 
     // ── Guardian Management ───────────────────────────────
 
-    function voteToAddGuardian(address guardian) external onlyVoters {
-        require(guardian != address(0), "Guardian address should not be zero");
+    function voteToAddGuardian(address guardian) external {
+        if (guardian == address(0)) revert GasManagerGuardianAddressShouldNotBeZero();
         _castVote(VoteType.ADD_GUARDIAN, uint256(uint160(guardian)));
     }
 
-    function voteToRemoveGuardian(address guardian) external onlyVoters {
-        require(guardian != address(0), "Guardian address should not be zero");
+    function voteToRemoveGuardian(address guardian) external {
+        if (guardian == address(0)) revert GasManagerGuardianAddressShouldNotBeZero();
         _castVote(VoteType.REMOVE_GUARDIAN, uint256(uint160(guardian)));
     }
 
-    function voteToClearGuardians() external onlyVoters {
-        require(guardiansArray.length > 0, "No guardians to clear");
+    function voteToClearGuardians() external {
+        if (guardiansArray.length <= 0) revert GasManagerNoGuardiansToClear();
         _castVote(VoteType.CLEAR_GUARDIANS, 1);
     }
 
@@ -823,31 +812,31 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     // ── Parameter Governance ──────────────────────────────
 
-    function voteToUpdateVoteTallyBlockThreshold(uint256 newThreshold) external onlyVoters {
-        require(newThreshold > 0 && newThreshold <= 100000, "Invalid block threshold");
+    function voteToUpdateVoteTallyBlockThreshold(uint256 newThreshold) external {
+        if (!(newThreshold > 0 && newThreshold <= 100000)) revert GovernanceVotes.InvalidExpiry();
         _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, newThreshold);
     }
 
-    function voteToUpdateFundApprovalBlockThreshold(uint256 newThreshold) external onlyVoters {
-        require(newThreshold > 0 && newThreshold <= 100000, "Invalid funding approval threshold");
+    function voteToUpdateFundApprovalBlockThreshold(uint256 newThreshold) external {
+        if (!(newThreshold > 0 && newThreshold <= 100000)) revert GovernanceVotes.InvalidExpiry();
         _castVote(VoteType.UPDATE_FUND_APPROVAL_BLOCK_THRESHOLD, newThreshold);
     }
 
-    function voteToAuthorizeExpiredFundCleanup() external onlyVoters {
-        require(_activeApprovedFundKeys.length > 0, "No approved fundings to scan");
+    function voteToAuthorizeExpiredFundCleanup() external {
+        if (_activeApprovedFundKeys.length <= 0) revert GasManagerNoApprovedFundingsToScan();
         _castVote(VoteType.AUTHORIZE_EXPIRED_FUND_CLEANUP, 1);
     }
 
     // ── Gas Funding V1 (Legacy) ───────────────────────────
 
-    function voteToFundGasV1(address to, uint256 amount) external onlyVoters {
-        require(to != address(0), "Invalid recipient address");
-        require(amount > 0, "Amount must be greater than zero");
+    function voteToFundGasV1(address to, uint256 amount) external {
+        if (to == address(0)) revert GasManagerInvalidRecipientAddress();
+        if (amount <= 0) revert GasManagerAmountMustBeGreaterThanZero();
 
         bytes32 fundKey = getLegacyFundKey(to, amount);
 
         _clearFundApprovalIfExpiredOrInvalid(fundKey);
-        require(!approvedFunds[fundKey], "Fund already approved");
+        if (approvedFunds[fundKey]) revert GasManagerFundAlreadyApproved();
 
         _castVote(VoteType.FUND_GAS, uint256(fundKey));
 
@@ -858,25 +847,25 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     /// @notice Execute a legacy V1 gas funding approval.
     function executeFundGasV1(address payable to, uint256 amount) public nonReentrant {
-        require(isGuardian[msg.sender] || msg.sender == to, "Only guardian or funded address");
+        if (!(isGuardian[msg.sender] || msg.sender == to)) revert GasManagerOnlyGuardianOrFundedAddress();
 
         bytes32 fundKey = getLegacyFundKey(to, amount);
 
         _clearFundApprovalIfExpiredOrInvalid(fundKey);
-        require(approvedFunds[fundKey], "Fund not approved");
+        if (!approvedFunds[fundKey]) revert GasManagerFundNotApproved();
 
         _consumeFundApproval(fundKey);
 
-        require(address(this).balance >= amount, "Insufficient balance");
-        require(to != address(0), "Invalid recipient address");
+        if (address(this).balance < amount) revert GasManagerInsufficientBalance();
+        if (to == address(0)) revert GasManagerInvalidRecipientAddress();
 
         uint256 balanceBefore = address(this).balance;
 
         (bool success, ) = to.call{value: amount}("");
-        require(success, "Transfer failed");
+        if (!success) revert GasManagerTransferFailed();
 
         uint256 balanceAfter = address(this).balance;
-        require(balanceBefore - balanceAfter == amount, "Exact amount not transferred");
+        if (balanceBefore - balanceAfter != amount) revert GasManagerExactAmountNotTransferred();
 
         totalGasFunded += amount;
 
@@ -937,15 +926,15 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         internal
         returns (bytes32 fundKey, uint256 nonce)
     {
-        require(fundingId != bytes32(0), "Funding ID should not be zero");
-        require(to != address(0), "Invalid recipient address");
-        require(amount > 0, "Amount must be greater than zero");
-        require(bytes(note).length <= _MAX_FUND_NOTE_LENGTH, "Note too long");
+        if (fundingId == bytes32(0)) revert GasManagerFundingIDShouldNotBeZero();
+        if (to == address(0)) revert GasManagerInvalidRecipientAddress();
+        if (amount <= 0) revert GasManagerAmountMustBeGreaterThanZero();
+        if (bytes(note).length > _MAX_FUND_NOTE_LENGTH) revert GasManagerNoteTooLong();
 
         nonce = _lastFundingNonceByFundingId[fundingId] + 1;
         fundKey = _getFundKey(fundingId, nonce);
 
-        require(!_fundProposals[fundKey].exists, "Fund proposal already exists");
+        if (_fundProposals[fundKey].exists) revert GasManagerFundProposalAlreadyExists();
 
         _lastFundingNonceByFundingId[fundingId] = nonce;
 
@@ -993,14 +982,14 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         }
     }
 
-    function voteToFundGasV2(bytes32 fundKey) external onlyVoters {
+    function voteToFundGasV2(bytes32 fundKey) external {
         FundProposal storage proposal = _fundProposals[fundKey];
 
-        require(proposal.exists, "Fund proposal not found");
-        require(!proposal.executed, "Fund proposal already executed");
+        if (!proposal.exists) revert GasManagerFundProposalNotFound();
+        if (proposal.executed) revert GasManagerFundProposalAlreadyExecuted();
 
         _clearFundApprovalIfExpiredOrInvalid(fundKey);
-        require(!approvedFunds[fundKey], "Fund already approved");
+        if (approvedFunds[fundKey]) revert GasManagerFundAlreadyApproved();
 
         _castVote(VoteType.FUND_GAS, uint256(fundKey));
 
@@ -1024,35 +1013,29 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     function executeFundGasV2(bytes32 fundKey) public nonReentrant {
         FundProposal storage proposal = _fundProposals[fundKey];
 
-        require(proposal.exists, "Fund proposal not found");
-        require(!proposal.executed, "Fund proposal already executed");
+        if (!proposal.exists) revert GasManagerFundProposalNotFound();
+        if (proposal.executed) revert GasManagerFundProposalAlreadyExecuted();
         if (_sponsorFundingStorage().sponsorByFundKey[fundKey] != address(0)) {
             revert SponsorFundingExecutorRequired();
         }
-        require(
-            isGuardian[msg.sender] || msg.sender == proposal.to,
-            "Only guardian or funded address"
-        );
+        if (!(isGuardian[msg.sender] || msg.sender == proposal.to)) revert GasManagerOnlyGuardianOrFundedAddress();
 
         _clearFundApprovalIfExpiredOrInvalid(fundKey);
-        require(approvedFunds[fundKey], "Fund not approved");
+        if (!approvedFunds[fundKey]) revert GasManagerFundNotApproved();
 
         _consumeFundApproval(fundKey);
         proposal.executed = true;
 
-        require(address(this).balance >= proposal.amount, "Insufficient balance");
-        require(proposal.to != address(0), "Invalid recipient address");
+        if (address(this).balance < proposal.amount) revert GasManagerInsufficientBalance();
+        if (proposal.to == address(0)) revert GasManagerInvalidRecipientAddress();
 
         uint256 balanceBefore = address(this).balance;
 
         (bool success, ) = proposal.to.call{value: proposal.amount}("");
-        require(success, "Transfer failed");
+        if (!success) revert GasManagerTransferFailed();
 
         uint256 balanceAfter = address(this).balance;
-        require(
-            balanceBefore - balanceAfter == proposal.amount,
-            "Exact amount not transferred"
-        );
+        if (balanceBefore - balanceAfter != proposal.amount) revert GasManagerExactAmountNotTransferred();
 
         totalGasFunded += proposal.amount;
 
@@ -1074,8 +1057,8 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         FundProposal storage proposal = _fundProposals[fundKey];
         address sponsor = _sponsorFundingStorage().sponsorByFundKey[fundKey];
 
-        require(proposal.exists, "Fund proposal not found");
-        require(!proposal.executed, "Fund proposal already executed");
+        if (!proposal.exists) revert GasManagerFundProposalNotFound();
+        if (proposal.executed) revert GasManagerFundProposalAlreadyExecuted();
         if (sponsor == address(0) || proposal.to != _GAS_SPONSOR) {
             revert InvalidSponsorFundingProposal();
         }
@@ -1084,9 +1067,9 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
         }
 
         _clearFundApprovalIfExpiredOrInvalid(fundKey);
-        require(approvedFunds[fundKey], "Fund not approved");
+        if (!approvedFunds[fundKey]) revert GasManagerFundNotApproved();
         if (!_isContract(_GAS_SPONSOR)) revert GasSponsorUnavailable();
-        require(address(this).balance >= proposal.amount, "Insufficient balance");
+        if (address(this).balance < proposal.amount) revert GasManagerInsufficientBalance();
 
         _consumeFundApproval(fundKey);
         proposal.executed = true;
@@ -1125,12 +1108,9 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     ///         Removes approvals that are expired or invalid.
     ///         Cursor-based so cleanup can be chunked safely.
     function executeExpiredFundCleanup(uint256 maxScans) external nonReentrant {
-        require(isGuardian[msg.sender], "Only guardian");
-        require(expiredFundCleanupAuthorized, "Expired fund cleanup not authorized");
-        require(
-            maxScans > 0 && maxScans <= _MAX_CLEANUP_BATCH_SCAN,
-            "Invalid cleanup batch size"
-        );
+        if (!isGuardian[msg.sender]) revert GasManagerOnlyGuardian();
+        if (!expiredFundCleanupAuthorized) revert GasManagerExpiredFundCleanupNotAuthorized();
+        if (!(maxScans > 0 && maxScans <= _MAX_CLEANUP_BATCH_SCAN)) revert GasManagerInvalidCleanupBatchSize();
 
         uint256 scannedCount = 0;
         uint256 clearedCount = 0;
@@ -1166,9 +1146,9 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
 
     // ── Token Burns ───────────────────────────────────────
 
-    function voteToBurnTokens(address tokenAddress, uint256 amount) external onlyVoters {
-        require(tokenAddress != address(0), "Invalid token address");
-        require(amount > 0, "Amount must be greater than zero");
+    function voteToBurnTokens(address tokenAddress, uint256 amount) external {
+        if (tokenAddress == address(0)) revert GasManagerInvalidTokenAddress();
+        if (amount <= 0) revert GasManagerAmountMustBeGreaterThanZero();
 
         bytes32 burnKey = keccak256(abi.encodePacked(tokenAddress, amount));
         _castVote(VoteType.BURN_TOKENS, uint256(burnKey));
@@ -1179,23 +1159,23 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     function executeTokenBurn(address tokenAddress, uint256 amount) public nonReentrant {
-        require(isGuardian[msg.sender], "Only guardian");
+        if (!isGuardian[msg.sender]) revert GasManagerOnlyGuardian();
 
         bytes32 burnKey = keccak256(abi.encodePacked(tokenAddress, amount));
-        require(approvedBurns[burnKey], "Burn not approved");
+        if (!approvedBurns[burnKey]) revert GasManagerBurnNotApproved();
         approvedBurns[burnKey] = false;
 
         IERC20 token = IERC20(tokenAddress);
-        require(token.balanceOf(address(this)) >= amount, "Insufficient balance");
-        require(token.transfer(_DEAD_ADDRESS, amount), "Token burn failed");
+        if (token.balanceOf(address(this)) < amount) revert GasManagerInsufficientBalance();
+        if (!token.transfer(_DEAD_ADDRESS, amount)) revert GasManagerTokenBurnFailed();
 
         emit TokenBurned(tokenAddress, amount);
     }
 
     // ── Native Coin Burns ─────────────────────────────────
 
-    function voteToBurnNativeCoin(uint256 amount) external onlyVoters {
-        require(amount > 0, "Amount must be greater than zero");
+    function voteToBurnNativeCoin(uint256 amount) external {
+        if (amount <= 0) revert GasManagerAmountMustBeGreaterThanZero();
 
         bytes32 coinBurnKey = keccak256(abi.encodePacked("nativeBurn", amount));
         _castVote(VoteType.BURN_NATIVE_COIN, uint256(coinBurnKey));
@@ -1206,37 +1186,25 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     }
 
     function executeCoinBurn(uint256 amount) public nonReentrant {
-        require(isGuardian[msg.sender], "Only guardian");
+        if (!isGuardian[msg.sender]) revert GasManagerOnlyGuardian();
 
         bytes32 coinBurnKey = keccak256(abi.encodePacked("nativeBurn", amount));
-        require(approvedCoinBurns[coinBurnKey], "Coin burn not approved");
+        if (!approvedCoinBurns[coinBurnKey]) revert GasManagerCoinBurnNotApproved();
         approvedCoinBurns[coinBurnKey] = false;
 
-        require(address(this).balance >= amount, "Insufficient balance");
+        if (address(this).balance < amount) revert GasManagerInsufficientBalance();
 
         (bool success, ) = payable(_DEAD_ADDRESS).call{value: amount}("");
-        require(success, "Burn failed");
+        if (!success) revert GasManagerBurnFailed();
 
         emit NativeCoinBurned(amount);
     }
 
     // ── Expired Tally Cleanup ─────────────────────────────
 
-    function resetExpiredTally(VoteType voteType, uint256 target) external onlyVoters {
-        VoteTally storage tally = _voteTallies[voteType][target];
-        require(tally.startVoteBlock != 0, "No active tally for this target");
-        require(
-            block.number > tally.startVoteBlock + voteTallyBlockThreshold,
-            "Tally has not expired yet"
-        );
-
-        for (uint256 i = 0; i < tally.voters.length; i++) {
-            hasVoted[voteType][target][tally.voters[i]] = false;
-        }
-
-        delete _voteTallies[voteType][target];
-        activeVoteCount--;
-
+    /// @notice Anyone may clear an expired ballot; no membership or approval changes.
+    function resetExpiredTally(VoteType voteType, uint256 target) external {
+        GovernanceVotes.resetExpired(GovernanceVotes.state(), _voteKey(voteType, target));
         emit VoteTallyReset(voteType, target);
     }
 
@@ -1365,7 +1333,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     ///      Encoding is identical to ethers.encodeBytes32String().
     function _stringToBytes32(string calldata str) internal pure returns (bytes32 result) {
         bytes calldata b = bytes(str);
-        require(b.length > 0 && b.length <= 32, "String must be 1-32 bytes");
+        if (!(b.length > 0 && b.length <= 32)) revert GasManagerStringMustBe132Bytes();
         // Left-align: copy bytes into the high-order end of a 32-byte word.
         // Unused trailing bytes remain zero — matching ethers.encodeBytes32String().
         assembly ("memory-safe") {

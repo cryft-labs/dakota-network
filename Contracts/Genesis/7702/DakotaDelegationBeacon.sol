@@ -58,6 +58,10 @@ interface IDakotaDelegationBeaconRootRegistry {
 ///      until ownership moves to the fixed delegation registry entry.
 contract DakotaDelegationBeacon is UpgradeableBeacon {
     error NotRootOverlord(address caller);
+    error InvalidOwnershipTransfer();
+    error OwnershipRenunciationDisabled();
+    address private _pendingOwner;
+    event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);
 
     address private constant _VALIDATOR_ROOT_REGISTRY =
         0x0000000000000000000000000000000000001111;
@@ -73,6 +77,29 @@ contract DakotaDelegationBeacon is UpgradeableBeacon {
     function validatorRootRegistry() external pure returns (address) {
         return _VALIDATOR_ROOT_REGISTRY;
     }
+
+    /// @notice Ownership stays with the current controller until the recipient accepts.
+    function transferOwnership(address newOwner) public override onlyOwner {
+        if (newOwner == address(0) || newOwner == address(this) || newOwner == owner()) revert InvalidOwnershipTransfer();
+        _pendingOwner = newOwner;
+        emit OwnershipTransferStarted(owner(), newOwner);
+    }
+
+    function pendingOwner() external view returns (address) { return _pendingOwner; }
+
+    function acceptOwnership() external {
+        if (msg.sender != _pendingOwner) revert InvalidOwnershipTransfer();
+        _pendingOwner = address(0);
+        _transferOwnership(msg.sender);
+    }
+
+    function cancelOwnershipTransfer() external onlyOwner {
+        _pendingOwner = address(0);
+        emit OwnershipTransferStarted(owner(), address(0));
+    }
+
+    /// @notice Permanent loss of the shared account-upgrade controller is disallowed.
+    function renounceOwnership() public override onlyOwner { revert OwnershipRenunciationDisabled(); }
 
     function _isRootOverlord(address caller) private view returns (bool) {
         try IDakotaDelegationBeaconRootRegistry(

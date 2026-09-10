@@ -58,6 +58,8 @@ The genesis file (`Contracts/Genesis/BesuGenesis.7z`, compressed) contains the f
 | **Contract size limit** | 32,768 bytes (32 KiB)                                                      |
 | **EVM fork**            | Osaka + BPO2 (all forks through Osaka plus BPO1/BPO2 enabled from genesis) |
 
+For the fresh genesis, retain **`config.contractSizeLimit: 32768`**. The archived `besuGenesis.7z` has this setting at the top level; do not assume it establishes the effective limit. Verify the placement and a boundary deployment against the selected Besu release before launch. Existing archived genesis and compiled-output files predate the governance changes and are not release artifacts for this revision.
+
 #### Ethereum Fork Activation
 
 All Ethereum hard forks through Osaka are activated from genesis (block 0 / timestamp 0), along with BPO1 and BPO2 Blob Parameter Only upgrades. Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention. BPO upgrades adjust blob-related parameters (target and maximum blobs per block) without requiring a full hard fork, enabling incremental Layer 2 data throughput scaling.
@@ -136,108 +138,35 @@ Dakota genesis slots use a **Cryft Labs-modified transparent proxy derived from 
 
 ---
 
-### ValidatorSmartContractAllowList (`0x0000...1111`)
+### ValidatorSmartContractAllowList
 
-The core governance contract for the QBFT consensus layer. Deployed at genesis address `0x0000000000000000000000000000000000001111`. The initializer (`initialize()`) becomes the first voter — there is no guardian role in this contract, all operations are voter-driven.
+The registry at `0x0000000000000000000000000000000000001111` retains voter-governed validator, voter, and root-overlord membership. Decisions require `ceil(2N/3)` approvals from the unique approved electorate. This is the retained governance model, with the pre-genesis fixes described below.
 
-#### Access Control
+**Besu compatibility:** `getValidators()` remains `public view override returns (address[] memory)`, with the same selector and standard ABI encoding. The registry address and `ValidatorSmartContractInterface` are unchanged. Compile this contract with **Solidity 0.8.19, London, optimizer 200 runs**. The initial list comes from reviewed genesis storage; later queries return the approved validator set without consulting external providers on Besu's read path. Updated sets are unique and sorted by address.
 
-| Role      | How Assigned                          | Powers                       |
-| --------- | ------------------------------------- | ---------------------------- |
-| **Voter** | Supermajority vote of existing voters | All governance actions below |
+#### Governance changes
 
-All state changes require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`.
+| Area | Current behavior |
+| --- | --- |
+| Membership ballots | A proposal can receive its second and subsequent votes. Membership proposals no longer block themselves through `activeVoteCount`. |
+| Quorum | Each ballot freezes its unique electorate, threshold, and expiry when its first vote is cast. An address receives one vote even when present in several registries. |
+| External providers | Membership changes and explicit refreshes validate bounded provider responses. Provider failure leaves the last approved list and pending ballot threshold intact. |
+| Membership refresh | `previewVoters`, `previewValidators`, and `previewRoots` expose candidate lists and their hashes. The corresponding `voteToRefresh*` action adopts the exact reviewed list. Provider changes are not adopted automatically. |
+| Atomic recovery | `voteToSetVoterConfiguration`, `voteToSetValidatorConfiguration`, and `voteToSetRootConfiguration` replace local members and providers together. This permits removing multiple failed providers or transferring sole authority without an empty intermediate set. |
+| Pending ballots | An approved voter configuration or refresh advances the governance epoch, invalidating other pending ballots. Already approved application funding remains subject to its original execution rules. |
+| Validator safety | Membership changes retain at least four unique validators and do not exceed `maxValidators`. The configurable maximum is 4–64. `voteToReplaceValidator` replaces a local validator atomically, including at the minimum. |
+| Authority safety | Changes cannot empty the effective voter or root-overlord set. Zero addresses, self-administration, and the fixed ProxyAdmin facade cannot become effective governance members. |
+| Expiry | New ballots use 1–100,000 blocks, default 1,000. Anyone may clear an expired tally with `resetExpiredTally`; this grants no voting authority. |
 
-#### Governance Actions (all require voter supermajority)
+`getVoters`, `getValidators`, `getRootOverlords`, their count functions, and their membership predicates all describe the same respective approved sets. Existing voting function selectors and enum values remain; new values are appended. `getVoteTally`, `hasVoted`, and `activeVoteCount` retain their callable signatures. `getProposalSnapshot` and `governanceEpoch` expose the additional ballot state. The active counter includes expired ballots until cleanup/restart and resets on epoch invalidation.
 
-| Action                             | Function                                | Constraints                                                           |   |                                                             |
-| ---------------------------------- | --------------------------------------- | --------------------------------------------------------------------- | - | ----------------------------------------------------------- |
-| Add validator                      | `voteToAddValidator()`                  | Must not exceed `MAX_VALIDATORS` cap; not already in list             |   |                                                             |
-| Remove validator                   | `voteToRemoveValidator()`               | Must exist in local list                                              |   |                                                             |
-| Add voter                          | `voteToAddVoter()`                      | Must not already be a voter (aggregated)                              |   |                                                             |
-| Remove voter                       | `voteToRemoveVoter()`                   | `getVoters().length > 1` — cannot remove the last voter               |   |                                                             |
-| Add external validator contract    | `voteToAddOtherValidatorContract()`     | Must be a contract implementing `getValidators()` and `isValidator()` |   |                                                             |
-| Remove external validator contract | `voteToRemoveOtherValidatorContract()`  | Must exist in list                                                    |   |                                                             |
-| Add external voter contract        | `voteToAddOtherVoterContract()`         | Must implement `getVoters()` and `isVoter()`                          |   |                                                             |
-| Remove external voter contract     | `voteToRemoveOtherVoterContract()`      | `votersArray.length > 0 \                                             | \ | otherVoterContracts.length > 1` — prevents empty voter pool |
-| Add root overlord                  | `voteToAddRootOverlord()`               | Not `address(0)`, not already an overlord                             |   |                                                             |
-| Remove root overlord               | `voteToRemoveRootOverlord()`            | Must exist in local list                                              |   |                                                             |
-| Add external overlord contract     | `voteToAddOtherOverlordContract()`      | Must implement `getRootOverlords()` and `isRootOverlord()`            |   |                                                             |
-| Remove external overlord contract  | `voteToRemoveOtherOverlordContract()`   | Must exist in list                                                    |   |                                                             |
-| Change max validators              | `voteToChangeMaxValidators()`           | Must be > 0 (no upper bound)                                          |   |                                                             |
-| Change vote tally block threshold  | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 blocks                                                   |   |                                                             |
+#### External management revocation
 
-#### Vote Tally Mechanics
+The existing irreversible revocation sequence remains: root-overlord management, validator management, then voter management. Each revoked domain must have no local entries and a usable external set; validators must still number at least four. Revocation freezes local/provider configuration, including the new atomic configuration methods. Explicit refresh votes remain available to adopt upstream changes. It does not introduce a bypass for a failed permanently selected provider.
 
-- Each vote type + target pair has an independent tally with a start block.
-- Votes expire after `voteTallyBlockThreshold` blocks (default: 1,000, ~50 min at 3s blocks).
-- Expired tallies auto-reset on the next vote attempt for that target, or via the voter-only `resetExpiredTally()` function (`external onlyVoters`).
-- Voter-pool changes (add/remove voter, add/remove external voter contract, revoke voter management) are blocked while any tally is active (`activeVoteCount > 0`), ensuring the supermajority threshold remains stable for in-flight votes.
+**Bootstrap decision retained:** `initialize()` still checks whether the local voter array is empty. This is not a permanent initialization guard, including after a later external-only handover. Restricted initial access was the operator's explicit decision; the initializer must be revisited before broader access or that handover. No new root EOA or validator addresses have been selected by this change.
 
-#### Federated Expansion (Pluggable External Contracts)
-
-Three categories of external contracts can be plugged in:
-
-| Array                       | Interface Required                       | Aggregation Function                                           |
-| --------------------------- | ---------------------------------------- | -------------------------------------------------------------- |
-| `otherValidatorContracts[]` | `getValidators()`, `isValidator()`       | `getValidators()` — union of local + all external validators   |
-| `otherVoterContracts[]`     | `getVoters()`, `isVoter()`               | `getVoters()` — union of local + all external voters           |
-| `otherOverlordContracts[]`  | `getRootOverlords()`, `isRootOverlord()` | `getRootOverlords()` — union of local + all external overlords |
-
-All external calls use `try/catch` — a failing external contract is silently skipped (returns 0 entries), preventing a single broken contract from bricking governance.
-
-#### Permanent Management Revocation
-
-Three independent management domains can be **permanently and irreversibly** revoked via voter supermajority, delegating all future governance to external contracts:
-
-**1. Overlord Management Revocation** (`voteToRevokeOverlordManagement()`)
-- Pre-conditions: `rootOverlords[]` must be empty; `otherOverlordContracts[]` must have ≥1 entry
-- Effect: Blocks `ADD_ROOT_OVERLORD`, `REMOVE_ROOT_OVERLORD`, `ADD_OTHER_OVERLORD_CONTRACT`, `REMOVE_OTHER_OVERLORD_CONTRACT`
-
-**2. Validator Management Revocation** (`voteToRevokeValidatorManagement()`)
-- Pre-conditions: `validators[]` must be empty; `otherValidatorContracts[]` must have ≥1 entry; `getValidators()` must return ≥4 addresses (aggregated)
-- Effect: Blocks `ADD_VALIDATOR`, `REMOVE_VALIDATOR`, `ADD_OTHER_VALIDATOR_CONTRACT`, `REMOVE_OTHER_VALIDATOR_CONTRACT`
-
-**3. Voter Management Revocation** (`voteToRevokeVoterManagement()`) — **must be last**
-- Pre-conditions: Overlord management already revoked; validator management already revoked; `votersArray[]` must be empty; `otherVoterContracts[]` must have ≥1 entry; `getVoters()` must return ≥1 address (aggregated)
-- Effect: Blocks `ADD_VOTER`, `REMOVE_VOTER`, `ADD_OTHER_VOTER_CONTRACT`, `REMOVE_OTHER_VOTER_CONTRACT`
-
-Once all three are revoked, this contract's local lists are permanently frozen. All governance is delegated to the listed external contracts. The contract continues to serve aggregation queries (`getValidators()`, `getVoters()`, `getRootOverlords()`) combining local (frozen) and external (live) data.
-
-#### Convenience View Functions
-
-| Function                           | Returns                                                             | Description                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `isVoter(address)`                 | `bool`                                                              | Check if address is a voter (local + external contracts)                     |
-| `isValidator(address)`             | `bool`                                                              | Check if address is an active validator (local + external)                   |
-| `isRootOverlord(address)`          | `bool`                                                              | Check if address is a root overlord (local + external)                       |
-| `getVoters()`                      | `address[]`                                                         | All voters (local `votersArray` + external contracts)                        |
-| `getValidators()`                  | `address[]`                                                         | All validators (local + external contracts)                                  |
-| `getRootOverlords()`               | `address[]`                                                         | All root overlords (local + external contracts)                              |
-| `getVoterCount()`                  | `uint256`                                                           | Total voter count (local + external) without materializing the array         |
-| `getValidatorCount()`              | `uint256`                                                           | Total validator count (local + external) without materializing the array     |
-| `getRootOverlordCount()`           | `uint256`                                                           | Total root overlord count (local + external) without materializing the array |
-| `getSupermajorityThreshold()`      | `uint256`                                                           | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3`         |
-| `getVoteTally(VoteType, target)`   | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target                                    |
-| `MAX_VALIDATORS`                   | `uint256`                                                           | Current validator cap                                                        |
-| `voteTallyBlockThreshold`          | `uint256`                                                           | Blocks before a vote tally expires (default: 1,000)                          |
-| `activeVoteCount`                  | `uint256`                                                           | Number of currently active vote tallies                                      |
-| `overlordManagementRevoked`        | `bool`                                                              | Whether overlord management has been permanently revoked                     |
-| `validatorManagementRevoked`       | `bool`                                                              | Whether validator management has been permanently revoked                    |
-| `voterManagementRevoked`           | `bool`                                                              | Whether voter management has been permanently revoked                        |
-| `hasVoted[VoteType][target][addr]` | `bool`                                                              | Whether an address has voted on a specific tally                             |
-
-#### Lockout Prevention
-
-| Scenario                                                 | Guard                                                                                |   |                                 |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------ | - | ------------------------------- |
-| Remove last voter                                        | `getVoters().length > 1` enforced before removal                                     |   |                                 |
-| Remove last external voter contract when no local voters | `votersArray.length > 0 \                                                            | \ | otherVoterContracts.length > 1` |
-| Voter-pool change during active tally                    | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |   |                                 |
-| Revoke voter management with no external voters          | Requires `otherVoterContracts.length > 0` and `getVoters().length >= 1`              |   |                                 |
-| Revoke validator management with too few validators      | Requires `getValidators().length >= 4` (QBFT minimum)                                |   |                                 |
-| Revoke voter management before other domains             | Requires overlord + validator management already revoked                             |   |                                 |
-| `address(0)` as voter/validator/overlord                 | All entry points require `!= address(0)`                                             |   |                                 |
+See the [governance maintenance guide](Contracts/Genesis/GOVERNANCE.md) for operational steps, limits, authority differences, and fresh-genesis requirements, and [local regression tests](Tests/Governance/README.md) for verification.
 
 ---
 
@@ -312,15 +241,15 @@ Voters can burn any amount of the contract's native coin balance via `voteToBurn
 
 #### Voter Pool (Independent)
 
-The GasManager has its own local `votersArray[]` and pluggable `otherVoterContracts[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External voter contracts must implement `getVoters()` and `isVoter()`. 2/3 supermajority quorum: `(totalVoterCount * 2 + 2) / 3`.
+The GasManager has its own local `votersArray[]` and pluggable `otherVoterContracts[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External providers supply `getVoters()`; membership checks use the approved unique array rather than trusting a separate provider predicate. The shared snapshot, explicit refresh, and atomic recovery rules above apply. A membership change must leave at least one effective voter; successful changes invalidate pending ballots.
 
 #### Convenience View Functions
 
 | Function                           | Returns                                                             | Description                                                          |
 | ---------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `isVoter(address)`                 | `bool`                                                              | Check if address is a voter (local + external contracts)             |
-| `getVoters()`                      | `address[]`                                                         | All voters (local `votersArray` + external contracts)                |
-| `getVoterCount()`                  | `uint256`                                                           | Total voter count (local + external) without materializing the array |
+| `getVoters()`                      | `address[]`                                                         | Unique approved local and external voters                |
+| `getVoterCount()`                  | `uint256`                                                           | Number of unique approved voters |
 | `getSupermajorityThreshold()`      | `uint256`                                                           | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
 | `getVoteTally(VoteType, target)`   | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target                            |
 | `getContractBalance()`             | `uint256`                                                           | Native coin balance held by this contract                            |
@@ -338,19 +267,13 @@ The GasManager has its own local `votersArray[]` and pluggable `otherVoterContra
 
 #### Lockout Prevention
 
-| Scenario                                                 | Guard                                                                                |   |                                 |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------ | - | ------------------------------- |
-| Remove last voter                                        | `getVoters().length > 1` enforced before removal                                     |   |                                 |
-| Remove last external voter contract when no local voters | `votersArray.length > 0 \                                                            | \ | otherVoterContracts.length > 1` |
-| Voter-pool change during active tally                    | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |   |                                 |
-| `address(0)` as voter/guardian/recipient                 | All entry points require `!= address(0)`                                             |   |                                 |
-| Clear guardians when none exist                          | `guardiansArray.length > 0` required                                                 |   |                                 |
-| Re-entrancy on fund/burn execution                       | `ReentrancyGuard` modifier on all execute functions                                  |   |                                 |
-| Balance discrepancy after fund transfer                  | Exact balance delta check: `balanceBefore - balanceAfter == _amount`                 |   |                                 |
+The shared governance engine rejects empty effective voter sets and invalid authorities. Atomic voter configuration permits a sole-voter handover and removal of several failed providers. Snapshot thresholds cannot fall when a provider fails, and expired ballots can be cleared without voter privileges.
+
+Guardians remain operational roles that voters can add again after removal; an empty guardian list therefore does not destroy governance. Funding and burn execution retain reentrancy and balance checks. Funding recipients remain bound to their approved requests. GasManager's named custom errors replace several revert strings; integrations must use the rebuilt ABI when decoding failures.
 
 #### Upgradeability
 
-GasManager inherits `Initializable` and `ReentrancyGuardUpgradeable` from OpenZeppelin v4.9.6. The constructor calls `_disableInitializers()` to prevent re-initialization of the implementation contract.
+GasManager inherits `Initializable` and `ReentrancyGuardUpgradeable` from OpenZeppelin v4.9.6. The constructor calls `_disableInitializers()` to lock the implementation contract. `initialize()` retains direct-caller setup; `initializeWithVoter(address)` supports an explicit usable voter during atomic proxy/factory initialization. This explicit initializer is also available on CodeManager. Neither accepts the application itself or the fixed ProxyAdmin facade as the voter.
 
 ---
 
@@ -367,11 +290,11 @@ Extended OpenZeppelin ERC1967 transparent proxy with multi-party overlord/guardi
 | **Guardian**                    | Added via 2/3 supermajority overlord vote                                                                 | Operational: `proxy_linkLogicAdmin()` (one-time), trigger upgrades via ProxyAdmin |
 | **Admin** (ProxyAdmin contract) | Immutable — baked into bytecode at compile/genesis time (3-gas reads)                                     | ERC1967 upgrade dispatch (`upgradeTo`, `upgradeToAndCall`)                        |
 
-Root overlords are **not stored** in the proxy — they are read live from the validator contract via `try/catch`. If the validator contract is unreachable, root overlord calls return `false` / empty array (safe degradation).
+Root authority is read dynamically from the validator registry; no root EOA is compiled into the proxy. The registry serves its last approved root set independently of upstream provider availability. Proxy ballot membership reads fail closed if the registry itself cannot return a valid bounded list, rather than silently reducing quorum.
 
 #### Overlord Count and Supermajority Threshold
 
-- `proxy_getOverlordCount()` = non-root overlords + root overlord count (when active)
+- `proxy_getOverlordCount()` = unique union of local overlords and active roots; an overlapping address counts once
 - 2/3 supermajority threshold = `ceil(count × 2 / 3)` = `(count * 2 + 2) / 3`
 - Examples: 1→1, 2→2, 3→2, 4→3, 5→4, 6→4
 
@@ -386,7 +309,7 @@ A single overlord can pass any proposal unilaterally (supermajority threshold = 
 | Add guardian          | `proxy_proposeGuardianChange(target, true)`  | Not `address(0)`, not the validator contract, not an overlord, max 10 guardians    |
 | Remove guardian       | `proxy_proposeGuardianChange(target, false)` | Must be a guardian                                                                 |
 | Clear all guardians   | `proxy_proposeClearGuardians()`              | At least 1 guardian exists                                                         |
-| Change vote expiry    | `proxy_proposeExpiryChange(newExpiry)`       | Minimum 100 blocks (~5 min at 3s blocks)                                           |
+| Change vote expiry    | `proxy_proposeExpiryChange(newExpiry)`       | 100–100,000 blocks                                           |
 | Revoke root overlord  | `proxy_proposeRevokeRootOverlord()`          | Root not already revoked; at least 1 non-root overlord exists                      |
 | Restore root overlord | `proxy_proposeRestoreRootOverlord()`         | Root must be revoked; only non-root overlords can propose (root is excluded)       |
 
@@ -403,13 +326,13 @@ Direct root overlord changes also increment the vote epoch, invalidating all pen
 #### Voting Mechanics
 
 - **Single-session lock**: Only one proposal can be actively voted on at a time. A second proposal reverts unless the first has expired.
-- **Vote expiry**: Default 60,000 blocks (~1 week at 3s blocks). Expired proposals auto-increment their round, invalidating stale votes.
-- **Vote epoch**: Incremented on every executed proposal or direct overlord change. Changing the epoch invalidates all pending proposals across all proposal types.
+- **Vote expiry**: Default 60,000 blocks; a ballot freezes its expiry at its first vote. Allowed settings are 100–100,000 blocks. Expired proposals start a new round.
+- **Vote context**: A fingerprint includes the current unique root/local controller set, root-revocation state, and epoch. Root rotation or a local governance change invalidates pending proxy votes. Each ballot freezes its electorate and threshold.
 - **Proposal rounds**: Each proposal key tracks a round counter. On expiry, the round increments, creating a fresh proposal ID while preserving the base key.
 
 #### Storage Design
 
-All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., `keccak256("TransparentUpgradeableProxy.overlordMap")`) to avoid collisions with the implementation contract's storage. This is critical — standard Solidity storage slots 0, 1, 2... would conflict with the proxied contract.
+All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., `keccak256("TransparentUpgradeableProxy.overlordMap")`) to avoid collisions with the implementation contract's storage. Proxy voting uses `keccak256("cryft.proxy.governance.votes.v1")`; application voting uses `keccak256("cryft.governance.snapshot.v1")`. These must stay separate because the application executes through delegatecall at the same address. Local proxy-controller enumeration is fresh-genesis state, not an automatic migration of a previously deployed shell.
 
 #### Proxy Linkage (One-Time)
 
@@ -417,16 +340,16 @@ All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., 
 
 #### Lockout Prevention
 
-| Scenario                                            | Guard                                                                                                            |   |                              |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | - | ---------------------------- |
-| Remove last non-root overlord when root is inactive | `_rawOverlordCount() > 1 \                                                                                       | \ | (rootCount > 0 && !revoked)` |
-| Voluntary root revoke with no non-root overlords    | `_rawOverlordCount() > 0`                                                                                        |   |                              |
-| Force-revoke root with no non-root overlords        | Same check in `proxy_proposeRevokeRootOverlord()`                                                                |   |                              |
-| Link logic with `address(0)` logic                  | Checked `!= address(0)` in `proxy_linkLogicAdmin()`                                                              |   |                              |
-| Overlord/guardian dual-role                         | Both `proxy_addOverlord` and `proxy_proposeGuardianChange` cross-check to prevent any address holding both roles |   |                              |
-| Mid-vote membership manipulation                    | Every direct add/remove calls `_incrementVoteEpoch()`, invalidating all pending proposals                        |   |                              |
-| Single overlord stuck (threshold too high)          | Threshold formula: `(1*2+2)/3 = 1` — a single overlord passes anything                                           |   |                              |
-| Guardian overflow                                   | Hard cap: `MAX_GUARDIANS = 10`                                                                                   |   |                              |
+| Scenario | Guard or recovery |
+| --- | --- |
+| Remove the final effective controller | Rejected; local and active root membership are counted uniquely |
+| Revoke roots without a local controller | Rejected for both direct and voted revocation |
+| Remove every explicit guardian | Controllers can vote to add operational guardians again |
+| Change controller membership during a ballot | The membership fingerprint and epoch invalidate stale approvals |
+| Configure an unusable vote expiry | Only 100–100,000 blocks are accepted |
+| Overlap local and root roles | A controller counts once toward quorum |
+| Interfere with application voting through the proxy | Proxy and application ballots use separate storage namespaces |
+| Upgrade through ProxyAdmin after root rotation | The former root loses authority; the current root is resolved dynamically |
 
 #### Constants
 
@@ -512,7 +435,7 @@ CodeManager (independent)
 
 ### CodeManager (Unique ID Registry + Pente Router)
 
-Permissionless unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`. Voter-pool changes are blocked while any tally is active (`activeVoteCount > 0`).
+Permissionless unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The approved voter pool is the unique union of local and explicitly adopted external members. It uses the same snapshot, refresh, atomic recovery, and last-voter protections as the validator registry. Membership ballots can finish while other ballots are pending; approval invalidates the other pending ballots.
 
 Also serves as the public mirror and Pente router. Authorized privacy groups call `recordRedemption`, which resolves the UID to its gift contract, marks the UID terminally redeemed, and forwards to the gift contract via try/catch. The function never reverts on precondition failures (emits `RedemptionRejected`) or gift contract errors (emits `RedemptionFailed`), guaranteeing that every `PenteExternalCall` succeeds from Pente's perspective and private state is always preserved. Active/inactive state is mirrored publicly from the private contract using sparse per-UID overrides over a default active state.
 
@@ -524,13 +447,13 @@ Also serves as the public mirror and Pente router. Authorized privacy groups cal
 | Remove whitelisted address           | `voteToRemoveWhitelistedAddress(address)`      | Voter supermajority required                                           |
 | Update registration fee              | `voteToUpdateRegistrationFee(uint256)`         | Voter supermajority required                                           |
 | Update fee vault                     | `voteToUpdateFeeVault(address)`                | Voter supermajority required                                           |
-| Add voter                            | `voteToAddVoter(address)`                      | `activeVoteCount == 0`; not already a voter                            |
-| Remove voter                         | `voteToRemoveVoter(address)`                   | `activeVoteCount == 0`; `getVoters().length > 1`                       |
-| Add external voter contract          | `voteToAddOtherVoterContract(address)`         | `activeVoteCount == 0`; must implement `getVoters()` + `isVoter()`     |
-| Remove external voter contract       | `voteToRemoveOtherVoterContract(address)`      | `activeVoteCount == 0`                                                 |
+| Add voter                            | `voteToAddVoter(address)`                      | Not already an effective voter; safe resulting set                            |
+| Remove voter                         | `voteToRemoveVoter(address)`                   | Resulting effective voter set must remain nonempty                       |
+| Add external voter contract          | `voteToAddOtherVoterContract(address)`         | Bounded `getVoters()` response; safe unique resulting set     |
+| Remove external voter contract       | `voteToRemoveOtherVoterContract(address)`      | Safe resulting effective voter set                                                 |
 | Update vote tally block threshold    | `voteToUpdateVoteTallyBlockThreshold(uint256)` | 1 to 100,000 blocks                                                    |
 | Authorize/de-authorize privacy group | `voteToAuthorizePrivacyGroup(address)`         | Toggles `isAuthorizedPrivacyGroup[addr]`; voter supermajority required |
-| Reset expired tally                  | `resetExpiredTally(VoteType, uint256)`         | Voter-only; tally must have expired                                    |
+| Reset expired tally                  | `resetExpiredTally(VoteType, uint256)`         | Permissionless; tally must have expired                                    |
 
 #### Pente Router Functions (called by authorized privacy groups)
 
@@ -550,8 +473,8 @@ Also serves as the public mirror and Pente router. Authorized privacy groups cal
 | Function                                      | Returns                                                             | Description                                                          |
 | --------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `isVoter(address)`                            | `bool`                                                              | Check if address is a voter (local + external contracts)             |
-| `getVoters()`                                 | `address[]`                                                         | All voters (local `votersArray` + external contracts)                |
-| `getVoterCount()`                             | `uint256`                                                           | Total voter count (local + external) without materializing the array |
+| `getVoters()`                                 | `address[]`                                                         | Unique approved local and external voters                |
+| `getVoterCount()`                             | `uint256`                                                           | Number of unique approved voters |
 | `getSupermajorityThreshold()`                 | `uint256`                                                           | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
 | `getVoteTally(VoteType, target)`              | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target                            |
 | `validateUniqueId(uniqueId)`                  | `bool`                                                              | Check if a UID is valid (registered and within counter range)        |
@@ -761,7 +684,7 @@ proxy_linkLogicAdmin(
 )
 ```
 
-Transfer beacon ownership to `0x...de1E6A7E`. The fixed entry must report one
+Propose beacon ownership with `beacon.transferOwnership(0x...de1E6A7E)`, then have the registry admin call `acceptBeaconOwnership()` through the fixed registry entry. Ownership stays with the current owner until acceptance. The owner may cancel a pending handover; renunciation is disabled. The fixed entry must report one
 initial release and `currentSnapshot().registryControlsBeacon == true`. Normal
 delegation upgrades call `upgradeDelegation(newImplementation,
 expectedRuntimeCodeHash)` through the registry ABI at `0x...de1E6A7E`.
