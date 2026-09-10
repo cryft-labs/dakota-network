@@ -151,13 +151,20 @@ This must be the fixed entry's first link. Do not use
 `ProxyAdmin.upgrade(...)` for the initial link because that would not set the
 custom genesis initialization flag.
 
-After the first link, transfer the beacon to the fixed entry:
+After the first link, propose the beacon ownership transfer from its current owner:
 
 ```solidity
 DakotaDelegationBeacon.transferOwnership(
     0x00000000000000000000000000000000de1E6A7E
 )
 ```
+
+The current owner remains in control until acceptance. From the registry admin,
+call `acceptBeaconOwnership()` through the registry ABI at `0x...de1E6A7E`.
+Confirm the beacon's `owner()` only after this second transaction. A pending
+handover can be cancelled by its current owner; when the fixed registry owns
+the beacon, its admin uses `cancelBeaconOwnershipTransfer()`. Beacon ownership
+renunciation is disabled. See [governance maintenance](../GOVERNANCE.md).
 
 Confirm by calling the registry ABI at `0x...de1E6A7E`:
 

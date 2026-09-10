@@ -4,6 +4,14 @@ Live chain: Dakota Network (`112311`)
 
 Snapshot date: 2026-07-21
 
+**Historical deployment snapshot.** The addresses, bytecode, and simulations
+below describe that dated deployment, not an approved fresh-genesis release.
+The September governance revision introduces a two-step beacon handover:
+`transferOwnership(fixedRegistry)` proposes it, then the registry admin calls
+`acceptBeaconOwnership()` through the fixed registry. Old beacons do not gain
+this behavior automatically. Rebuild and review the new contracts and addresses
+using the [current maintenance guide](../GOVERNANCE.md) before a fresh deployment.
+
 This runbook covers the fixed Dakota EIP-7702 delegation entry and native gas
 sponsorship control plane. It does not replace the tenant-access factory
 runbook. The `DakotaDelegationRegistry` below is not a tenant user registry.

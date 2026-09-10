@@ -25,7 +25,7 @@ pragma solidity >=0.8.2 <0.9.0;
   │  + incrementing counter.                                        │
   │                                                                 │
   │  2/3 supermajority quorum for all state changes.                │
-  │  Voter-pool changes frozen while any tally is active.           │
+  │  Approved voter changes invalidate pending ballots.           │
   │  Own voter set with pluggable external voter                    │
   │  contracts via otherVoterContracts[].                           │
   │                                                                 │
@@ -62,6 +62,9 @@ pragma solidity >=0.8.2 <0.9.0;
   │  Patent: U.S. App. Ser. No. 18/930,857                          │
   └─────────────────────────────────────────────────────────────────┘
 */
+
+import "../Genesis/Governance/GovernanceMembers.sol";
+import "../Genesis/Governance/GovernanceVotes.sol";
 
 import "../Genesis/Upgradeable/Utils/StringsUpgradeable.sol";
 import "../Genesis/Upgradeable/Initializable.sol";
@@ -100,7 +103,9 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         REMOVE_OTHER_VOTER_CONTRACT,
         UPDATE_VOTE_TALLY_BLOCK_THRESHOLD,
         AUTHORIZE_PRIVACY_GROUP,
-        DEAUTHORIZE_PRIVACY_GROUP
+        DEAUTHORIZE_PRIVACY_GROUP,
+        REFRESH_VOTERS,
+        SET_VOTER_CONFIGURATION
     }
 
     struct VoteTally {
@@ -111,7 +116,7 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
 
     address[] public votersArray;
     address[] public otherVoterContracts;
-    uint256 public activeVoteCount;
+    uint256 private __legacyActiveVoteCount; // Slot retained; use activeVoteCount().
 
     uint256 public registrationFee;
     uint256 public voteTallyBlockThreshold;
@@ -125,7 +130,7 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     mapping(string => ContractData) private _contractIdentifierToData;
     mapping(bytes32 => UniqueIdStatus) private _uniqueIdStatuses;
     mapping(VoteType => mapping(uint256 => VoteTally)) private _voteTallies;
-    mapping(VoteType => mapping(uint256 => mapping(address => bool))) public hasVoted;
+    mapping(VoteType => mapping(uint256 => mapping(address => bool))) private __legacyHasVoted;
 
     /// @dev Authorized Pente privacy groups that can call router functions.
     mapping(address => bool) public isAuthorizedPrivacyGroup;
@@ -165,8 +170,19 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     }
 
     function initialize() public virtual initializer {
+        _initializeVoter(msg.sender);
+    }
+
+    /// @notice Atomic proxy/factory setup with an explicit usable governance identity.
+    function initializeWithVoter(address initialVoter) external initializer {
+        _initializeVoter(initialVoter);
+    }
+
+    function _initializeVoter(address initialVoter) private {
+        if (initialVoter == address(0) || initialVoter == address(this)
+            || initialVoter == 0x0000000000000000000000000000000000FacAdE) revert GovernanceVotes.SelfAdministration();
         __ReentrancyGuard_init();
-        votersArray.push(msg.sender);
+        votersArray.push(initialVoter);
         registrationFee = 10**15;
         voteTallyBlockThreshold = 1000;
     }
@@ -174,84 +190,59 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     // ── Voter Queries ─────────────────────────────────────
 
     function isVoter(address potentialVoter) public view returns (bool) {
-        for (uint256 i = 0; i < votersArray.length; i++) {
-            if (votersArray[i] == potentialVoter) {
-                return true;
-            }
-        }
-        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-            try IVoterChecker(otherVoterContracts[i]).isVoter(potentialVoter) returns (bool result) {
-                if (result) return true;
-            } catch {}
-        }
-        return false;
+        return GovernanceMembers.contains(getVoters(), potentialVoter);
     }
 
     function getVoters() public view returns (address[] memory) {
-        uint256 maxLen = votersArray.length;
-        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
-                maxLen += ext.length;
-            } catch {}
-        }
-
-        address[] memory temp = new address[](maxLen);
-        uint256 count = 0;
-
-        for (uint256 i = 0; i < votersArray.length; i++) {
-            temp[count] = votersArray[i];
-            count++;
-        }
-
-        for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-            try IVoterChecker(otherVoterContracts[i]).getVoters() returns (address[] memory ext) {
-                for (uint256 j = 0; j < ext.length; j++) {
-                    bool dup = false;
-                    for (uint256 k = 0; k < count; k++) {
-                        if (temp[k] == ext[j]) { dup = true; break; }
-                    }
-                    if (!dup) {
-                        temp[count] = ext[j];
-                        count++;
-                    }
-                }
-            } catch {}
-        }
-
-        address[] memory result = new address[](count);
-        for (uint256 i = 0; i < count; i++) {
-            result[i] = temp[i];
-        }
-        return result;
+        if (GovernanceVotes.state().votersInitialized) return GovernanceVotes.state().approvedVoters;
+        return _readVoters();
     }
     /// @notice Returns the total number of voters (local + external).
+    function _readVoters() private view returns (address[] memory) {
+        return GovernanceMembers.collect(votersArray, otherVoterContracts, bytes4(keccak256("getVoters()")));
+    }
+    function previewVoters() external view returns (address[] memory members, bytes32 membersHash) {
+        members = _readVoters();
+        membersHash = keccak256(abi.encode(members));
+    }
+    function voteToRefreshVoters(bytes32 expectedHash) external {
+        _castVote(VoteType.REFRESH_VOTERS, uint256(expectedHash));
+    }
+    /// @notice Atomic handover/recovery; approvals bind both configuration and resulting membership.
+    function voteToSetVoterConfiguration(address[] calldata local, address[] calldata providers, bytes32 expectedHash) external {
+        uint256 target = GovernanceVotes.configure(GovernanceVotes.state(), local, providers, expectedHash);
+        _castVote(VoteType.SET_VOTER_CONFIGURATION, target);
+    }
+
     function getVoterCount() public view returns (uint256) {
         return getVoters().length;
     }
     // ── Vote Tally & Thresholds ───────────────────────────
 
-    function getVoteTally(
-        VoteType voteType,
-        uint256 target
-    )
-        public
-        view
-        returns (
-            uint256 totalVotes,
-            uint256 startVoteBlock,
-            uint256 voteExpirationBlock,
-            address[] memory votedAddresses
-        )
+    function getVoteTally(VoteType voteType, uint256 target) public view
+        returns (uint256 totalVotes, uint256 startVoteBlock, uint256 voteExpirationBlock, address[] memory votedAddresses)
     {
-        VoteTally memory tally = _voteTallies[voteType][target];
-        totalVotes = tally.totalVotes;
-        startVoteBlock = tally.startVoteBlock;
-        if (startVoteBlock != 0) {
-            voteExpirationBlock = startVoteBlock + voteTallyBlockThreshold;
-        } else {
-            voteExpirationBlock = 0;
-        }
-        votedAddresses = tally.voters;
+        return GovernanceVotes.tally(GovernanceVotes.state(), _voteKey(voteType, target));
+    }
+
+    function getProposalSnapshot(VoteType voteType, uint256 target) external view
+        returns (uint256 threshold, uint256 expires, uint256 epoch, address[] memory electorate)
+    {
+        return GovernanceVotes.snapshot(GovernanceVotes.state(), _voteKey(voteType, target));
+    }
+
+    function activeVoteCount() public view returns (uint256) { return GovernanceVotes.state().active; }
+    function governanceEpoch() external view returns (uint256) { return GovernanceVotes.state().epoch; }
+    function hasVoted(VoteType voteType, uint256 target, address voter) external view returns (bool) {
+        return GovernanceVotes.voted(GovernanceVotes.state(), _voteKey(voteType, target), voter);
+    }
+    function _voteKey(VoteType voteType, uint256 target) private pure returns (bytes32) {
+        return keccak256(abi.encode(voteType, target));
+    }
+    function _changesVoters(VoteType voteType) private pure returns (bool) {
+        return voteType == VoteType.REFRESH_VOTERS || voteType == VoteType.SET_VOTER_CONFIGURATION
+            || voteType == VoteType.ADD_VOTER || voteType == VoteType.REMOVE_VOTER
+            || voteType == VoteType.ADD_OTHER_VOTER_CONTRACT || voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT;
     }
 
     function getSupermajorityThreshold() public view returns (uint256) {
@@ -263,39 +254,11 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     // ── Internal Vote Engine ──────────────────────────────
 
     function _castVote(VoteType voteType, uint256 target) internal {
-        require(target != 0 || voteType == VoteType.UPDATE_REGISTRATION_FEE, "Target should not be zero");
-        // Caller validation is enforced by the onlyVoters modifier on all public entry points
-
-        VoteTally storage tally = _voteTallies[voteType][target];
-
-        // reset expired tallies based on startVoteBlock
-        if (
-            tally.startVoteBlock != 0 &&
-            block.number > tally.startVoteBlock + voteTallyBlockThreshold
-        ) {
-            for (uint256 i = 0; i < tally.voters.length; i++) {
-                hasVoted[voteType][target][tally.voters[i]] = false;
-            }
-            tally.totalVotes = 0;
-            tally.voters = new address[](0);
-            tally.startVoteBlock = 0;
-            activeVoteCount--;
-            emit VoteTallyReset(voteType, target);
-        }
-
-        require(!hasVoted[voteType][target][msg.sender], "Voter has already voted for this target");
-
-        // record vote
-        if (tally.voters.length == 0) {
-            tally.startVoteBlock = block.number;
-            activeVoteCount++;
-        }
-        tally.totalVotes++;
-        tally.voters.push(msg.sender);
-        hasVoted[voteType][target][msg.sender] = true;
-
-        // check for supermajority (2/3)
-        if (tally.totalVotes >= getSupermajorityThreshold()) {
+        if (target == 0) revert GovernanceVotes.InvalidVoteTarget();
+        bytes32 key = _voteKey(voteType, target);
+        address[] memory electorate;
+        if (!GovernanceVotes.live(GovernanceVotes.state(), key)) electorate = getVoters();
+        if (GovernanceVotes.cast(GovernanceVotes.state(), key, electorate, voteTallyBlockThreshold, msg.sender)) {
             emit StateChanged(voteType, target);
 
             if (voteType == VoteType.ADD_WHITELISTED_ADDRESS) {
@@ -308,7 +271,7 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
             } else if (voteType == VoteType.UPDATE_FEE_VAULT) {
                 feeVault = address(uint160(target));
             } else if (voteType == VoteType.ADD_VOTER) {
-                require(!isVoter(address(uint160(target))), "Voter already in the list");
+                if (isVoter(address(uint160(target)))) revert GovernanceVotes.VoterAlreadyPresent();
                 votersArray.push(address(uint160(target)));
                 emit VoterUpdated(address(uint160(target)), true);
             } else if (voteType == VoteType.REMOVE_VOTER) {
@@ -322,21 +285,18 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
                         break;
                     }
                 }
-                require(found, "Voter not found");
+                if (!found) revert GovernanceVotes.VoterNotFound();
                 emit VoterUpdated(targetAddress, false);
             } else if (voteType == VoteType.ADD_OTHER_VOTER_CONTRACT) {
                 address targetAddress = address(uint160(target));
                 for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-                    require(otherVoterContracts[i] != targetAddress, "Voter contract already in list");
+                    if (otherVoterContracts[i] == targetAddress) revert GovernanceVotes.ProviderAlreadyPresent();
                 }
                 otherVoterContracts.push(targetAddress);
                 emit OtherVoterContractUpdated(targetAddress, true);
             } else if (voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT) {
                 address targetAddress = address(uint160(target));
-                require(
-                    votersArray.length > 0 || otherVoterContracts.length > 1,
-                    "Cannot remove: would leave no voters in the system"
-                );
+                if (!(votersArray.length > 0 || otherVoterContracts.length > 1)) revert GovernanceVotes.EmptyVoterSet();
                 bool found = false;
                 for (uint256 i = 0; i < otherVoterContracts.length; i++) {
                     if (otherVoterContracts[i] == targetAddress) {
@@ -346,13 +306,10 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
                         break;
                     }
                 }
-                require(found, "Voter contract not found");
+                if (!found) revert GovernanceVotes.ProviderNotFound();
                 emit OtherVoterContractUpdated(targetAddress, false);
             } else if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
-                require(
-                    target > 0 && target <= 100000,
-                    "Threshold must be 1 to 100000"
-                );
+                if (!(target > 0 && target <= 100000)) revert GovernanceVotes.InvalidExpiry();
                 voteTallyBlockThreshold = target;
                 emit VoteTallyBlockThresholdUpdated(target);
             } else if (voteType == VoteType.AUTHORIZE_PRIVACY_GROUP) {
@@ -364,87 +321,86 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
                 isAuthorizedPrivacyGroup[targetAddress] = false;
                 emit PrivacyGroupAuthorized(targetAddress, false);
             }
+            if (_changesVoters(voteType)) {
+                if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
 
-            // clear votes
-            for (uint256 i = 0; i < tally.voters.length; i++) {
-                hasVoted[voteType][target][tally.voters[i]] = false;
+                    GovernanceVotes.Configuration storage config = GovernanceVotes.state().configurations[target];
+                    votersArray = config.local;
+                    otherVoterContracts = config.providers;
+                }
+                address[] memory members = _readVoters();
+                if (members.length <= 0) revert GovernanceVotes.EmptyVoterSet();
+                bytes32 membersHash = keccak256(abi.encode(members));
+                if (voteType == VoteType.REFRESH_VOTERS) if (membersHash != bytes32(target)) revert GovernanceVotes.MembershipChanged();
+                if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
+                    if (membersHash != GovernanceVotes.state().configurations[target].membersHash) revert GovernanceVotes.MembershipChanged();
+                    delete GovernanceVotes.state().configurations[target];
+                }
+                GovernanceVotes.approveVoters(GovernanceVotes.state(), members);
             }
-            delete _voteTallies[voteType][target];
-            activeVoteCount--;
+            GovernanceVotes.complete(GovernanceVotes.state(), key);
+            if (_changesVoters(voteType)) GovernanceVotes.invalidate(GovernanceVotes.state());
         }
-
         emit VoteCast(msg.sender, voteType, target);
     }
 
     // ── Voter Management ──────────────────────────────────
 
-    function voteToAddVoter(address voter) external onlyVoters {
-        require(voter != address(0), "Voter address should not be zero");
-        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+    function voteToAddVoter(address voter) external {
+        if (voter == address(0)) revert GovernanceVotes.InvalidVoteTarget();
         _castVote(VoteType.ADD_VOTER, uint256(uint160(voter)));
     }
 
-    function voteToRemoveVoter(address voter) external onlyVoters {
-        require(voter != address(0), "Voter address should not be zero");
-        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
-        require(getVoters().length > 1, "Cannot remove the last voter");
+    function voteToRemoveVoter(address voter) external {
+        if (voter == address(0)) revert GovernanceVotes.InvalidVoteTarget();
         _castVote(VoteType.REMOVE_VOTER, uint256(uint160(voter)));
     }
 
-    function voteToAddOtherVoterContract(address voterContract) external onlyVoters {
-        require(voterContract != address(0), "Voter contract address should not be zero");
-        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
-        require(_isContract(voterContract), "Provided address does not point to a valid contract");
-        try IVoterChecker(voterContract).getVoters() {} catch {
-            revert("Contract does not implement required getVoters function");
-        }
-        try IVoterChecker(voterContract).isVoter(msg.sender) {} catch {
-            revert("Contract does not implement required isVoter function");
-        }
+    function voteToAddOtherVoterContract(address voterContract) external {
+        GovernanceMembers.read(voterContract, bytes4(keccak256("getVoters()")));
         _castVote(VoteType.ADD_OTHER_VOTER_CONTRACT, uint256(uint160(voterContract)));
     }
 
-    function voteToRemoveOtherVoterContract(address voterContract) external onlyVoters {
-        require(voterContract != address(0), "Voter contract address should not be zero");
-        require(activeVoteCount == 0, "Cannot modify voter pool while votes are active");
+    function voteToRemoveOtherVoterContract(address voterContract) external {
+        if (voterContract == address(0)) revert GovernanceVotes.InvalidVoteTarget();
         _castVote(VoteType.REMOVE_OTHER_VOTER_CONTRACT, uint256(uint160(voterContract)));
     }
 
     // ── Governance Entry Points ───────────────────────────
 
-    function voteToAddWhitelistedAddress(address newAddress) external onlyVoters {
+    function voteToAddWhitelistedAddress(address newAddress) external {
         require(newAddress != address(0), "Address should not be zero");
         _castVote(VoteType.ADD_WHITELISTED_ADDRESS, uint256(uint160(newAddress)));
     }
 
-    function voteToRemoveWhitelistedAddress(address removeAddress) external onlyVoters {
+    function voteToRemoveWhitelistedAddress(address removeAddress) external {
         require(removeAddress != address(0), "Address should not be zero");
         _castVote(VoteType.REMOVE_WHITELISTED_ADDRESS, uint256(uint160(removeAddress)));
     }
 
-    function voteToUpdateRegistrationFee(uint256 newFee) external onlyVoters {
+    function voteToUpdateRegistrationFee(uint256 newFee) external {
         _castVote(VoteType.UPDATE_REGISTRATION_FEE, newFee);
     }
 
-    function voteToUpdateFeeVault(address newFeeVault) external onlyVoters {
+    function voteToUpdateFeeVault(address newFeeVault) external {
         require(newFeeVault != address(0), "Fee vault address should not be zero");
         _castVote(VoteType.UPDATE_FEE_VAULT, uint256(uint160(newFeeVault)));
     }
 
-    function voteToUpdateVoteTallyBlockThreshold(uint256 newThreshold) external onlyVoters {
-        require(newThreshold > 0 && newThreshold <= 100000, "Invalid block threshold");
+    function voteToUpdateVoteTallyBlockThreshold(uint256 newThreshold) external {
+        if (!(newThreshold > 0 && newThreshold <= 100000)) revert GovernanceVotes.InvalidExpiry();
         _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, newThreshold);
     }
 
     /// @notice Vote to authorize (or de-authorize) a Pente privacy group address.
     ///         Authorized privacy groups can call router functions.
-    function voteToAuthorizePrivacyGroup(address privacyGroup) external onlyVoters {
+    function voteToAuthorizePrivacyGroup(address privacyGroup) external {
         require(privacyGroup != address(0), "Privacy group address cannot be zero");
         _castVote(VoteType.AUTHORIZE_PRIVACY_GROUP, uint256(uint160(privacyGroup)));
     }
 
     /// @notice Vote to de-authorize a Pente privacy group address.
-    function voteToDeauthorizePrivacyGroup(address privacyGroup) external onlyVoters {
+    function voteToDeauthorizePrivacyGroup(address privacyGroup) external {
         require(privacyGroup != address(0), "Privacy group address cannot be zero");
         _castVote(VoteType.DEAUTHORIZE_PRIVACY_GROUP, uint256(uint160(privacyGroup)));
     }
@@ -725,20 +681,9 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
 
     // ── Expired Tally Cleanup ─────────────────────────────
 
-    /// @notice Voter-only function to reset an expired tally and decrement the active vote counter.
-    ///         Call this to clean up stale tallies that would otherwise block voter-pool changes.
-    function resetExpiredTally(VoteType voteType, uint256 target) external onlyVoters {
-        VoteTally storage tally = _voteTallies[voteType][target];
-        require(tally.startVoteBlock != 0, "No active tally for this target");
-        require(
-            block.number > tally.startVoteBlock + voteTallyBlockThreshold,
-            "Tally has not expired yet"
-        );
-        for (uint256 i = 0; i < tally.voters.length; i++) {
-            hasVoted[voteType][target][tally.voters[i]] = false;
-        }
-        delete _voteTallies[voteType][target];
-        activeVoteCount--;
+    /// @notice Anyone may clear an expired ballot; no membership or approval changes.
+    function resetExpiredTally(VoteType voteType, uint256 target) external {
+        GovernanceVotes.resetExpired(GovernanceVotes.state(), _voteKey(voteType, target));
         emit VoteTallyReset(voteType, target);
     }
 

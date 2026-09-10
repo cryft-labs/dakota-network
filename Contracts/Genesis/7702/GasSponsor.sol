@@ -210,6 +210,7 @@ contract GasSponsor is
             revert NotInitializationAuthority(msg.sender);
         }
         _requireNonZero(platformAdmin_);
+        require(platformAdmin_ != address(this) && platformAdmin_ != _GENESIS_PROXY_ADMIN, "Invalid platform administrator");
         _requireNonZero(voucherSigner_);
         _requireDelegate(approvedDelegate_);
         _validateOverheadGas(fixedOverheadGas_);
@@ -237,6 +238,7 @@ contract GasSponsor is
         address pendingAdmin_
     ) external override onlyPlatformAdmin {
         _requireNonZero(pendingAdmin_);
+        require(pendingAdmin_ != address(this) && pendingAdmin_ != _GENESIS_PROXY_ADMIN, "Invalid platform administrator");
         GasSponsorStorage storage state = _sponsorStorage();
         state.pendingPlatformAdmin = pendingAdmin_;
         emit PlatformAdminTransferProposed(
@@ -255,6 +257,13 @@ contract GasSponsor is
         state.platformAdmin = msg.sender;
         state.pendingPlatformAdmin = address(0);
         emit PlatformAdminTransferred(previousAdmin, msg.sender);
+    }
+
+    /// @inheritdoc IGasSponsor
+    function cancelPlatformAdminTransfer() external override onlyPlatformAdmin {
+        GasSponsorStorage storage state = _sponsorStorage();
+        state.pendingPlatformAdmin = address(0);
+        emit PlatformAdminTransferProposed(state.platformAdmin, address(0));
     }
 
     /// @inheritdoc IGasSponsor

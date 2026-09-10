@@ -72,6 +72,8 @@ interface IDakotaDelegationBeaconControl {
     function upgradeTo(address newImplementation) external;
 
     function transferOwnership(address newOwner) external;
+    function acceptOwnership() external;
+    function cancelOwnershipTransfer() external;
 }
 
 interface IDakotaDelegationRootRegistry {
@@ -314,6 +316,7 @@ contract DakotaDelegationRegistry is
         address pendingAdmin_
     ) external override onlyAdmin {
         _requireNonZero(pendingAdmin_);
+        require(pendingAdmin_ != address(this) && pendingAdmin_ != 0x0000000000000000000000000000000000FacAdE, "Invalid registry administrator");
         DelegationRegistryStorage storage state = _registryStorage();
         state.pendingRegistryAdmin = pendingAdmin_;
         emit RegistryAdminTransferProposed(
@@ -421,7 +424,22 @@ contract DakotaDelegationRegistry is
             revert BeaconNotControlled(previousOwner);
         }
         beaconControl.transferOwnership(newOwner);
-        emit BeaconOwnershipTransferred(previousOwner, newOwner);
+        emit BeaconOwnershipTransferProposed(previousOwner, newOwner);
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function acceptBeaconOwnership() external override onlyAdmin {
+        IDakotaDelegationBeaconControl beaconControl = IDakotaDelegationBeaconControl(_registryStorage().beacon);
+        address previousOwner = beaconControl.owner();
+        beaconControl.acceptOwnership();
+        require(beaconControl.owner() == address(this), "Beacon handover failed");
+        emit BeaconOwnershipTransferred(previousOwner, address(this));
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function cancelBeaconOwnershipTransfer() external override onlyAdmin {
+        IDakotaDelegationBeaconControl(_registryStorage().beacon).cancelOwnershipTransfer();
+        emit BeaconOwnershipTransferProposed(address(this), address(0));
     }
 
     /// @inheritdoc IDakotaDelegationRegistry
