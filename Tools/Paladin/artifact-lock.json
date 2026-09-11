@@ -1,0 +1,73 @@
+{
+  "PrivateComboStorage": {
+    "artifact_sha256": "c829400dadfed02ec37cc6c64c04ae3a57ca1a7d3cf6b3e5df61e45ece4117b2",
+    "runtime_bytes": 17127,
+    "immutable_references": {},
+    "evm": "shanghai",
+    "compiler": "0.8.37"
+  },
+  "CryftGreetingCards": {
+    "artifact_sha256": "f78fb0f16950b5f29d7a06f399ee3a7e6aa586acd06de3d904003fe52188489d",
+    "runtime_bytes": 18283,
+    "immutable_references": {},
+    "evm": "osaka",
+    "compiler": "0.8.37"
+  },
+  "ManagedProxyAdmin": {
+    "artifact_sha256": "aa197322f9b112224c69cb9a96cccbd4d12a013c05fe6e02e79b7f87e36e1714",
+    "runtime_bytes": 2051,
+    "immutable_references": {},
+    "evm": "shanghai",
+    "compiler": "0.8.37"
+  },
+  "ManagedApplicationProxy": {
+    "artifact_sha256": "4156fba7a013dd3e3a561bed416d3774819c8a59684a9a88ffdb021757b049b2",
+    "runtime_bytes": 2151,
+    "immutable_references": {},
+    "evm": "shanghai",
+    "compiler": "0.8.37"
+  },
+  "PenteFactory": {
+    "artifact_sha256": "8a38d24951473f25f80f1c3fabe825cbf566e00c7cbcd3427414fe01d44038a9",
+    "runtime_bytes": 10876,
+    "immutable_references": {
+      "482": [
+        {
+          "length": 32,
+          "start": 1103
+        },
+        {
+          "length": 32,
+          "start": 1249
+        }
+      ]
+    },
+    "evm": "osaka",
+    "compiler": "0.8.37"
+  },
+  "PentePrivacyGroup": {
+    "artifact_sha256": "6d05a251b757140d633dea046c5931ab5a2dfb7b1ac995209e89edd65e855a43",
+    "runtime_bytes": 7647,
+    "immutable_references": {
+      "482": [
+        {
+          "length": 32,
+          "start": 989
+        },
+        {
+          "length": 32,
+          "start": 1151
+        }
+      ]
+    },
+    "evm": "osaka",
+    "compiler": "0.8.37"
+  },
+  "ERC1967Proxy": {
+    "artifact_sha256": "b9bb5fa7081846a00bd7b6c032f1ca493b9c4d9b183cb87a0009f54dd5639f42",
+    "runtime_bytes": 130,
+    "immutable_references": {},
+    "evm": "osaka",
+    "compiler": "0.8.37"
+  }
+}
