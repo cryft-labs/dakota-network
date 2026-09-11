@@ -196,7 +196,11 @@ def sponsorship(d):
     d.check('GasSponsor:separate_credit_ledgers', sponsor.functions.getSponsorFunding(gift.address).call() == [10**15, 10**16])
     d.reject('GasSponsor:credit_not_withdrawable', sponsor.functions.withdrawSponsor(gift.address, DEPLOYER, 10**15 + 1), sender=DEPLOYER)
     d.reject('GasSponsor:unauthorized_admin', sponsor.functions.setPaused(False))
-    d.reject('GasSponsor:only_treasury_can_credit', sponsor.functions.depositGasCredit(gift.address), sender=DEPLOYER, value=1)
+    d.reject('GasSponsor:zero_credit_rejected', sponsor.functions.depositGasCredit(gift.address), sender=DEPLOYER)
+    d.reject('GasSponsor:unauthorized_credit_recovery', sponsor.functions.recoverGasCredit(gift.address, TESTER, 1))
+    # Anyone can add gas-only subsidy; only platform administration can recover it.
+    sponsor.functions.depositGasCredit(gift.address).call({'from': TESTER, 'value': 1})
+    d.check('GasSponsor:permissionless_credit_does_not_grant_control', sponsor.functions.platformAdmin().call() == DEPLOYER and sponsor.functions.getSponsorFunding(gift.address).call() == [10**15, 10**16])
     d.tx('sponsor:enable_test_relayer', sponsor.functions.setRelayer(DEPLOYER, True))
     calls = [(gift.address, 0, bytes.fromhex(gift.functions.setMarker(7702)._encode_transaction_data()[2:])),
              (cm.address, 0, bytes.fromhex(cm.functions.recordRedemption(d.journal['canary_uids'][2], TESTER)._encode_transaction_data()[2:]))]
