@@ -287,6 +287,8 @@ EXPLORER_START_EARLY=true
    http://100.111.69.1:8080, with UI origin localhost:3001. Verify from the operator's
    computer that blocks and a transaction detail load, then immediately provide the
    working URL so the owner can watch. Do not announce a planned URL as running.
+   Use the pinned rootless services and recovered Dakota settings documented in
+   Tools/Explorer/README.md. Publish configuration changes before running its installer.
 9. Install Backend IPFS as a persistent nonroot service with Nebula-only peers,
    loopback origins, protected mTLS publishing API and read-only Cloudflare gateway.
    Do not enable public swarm discovery/peering now. Configure automatic compiler

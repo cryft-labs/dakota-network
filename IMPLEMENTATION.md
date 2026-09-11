@@ -274,6 +274,10 @@ Back up Kubo identity, pins and data; test gateway access and a restore independ
 
 ## 13. Resource budgets and scaling
 
+The explorer's pinned builds, runtime services, protected environment files and
+recovered historical Dakota settings are documented in [the explorer runbook](Tools/Explorer/README.md).
+It separates the API/database on Backend-01 from the UI/archive on Frontend-01.
+
 Start with bounded workers and queues, not one process per shared vCPU by default.
 Leave memory for the OS/page cache, databases and colocated services. Measure heap,
 disk IOPS, RPC/indexing lag and p95 API latency; cap expensive traces/log queries.
