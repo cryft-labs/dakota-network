@@ -54,3 +54,39 @@ voter rotation; chain roots require their own governance update. See
 Watch live transactions at `http://100.111.69.1:8080` over Nebula. Production
 promotion, private Paladin delegation and Router lifecycle acceptance are separate
 from this public-chain initialization.
+
+## Live functional validation
+
+`prepare_canary.py --workspace <workspace>` builds a small clearly marked development
+fixture with the pinned compiler. Commit its source and refreshed artifact lock
+before running `validate.py --workspace <workspace> --execute`. The stages can also
+be selected individually using `--stage`. Completed stages are retained in the
+journal; an incomplete stage needs state reconciliation before resuming.
+
+Validation temporarily adds the test wallet as a voter to each independent voter
+pool, proves first/second vote behavior and removes it again. Proxy controller
+tests grant and remove a local test controller and exercise facade upgrades to the
+same implementation. Actual validator membership stays unchanged. No irreversible
+governance-management revocation is submitted.
+
+The canary registers three public UIDs and tests scoped redemption, a deliberate
+delivery failure and idempotent repair. It is not a Pente privacy group. Funding
+tests send 0.000003 KOTA total to the existing test wallet, burn one dummy token
+unit and one native wei, and use 0.01 KOTA of restricted treasury gas credit plus
+a refundable 0.001 KOTA deployment-wallet deposit. The gas limit keeps room for
+the delivery callback; a successful estimate alone can hide a caught callback failure.
+
+A real type-4 authorization delegates the test EOA directly to the dispatcher.
+Signed sponsorship executes a two-call batch, checks exact credit accounting,
+rejects replay and malformed vouchers, and verifies that invalid owner signatures
+cannot execute calls. An equivalent-code beacon upgrade and restoration prove
+account nonce retention and release history. Invalid owner execution is deliberately
+submitted once: policy consumes/reimburses an accepted voucher even if its inner
+account call fails, and records `success=false` separately from receipt status.
+
+Cleanup pauses sponsorship, removes the test relayer/group/treasury guardian,
+disables the test tenant, returns unused gas credit to GasManager and withdraws
+the refundable deposit to its payer. It tests cancellable admin nominations and
+leaves the supplied management address nominated for later recipient acceptance.
+The test EOA remains delegated for subsequent application tests, with no governance
+or platform authority. Remaining bootstrap roles are explicitly recorded.

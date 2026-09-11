@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 from eth_account import Account
 from web3 import Web3
+from web3.exceptions import ContractLogicError
 from web3.middleware import ExtraDataToPOAMiddleware
 
 REPO = Path(__file__).resolve().parents[2]
@@ -105,8 +106,8 @@ class Deployment:
         except Exception as error:
             # Do not count network/timeout failures as authorization reverts.
             msg = str(error).lower()
-            assert any(x in msg for x in ['revert', 'execution reverted', 'execution error']), type(error).__name__ + ': ' + str(error)
-            self.check(name, True, {'read_only_revert': True})
+            assert isinstance(error, ContractLogicError) or any(x in msg for x in ['revert', 'execution reverted']), type(error).__name__ + ': ' + str(error)
+            self.check(name, True, {'read_only_revert': True, 'error': str(error)[:500]})
         else: raise AssertionError('Expected rejection: ' + name)
 
     def tx(self, label, function=None, *, sender=DEPLOYER, value=0, transaction=None):
@@ -127,7 +128,9 @@ class Deployment:
             # First simulate the exact call/create, then bound the estimated gas.
             self.w3.eth.call(transaction)
             estimate = self.w3.eth.estimate_gas(transaction)
-            transaction['gas'] = min(12000000, max(100000, estimate * 5 // 4 + 50000))
+            # Delivery routers may catch target failures, so successful estimation
+            # alone is not proof of sufficient target gas. Keep a conservative floor.
+            transaction['gas'] = min(12000000, max(1000000, estimate * 5 // 4 + 50000))
         assert transaction['gas'] <= 12000000
         gas_price = transaction.get('gasPrice', transaction.get('maxFeePerGas'))
         assert self.w3.eth.get_balance(sender) > transaction['gas'] * gas_price + transaction.get('value', 0)
@@ -149,8 +152,9 @@ class Deployment:
         assert receipt['status'] == 1, label
         return receipt
 
-    def deploy(self, name, *args):
-        receipt = self.tx('deploy:' + name, self.w3.eth.contract(abi=self.artifacts[name]['abi'], bytecode=self.artifacts[name]['creation_bytecode']).constructor(*args))
+    def deploy(self, name, *args, label=None):
+        deployment_name = label or name
+        receipt = self.tx('deploy:' + deployment_name, self.w3.eth.contract(abi=self.artifacts[name]['abi'], bytecode=self.artifacts[name]['creation_bytecode']).constructor(*args))
         address = receipt['contractAddress']
         actual = bytearray(self.w3.eth.get_code(address))
         template = bytes.fromhex(self.artifacts[name]['runtime_bytecode'].removeprefix('0x'))
@@ -163,7 +167,7 @@ class Deployment:
             resolved[ast_id] = hex(next(iter(values)))
             for span in spans: actual[span['start']:span['start'] + span['length']] = template[span['start']:span['start'] + span['length']]
         assert bytes(actual) == template, name + ': deployed bytecode mismatch'
-        self.journal['deployments'][name] = {'address': address, 'constructor_args': args, 'runtime_keccak256': hx(self.w3.keccak(self.w3.eth.get_code(address))),
+        self.journal['deployments'][deployment_name] = {'address': address, 'constructor_args': args, 'runtime_keccak256': hx(self.w3.keccak(self.w3.eth.get_code(address))),
                                             'immutable_values': resolved, 'artifact': self.lock[name], 'transaction_hash': hx(receipt['transactionHash'])}
         self.save()
         return self.at(name, address)
