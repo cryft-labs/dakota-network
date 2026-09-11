@@ -173,3 +173,68 @@ API references: [Blockscout verification API](https://docs.blockscout.com/devs/v
 and [pinned verification controller](https://github.com/blockscout/blockscout/blob/43af7ea84797e2f3a55ac1191d9cbe67436eb3e8/apps/block_scout_web/lib/block_scout_web/controllers/api/v2/verification_controller.ex).
 Runtime-only request behavior is in
 [the pinned helper](https://github.com/blockscout/blockscout/blob/43af7ea84797e2f3a55ac1191d9cbe67436eb3e8/apps/explorer/lib/explorer/smart_contract/helper.ex).
+
+## 8. Bounded genesis verification maintenance job
+
+The owner subsequently assigned the upload task to this agent. The three genesis
+builds and all 18 later public deployments were first submitted through the normal
+v2 Standard JSON endpoint. Their target, compiler, source path and license passed.
+Bulk genesis verification uses `genesis-control.py`, `install-genesis-worker.py` and
+`genesis-worker.exs`. This procedure is scoped to the fixed audited genesis inventory.
+
+The installer retains a validated logical database backup at
+`/var/backups/cryft-explorer/before-genesis-verification-20260911.dump` on Backend-01.
+It installs `cryft-explorer-genesis-verification.service` under `cryft-explorer`,
+with a 2 GiB/150% systemd budget and no new listening ports. The worker executes
+inside the existing restricted API container, using a separate release process
+in `APPLICATION_MODE=api`; it starts neither another web server nor another indexer.
+The live API/indexer is not restarted. Rootless volume ownership is managed through
+Podman's user namespace rather than adding container capabilities.
+
+On each run, the worker verifies chain ID/genesis hash and selects a fixed public
+block. It checks the artifact file hashes and obtains fresh genuine Rust `FULL`
+results for each of the three genesis build types. It requires the exact compiler,
+target, all source bytes, ABI, absent constructor arguments and no immutable slots.
+Each address's actual runtime is then fetched from archive RPC in batches of 20
+and must equal its verified reference byte-for-byte. Only identical inputs/runtime
+reuse the genuine compiler result; this is not 32,433 independent compilations.
+
+Missing address/code records use Blockscout's normal `Chain.import` pipeline.
+The importer never writes verification flags and preserves existing balances/history.
+Actual verification uses the installed `Publisher.process_rust_verifier_response`
+path, with the correct explicit license, after the checks above. Existing verified
+records must already have the expected target/compiler/license and full status.
+This avoids claiming a borrowed verified-twin display is an independently stored
+verification record. No creation transactions or constructor data are fabricated.
+
+Two unused end-of-inventory proxies passed a read-only pilot, actual publication,
+and independent HTTP confirmation of full verification with MIT and no twin-only
+status. A schema mismatch caught during the pilot was fixed before expanding the
+job; it had inserted address records only, without marking them verified.
+
+```text
+python Tools/BlockscoutVerification/genesis-control.py --workspace . prepare
+python Tools/BlockscoutVerification/genesis-control.py --workspace . start --offset 32431 --limit 2 --dry-run
+python Tools/BlockscoutVerification/genesis-control.py --workspace . start --offset 32431 --limit 2
+python Tools/BlockscoutVerification/genesis-control.py --workspace . start
+python Tools/BlockscoutVerification/genesis-control.py --workspace . status
+python Tools/BlockscoutVerification/genesis-control.py --workspace . download
+python Tools/BlockscoutVerification/final-report.py --workspace .
+```
+
+Publish tool changes on the review branch before `prepare` or `start`. Inspect
+the actual progress/failure result before advancing between pilot and full run.
+The full run enables the oneshot unit to resume on reboot. Disable it after the
+complete independent audit so routine reboots do not repeat a completed maintenance
+job. Reruns check existing records and retain per-address evidence rather than
+blindly replacing verified sources. A failure stops the job; reconcile it before
+starting again. Never replace the release input with a different chain's genesis.
+
+Runtime evidence is on Backend-01 under
+`/var/lib/cryft-explorer/dets/verification-20260911/`: `progress.json`, `failure.json`,
+`verified.jsonl`, and genuine `rust-result-*.json`. The local copy is
+`outputs/blockscout-genesis-verification/`. No private Pente state or signing secret
+is included. The final report requires all 32,433 unique genesis receipts, a read-only
+database audit of every public runtime and every primary/imported source hash,
+correct constructor/target/compiler/license fields, and independent sampled HTTP
+confirmation. It also includes separate IPFS and private-code revalidation evidence.
