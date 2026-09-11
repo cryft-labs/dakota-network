@@ -71,6 +71,21 @@ Tunnel reaches local Nginx for public websites; sensitive admin routes require
 Nebula or authenticated Access. Do not publish raw validator, database, Paladin
 admin, IPFS administration or unrestricted JSON-RPC ports to the public Internet.
 
+Development exception recorded 2026-09-11: the owner temporarily broadened the
+Defined Networking firewall rules to allow node communication during testing.
+Retain this owner-selected development policy until the production network review;
+record the final role/port matrix before production approval. Nginx and application
+access controls still apply independently. All seven assigned Nebula addresses in
+the inventory have passed fresh private SSH checks. Frontend-01 was re-enrolled to
+100.111.69.1; its temporary 100.111.69.101 assignment is superseded.
+
+Archive ingress is Nginx at `http://100.111.69.1:8547/` and
+`ws://100.111.69.1:8547/ws`. Its upstream Besu HTTP/WS listeners are
+`127.0.0.1:8545` and `127.0.0.1:8546`; raw origin ports are not remote entry points.
+The private proxy has explicit source permissions, rate/connection limits and
+timeouts, and runs with an unprivileged master and workers. P2P uses the separate
+Besu protocol on Nebula TCP 30303. Cloudflare must not target private archive RPC.
+
 ## 5. Runtime users, files and services
 
 Create separate non-login users for Besu, Paladin, Kota, Blockscout, IPFS and web

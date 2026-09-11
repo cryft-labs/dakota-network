@@ -51,3 +51,20 @@ real workloads. Validate genesis/validator identities, private-only listeners,
 peer mesh, block progression, archive queries and reboot recovery before application
 transactions. Record `/etc/cryft/besu/runtime-installation.json` and actual live
 acceptance separately; an installed/enabled service is not proof of a running chain.
+
+`install-nginx.py --commit <full-review-commit> --host Frontend-01` installs the
+unprivileged `cryft-nginx.service`. Both master and workers run as `cryft-proxy`.
+It prevents the distribution's default service from opening public port 80.
+Archive HTTP uses `http://100.111.69.1:8547/`; WebSocket uses
+`ws://100.111.69.1:8547/ws`. Nginx forwards to Besu on localhost, allows the listed
+operator/backend/Paladin sources, applies request and connection limits, and never
+retries a submitted transaction automatically. This is a private Nebula ingress,
+not a public Cloudflare target. Record real HTTP/WS, denial and runtime UID checks.
+The raw RPC ports 8545/8546 and metrics 9545 remain loopback-only. The explorer
+browser URL is a separate frontend service at Nebula port 8080.
+
+`install-ipfs.py --commit <full-review-commit>` installs and starts Backend-01's
+SHA-pinned Kubo service under `cryft-ipfs`, preserving the node identity and actual
+peer list. It uses the reviewed IPFS configuration/service templates and does not
+publish a Cloudflare gateway or expose the raw API. Record compiler publication,
+TLS gateway configuration and public gateway acceptance as subsequent stages.

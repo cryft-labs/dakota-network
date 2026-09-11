@@ -53,7 +53,7 @@ def main():
             with bundle.extractfile(member) as source,binary.open('xb') as target:
                 shutil.copyfileobj(source,target)
         os.chmod(binary,0o755)
-    assert subprocess.check_output([str(binary),'version','--number'],text=True).strip()==VERSION
+    assert subprocess.check_output(['runuser','-u','cryft-ipfs','--','env','IPFS_PATH='+str(REPO),str(binary),'version','--number'],text=True).strip()==VERSION
     current=ROOT/'current'
     if current.is_symlink():assert current.resolve()==version
     else:
