@@ -1,5 +1,11 @@
 # Contract artifacts and Blockscout verification
 
+Later deployment: the ten Kota tenant instances are also fully verified. Their
+0.8.34/Osaka/MIT inputs and receipts live in KotaRouter
+`router_v4/contracts/deployment/` and `releases/20260911-v1.4.0/`.
+The original 32,451-address audit below remains scoped to its recorded blocks;
+see [current status](../../docs/CURRENT_STATUS.md) before interpreting it as a current chain-wide count.
+
 **Completion checkpoint:** [the 2026-09-11 final report](../../docs/blockscout-verification-20260911.md)
 records 32,451 fully verified public addresses, with every runtime and source hash
 audited independently and zero license mismatches. The initial artifact-audit and

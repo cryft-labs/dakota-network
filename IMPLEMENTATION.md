@@ -4,7 +4,7 @@
 
 Kota is the API service for issuing, managing and redeeming codes/tokens. The widget
 is an optional client; sites/apps may call the documented endpoints directly.
-moment.cards is the initial consumer for business cards and postcards. Dakota's
+moment.cards is the initial consumer for greeting cards, business cards and postcards. Dakota's
 Besu public ledger and Paladin privacy state supply the underlying settlement.
 
 This manual describes the development release under review. Source changes and
@@ -12,16 +12,21 @@ local checks do not establish a deployed service. Record each completed installa
 in the deployment inventory with its exact commit, image digest, genesis checksum,
 service unit, addresses, ports and health evidence. The explorer is verified at
 `http://100.111.69.1:8080` from the administrator's computer over Nebula.
-The owner has authorized merging the completed contract release and verification
-artifacts into `dakota-network/main`. Production deployment remains a separate gate.
+The owner has authorized promoting the reviewed network and Kota Router source,
+contract artifacts and updated documentation to their main branches. Production deployment remains a separate gate.
 
 ## 2. Source and release ownership
 
-Use `cryft-labs/dakota-network`, with this contract release promoted to `main` after
-publication checks; `review/compiler-standard-json` is retained for traceability.
-Use `CryftCreator/KotaRouter`, branch `review/primary-api-lmstudio`, for the unfinished
-API integration. Resolve and record
-full commit SHAs, push current changes before live testing, then deploy exact commits.
+Use `cryft-labs/dakota-network/main` and `CryftCreator/KotaRouter/main` as the
+published documentation/source baselines after the authorized September 11
+promotion. Review branches remain for provenance. Resolve and record exact
+SHAs before building; main is not an automatic deployment instruction.
+Website implementation remains in `CryftCreator/cryftcomingsoon-main` on
+`review/moment-dakota-tenant`; only its documentation is being promoted now.
+The existing `Greeting Cards/` application becomes moment.cards in place,
+including greeting cards, business cards and postcards. `Dakota Cards/` is the
+platform portal/dashboard/docs application. The widget is optional; direct
+service endpoints must offer the same authorization and lifecycle semantics.
 Never deploy a moving branch with an unchecked reset/pull. Preserve historical
 release receipts and back up existing host configuration/data before replacement.
 
@@ -138,7 +143,8 @@ block 76 and reported indexing complete. Same-origin RPC, validator list, WebSoc
 subscription, runtime KOTA branding, closed raw origins and a controlled API restart
 were verified. See [explorer acceptance](docs/explorer-nebula-acceptance.json) and
 [the runbook](Tools/Explorer/README.md). All genesis contract address/code records
-are now indexed and all 32,451 public addresses are fully source verified; this
+are indexed and the original 32,451-address public audit passed; the later Kota
+release added ten fully verified instances. This
 does not reimport genesis balance history. Wallet-write/account UI configuration
 remains pending. See [the independent verification report](docs/blockscout-verification-20260911.md).
 
@@ -146,8 +152,9 @@ Paladin/Pente deployment and direct private-code-to-public-NFT acceptance are
 complete for the development group. Five NFTs were delivered, native public gas
 sponsorship passed and database/Paladin restart preserved state. Kota application
 deployment and Router adapter integration are still pending.
-Full reboot/restore/load acceptance, public SSH/root-login lockdown,
-Cloudflare tunnels and final ownership handover are not completed. The owner has
+Full reboot/restore/load acceptance, public SSH/root-login lockdown and
+Cloudflare tunnels are not completed. Kota tenant ownership is handed over;
+core network/card/private-state ownership handover is not completed. The owner has
 temporarily broadened Defined Networking rules for development; production must
 replace that policy with tested role-specific access. Enabled services and these
 network checks do not constitute production approval.
@@ -156,7 +163,7 @@ network checks do not constitute production approval.
 
 The existing archive defines chain ID 112311, 64,000,000 block gas, 32,768-byte
 contract limit, the fork schedule, QBFT timing and system addresses. Preserve it.
-The reviewed archive enables BPO1â€“BPO5 at timestamp 0 with Osaka execution rules.
+The reviewed archive enables BPO1–BPO5 at timestamp 0 with Osaka execution rules.
 It preserves the inherited blob target/max of 6/9; no new blob capacity is implied.
 Amsterdam is unfinalized in Besu 26.8.1 and remains disabled. See the existing
 README's milestone review for pinned source evidence and compatibility limits.
@@ -440,7 +447,7 @@ privacy-path blockers. Send production promotion for owner review after these pa
 ## 16. Kota tenant access contracts — validated deployment
 
 Kota tenant release `1.4.0` is deployed on the existing chain and genesis, from
-`CryftCreator/KotaRouter:review/primary-api-lmstudio` commit
+`CryftCreator/KotaRouter` deployment source commit
 `d1402eb7071a32af98a6359d9992578226c766a7`. The access credential proxy is
 `0xa6a1161Fc96561c5DD94Ab4082D8b867E7C102C0` and factory proxy is `0xD99A083A2125dB1881e1D315885c7ba0FAc933d0`.
 The moment.cards membership registry/public routing key is `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`.
@@ -467,3 +474,19 @@ The router/widget binding and redemption API lifecycle still require integration
 No service minter is authorized yet; the root operator must explicitly approve
 a runtime issuance wallet when that integration is ready. Fund that wallet with
 native gas or an approved sponsor policy; do not fund the membership contracts.
+
+## 17. Current maintenance index and acceptance boundaries
+
+Use [current system status](docs/CURRENT_STATUS.md) for the active inventory and
+document map. The [read-only September 11 snapshot](docs/documentation-live-check-20260911.json)
+records service state, wallet balances, verified Kota addresses and independent
+authority planes. Old receipt timestamps remain historical evidence, not live balances.
+The one-shot prompt is a resume procedure: no genesis reset, reenrollment,
+reinitialization, redundant contract deployment or duplicate IPFS/source upload.
+
+Canonical Rust routes check registry locks uncached. The optional platform
+companion currently uses database membership and the slug `moment-cards`;
+the deployed registry's ID is exactly `moment.cards`. Reconcile identities,
+registration and on-chain authorization before connecting it to the widget or
+direct API clients. A public profile key and an Origin header are not credentials.
+Source promotion does not resolve these integration gaps or authorize a live cutover.

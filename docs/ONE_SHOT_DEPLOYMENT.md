@@ -1,6 +1,6 @@
 # Kota full-system development deployment prompt
 
-Revision 6, 2026-09-11. Copy this entire document into the deployment task.
+Revision 7, 2026-09-11. Copy this entire document into the deployment task.
 
 Resume checkpoint: the development chain and Nebula explorer are running, and the
 four named genesis services have been linked and initialized. Public governance,
@@ -32,8 +32,12 @@ passed. Use
 `Contracts/Verification/20260911` for exact Standard JSON input/output, metadata,
 constructor data and explicit Apache/MIT license mapping. Native precompiles and
 private state are catalogued separately, not fabricated as public Solidity uploads.
-Public Cloudflare gateway, Kota Router/application deployment and final owner
-handover remain pending. Use
+Kota tenant contracts are now deployed as release 1.4.0/v7: 40 successful
+transactions, 32 live checks, ten full explorer verifications and 43 IPFS objects.
+Use the KotaRouter `router_v4/contracts/deployment/` inventory and receipts; do
+not redeploy them. Tenant issuer/factory/operator/ProxyAdmin handover is complete.
+Public Cloudflare gateway, Kota Router/application deployment and the separate
+core network/card/private-state owner handovers remain pending. Use
 `Tools/LiveGenesis/FOLLOW_AND_HANDOFF_PROMPT.md` for concurrent read-only observation
 or an explicit transfer of execution; never run two signers against the same nonce.
 
@@ -41,7 +45,7 @@ Act as Cryft Labs' implementation and operations engineer. Complete the authoriz
 hardening and deploy the full Dakota/Kota development system on the seven supplied
 DigitalOcean hosts. Kota is an API-first redeemable-code platform. Its optional
 embeddable widget simplifies integration, and moment.cards is its initial consumer
-for redeemable business cards/postcards. Developers must also be able to integrate
+for redeemable greeting cards, business cards and postcards. Developers must also be able to integrate
 directly through documented endpoints without embedding the widget.
 
 Use the current private/public repositories and existing code. Discover the newer
@@ -52,10 +56,10 @@ Do not substitute legacy implementations or claim a scaffold is live settlement.
 The owner has authorized compatible upgrades, branch publication, compressed-genesis
 updates and autonomous development deployment/testing. Before any live test, commit
 and push every current code/configuration change to the existing review branches,
-verify remote SHAs. The owner subsequently authorized merging completed contract
-changes and verification artifacts into `dakota-network/main`; this supersedes the
-earlier main-preservation rule for that contract release. Resolve its actual remote
-SHA and preserve unrelated unfinished API/site work on their review branches.
+verify remote SHAs. The owner subsequently authorized promoting reviewed network and Kota Router
+source/artifacts and all updated documentation to main. Website documentation is
+also promoted; its unfinished implementation stays on `review/moment-dakota-tenant`.
+The review branches remain available for provenance and historical tool guards.
 Deploy only recorded
 commits and pinned dependencies/images. Publish subsequent fixes before applying
 them to hosts. Production deployment still requires extensive testing and owner
@@ -76,14 +80,20 @@ DEPLOYMENT_MODE=resume
 GENESIS_DEPLOYMENT_APPROVED=true
 PRODUCTION_PROMOTION_APPROVED=false
 DEPLOYMENT_ENVIRONMENT=development
+NETWORK_SOURCE_BRANCH=main
 NETWORK_REVIEW_BRANCH=review/compiler-standard-json
+API_SOURCE_BRANCH=main
 API_REVIEW_BRANCH=review/primary-api-lmstudio
+SITE_IMPLEMENTATION_BRANCH=review/moment-dakota-tenant
+SOURCE_PROMOTION_APPROVED=true
 PUSH_BEFORE_LIVE_TESTS=true
 GENESIS_ARCHIVE_PATH=Contracts/Genesis/besuGenesis.7z
 GENESIS_ARCHIVE_SHA256=11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f
 GENESIS_REMOTE_PATH=/etc/cryft/besu/BesuGenesis.json
 BESU_VERSION=26.8.1
 SOLC_VERSION=0.8.37
+KOTA_TENANT_SOLC_VERSION=0.8.34
+KOTA_TENANT_RELEASE=20260911-v1.4.0
 PALADIN_VERSION=v1.0.0
 PRIVATE_NATIVE_DELEGATION_ESTABLISHED=false
 PUBLIC_SPONSORED_PENTE_SETTLEMENT_VERIFIED=true
@@ -128,19 +138,24 @@ EXPLORER_FRONTEND_REPOSITORY=cryft-labs/dakota-explorer
 EXPLORER_REFERENCE_COMMIT=818c3cef62685e52f19470573012f092c6c1c6d9
 CRYFT_SITE_REFERENCE_REPOSITORY=CryftCreator/CryftLabs.org
 CRYFT_SITE_REFERENCE_COMMIT=337bb7e66a3214b1f76bd31818695d9f7533c44d
-DAKOTA_SITE_REPOSITORY=
-DAKOTA_SITE_SOURCE_REF=
-DAKOTA_SITE_SOURCE_DIRECTORY=
-DASHBOARD_REPOSITORY=
-DASHBOARD_SOURCE_REF=
-DOCS_REPOSITORY=
-DOCS_SOURCE_REF=
-WIDGET_REPOSITORY=
-WIDGET_SOURCE_REF=
-WIDGET_SOURCE_DIRECTORY=
+DAKOTA_SITE_REPOSITORY=CryftCreator/cryftcomingsoon-main
+DAKOTA_SITE_SOURCE_REF=50aab2f5b2ef17e03fcb06d2f69b75a4319a82c1
+DAKOTA_SITE_SOURCE_DIRECTORY="Dakota Cards"
+DASHBOARD_REPOSITORY=CryftCreator/cryftcomingsoon-main
+DASHBOARD_SOURCE_REF=50aab2f5b2ef17e03fcb06d2f69b75a4319a82c1
+DOCS_REPOSITORY=CryftCreator/cryftcomingsoon-main
+DOCS_SOURCE_REF=50aab2f5b2ef17e03fcb06d2f69b75a4319a82c1
+WIDGET_REPOSITORY=CryftCreator/cryftcomingsoon-main
+WIDGET_SOURCE_REF=50aab2f5b2ef17e03fcb06d2f69b75a4319a82c1
+WIDGET_SOURCE_DIRECTORY="Greeting Cards/src/components/ai"
+WIDGET_INTEGRATION_STATUS=retained_widget_not_connected_to_platform_companion
 SERVICE_API_NAME="Kota Router"
 SERVICE_API_REPOSITORY=CryftCreator/KotaRouter
-SERVICE_API_SOURCE_REF=194aa2c0da5782e65c6ea157dec6c8f780e686dd
+SERVICE_API_SOURCE_REF=1967a7e6ec959b0fd35de378d02070c9c4b143a2
+# Source ref above is the implementation checkpoint; resolve main for newer documentation.
+PLATFORM_COMPANION_SOURCE_DIRECTORY=router_v4/services/platform
+PLATFORM_WORKER_ENABLED=false
+PLATFORM_CUSTOMER_CREATION_ENABLED=false
 SERVICE_API_SOURCE_DIRECTORY=router_v4/rust_core
 LOCAL_DEVELOPMENT_FIRST=true
 DEV_LLM_PROVIDER=lmstudio
@@ -176,7 +191,11 @@ IPFS_PUBLIC_GATEWAY_HOSTNAME=
 IPFS_CLOUDFLARE_TUNNEL_ID=
 IPFS_CLOUDFLARE_CREDENTIAL_FILE=
 IPFS_SECONDARY_PIN_TARGET=
-MOMENT_SITE_REPOSITORY=
+MOMENT_SITE_REPOSITORY=CryftCreator/cryftcomingsoon-main
+MOMENT_SITE_SOURCE_DIRECTORY="Greeting Cards"
+MOMENT_ONCHAIN_TENANT_ID=moment.cards
+MOMENT_COMPANION_SLUG=moment-cards
+MOMENT_TENANT_MAPPING_VERIFIED=false
 INFRASTRUCTURE_REPOSITORY=
 APPROVED_NETWORK_COMMIT=
 APPROVED_EXPLORER_COMMIT=
@@ -193,6 +212,11 @@ CHAIN_ID=112311
 CHAIN_NETWORK_ID=112311
 GENESIS_SHA256=29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217
 CONTRACT_ADDRESS_MANIFEST_FILE=docs/current-contract-addresses.json
+KOTA_ACCESS_PROXY=0xa6a1161Fc96561c5DD94Ab4082D8b867E7C102C0
+KOTA_FACTORY_PROXY=0xD99A083A2125dB1881e1D315885c7ba0FAc933d0
+MOMENT_TENANT_REGISTRY=0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340
+KOTA_TENANT_HANDOVER_COMPLETE=true
+FULL_NETWORK_HANDOVER_COMPLETE=false
 GENESIS_ALLOCATION_POLICY=admin_32_deployer_1_tester_1
 DELEGATION_ROUTE_POLICY=direct_beacon_dispatch_v2
 PRIVATE_GROUP_DEPLOYMENT_DOMAIN=pente
@@ -292,7 +316,8 @@ EXPLORER_START_EARLY=true
 1. Inspect the current local and remote state, read repository instructions, preserve
    existing files/data and recover the latest checkpoint. Review changes, verify
    compiler exports/regressions and secret exclusions, commit/push to review branches,
-   then record full remote SHAs and unchanged main SHAs. Update the technical manual
+   then record full remote SHAs and the authorized main promotion. Never treat
+   source promotion as production acceptance. Update the technical manual
    as each fact is verified. A published test checkpoint is not production certification.
 2. The seven hosts are already enrolled; use their existing Nebula identities. Only
    for an explicitly new host, bootstrap using the root SSH identity and pinned keys. Enroll that
@@ -310,11 +335,12 @@ EXPLORER_START_EARLY=true
 4. Use chain details from the existing genesis, including chain ID, fork schedule,
    gas/contract size, QBFT parameters and preassigned system addresses. Preserve the
    validator's London/0.8.19 build and getValidators() return encoding. Compile other
-   public contracts with 0.8.37/Osaka and private contracts for the newest target
+   public network contracts with 0.8.37/Osaka; preserve the deployed Kota tenant
+   release at 0.8.34/Osaka. Compile private contracts for the newest target
    supported by the tested Paladin runtime. Use pinned current Besu 26.8.1/Java 25 and
    Paladin v1.0.0 images, verifying actual image provenance. Normalize only required
    removed Besu aliases with an explicit recorded diff. The reviewed genesis has
-   Osaka plus BPO1Ã¢â‚¬â€œBPO5 at timestamp 0, preserving inherited blob parameters.
+   Osaka plus BPO1–BPO5 at timestamp 0, preserving inherited blob parameters.
    Do not enable unfinalized Amsterdam/future/experimental forks. Check the pinned
    release's actual genesis schedule rather than treating EVM-library names as
    supported activation fields. Preserve the validator's London target.
@@ -376,13 +402,17 @@ EXPLORER_START_EARLY=true
     actual opcode and authorization tests. Keep all recovery secrets on Paladin-01;
     no off-server seed/database credential export is authorized. Document/monitor
     the settlement wallet balance and separate sponsor ledger funding.
-12. Complete Kota V4 authorization, durable PostgreSQL operations/outbox, atomic
+12. Use the already deployed Kota tenant contracts and reconcile the canonical
+    `moment.cards` ID with the development companion's `moment-cards` slug before
+    registration; never silently substitute one in signed proofs. Complete Kota V4 authorization, durable PostgreSQL operations/outbox, atomic
     tenant/principal/action idempotency, job ownership, body/domain/nonce-bound admin
     signatures, real Paladin/chain adapters, account registration contracts, and
     issuance/redemption/status/delivery APIs. Keep unresolved paths disabled behind
     private ingress. Validate the full lifecycle and failure recovery through real
     endpoints. A simulated/blocked private operation cannot be reported submitted.
-13. Build the local admin UI, optional widget, docs/dashboard and moment.cards using
+13. Update the existing Greeting Cards application in place as moment.cards, with
+    greeting, business and postcard choices. Complete the newer Dakota Cards
+    dashboard/docs and retained widget. Build the local admin UI using
     the same documented service contract. Admins can generate/manage codes and inspect
     private/public lifecycle and sponsorship states through the API. Enforce tenant
     isolation, scoped credentials, origin policy and redacted audit records. No browser
@@ -397,7 +427,9 @@ EXPLORER_START_EARLY=true
     database recovery, indexing lag and archive growth. Keep headroom and plan storage
     expansion. Test duplicate redemption, replay, expiry, failed delivery/retry, cross-
     tenant access, crash/restart, key rotation, one-validator outage and backup restore.
-16. Finish the management handover to the supplied admin or a later approved multisig.
+16. Preserve the completed Kota tenant handover. Finish the separate core network,
+    sponsor/delegation, card NFT and private-state handovers to the supplied admin
+    or a later approved multisig.
     Inventory owners, voters/roots, proxy guardians, issuers/minters/recovery roles,
     private services/UID managers, sponsor managers/signers/relayers and off-chain
     credentials. Propose two-step transfers, obtain actual recipient acceptance,
@@ -412,7 +444,8 @@ storage/ABI/authority, genesis checksums, IPFS CIDs, backup/restore, troubleshoo
 runbooks, scaling, testing and handover. Record actual versus planned state and each
 material change so a new developer can maintain the system without prior context.
 
-Finish with pushed review branch/commit links, actual service and explorer URLs,
+Finish with published source branch/commit links, actual service and explorer URLs,
 test results and limitations, genesis/archive hashes, contract/address/ownership
 manifest, IPFS publication receipts, maintenance manual and any truly missing input.
-Preserve main branches until explicit production approval after acceptance.
+The owner approved the documented source promotion to main. Production deployment
+remains gated on integration/acceptance and a separate cutover decision.

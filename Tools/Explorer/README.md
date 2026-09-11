@@ -106,11 +106,9 @@ all genesis contracts. See [the independent final report](../../docs/blockscout-
 The initial capability check described below is historical; the missing genesis
 records and source-upload backlog have been resolved.
 
-The live verification config now reports the Rust verifier enabled, Standard JSON
-support and both deployed compiler versions available. This supersedes the initial
-deployment checkpoint where verification was pending. No contract upload is implied:
-the artifact audit performed read-only checks, and some genesis address records are
-still absent. Use [the verification runbook](../BlockscoutVerification/README.md)
-and [handoff prompt](../BlockscoutVerification/HANDOFF_PROMPT.md) to upload with
-explicit per-target licenses and confirm full matches. Preserve the current verifier
-installation; inspect health and configuration before proposing any changes.
+The live verifier supports the recorded 0.8.19, 0.8.34 and 0.8.37 compiler inputs.
+All original missing genesis records and source uploads were completed. The later
+Kota tenant release added ten full matches, including the moment.cards beacon
+proxy and its verified implementation. Use [current status](../../docs/CURRENT_STATUS.md)
+for the separate deployment records. Revalidate an existing match before submitting
+anything; do not recreate the historical upload backlog or alter verifier flags.

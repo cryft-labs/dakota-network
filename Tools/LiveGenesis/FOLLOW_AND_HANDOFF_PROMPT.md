@@ -18,7 +18,9 @@ development deployment and testing. Never reset genesis, regenerate existing key
 delete a transaction journal, deploy a substitute into an occupied address, or
 remove management controls to get past a failed check. The user requires changes
 committed and pushed on review branches before applying GitHub-based changes.
-Original main branches must remain unchanged until production approval.
+The owner has since approved source/documentation promotion to network and
+Kota Router main. This supersedes the old main-preservation rule for that release;
+production cutover and remaining ownership transfers are separate decisions.
 
 Ask only for genuinely missing access or decisions. Public contract inspection
 requires no wallet key. Never ask for, print, commit or place private keys,
@@ -40,10 +42,10 @@ stay on Paladin-01 per the owner's explicit instruction; do not export them.
 Workspace: C:\Users\ChadS\Documents\Codex\2026-09-08\a
 Network checkout: work/source/dakota-network
 GitHub: https://github.com/cryft-labs/dakota-network
-Branch: review/compiler-standard-json
+Documentation/source baseline: main; historical execution branch: review/compiler-standard-json
 Router checkout: work/source/KotaRouter
 GitHub: https://github.com/CryftCreator/KotaRouter
-Branch: review/primary-api-lmstudio
+Documentation/source baseline: main; historical execution branch: review/primary-api-lmstudio
 Explorer checkout: work/source/dakota-explorer
 Branch: review/nebula-development-deployment
 
@@ -51,7 +53,10 @@ Resolve all relative paths below from the workspace, unless explicitly repositor
 If you run elsewhere, obtain authorized read access to these records or their
 sanitized copies. Do not assume local paths are accessible from another computer.
 
-Read in this order:
+Start with Network `docs/CURRENT_STATUS.md` and KotaRouter
+`router_v4/contracts/deployment/addresses.json`. Kota tenant handover is complete;
+core network/card/private handovers are not. The completed tenant journal is
+`outputs/kota-tenant-20260911/transactions.json`. Then read the historical records:
 1. outputs/live-genesis-20260911/transactions.json — live deployment journal,
    transaction labels/hashes/nonces, receipts, implementation addresses, checks,
    stage completion, canary UIDs, pending authority transfers and scope limits.

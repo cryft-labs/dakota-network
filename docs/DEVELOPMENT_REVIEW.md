@@ -1,8 +1,10 @@
 # Development hardening checkpoint, 2026-09-11
 
-This checkpoint is for review-branch development testing. Main is retained. All
-listed source changes are local-regression verified; live Besu/Pente/application
-acceptance and production promotion are not complete.
+This is the historical predeployment hardening checkpoint. Preserve its source
+and local test evidence. Later live Besu/Pente, explorer/IPFS and Kota tenant
+acceptance supersede its pending-state statements; see [current status](CURRENT_STATUS.md).
+The owner approved source/documentation promotion to main on September 11.
+Full API/widget and production acceptance remain incomplete.
 
 ## Contract changes
 
@@ -45,15 +47,19 @@ and `SHA256SUMS`. Extraction round-trip and every allocation comparison passed.
 - All 90 unique exported standard JSON files independently reproduce creation/runtime
   bytecode, ABI and exact metadata.
 - Genesis EVM projection verifies validator return encoding and proxy/root reads.
-- IPFS publication/read-back was local and offline; Backend publication is still pending.
+- At this checkpoint IPFS publication/read-back was local and offline. Backend
+  pinning and gateway retrieval subsequently passed; see the current index.
 
 ## Remaining release work
 
-No live chain transactions or complete application lifecycle is claimed. Verify
-Besu genesis acceptance, private target/EIP-7702 and delegated settlement, deploy
-the explorer, implement blocked Kota live operations and outstanding durable
-authorization/idempotency/job ownership work, review Kota account-registration
-contracts and newer frontend/widget sources, and test load/restore/handover.
-The owner's initializer exception remains scoped to closed bootstrap. New owner
-acceptance still needs that owner's signature; never claim it was performed by
-the deployment account. Deploy only pushed review commits and keep main untouched.
+At the original checkpoint there were no live transactions. Subsequent acceptance
+recorded 100 public genesis-service transactions, five private redemptions with
+public NFT delivery, full verification of 32,451 original public addresses, and
+40 Kota tenant transactions with 32 live checks and ten additional full source
+verifications. Keep those suites and IPFS object sets separate; their totals overlap.
+See the linked current status and immutable acceptance receipts.
+
+Remaining work is API/widget integration, tenant identity reconciliation, runtime
+permissions, load/restore acceptance, external tunnels, network lockdown and the
+separate network/card/private-state owner handovers. Kota tenant handover is complete.
+Production approval is not implied by main containing reviewed development source.

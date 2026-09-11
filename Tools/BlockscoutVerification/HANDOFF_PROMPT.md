@@ -1,5 +1,11 @@
 # Dakota Blockscout verification and IPFS validation handoff
 
+Later deployment: the ten Kota tenant instances are also fully verified. Their
+0.8.34/Osaka/MIT inputs and receipts live in KotaRouter
+`router_v4/contracts/deployment/` and `releases/20260911-v1.4.0/`.
+The original 32,451-address audit below remains scoped to its recorded blocks;
+see [current status](../../docs/CURRENT_STATUS.md) before interpreting it as a current chain-wide count.
+
 **Execution checkpoint, 2026-09-11:** the owner reassigned this work to the original
 agent, which completed all 32,451 public source verifications. Read
 `docs/blockscout-verification-20260911.md` and its evidence before doing any work.

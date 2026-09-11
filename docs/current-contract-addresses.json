@@ -170,5 +170,10 @@
       "Apply the reviewed router bindings and register the moment.cards widget tenant; validate direct API and widget flows.",
       "Run the full card issuance/redemption lifecycle through the service. Tenant membership deployment does not complete that integration."
     ]
+  },
+  "latest_read_only_observation": "documentation-live-check-20260911.json",
+  "handover_scope": {
+    "kota_tenants_complete": true,
+    "core_network_card_private_complete": false
   }
 }

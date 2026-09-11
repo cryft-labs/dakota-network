@@ -29,4 +29,8 @@ Reviewed runtime sizes, with optimizer 200 runs:
 
 The documented chain limit remains **32,768 bytes**. Rebuild after any source or compiler change. These numbers do not approve existing archived artifacts, final genesis allocations, or an upgrade of populated storage. New proxy controller enumeration requires fresh-genesis state or a separately reviewed migration.
 
-Still pending: final root/voter/validator addresses, the retained validator-initializer exception, real Besu configuration and consensus tests, exact metadata publication to Backend-01, and application/Paladin/sponsorship integration review. Follow the [maintenance guide](../../Contracts/Genesis/GOVERNANCE.md).
+At this September 10 checkpoint, the following were pending: final root/voter/validator addresses, the retained validator-initializer exception, real Besu configuration and consensus tests, exact metadata publication to Backend-01, and application/Paladin/sponsorship integration review. Follow the [maintenance guide](../../Contracts/Genesis/GOVERNANCE.md).
+
+Later genesis, live governance, Paladin and IPFS results are recorded in the
+[current status index](../../docs/CURRENT_STATUS.md). Do not use these historical
+0.8.34 runtime sizes as the current 0.8.37 deployment artifacts.

@@ -19,13 +19,12 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ## Development release status
 
-Changes are published on `review/compiler-standard-json`; `main` remains the
-production baseline until owner approval. See [implementation and operations](IMPLEMENTATION.md)
-and [the deployment prompt](docs/ONE_SHOT_DEPLOYMENT.md). Local regression tests
-cover governance, UID/delivery rules and native sponsored execution. Live Besu,
-Pente delegation, restart, explorer, API lifecycle and load acceptance remain
-required before production promotion. Compiler/IPFS receipts distinguish local
-exports from remotely pinned content.
+The owner approved source and documentation promotion to `main` on September 11.
+Review branches remain for traceability. Start with [current status and documentation
+index](docs/CURRENT_STATUS.md), [operations](IMPLEMENTATION.md), and the
+[resume prompt](docs/ONE_SHOT_DEPLOYMENT.md). Main records development work and is
+not a production deployment approval. Historical acceptance reports keep their
+original audit blocks, compiler hashes and results.
 
 The September 11 development deployment has initialized the four named genesis
 services and passed public-chain governance, funding, redemption and real EIP-7702
@@ -42,19 +41,28 @@ after cleanup. Final admin acceptance, Router/application integration and produc
 acceptance remain outstanding.
 
 The management address is `0x9247524040D91D5dd1521A25f2e7711d4a0fe921`.
-Bootstrap authority is temporary: final handover must remove deployment-account
-roles only after the new controller has accepted and demonstrated control.
+Kota tenant administration is fully handed over to this address. Core network,
+sponsor/delegation, card and private-state handovers remain separate; see the
+[authority inventory](docs/CURRENT_STATUS.md). Remove remaining deployment-account
+roles only after their replacements are effective and required acceptance is complete.
+
+The new Kota release added ten fully verified public instances and 43 verified
+IPFS objects. The moment.cards registry is `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`.
+These membership credentials are separate from redeemable card NFTs. The 32,451
+address genesis/application audit remains its historical baseline; its counts
+and hashes are not rewritten to include later deployments.
 
 ## Quick Reference
 
 | Component                | Version | Notes                                                        |
 | ------------------------ | ------- | ------------------------------------------------------------ |
 | **Besu**                 | 26.8.1  | Java 25, QBFT consensus                                      |
-| **solc**                 | 0.8.37  | All contracts except validator contracts                     |
+| **solc**                 | 0.8.37  | This repository's current non-validator artifacts                     |
 | **solc**                 | 0.8.19  | Validator contracts only (pragma `<0.8.20`)                  |
 | **EVM target**           | Osaka   | Public contracts compiled with solc 0.8.37                   |
 | **Private EVM target**   | Shanghai | Newest execution target selected by installed Pente v1.0.0; live opcode checks passed |
 | **EVM target**           | London  | Validator contracts (solc 0.8.19 maximum)                    |
+| **Kota tenant contracts** | 1.4.0 / v7 | Separate KotaRouter release: solc 0.8.34 / Osaka / MIT |
 | **Paladin**              | v1.0.0  | Pente privacy domain (replaces Tessera)                      |
 | **Native sponsorship**   | 1.0.0   | EIP-7702; no ERC-4337, bundler, EntryPoint, or paymaster     |
 
