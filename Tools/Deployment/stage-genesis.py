@@ -23,9 +23,12 @@ def main():
     assert re.fullmatch(r'[0-9a-f]{40}',a.commit)
     assert all(re.fullmatch(r'[0-9a-f]{64}',d) for d in [a.archive_sha256,a.genesis_sha256])
     environment=dict(os.environ,DEBIAN_FRONTEND='noninteractive',GIT_TERMINAL_PROMPT='0')
-    if not shutil.which('git') or not shutil.which('7zz'):
+    extractor=shutil.which('7zz') or shutil.which('7z')
+    if not shutil.which('git') or not extractor:
         run('apt-get','update',env=environment)
         run('apt-get','install','-y','git','7zip',env=environment)
+    extractor=shutil.which('7zz') or shutil.which('7z')
+    assert extractor,'Installed 7zip package has no supported extractor executable'
     RELEASES.mkdir(parents=True,exist_ok=True,mode=0o755)
     release=RELEASES/a.commit
     if not release.exists():
@@ -48,7 +51,7 @@ def main():
     else:
         assert shutil.disk_usage(TARGET.parent).free>manifest['genesis_bytes']+1024**3
         stage=Path(tempfile.mkdtemp(prefix='.genesis-',dir=TARGET.parent))
-        run('7zz','x','-bd','-y',str(archive),'-o'+str(stage),'BesuGenesis.json',stdout=subprocess.DEVNULL)
+        run(extractor,'x','-bd','-y',str(archive),'-o'+str(stage),'BesuGenesis.json',stdout=subprocess.DEVNULL)
         candidate=stage/'BesuGenesis.json'
         assert candidate.stat().st_size==manifest['genesis_bytes']
         assert sha(candidate)==a.genesis_sha256
