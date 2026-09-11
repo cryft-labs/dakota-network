@@ -2,13 +2,12 @@
 
 ## 1. Source promotion
 
-The September 11, 2026 update publishes maintenance documentation to main.
-Network source already on main is unchanged. KotaRouter main receives documentation
-only; current contract/service implementation and artifacts remain on
-`review/primary-api-lmstudio`. Retain review branches and resolve exact commits. The website implementation remains on
-`CryftCreator/cryftcomingsoon-main:review/moment-dakota-tenant`; its documentation
-is published separately on main. No host release, DNS, tunnel, signing permission
-or production traffic changes merely because source is promoted.
+Following the documentation-only publication, the owner explicitly authorized
+merging implementation into main on September 11, 2026. The network, KotaRouter,
+website and explorer main branches now include their reviewed source and docs.
+KotaRouter includes exact Standard JSON and metadata. Review branches are retained;
+resolve exact commits before deployment. No host release, DNS, tunnel, signing
+permission or production traffic changes merely because source is promoted.
 
 Historical reports retain their original audit blocks, hashes, compiler versions
 and counts. This index points to the latest scope for each component instead of
@@ -19,7 +18,7 @@ rewriting earlier evidence to appear newer.
 | Need | Authoritative record |
 | --- | --- |
 | Architecture, hosts, low-privilege users, services, networking, recovery | [Implementation and operations](../IMPLEMENTATION.md) |
-| Resume implementation without resetting the chain | [One-shot resume prompt, revision 7](ONE_SHOT_DEPLOYMENT.md) |
+| Resume implementation without resetting the chain | [One-shot resume prompt, revision 8](ONE_SHOT_DEPLOYMENT.md) |
 | Addresses, metadata locations and ownership scope | [Current address inventory](current-contract-addresses.json) |
 | Latest read-only service/authority observation | [September 11 observation](documentation-live-check-20260911.json) |
 | Genesis/governance acceptance | [Public genesis-service acceptance](live-genesis-acceptance-20260911.md) |

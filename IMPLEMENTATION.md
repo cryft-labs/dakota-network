@@ -12,17 +12,18 @@ local checks do not establish a deployed service. Record each completed installa
 in the deployment inventory with its exact commit, image digest, genesis checksum,
 service unit, addresses, ports and health evidence. The explorer is verified at
 `http://100.111.69.1:8080` from the administrator's computer over Nebula.
-This update publishes current documentation to main. It does not promote Kota
-implementation changes or change services. Production deployment remains a separate gate.
+After the documentation update, the owner explicitly authorized merging the
+remaining implementation into main. Reviewed KotaRouter, website and explorer
+source is now published there. Production deployment remains a separate gate.
 
 ## 2. Source and release ownership
 
 Use `cryft-labs/dakota-network/main` for current network source and documentation.
-KotaRouter main receives documentation only; its current implementation/artifacts
-remain on `review/primary-api-lmstudio`. Review branches are retained. Resolve
+KotaRouter main now contains the reviewed implementation and exact artifacts.
+Review branches are retained for provenance. Resolve
 and record exact SHAs before building; main is not an automatic deployment instruction.
-Website implementation remains in `CryftCreator/cryftcomingsoon-main` on
-`review/moment-dakota-tenant`; only its documentation is being promoted now.
+Website implementation is merged into `CryftCreator/cryftcomingsoon-main/main`,
+with `review/moment-dakota-tenant` retained. Known build/integration gaps remain.
 The existing `Greeting Cards/` application becomes moment.cards in place,
 including greeting cards, business cards and postcards. `Dakota Cards/` is the
 platform portal/dashboard/docs application. The widget is optional; direct

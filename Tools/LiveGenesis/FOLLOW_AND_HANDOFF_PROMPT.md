@@ -18,8 +18,8 @@ development deployment and testing. Never reset genesis, regenerate existing key
 delete a transaction journal, deploy a substitute into an occupied address, or
 remove management controls to get past a failed check. The user requires changes
 committed and pushed on review branches before applying GitHub-based changes.
-The latest update publishes documentation to main only. Kota Router source and
-artifacts remain on its review branch; network code already on main is unchanged.
+The owner subsequently authorized merging reviewed implementation into main.
+Network, KotaRouter, website and explorer main contain their reviewed releases.
 Production cutover and remaining ownership transfers are separate decisions.
 
 Ask only for genuinely missing access or decisions. Public contract inspection
@@ -45,7 +45,7 @@ GitHub: https://github.com/cryft-labs/dakota-network
 Documentation/source baseline: main; historical execution branch: review/compiler-standard-json
 Router checkout: work/source/KotaRouter
 GitHub: https://github.com/CryftCreator/KotaRouter
-Documentation: main; current implementation/artifacts: review/primary-api-lmstudio
+Documentation/source/artifacts: main; retained review branch: review/primary-api-lmstudio
 Explorer checkout: work/source/dakota-explorer
 Branch: review/nebula-development-deployment
 
