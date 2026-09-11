@@ -33,6 +33,7 @@ def main():
     env=dict(os.environ,DEBIAN_FRONTEND='noninteractive')
     run('apt-get','update',env=env)
     run('apt-get','install','-y','nginx',env=env)
+    run('systemctl','unmask','--runtime','nginx.service')
     run('systemctl','disable','nginx.service')
     try:
         user=pwd.getpwnam('cryft-proxy')
