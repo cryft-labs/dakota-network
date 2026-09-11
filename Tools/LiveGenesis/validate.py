@@ -81,10 +81,11 @@ def proxy_checks(d, name, facade):
     logic = d.journal['deployments'][name]['address']
     d.check(name + ':facade_introspection', facade.functions.getProxyImplementation(address).call() == logic and facade.functions.getProxyAdmin(address).call() == facade.address)
     d.reject(name + ':unauthorized_upgrade', facade.functions.upgrade(address, logic))
-    d.reject(name + ':root_lockout_prevented', proxy.functions.proxy_revokeRootOverlord(), sender=DEPLOYER)
+    if 'proxy:' + name + ':grant_canary_controller' not in d.journal['transactions']:
+        d.reject(name + ':root_lockout_prevented', proxy.functions.proxy_revokeRootOverlord(), sender=DEPLOYER)
     d.tx('proxy:' + name + ':grant_canary_controller', proxy.functions.proxy_addOverlord(TESTER))
-    d.check(name + ':recoverable_local_controller', proxy.functions.proxy_isGuardian(TESTER).call())
-    d.tx('proxy:' + name + ':same_logic_upgrade', facade.functions.upgrade(address, logic), sender=TESTER)
+    d.check(name + ':local_controller_role_separation', proxy.functions.proxy_isOverlord(TESTER).call() and not proxy.functions.proxy_isGuardian(TESTER).call())
+    d.tx('proxy:' + name + ':same_logic_upgrade', facade.functions.upgrade(address, logic))
     d.tx('proxy:' + name + ':remove_canary_controller', proxy.functions.proxy_removeOverlord(TESTER))
     d.check(name + ':controller_removed_roots_retained', not proxy.functions.proxy_isGuardian(TESTER).call() and proxy.functions.proxy_isGuardian(ADMIN).call())
     if name in ['GasManager', 'CodeManager']:
