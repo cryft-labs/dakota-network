@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Validator-01",
+    "address": "0xCdC8d72552dC91EC70b381Cc5b869ad64cEf8451",
+    "enode": "enode://929e6c116ce134be82b4ea3c28573e59240c6c61ff739f6bae5f131c795abdef76ae3aefc164879b31358316fdfcc0b807fb74ee03450ac91e37241ee09c2325@100.111.32.101:30303"
+  },
+  {
+    "name": "Validator-02",
+    "address": "0x4E84562aCD2A3846C6dA115F00127EBf8279457d",
+    "enode": "enode://e688a9ca2053fa29a50202e77c93037dfd3b02ef55e672d000b500ffa5ddb754ada0eac71631ee376ae661726045fa2ba68465e5e467258d707e7b71da4c48cd@100.111.32.102:30303"
+  },
+  {
+    "name": "Validator-03",
+    "address": "0xCaBE4444b7d2f7A859dC0a9e9963a0dD0d6D8400",
+    "enode": "enode://5adb671ccbcc466525808132d1cf2593c4c0c99e3617d641cd7eccf52413155eb2cb6a41da5edf1c904efab72ebf3d181965782e1e713e4ab661c25343280608@100.111.32.103:30303"
+  },
+  {
+    "name": "Validator-04",
+    "address": "0xAFd389303A515D57dc2A97f46908c0E9DDdfa33C",
+    "enode": "enode://c7c981638c0122e86654faaffaea3695834a1b5dd2cde1dd88e904f6e817fd7e1bbaffc85871729a84985b5203497db8a631dd3db03510439a39c246627fc4b8@100.111.32.104:30303"
+  }
+]
