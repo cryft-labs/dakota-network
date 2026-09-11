@@ -1,0 +1,138 @@
+{
+  "ValidatorSmartContractAllowList": {
+    "source": "Contracts/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol",
+    "artifact_sha256": "f7499fc6a8a6742175b0c01208ed8aca456a21f5f2dadbd3462ebf8d536fa2a2",
+    "standard_input_sha256": "639adfd449215c68210f27ec9b12d3161ca81bef982aba0505cb85cb5e89f44d",
+    "compiler": "0.8.19",
+    "evm": "london",
+    "runtime_bytes": 21412,
+    "immutable_references": {},
+    "reproduced_current_source": true
+  },
+  "TransparentUpgradeableProxy": {
+    "source": "Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol",
+    "artifact_sha256": "06a7c96c2e891c60a5a8d7a740b91f69b608ee9cfd349ef95dcf8867a5aeeeac",
+    "standard_input_sha256": "79c93cb153978813e5e5b6c2fbd3e624aa00c9dc698a0934b398dc18b743d9f8",
+    "compiler": "0.8.37",
+    "evm": "osaka",
+    "runtime_bytes": 19115,
+    "immutable_references": {},
+    "reproduced_current_source": true
+  },
+  "ProxyAdmin": {
+    "source": "Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol",
+    "artifact_sha256": "a11da18d36d4b80818e841ee51a9ce360aa37cc5dfa2d896f9509a7e626b5d24",
+    "standard_input_sha256": "bae3f59b1c109e9fc501bfda6a65f4572a24ccfd3c02f398443ba9d0e7a5a02a",
+    "compiler": "0.8.37",
+    "evm": "osaka",
+    "runtime_bytes": 3200,
+    "immutable_references": {},
+    "reproduced_current_source": true
+  },
+  "GasManager": {
+    "source": "Contracts/Genesis/GasManager/GasManager.sol",
+    "artifact_sha256": "6c471bf9fa0a097d8844ab51a486a56e9869c752a7446b22bebae41521e5b9da",
+    "standard_input_sha256": "9759ffba203fd28e8121f7ab3f6685414395132f9cbf943e9b43b1bd3da9d360",
+    "compiler": "0.8.37",
+    "evm": "osaka",
+    "runtime_bytes": 23588,
+    "immutable_references": {},
+    "reproduced_current_source": true
+  },
+  "CodeManager": {
+    "source": "Contracts/CodeManagement/CodeManager.sol",
+    "artifact_sha256": "c0e6321fa05e09e501041634a6afddb34a69d079c5386b9203b0ce3ee2597265",
+    "standard_input_sha256": "9214a25a3fc2b6018007eb650451812875d5c1ca5c11a4e88ff8e95216a0e7b6",
+    "compiler": "0.8.37",
+    "evm": "osaka",
+    "runtime_bytes": 24480,
+    "immutable_references": {},
+    "reproduced_current_source": true
+  },
+  "DakotaDelegation": {
+    "source": "Contracts/Genesis/7702/DakotaDelegation.sol",
+    "artifact_sha256": "95e6aca72664048e67216dcca0fd901e36e9a5d62814f942cb9f198962196648",
+    "standard_input_sha256": "7aed7300d59b953c40248f7a381bafa86662fad330c1048bba6d8c6c594208ff",
+    "compiler": "0.8.37",
+    "evm": "osaka",
+    "runtime_bytes": 5531,
+    "immutable_references": {
+      "110": [
+        {
+          "length": 32,
+          "start": 235
+        },
+        {
+          "length": 32,
+          "start": 1106
+        }
+      ]
+    },
+    "reproduced_current_source": true
+  },
+  "DakotaDelegationBeacon": {
+    "source": "Contracts/Genesis/7702/DakotaDelegationBeacon.sol",
+    "artifact_sha256": "b23a3982653989ae85b1b7de46ae16d8b66eb29a4b3b1111e2f3b74f6263ffb4",
+    "standard_input_sha256": "11b3a195b641da1c570cf53955b61debfdea5a7b95d2fab96aea931530d6b284",
+    "compiler": "0.8.37",
+    "evm": "osaka",
+    "runtime_bytes": 1046,
+    "immutable_references": {},
+    "reproduced_current_source": true
+  },
+  "DakotaDelegationBeaconDispatcher": {
+    "source": "Contracts/Genesis/7702/DakotaDelegationBeaconDispatcher.sol",
+    "artifact_sha256": "d9990fc4cdcf43fa4ec5a9fc0ffd4305d0b1ccd6d8593bec6e794b02ed9b1170",
+    "standard_input_sha256": "fe4c468a35cfb45b32f67cff9dc2eee5feae33139448a7464d7c33e98d79a841",
+    "compiler": "0.8.37",
+    "evm": "osaka",
+    "runtime_bytes": 813,
+    "immutable_references": {
+      "13": [
+        {
+          "length": 32,
+          "start": 109
+        },
+        {
+          "length": 32,
+          "start": 272
+        },
+        {
+          "length": 32,
+          "start": 424
+        },
+        {
+          "length": 32,
+          "start": 515
+        }
+      ],
+      "15": [
+        {
+          "length": 32,
+          "start": 575
+        }
+      ]
+    },
+    "reproduced_current_source": true
+  },
+  "GasSponsor": {
+    "source": "Contracts/Genesis/7702/GasSponsor.sol",
+    "artifact_sha256": "e96397b11ec5f06f3387387e870d64929cfaa1671af2797ea74439d94770757c",
+    "standard_input_sha256": "e918b4cffc7f13e4d82c397fddb6aac67a80ebab1b36b9243dc742b5ea8345a9",
+    "compiler": "0.8.37",
+    "evm": "osaka",
+    "runtime_bytes": 13751,
+    "immutable_references": {},
+    "reproduced_current_source": true
+  },
+  "DakotaDelegationRegistry": {
+    "source": "Contracts/Genesis/7702/DakotaDelegationRegistry.sol",
+    "artifact_sha256": "83bae986838b8f8dbd36e3ce45a75db580e1d4a5818c23ae93665b3ae4837fd0",
+    "standard_input_sha256": "1fdd34265c57a16a7f52e1c872872ac75a3f0ee95865f08deee54e7c9e24b218",
+    "compiler": "0.8.37",
+    "evm": "osaka",
+    "runtime_bytes": 14089,
+    "immutable_references": {},
+    "reproduced_current_source": true
+  }
+}
