@@ -51,7 +51,7 @@ def main():
                 checked('systemctl enable cryft-explorer-genesis-verification.service')
             print(json.dumps(checked('systemctl start --no-block cryft-explorer-genesis-verification.service')))
         elif a.action=='status':
-            print(json.dumps(checked("systemctl show cryft-explorer-genesis-verification.service -p ActiveState -p SubState -p ExecMainStatus; journalctl -u cryft-explorer-genesis-verification.service -n 8 --no-pager; cat /var/lib/cryft-explorer/dets/verification-20260911/progress.json 2>/dev/null || true")))
+            print(json.dumps(checked("systemctl show cryft-explorer-genesis-verification.service -p ActiveState -p SubState -p ExecMainStatus; cat /var/lib/cryft-explorer/dets/verification-20260911/progress.json 2>/dev/null; cat /var/lib/cryft-explorer/dets/verification-20260911/failure.json 2>/dev/null || true")))
         else:
             with client.open_sftp() as s:
                 remote='/var/lib/cryft-explorer/dets/verification-20260911'

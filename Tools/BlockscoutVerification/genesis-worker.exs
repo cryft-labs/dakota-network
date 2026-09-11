@@ -55,6 +55,8 @@ defmodule DakotaGenesisVerification do
     limit = String.to_integer(System.get_env("DAKOTA_VERIFICATION_LIMIT", "32433"))
     dry = System.get_env("DAKOTA_VERIFICATION_DRY_RUN", "false") == "true"
     rows = data["addresses"] |> Enum.drop(offset) |> Enum.take(limit)
+    save(Path.join(dir, "progress.json"), %{checked: 0, total: length(rows), offset: offset, dry_run: dry,
+      block: head, source_commit: data["source_commit"], completed: false})
     cache = Map.new(data["builds"], fn {name, build} ->
       for {file, expected} <- build["file_sha256"] do
         assert!(sha(File.read!(Path.join(dir, name <> "/" <> file))) == expected, "Artifact hash mismatch")
@@ -143,4 +145,12 @@ defmodule DakotaGenesisVerification do
     end)
   end
 end
-DakotaGenesisVerification.main()
+try do
+  DakotaGenesisVerification.main()
+rescue
+  error ->
+    message = Exception.message(error) |> String.replace(~r{postgres(?:ql)?://[^@\s]+@}, "postgresql://[REDACTED]@") |> String.slice(0, 2500)
+    DakotaGenesisVerification.save(Path.join(System.fetch_env!("DAKOTA_VERIFICATION_DIR"), "failure.json"),
+      %{error: message, type: inspect(error.__struct__), stack: Exception.format_stacktrace(Enum.take(__STACKTRACE__, 8))})
+    reraise error, __STACKTRACE__
+end
