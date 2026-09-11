@@ -123,7 +123,13 @@
     "blob_parameters_changed": false,
     "all_other_genesis_bytes_preserved": true,
     "qbft_binary_probe_passed": true,
-    "live_rollout_verified": false,
-    "amsterdam_enabled": false
+    "live_rollout_verified": true,
+    "amsterdam_enabled": false,
+    "rollout_source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+    "checked_at": "2026-09-11T04:08:45.454312+00:00",
+    "all_seven_genesis_files_verified": true,
+    "all_six_besu_nodes_synced": true,
+    "observed_block_after_rollout": 43,
+    "chain_data_reset": false
   }
 }

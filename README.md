@@ -131,6 +131,11 @@ must separately confirm each host restarted with `[BPO5:0]`; the source archive
 alone is not proof of live rollout. Never generalize this compatible update to a
 retroactive Amsterdam activation or any other change to executed rules.
 
+The development rollout is now verified: all seven hosts hold the new archive's
+genesis, all six Besu services restarted with `[BPO5:0]`, and all six synchronized
+at block 43 after the final validator restart. No database reset or application
+transaction was needed. See [recorded evidence](docs/besu-milestone-review.json).
+
 Sources: [26.8.1 release notes](https://github.com/besu-eth/besu/releases/tag/26.8.1),
 [pinned fork finalization flags](https://github.com/besu-eth/besu/blob/26.8.1/datatypes/src/main/java/org/hyperledger/besu/datatypes/HardforkId.java),
 [pinned timestamp schedule](https://github.com/besu-eth/besu/blob/26.8.1/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/milestones/MilestoneDefinitions.java),

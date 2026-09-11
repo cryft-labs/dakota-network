@@ -109,6 +109,32 @@ from authenticated/trusted ingress and overwrite spoofable forwarding headers.
 
 ## 6. Genesis and validators
 
+### Development checkpoint: 2026-09-11
+
+Four validators, the Paladin-connected Besu and Frontend archive Besu are running
+as `cryft-besu` under enabled systemd units. All six synchronized at block 43
+after the compatible BPO5 rollout; all seven hosts have the same verified genesis
+file. Runtime installation records describe the original binary installation;
+`/etc/cryft/besu/genesis-installation.json` and `milestone-update.json` describe
+the subsequent genesis update. This distinguishes binary version from current
+chain configuration without rewriting historical installation evidence.
+
+Frontend's Nginx-protected archive is reachable from Backend over Nebula at
+`http://100.111.69.1:8547/`, with WebSocket at `/ws`; the raw origins remain on
+loopback. Backend's persistent `cryft-ipfs` service has published 90 contract
+artifacts as 164 verified IPFS objects. The release bundle is
+`QmSuawtJhsHhAJNS2VtPx4UHTEPvQgDbJD7vKmkV7smMaf`. Pins and readback are verified
+on Backend; public gateway access and offhost pin redundancy are not yet configured.
+
+The explorer UI/API, Paladin privacy service and Kota application deployment are
+still pending. Full reboot/restore/load acceptance, public SSH/root-login lockdown,
+Cloudflare tunnels and final ownership handover are not completed. The owner has
+temporarily broadened Defined Networking rules for development; production must
+replace that policy with tested role-specific access. Enabled services and these
+network checks do not constitute production approval.
+
+### Authoritative genesis and compatible updates
+
 The existing archive defines chain ID 112311, 64,000,000 block gas, 32,768-byte
 contract limit, the fork schedule, QBFT timing and system addresses. Preserve it.
 The reviewed archive enables BPO1–BPO5 at timestamp 0 with Osaka execution rules.

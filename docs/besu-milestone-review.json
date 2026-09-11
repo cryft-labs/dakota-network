@@ -76,8 +76,207 @@
       "blob_parameters_changed": false,
       "all_other_genesis_bytes_preserved": true,
       "qbft_binary_probe_passed": true,
-      "live_rollout_verified": false,
-      "amsterdam_enabled": false
+      "live_rollout_verified": true,
+      "amsterdam_enabled": false,
+      "rollout_source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+      "checked_at": "2026-09-11T04:08:45.454312+00:00",
+      "all_seven_genesis_files_verified": true,
+      "all_six_besu_nodes_synced": true,
+      "observed_block_after_rollout": 43,
+      "chain_data_reset": false
+    }
+  },
+  "rollout": {
+    "Frontend-01": {
+      "host": "Frontend-01",
+      "checked_at": "2026-09-11T04:03:16.990317+00:00",
+      "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+      "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+      "genesis_installation": {
+        "status": "compatible_bpo_update_verified",
+        "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+        "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+        "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+        "genesis_path": "/etc/cryft/besu/BesuGenesis.json",
+        "node_start_requested": false,
+        "chain_data_reset": false
+      },
+      "chain_data_reset": false,
+      "live": {
+        "height": "0x27",
+        "peers": "0x4",
+        "validators": [
+          "0x4e84562acd2a3846c6da115f00127ebf8279457d",
+          "0xafd389303a515d57dc2a97f46908c0e9dddfa33c",
+          "0xcabe4444b7d2f7a859dc0a9e9963a0dd0d6d8400",
+          "0xcdc8d72552dc91ec70b381cc5b869ad64cef8451"
+        ],
+        "genesis_block_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+        "milestone": "BPO5:0",
+        "invocation_id": "6028a0f6d9914628b2cb714d301814c5"
+      }
+    },
+    "Paladin-01": {
+      "host": "Paladin-01",
+      "checked_at": "2026-09-11T04:04:11.268147+00:00",
+      "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+      "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+      "genesis_installation": {
+        "status": "compatible_bpo_update_verified",
+        "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+        "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+        "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+        "genesis_path": "/etc/cryft/besu/BesuGenesis.json",
+        "node_start_requested": false,
+        "chain_data_reset": false
+      },
+      "chain_data_reset": false,
+      "live": {
+        "height": "0x28",
+        "peers": "0x4",
+        "validators": [
+          "0x4e84562acd2a3846c6da115f00127ebf8279457d",
+          "0xafd389303a515d57dc2a97f46908c0e9dddfa33c",
+          "0xcabe4444b7d2f7a859dc0a9e9963a0dd0d6d8400",
+          "0xcdc8d72552dc91ec70b381cc5b869ad64cef8451"
+        ],
+        "genesis_block_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+        "milestone": "BPO5:0",
+        "invocation_id": "8dcb17bda29a4b62baa8c396c27eab2c"
+      }
+    },
+    "Backend-01": {
+      "host": "Backend-01",
+      "checked_at": "2026-09-11T04:04:23.411910+00:00",
+      "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+      "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+      "genesis_installation": {
+        "status": "compatible_bpo_update_verified",
+        "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+        "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+        "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+        "genesis_path": "/etc/cryft/besu/BesuGenesis.json",
+        "node_start_requested": false,
+        "chain_data_reset": false
+      },
+      "chain_data_reset": false,
+      "live": null
+    },
+    "Validator-01": {
+      "host": "Validator-01",
+      "checked_at": "2026-09-11T04:05:05.320897+00:00",
+      "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+      "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+      "genesis_installation": {
+        "status": "compatible_bpo_update_verified",
+        "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+        "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+        "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+        "genesis_path": "/etc/cryft/besu/BesuGenesis.json",
+        "node_start_requested": false,
+        "chain_data_reset": false
+      },
+      "chain_data_reset": false,
+      "live": {
+        "height": "0x29",
+        "peers": "0x3",
+        "validators": [
+          "0x4e84562acd2a3846c6da115f00127ebf8279457d",
+          "0xafd389303a515d57dc2a97f46908c0e9dddfa33c",
+          "0xcabe4444b7d2f7a859dc0a9e9963a0dd0d6d8400",
+          "0xcdc8d72552dc91ec70b381cc5b869ad64cef8451"
+        ],
+        "genesis_block_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+        "milestone": "BPO5:0",
+        "invocation_id": "7ffda3f672204f9eb7e64390a7c3d15d"
+      }
+    },
+    "Validator-02": {
+      "host": "Validator-02",
+      "checked_at": "2026-09-11T04:05:51.335878+00:00",
+      "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+      "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+      "genesis_installation": {
+        "status": "compatible_bpo_update_verified",
+        "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+        "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+        "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+        "genesis_path": "/etc/cryft/besu/BesuGenesis.json",
+        "node_start_requested": false,
+        "chain_data_reset": false
+      },
+      "chain_data_reset": false,
+      "live": {
+        "height": "0x2a",
+        "peers": "0x3",
+        "validators": [
+          "0x4e84562acd2a3846c6da115f00127ebf8279457d",
+          "0xafd389303a515d57dc2a97f46908c0e9dddfa33c",
+          "0xcabe4444b7d2f7a859dc0a9e9963a0dd0d6d8400",
+          "0xcdc8d72552dc91ec70b381cc5b869ad64cef8451"
+        ],
+        "genesis_block_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+        "milestone": "BPO5:0",
+        "invocation_id": "9618fee74b9943a4a55e7be83c745a23"
+      }
+    },
+    "Validator-03": {
+      "host": "Validator-03",
+      "checked_at": "2026-09-11T04:06:30.625051+00:00",
+      "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+      "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+      "genesis_installation": {
+        "status": "compatible_bpo_update_verified",
+        "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+        "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+        "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+        "genesis_path": "/etc/cryft/besu/BesuGenesis.json",
+        "node_start_requested": false,
+        "chain_data_reset": false
+      },
+      "chain_data_reset": false,
+      "live": {
+        "height": "0x2a",
+        "peers": "0x3",
+        "validators": [
+          "0x4e84562acd2a3846c6da115f00127ebf8279457d",
+          "0xafd389303a515d57dc2a97f46908c0e9dddfa33c",
+          "0xcabe4444b7d2f7a859dc0a9e9963a0dd0d6d8400",
+          "0xcdc8d72552dc91ec70b381cc5b869ad64cef8451"
+        ],
+        "genesis_block_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+        "milestone": "BPO5:0",
+        "invocation_id": "6792df4f9fba4346b796811c9dfb0b5a"
+      }
+    },
+    "Validator-04": {
+      "host": "Validator-04",
+      "checked_at": "2026-09-11T04:07:07.055688+00:00",
+      "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+      "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+      "genesis_installation": {
+        "status": "compatible_bpo_update_verified",
+        "source_commit": "879ae7eb2aa8c8a0462226b38adbda36009a2d9c",
+        "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+        "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+        "genesis_path": "/etc/cryft/besu/BesuGenesis.json",
+        "node_start_requested": false,
+        "chain_data_reset": false
+      },
+      "chain_data_reset": false,
+      "live": {
+        "height": "0x2a",
+        "peers": "0x3",
+        "validators": [
+          "0x4e84562acd2a3846c6da115f00127ebf8279457d",
+          "0xafd389303a515d57dc2a97f46908c0e9dddfa33c",
+          "0xcabe4444b7d2f7a859dc0a9e9963a0dd0d6d8400",
+          "0xcdc8d72552dc91ec70b381cc5b869ad64cef8451"
+        ],
+        "genesis_block_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+        "milestone": "BPO5:0",
+        "invocation_id": "c92118b90d3c4c64b7c2213e21ff0e62"
+      }
     }
   }
 }
