@@ -288,10 +288,17 @@ historical hashes and deliberately refuses to overwrite changed deployed artifac
 To recover an old build on a new workstation, replay its exact pinned Standard JSON
 from IPFS or check out its recorded source commit; current source is not the old build.
 Commit/push changes and artifact locks to `review/compiler-standard-json` before
-publication or live mutation. Main remains untouched. `publish.py` pins exact
+publication or live mutation. The owner subsequently approved merging the completed
+contract release and verification artifacts into network main; production rollout
+and owner acceptance remain separate. `publish.py` pins exact
 metadata, source bytes and Standard JSON through Nebula SSH to Backend-01's loopback
 Kubo API, then verifies recursive pins and gateway bytes. It never publishes private
-runtime state. The current ten builds use 88 unique compiler objects.
+runtime state. The Paladin-specific receipt covers ten builds and 88 unique compiler
+objects. The later complete deployed package in `Contracts/Verification/20260911`
+adds all public/genesis builds, full Standard JSON output, exact license mapping
+and native-precompile exclusions. Its publication receipt is
+`docs/blockscout-artifact-ipfs-20260911.json`; see
+[the verification runbook](../BlockscoutVerification/README.md).
 
 | Current implementation | Metadata CID | Standard JSON input CID |
 |---|---|---|
@@ -323,6 +330,7 @@ must use those same endpoints; no browser may receive node signing access.
 
 Outstanding: Router/API and account-registration integration; deployed moment.cards
 and widget/admin UI; final management acceptance and private identity handover;
-public Cloudflare/IPFS gateway and explorer source verifier; production SSH/network
+public Cloudflare/IPFS gateway and explorer source uploads (the verifier now reports
+enabled); production SSH/network
 lockdown; full reboot/backup-restore/multiparty/load tests. This runbook documents
 working development settlement, not production approval.

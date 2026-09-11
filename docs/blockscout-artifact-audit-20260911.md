@@ -57,8 +57,11 @@ Use [the runbook](../Tools/BlockscoutVerification/README.md) and
 [the copyable handoff](../Tools/BlockscoutVerification/HANDOFF_PROMPT.md).
 Successful IPFS publication is recorded in
 [`blockscout-artifact-ipfs-20260911.json`](blockscout-artifact-ipfs-20260911.json).
-That receipt is the authority for actual pins, per-file CIDs and byte-for-byte API/
-gateway retrieval. Publication does not enable public peering or a public gateway.
+Publication passed for all **224 distinct objects** (28,666,713 content bytes before
+IPFS storage overhead), including each build's six artifact files, original sources
+and inventory files. That receipt is the authority for actual recursive pins,
+per-file CIDs and byte-for-byte API/gateway retrieval. Publication does not enable
+public peering or a public gateway.
 
 The owner's final instruction authorizes promotion of completed contract changes
 and artifacts to `dakota-network/main`. The Kota Router and explorer review branches

@@ -33,6 +33,7 @@ FRONTEND_NEBULA_IP=100.111.69.1
 PALADIN_NEBULA_IP=100.111.32.201
 ARTIFACT_ROOT=Contracts/Verification/20260911
 IPFS_RECEIPT=docs/blockscout-artifact-ipfs-20260911.json
+IPFS_MANIFEST_CID=QmQazJy8zGUhXUxhQJMrD5cVaPTmUwZYoBagDrSs78yGJf
 ```
 
 Use the existing SSH identity/host-key inventory and Nebula, never public bootstrap
@@ -58,13 +59,17 @@ Every build folder supplies exact `standard-input.json`, full `standard-output.j
 with their recorded compiler versions if a mismatch is suspected. Preserve optimizer,
 EVM, source paths, metadata settings, imported notices and bytecode. Never recompile
 an old deployment from today's changed source or strip metadata to force a match.
-Compiler targets are validator 0.8.19 London, public 0.8.37 Osaka and private 0.8.37
-Shanghai. Both full compiler version strings are in the manifest.
+Compiler targets are validator 0.8.19 London, core public logic 0.8.37 Osaka, and
+private/shared proxy builds 0.8.37 Shanghai as recorded per artifact. Both full
+compiler version strings are in the manifest.
 
 For each metadata CID embedded in bytecode, fetch exact metadata and sources through
 Backend Kubo API and gateway, verify hashes/CIDs against the manifest and metadata,
 and require recursive pins. Validate Standard JSON input/output CIDs from the receipt
-as well. If a pin is missing, republish only the exact reviewed content using the
+as well. The completed publication receipt records 224 distinct pinned objects with
+exact API/gateway readback from source commit
+`695bc9a84f3a1652115b3f5dd5abcc26430cb000`. If a pin is missing, republish only the
+exact reviewed content using the
 existing authorized publisher; record the repair and verify readback. IPFS availability
 is presently private; do not claim global public gateway availability.
 

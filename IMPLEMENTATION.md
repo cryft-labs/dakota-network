@@ -12,12 +12,15 @@ local checks do not establish a deployed service. Record each completed installa
 in the deployment inventory with its exact commit, image digest, genesis checksum,
 service unit, addresses, ports and health evidence. The explorer is verified at
 `http://100.111.69.1:8080` from the administrator's computer over Nebula.
-Production promotion is separate and leaves `main` unchanged until owner approval.
+The owner has authorized merging the completed contract release and verification
+artifacts into `dakota-network/main`. Production deployment remains a separate gate.
 
 ## 2. Source and release ownership
 
-Use `cryft-labs/dakota-network`, branch `review/compiler-standard-json`, and
-`CryftCreator/KotaRouter`, branch `review/primary-api-lmstudio`. Resolve and record
+Use `cryft-labs/dakota-network`, with this contract release promoted to `main` after
+publication checks; `review/compiler-standard-json` is retained for traceability.
+Use `CryftCreator/KotaRouter`, branch `review/primary-api-lmstudio`, for the unfinished
+API integration. Resolve and record
 full commit SHAs, push current changes before live testing, then deploy exact commits.
 Never deploy a moving branch with an unchecked reset/pull. Preserve historical
 release receipts and back up existing host configuration/data before replacement.

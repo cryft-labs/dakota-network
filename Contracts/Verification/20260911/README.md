@@ -19,5 +19,6 @@ license. Do not upload `standard-output.json` as input, or reformat metadata.
 
 All builds reproduced exactly and all audited deployed addresses matched. This is
 artifact validation, not a claim that Blockscout source uploads have completed.
-The IPFS publication receipt is [here](../../../docs/blockscout-artifact-ipfs-20260911.json)
-once publication succeeds; it records exact per-file CIDs and pin/readback evidence.
+The successful IPFS publication receipt is [here](../../../docs/blockscout-artifact-ipfs-20260911.json):
+224 distinct objects, with exact per-file CIDs and recursive pin/API/gateway readback
+evidence. Inventory and compiler artifact bytes are preserved across Git checkouts.

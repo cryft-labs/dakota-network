@@ -48,7 +48,8 @@ default. Unknown/compound expressions require review rather than silent MIT/none
 manifest's `contract_name` and `source_path`, not a directory alias.
 
 The required compilers are `v0.8.19+commit.7dd6d404` (validator, London) and
-`v0.8.37+commit.f401782d` (public Osaka and private Shanghai). Do not change EVM,
+`v0.8.37+commit.f401782d` (core public logic Osaka; private/shared proxy builds
+Shanghai as recorded per artifact). Do not change EVM,
 optimizer, source paths, library linking, metadata settings or compiler version
 for a verification retry. Standard JSON **input**, not output, is submitted.
 
@@ -145,6 +146,10 @@ exact byte equality. The receipt is
 `outputs/blockscout-artifact-ipfs-20260911.json`; its committed copy belongs at
 `docs/blockscout-artifact-ipfs-20260911.json` after successful publication. Consult
 that receipt for authoritative CIDs/counts rather than inventing a bundle CID.
+
+The 2026-09-11 publication succeeded: **224 distinct objects** were recursively
+pinned and passed byte-for-byte API and gateway readback. The receipt identifies
+source commit `695bc9a84f3a1652115b3f5dd5abcc26430cb000` and the exact inventory CIDs.
 
 Public peering and Cloudflare gateway exposure remain separate future operations.
 Metadata does not contain its own Standard JSON input CID: the input/output CIDs
