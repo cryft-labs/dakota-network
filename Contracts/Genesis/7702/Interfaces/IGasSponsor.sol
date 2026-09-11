@@ -128,6 +128,8 @@ interface IGasSponsor {
     function proposePlatformAdmin(address pendingAdmin_) external;
 
     function acceptPlatformAdmin() external;
+    /// @notice Cancel a pending handover without changing the active administrator.
+    function cancelPlatformAdminTransfer() external;
 
     function setVoucherSigner(address signer) external;
 
@@ -215,4 +217,5 @@ interface IGasSponsor {
     function sponsorStorageLocation() external pure returns (bytes32);
 
     function implementationVersion() external pure returns (string memory);
+    function depositGasCredit(address sponsor) external payable;
 }

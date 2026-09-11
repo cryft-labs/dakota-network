@@ -9,6 +9,9 @@
 
 pragma solidity >=0.8.2 <0.9.0;
 
+import "../../../Governance/GovernanceMembers.sol";
+import "../../../Governance/GovernanceVotes.sol";
+
 import "../ERC1967/ERC1967Proxy.sol";
 
 /*
@@ -103,6 +106,37 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     //
     //    The admin CANNOT be changed at runtime — it is permanent.
     //
+    struct ProxyGovernanceStorage {
+        address[] localOverlords;
+        bytes32 sessionContext;
+    }
+    function _proxyGovernanceStorage() private pure returns (ProxyGovernanceStorage storage s) {
+        bytes32 slot = keccak256("cryft.proxy.governance.snapshot.v1");
+        assembly ("memory-safe") { s.slot := slot }
+    }
+    function _governanceMembers() private view returns (address[] memory) {
+        address[] memory roots = _isRootRevoked() ? new address[](0)
+            : GovernanceMembers.read(_PROXY_VALIDATOR_CONTRACT, bytes4(keccak256("getRootOverlords()")));
+        return GovernanceMembers.combineControllers(_proxyGovernanceStorage().localOverlords, roots);
+    }
+    function _governanceContext() private view returns (bytes32) {
+        return keccak256(abi.encode(_getVoteEpoch(), _isRootRevoked(), _governanceMembers()));
+    }
+    function proxy_getGovernanceMembers() external view returns (address[] memory) { return _governanceMembers(); }
+    function proxy_getActiveVoteSnapshot() external view returns (uint256 threshold, uint256 expires, address[] memory electorate) {
+        if (!_isSessionActive()) return (0, 0, new address[](0));
+        GovernanceVotes.Proposal storage p = GovernanceVotes.proposal(_proxyVotes(), _getActiveProposal());
+        return (p.threshold, p.expires, p.electorate);
+    }
+    function _castProxyVote(bytes32 proposalId) private returns (uint256 votes, uint256 threshold) {
+        _enforceSession(proposalId);
+        address[] memory members;
+        if (!GovernanceVotes.live(_proxyVotes(), proposalId)) members = _governanceMembers();
+        GovernanceVotes.cast(_proxyVotes(), proposalId, members, proxy_getVoteExpiry(), msg.sender);
+        GovernanceVotes.Proposal storage p = GovernanceVotes.proposal(_proxyVotes(), proposalId);
+        return (p.votes.length, p.threshold);
+    }
+
     address private constant _PROXY_ADMIN = 0x0000000000000000000000000000000000FacAdE;
     address private constant _PROXY_VALIDATOR_CONTRACT = 0x0000000000000000000000000000000000001111;
 
@@ -168,11 +202,9 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     /// @dev Returns the count of root overlords from the validator contract.
     function _getRootOverlordCount() internal view returns (uint256) {
-        try IValidatorRootOverlord(_PROXY_VALIDATOR_CONTRACT).getRootOverlords() returns (address[] memory overlords) {
-            return overlords.length;
-        } catch {
-            return 0;
-        }
+        address[] memory providers = new address[](1);
+        providers[0] = _PROXY_VALIDATOR_CONTRACT;
+        return GovernanceMembers.collect(new address[](0), providers, bytes4(keccak256("getRootOverlords()"))).length;
     }
 
     event OverlordAdded(address indexed overlord);
@@ -264,6 +296,8 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         require(!_isRootRevoked(), "Root overlord already revoked");
         require(_rawOverlordCount() > 0, "Cannot revoke: no other overlords exist");
         _setRootRevoked(true);
+        _clearActiveProposal();
+        _incrementVoteEpoch();
         emit RootOverlordRevoked();
     }
 
@@ -435,10 +469,19 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _setOverlord(address addr, bool status) internal {
-        bytes32 slot = _overlordSlot(addr);
-        assembly ("memory-safe") {
-            sstore(slot, status)
+        require(addr != address(0), "Zero overlord");
+        ProxyGovernanceStorage storage s = _proxyGovernanceStorage();
+        if (status && !_isOverlord(addr)) {
+            require(s.localOverlords.length < GovernanceMembers.MAX_MEMBERS, "Overlord limit");
+            s.localOverlords.push(addr);
+        } else if (!status && _isOverlord(addr)) {
+            for (uint256 i; i < s.localOverlords.length; ++i) {
+                if (s.localOverlords[i] == addr) { s.localOverlords[i] = s.localOverlords[s.localOverlords.length - 1]; s.localOverlords.pop(); break; }
+            }
         }
+        bytes32 slot = _overlordSlot(addr);
+        assembly ("memory-safe") { sstore(slot, status) }
+        require(_governanceMembers().length > 0, "Cannot remove last controller");
     }
 
     /// @dev Returns the raw (stored) overlord count, excluding root overlord.
@@ -452,13 +495,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     /// @dev Returns total overlord count, including root overlords when active.
-    function proxy_getOverlordCount() public view returns (uint256) {
-        uint256 count = _rawOverlordCount();
-        if (!_isRootRevoked()) {
-            count += _getRootOverlordCount();
-        }
-        return count;
-    }
+    function proxy_getOverlordCount() public view returns (uint256) { return _governanceMembers().length; }
 
     function _setOverlordCount(uint256 count) internal {
         bytes32 slot = _PROXY_OVERLORD_COUNT_SLOT;
@@ -510,7 +547,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         return epoch;
     }
 
+    /// @dev Proxy ballots must never share the delegated application's voting storage.
+    function _proxyVotes() private pure returns (GovernanceVotes.State storage) {
+        return GovernanceVotes.state(keccak256("cryft.proxy.governance.votes.v1"));
+    }
+
     function _incrementVoteEpoch() internal {
+        GovernanceVotes.invalidate(_proxyVotes());
         bytes32 slot = _PROXY_VOTE_EPOCH_SLOT;
         uint256 epoch;
         assembly ("memory-safe") {
@@ -521,18 +564,18 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _getProposalId(bool isAdd, address target) internal view returns (bytes32) {
-        bytes32 proposalKey = keccak256(abi.encodePacked(_getVoteEpoch(), isAdd, target));
+        bytes32 proposalKey = keccak256(abi.encodePacked(_governanceContext(), isAdd, target));
         return keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
     }
 
     /// @dev Returns the base key for a proposal (without round), used for round tracking.
     function _getProposalKey(bool isAdd, address target) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(_getVoteEpoch(), isAdd, target));
+        return keccak256(abi.encodePacked(_governanceContext(), isAdd, target));
     }
 
     /// @dev Same pattern for expiry-change proposals.
     function _getExpiryProposalKey(uint256 newExpiry) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(_getVoteEpoch(), "expiry", newExpiry));
+        return keccak256(abi.encodePacked(_governanceContext(), "expiry", newExpiry));
     }
 
     function _getExpiryProposalId(uint256 newExpiry) internal view returns (bytes32) {
@@ -542,7 +585,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     /// @dev Proposal key for clearing guardians.
     function _getClearGuardiansProposalKey() internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(_getVoteEpoch(), "clearGuardians"));
+        return keccak256(abi.encodePacked(_governanceContext(), "clearGuardians"));
     }
 
     function _getClearGuardiansProposalId() internal view returns (bytes32) {
@@ -552,7 +595,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     /// @dev Proposal key for guardian add/remove.
     function _getGuardianProposalKey(bool isAdd, address target) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(_getVoteEpoch(), "guardian", isAdd, target));
+        return keccak256(abi.encodePacked(_governanceContext(), "guardian", isAdd, target));
     }
 
     function _getGuardianProposalId(bool isAdd, address target) internal view returns (bytes32) {
@@ -562,7 +605,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     /// @dev Proposal key for restoring root overlord.
     function _getRestoreRootProposalKey() internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(_getVoteEpoch(), "restoreRoot"));
+        return keccak256(abi.encodePacked(_governanceContext(), "restoreRoot"));
     }
 
     function _getRestoreRootProposalId() internal view returns (bytes32) {
@@ -572,7 +615,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     /// @dev Proposal key for forcibly revoking root overlord.
     function _getRevokeRootProposalKey() internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(_getVoteEpoch(), "revokeRoot"));
+        return keccak256(abi.encodePacked(_governanceContext(), "revokeRoot"));
     }
 
     function _getRevokeRootProposalId() internal view returns (bytes32) {
@@ -581,12 +624,8 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _getProposalVoteCount(bytes32 proposalId) internal view returns (uint256) {
-        bytes32 slot = keccak256(abi.encodePacked(_PROXY_PROPOSAL_VOTE_COUNT_SLOT, proposalId));
-        uint256 count;
-        assembly ("memory-safe") {
-            count := sload(slot)
-        }
-        return count;
+        if (!GovernanceVotes.current(_proxyVotes(), proposalId)) return 0;
+        return GovernanceVotes.proposal(_proxyVotes(), proposalId).votes.length;
     }
 
     function _setProposalVoteCount(bytes32 proposalId, uint256 count) internal {
@@ -597,12 +636,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     function _hasVoted(bytes32 proposalId, address voter) internal view returns (bool) {
-        bytes32 slot = keccak256(abi.encodePacked(_PROXY_PROPOSAL_VOTER_SLOT, proposalId, voter));
-        bool voted;
-        assembly ("memory-safe") {
-            voted := sload(slot)
-        }
-        return voted;
+        return GovernanceVotes.voted(_proxyVotes(), proposalId, voter);
     }
 
     function _setHasVoted(bytes32 proposalId, address voter, bool voted) internal {
@@ -615,12 +649,8 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     // ── Proposal start block tracking ──
 
     function _getProposalStartBlock(bytes32 proposalId) internal view returns (uint256) {
-        bytes32 slot = keccak256(abi.encodePacked(_PROXY_PROPOSAL_START_BLOCK_SLOT, proposalId));
-        uint256 startBlock;
-        assembly ("memory-safe") {
-            startBlock := sload(slot)
-        }
-        return startBlock;
+        if (!GovernanceVotes.current(_proxyVotes(), proposalId)) return 0;
+        return GovernanceVotes.proposal(_proxyVotes(), proposalId).start;
     }
 
     function _setProposalStartBlock(bytes32 proposalId, uint256 blockNum) internal {
@@ -716,10 +746,8 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      * @dev Returns true if a voting session is currently in progress and not expired.
      */
     function _isSessionActive() internal view returns (bool) {
-        bytes32 active = _getActiveProposal();
-        if (active == bytes32(0)) return false;
-        uint256 start = _getActiveProposalStart();
-        return block.number <= start + proxy_getVoteExpiry();
+        return _proxyGovernanceStorage().sessionContext == _governanceContext()
+            && GovernanceVotes.live(_proxyVotes(), _getActiveProposal());
     }
 
     /**
@@ -728,25 +756,17 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      the lock and allows the new proposal.
      */
     function _enforceSession(bytes32 proposalId) internal {
+        bytes32 context = _governanceContext();
+        ProxyGovernanceStorage storage s = _proxyGovernanceStorage();
+        if (s.sessionContext != context) {
+            GovernanceVotes.invalidate(_proxyVotes());
+            _clearActiveProposal();
+            s.sessionContext = context;
+        }
         bytes32 active = _getActiveProposal();
-        if (active == bytes32(0)) {
-            // No active session — start one
-            _setActiveProposal(proposalId);
-            _setActiveProposalStart(block.number);
-            return;
-        }
-        if (active == proposalId) {
-            // Voting on the active proposal — allowed
-            return;
-        }
-        // Different proposal — check if current session expired
-        uint256 start = _getActiveProposalStart();
-        require(
-            block.number > start + proxy_getVoteExpiry(),
-            "Another proposal is still active, wait for it to expire or pass"
-        );
-        // Expired — clear and start new session
-        _clearActiveProposal();
+        if (active == proposalId) return;
+        require(!GovernanceVotes.live(_proxyVotes(), active), "Another proposal is still active, wait for it to expire or pass");
+        if (active != bytes32(0)) GovernanceVotes.complete(_proxyVotes(), active);
         _setActiveProposal(proposalId);
         _setActiveProposalStart(block.number);
     }
@@ -796,27 +816,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
+        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
         }
 
-        // Enforce single-session voting
-        _enforceSession(proposalId);
-
-        // Record start block on first vote of this round
-        if (_getProposalStartBlock(proposalId) == 0) {
-            _setProposalStartBlock(proposalId, block.number);
-        }
-
-        require(!_hasVoted(proposalId, msg.sender), "Already voted on this proposal");
-
-        _setHasVoted(proposalId, msg.sender, true);
-        uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
-        _setProposalVoteCount(proposalId, newVoteCount);
-
-        uint256 threshold = proxy_getOverlordThreshold();
+        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId);
         emit OverlordChangeProposed(msg.sender, target, isAdd, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -840,7 +846,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      Minimum expiry: 100 blocks (~5 minutes at 3s blocks) to prevent abuse.
      */
     function proxy_proposeExpiryChange(uint256 newExpiry) external onlyOverlord {
-        require(newExpiry >= 100, "Expiry too short, minimum 100 blocks");
+        require(newExpiry >= 100 && newExpiry <= 100000, "Expiry must be 100 to 100000 blocks");
         require(newExpiry != proxy_getVoteExpiry(), "Already set to this value");
         require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
@@ -849,27 +855,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
+        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
         }
 
-        // Enforce single-session voting
-        _enforceSession(proposalId);
-
-        // Record start block on first vote of this round
-        if (_getProposalStartBlock(proposalId) == 0) {
-            _setProposalStartBlock(proposalId, block.number);
-        }
-
-        require(!_hasVoted(proposalId, msg.sender), "Already voted on this proposal");
-
-        _setHasVoted(proposalId, msg.sender, true);
-        uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
-        _setProposalVoteCount(proposalId, newVoteCount);
-
-        uint256 threshold = proxy_getOverlordThreshold();
+        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId);
         emit ExpiryChangeProposed(msg.sender, newExpiry, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -962,7 +954,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         proposalId = _getActiveProposal();
         startBlock = _getActiveProposalStart();
         if (proposalId != bytes32(0) && startBlock > 0) {
-            expired = block.number > startBlock + proxy_getVoteExpiry();
+            expired = block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires;
         }
     }
 
@@ -985,27 +977,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
+        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
         }
 
-        // Enforce single-session voting
-        _enforceSession(proposalId);
-
-        // Record start block on first vote of this round
-        if (_getProposalStartBlock(proposalId) == 0) {
-            _setProposalStartBlock(proposalId, block.number);
-        }
-
-        require(!_hasVoted(proposalId, msg.sender), "Already voted on this proposal");
-
-        _setHasVoted(proposalId, msg.sender, true);
-        uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
-        _setProposalVoteCount(proposalId, newVoteCount);
-
-        uint256 threshold = proxy_getOverlordThreshold();
+        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId);
         emit ClearGuardiansProposed(msg.sender, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -1040,27 +1018,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
+        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
         }
 
-        // Enforce single-session voting
-        _enforceSession(proposalId);
-
-        // Record start block on first vote of this round
-        if (_getProposalStartBlock(proposalId) == 0) {
-            _setProposalStartBlock(proposalId, block.number);
-        }
-
-        require(!_hasVoted(proposalId, msg.sender), "Already voted on this proposal");
-
-        _setHasVoted(proposalId, msg.sender, true);
-        uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
-        _setProposalVoteCount(proposalId, newVoteCount);
-
-        uint256 threshold = proxy_getOverlordThreshold();
+        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId);
         emit GuardianChangeProposed(msg.sender, target, isAdd, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -1089,27 +1053,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
+        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
         }
 
-        // Enforce single-session voting
-        _enforceSession(proposalId);
-
-        // Record start block on first vote of this round
-        if (_getProposalStartBlock(proposalId) == 0) {
-            _setProposalStartBlock(proposalId, block.number);
-        }
-
-        require(!_hasVoted(proposalId, msg.sender), "Already voted on this proposal");
-
-        _setHasVoted(proposalId, msg.sender, true);
-        uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
-        _setProposalVoteCount(proposalId, newVoteCount);
-
-        uint256 threshold = proxy_getOverlordThreshold();
+        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId);
         emit RestoreRootProposed(msg.sender, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -1135,27 +1085,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > startBlock + proxy_getVoteExpiry()) {
+        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
         }
 
-        // Enforce single-session voting
-        _enforceSession(proposalId);
-
-        // Record start block on first vote of this round
-        if (_getProposalStartBlock(proposalId) == 0) {
-            _setProposalStartBlock(proposalId, block.number);
-        }
-
-        require(!_hasVoted(proposalId, msg.sender), "Already voted on this proposal");
-
-        _setHasVoted(proposalId, msg.sender, true);
-        uint256 newVoteCount = _getProposalVoteCount(proposalId) + 1;
-        _setProposalVoteCount(proposalId, newVoteCount);
-
-        uint256 threshold = proxy_getOverlordThreshold();
+        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId);
         emit RevokeRootProposed(msg.sender, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {

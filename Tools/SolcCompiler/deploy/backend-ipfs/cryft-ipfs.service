@@ -1,0 +1,50 @@
+[Unit]
+Description=Cryft IPFS storage (Nebula peers only)
+Wants=network-online.target
+After=network-online.target dnclient.service
+RequiresMountsFor=/var/lib/cryft-ipfs
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=exec
+User=cryft-ipfs
+Group=cryft-ipfs
+Environment=IPFS_PATH=/var/lib/cryft-ipfs
+Environment=GOMAXPROCS=2
+WorkingDirectory=/var/lib/cryft-ipfs
+StateDirectory=cryft-ipfs
+StateDirectoryMode=0700
+ExecStartPre=/usr/bin/test -s /var/lib/cryft-ipfs/config
+ExecStart=/opt/cryft/ipfs/current/ipfs daemon --migrate=false --enable-gc
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=120
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=/var/lib/cryft-ipfs
+# Enforce peer policy separately from HTTP tunnel networking. Verify cgroup/BPF
+# support on the installed host; also install equivalent host firewall rules.
+IPAddressDeny=any
+IPAddressAllow=localhost
+IPAddressAllow=100.111.0.0/16
+MemoryHigh=1536M
+MemoryMax=2G
+CPUQuota=200%
+TasksMax=512
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

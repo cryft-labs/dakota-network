@@ -1,0 +1,727 @@
+{
+  "all_passed": true,
+  "artifact_count": 90,
+  "live_chain_test": false,
+  "results": [
+    {
+      "contract": "source/CodeManagement/CanonicalUid.sol:CanonicalUid",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "2655dce0f0e25dcd1f754f6fb58c6b5066e6faac7d6d8dff6013cfcfeaca6c90",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/CodeManagement/CodeManager.sol:CodeManager",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 24480,
+      "standard_input_sha256": "9214a25a3fc2b6018007eb650451812875d5c1ca5c11a4e88ff8e95216a0e7b6",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/CodeManagement/CodeManager.sol:IVoterChecker",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "918603edc2c0833c694e7dbf6b1a9947b331bda3a7d6cbf355cf2487261cc834",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/CodeManagement/Interfaces/ICodeManager.sol:ICodeManager",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "ed31a4aa77478901262cfba2066192ee4d42801c20bd8a1e6e20ad70a5b61e91",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/CodeManagement/Interfaces/IRedeemable.sol:IRedeemable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "aef0cc10748d4e684d1de232c6b7ca7a59caf883fb1d9734b58dba2a42c6327c",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Governance/GovernanceMembers.sol:GovernanceMembers",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "ef5bad8e369819ee3411572d87982afc9600839a7f8f163df04d0d3539409a8b",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Governance/GovernanceVotes.sol:GovernanceVotes",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "c3247e5e2a2834a37ef1bc40d95da31a2618a738ddbd0002738cc8e609833d80",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/AddressUpgradeable.sol:AddressUpgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "bf7ad0cf17926452af45ff7b60b33b8870a30faabbaf0a5b538d0efee5b6bf9a",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Initializable.sol:Initializable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "2883f6129f7aace386ad5caefbc67207882ada72f41e342763b75b4a3d07609c",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol:ReentrancyGuardUpgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "3472bb426843b1d1826c13887793678d18812533293fa032538e1ee722721f8b",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Utils/Math/MathUpgradeable.sol:MathUpgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "ba8d73e453e4202c95f4d61f62efe64f1fc395a261c4cc120d3797da672564d0",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Utils/Math/SignedMathUpgradeable.sol:SignedMathUpgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "2461241886f8dcbe2613fe612b8d6b7a24c0369b2846dc6131591472fcea263d",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Utils/StringsUpgradeable.sol:StringsUpgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "242df4b587b643183afe83cdadf4f5680642f1f8deeb85c2c575fa1df37be879",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/CodeManagement/CanonicalUid.sol:CanonicalUid",
+      "solc": "0.8.37",
+      "evm": "shanghai",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "a886175a84725bd1682a9d5ea1d669eb00d1fc8401a5844da61c014156db8944",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/CodeManagement/PrivateComboStorage.sol:PrivateComboStorage",
+      "solc": "0.8.37",
+      "evm": "shanghai",
+      "runtime_bytes": 17127,
+      "standard_input_sha256": "4c9a19cc95d79b8cf0dba003af81f5d764124a06b6be42cf90bda101d2bb37a9",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/CodeManagement/Interfaces/IPrivateMetaTxRelay.sol:IPrivateMetaTxRelay",
+      "solc": "0.8.37",
+      "evm": "shanghai",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "b70c66d58a34e57c9fa29efcf18fb308899bf820896184cda8c3b7c799a20d6c",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/CodeManagement/PrivateMetaTxRelay.sol:PrivateMetaTxRelay",
+      "solc": "0.8.37",
+      "evm": "shanghai",
+      "runtime_bytes": 4962,
+      "standard_input_sha256": "41014c2a07a363e0b472602fec8055c67766879665b4b1411787180612e405db",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/DakotaDelegation.sol:DakotaDelegation",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 5531,
+      "standard_input_sha256": "7aed7300d59b953c40248f7a381bafa86662fad330c1048bba6d8c6c594208ff",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/DelegationGas.sol:DelegationGas",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "1649736f8028b0a5c5840509814223a03ae07d70f413c2405489d4e4a24f75e2",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/Interfaces/IDakotaDelegation.sol:IDakotaDelegation",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "4cbe17ba8a969a5bb1bcf396aafde920cb551b475223a86732bd93c52c430dba",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/Libraries/DakotaDelegationCapabilities.sol:DakotaDelegationCapabilities",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "bcade5e5d583f82a625d74167af5a242623d3ca7cb0a2008e2d82af26b7b038a",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/Libraries/DakotaECDSA.sol:DakotaECDSA",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "dda0d74216156bc3d8ca662bf55c28969f554e25e827e7da2083256b2f2f69bd",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/access/Ownable.sol:Ownable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "cf74a6918eabb7c0f5299240297562eb04b9c5cca4c3544847054a9e50ceb057",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/beacon/IBeacon.sol:IBeacon",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "c780cf0599352ad1965aa99fdf5bec9c5e9ce774b1122ef7dfb81ec1a4f55d7e",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/beacon/UpgradeableBeacon.sol:UpgradeableBeacon",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 644,
+      "standard_input_sha256": "dcf6543f3f85976d77051e15fa6736cdea01ab3bb2bb73a4cb5ec63af2b3c5fd",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Context.sol:Context",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "b2fd6a1c85ab0f7c958c746094e2e11c5196fe7b6e8a7cbb5e8ee075a21d9723",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/DakotaDelegationBeacon.sol:DakotaDelegationBeacon",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 1046,
+      "standard_input_sha256": "11b3a195b641da1c570cf53955b61debfdea5a7b95d2fab96aea931530d6b284",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/DakotaDelegationBeacon.sol:IDakotaDelegationBeaconRootRegistry",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "ac8cf4c95508c0d2704a8f4e20335fdf006c9a4d4075cb18d4ef9c0d6ed8e9c2",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/DakotaDelegationBeaconDispatcher.sol:DakotaDelegationBeaconDispatcher",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 813,
+      "standard_input_sha256": "fe4c468a35cfb45b32f67cff9dc2eee5feae33139448a7464d7c33e98d79a841",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol:IBeacon",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "d357a4ba7121237d126f5c629321f64d950c8077365be3ba0893969a2ec5b6d0",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/DakotaDelegationRegistry.sol:DakotaDelegationRegistry",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 14089,
+      "standard_input_sha256": "1fdd34265c57a16a7f52e1c872872ac75a3f0ee95865f08deee54e7c9e24b218",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/DakotaDelegationRegistry.sol:IDakotaDelegationBeaconControl",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "87a5e49cc083f6ff7942b6fee9a5a11af9cf14bf4d359e2c6dfc41697dc439c6",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/DakotaDelegationRegistry.sol:IDakotaDelegationRootRegistry",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "8ab097d81b77f94e062cf8f3ea79a7c1a27b8b4e1150b02b98e3a0aa7e53e1bb",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/Interfaces/IDakotaDelegationRegistry.sol:IDakotaDelegationRegistry",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "379655cb87c16b1fc92304a493442ea93f0151f74311a6cd394e1808a57454a9",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/Interfaces/IGasSponsor.sol:IGasSponsor",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "81d5a1182fd0752c0300bac1c3e7fc60a0a2efb07225459f6cd2ed05e78b0232",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/GasSponsor.sol:GasSponsor",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 13751,
+      "standard_input_sha256": "e918b4cffc7f13e4d82c397fddb6aac67a80ebab1b36b9243dc742b5ea8345a9",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/GasSponsor.sol:IERC1271VoucherSigner",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "89274674b56e6311e3ab461924aea2603256851278d4481c5cd5acf9038a22dc",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/7702/GasSponsor.sol:IRootOverlordRegistry",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "b4df51217e54c55082d7f3555365389b1b2e7d0b5d72bea842e9ad3f1db6699b",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/GasManager/GasManager.sol:GasManager",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 23588,
+      "standard_input_sha256": "9759ffba203fd28e8121f7ab3f6685414395132f9cbf943e9b43b1bd3da9d360",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/GasManager/GasManager.sol:IERC20",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "fdc6ba55e071b1fea765d9bc7fa1d081182b73f4a6a2664fc5c753288fc3f7bb",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/GasManager/GasManager.sol:IGasSponsorDepository",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "1c7166540f071b9fcd1c792000f2a1e1ddd3e11e1eb3108aa3d064532c21ef8f",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/GasManager/GasManager.sol:IVoterChecker",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "01e1944a821278e2439a66d49cb4911eba6792043435498996762d6f9ffc55de",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol:IERC1822Proxiable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "7f52a9a7a0ab6173a6f356bb2475258bda90c5d84ae0a571902755d99455daad",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Interfaces/IERC1967.sol:IERC1967",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "741e4ef43186b5045deb38533b96f36671f046d73266c86b01f85a2c6797f7ef",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 173,
+      "standard_input_sha256": "143bf99ef09b2f96ede102159da7e7d2b55afc66ceab18f43ccd7a16cbceb86e",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol:ERC1967Upgrade",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "219d25e9a25c9880d35f43d966c777f5e2e9eee8ea122162c426e799b70d9669",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Proxy/Proxy.sol:Proxy",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "bbf9ec25d0bf5454e89f57a622754d1932b04caf362a5dadf5f10a9b1eac3413",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol:ProxyAdmin",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 3200,
+      "standard_input_sha256": "bae3f59b1c109e9fc501bfda6a65f4572a24ccfd3c02f398443ba9d0e7a5a02a",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol:ITransparentUpgradeableProxy",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "1a12c125f5ff975d50eb4a9e3bb8b4d72e9024ee3934366263318af2b526ae10",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol:IValidatorRootOverlord",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "39664e34a3f9376b365381ef0dbac69e30fe4949cb797a5c8070de06edbe6d36",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 19115,
+      "standard_input_sha256": "79c93cb153978813e5e5b6c2fbd3e624aa00c9dc698a0934b398dc18b743d9f8",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Utils/Address.sol:Address",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "a252244eafe4cc54aee571720cd65695ae7c650032b8cfea663b91f1d53059ce",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Utils/StorageSlot.sol:StorageSlot",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "3290791c305160f83f35df1a8591f3e9d17ac543a74bc4546e35414895b833ba",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Governance/GovernanceMembers.sol:GovernanceMembers",
+      "solc": "0.8.19",
+      "evm": "london",
+      "runtime_bytes": 86,
+      "standard_input_sha256": "4740e624ef6fbb2b78f5ff01ae5ca9b1eb97289779b03f0cba75b6bb36f7e2e7",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/Governance/GovernanceVotes.sol:GovernanceVotes",
+      "solc": "0.8.19",
+      "evm": "london",
+      "runtime_bytes": 86,
+      "standard_input_sha256": "36a4d29e3d25a415085f99da2a47fbd6dc8995c2f646a72e2bdf1adb11256ce5",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol:ValidatorSmartContractAllowList",
+      "solc": "0.8.19",
+      "evm": "london",
+      "runtime_bytes": 21412,
+      "standard_input_sha256": "639adfd449215c68210f27ec9b12d3161ca81bef982aba0505cb85cb5e89f44d",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Genesis/validatorContracts/ValidatorSmartContractInterface.sol:ValidatorSmartContractInterface",
+      "solc": "0.8.19",
+      "evm": "london",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "b84aaf585ca0efe86794a634abaf9906a1937590b378933afc7ce0d3f6df0109",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/interfaces/IERC1967.sol:IERC1967",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "55703ea86d4c5ae050a6275dc1d77ae291b1feb7bc8b3be700bffb36ffb15307",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 163,
+      "standard_input_sha256": "29866abed941ed2c7b3a3be2a63b49ad2aa3498a43e390cc8661f68daa874574",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/ERC1967/ERC1967Utils.sol:ERC1967Utils",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "a35965d702a947fa30c89ee6373f64f6745269d98e058bc18439e143175a7191",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/Proxy.sol:Proxy",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "2562fd05321b2b7c5073d75775f7c8912da87cf815bb2fc3be04a405dab5c76f",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/transparent/ProxyAdmin.sol:ProxyAdmin",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 1018,
+      "standard_input_sha256": "facace5cac935d2fe955fc8355b67ab69f2d012d5b38179ab632c1bbbd8c69f9",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol:ITransparentUpgradeableProxy",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "4e93a9d382c1c08994bf78258c77b3cf5a45ba5d54cb5322466b3cdd91d6b890",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/transparent/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 1115,
+      "standard_input_sha256": "ed646362446b8ed5a38cb7d3d00d3a60bf4d6cf5609acc2fc115f7e63b60b75d",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Address.sol:Address",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "9be2b9b67e9ff99ce9b716471d4695eec96cc65c0aa540dc98a8869d2c1b8a59",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Errors.sol:Errors",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "9aaaa8c775765ebcb407c3dbf63b3fc7e21034a46ae63bb65d0b56d345492226",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/StorageSlot.sol:StorageSlot",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "3e07e6bb59bc8621d4696c819ad06579451cbf65e30ef39a8944f22bed89c36f",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/access/OwnableUpgradeable.sol:OwnableUpgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "6be8cb8db004a0d468b18ddd3d9ce67b5c1e782098edeaa97ec7281ded36de7a",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/proxy/utils/Initializable.sol:Initializable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "899876d091271fa606dd5afa7d776689cc7a56a6cacb23b73fe99faddde6e40a",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/token/ERC721/ERC721Upgradeable.sol:ERC721Upgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "2d29e6172246329433bbc31d13acc70f0ffd4f391394e3d19f7450e0d936757b",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/utils/ContextUpgradeable.sol:ContextUpgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "f7af542d930431cedef172c154c843397d2e4caaf9d2e6a6aeff6fa7bb84ff59",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/utils/ReentrancyGuardUpgradeable.sol:ReentrancyGuardUpgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "2bdaa7ddd0cf13003ff31ee9f4cefaf69fd97da4defe6430e07a7e72fb6495b2",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/utils/introspection/ERC165Upgradeable.sol:ERC165Upgradeable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "f73010764c9814fb81e996e545fd1a5058a7c607d2592987fd58efa1fb806a5a",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/interfaces/draft-IERC6093.sol:IERC1155Errors",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "95b7351f3a1a1e7d8cd33824ba0026699ca2356e0f86b24604ca953b8736851e",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/interfaces/draft-IERC6093.sol:IERC20Errors",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "c6bef64e92a8e39fbc61b94640973daf886ce1790abe78ceb5b137f04e1c785a",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/interfaces/draft-IERC6093.sol:IERC721Errors",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "bd3f5211b9714123ace4508851f761ad584583148c42ca524676a382535ca28a",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC20/IERC20.sol:IERC20",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "0e337f8ade078ed69ab1a90f6d8996e0e19863c62b644e3b9d04baea729a04e9",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC721/IERC721.sol:IERC721",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "3244f4041eab7f6106e31e487381eac0cdb1c7f20f44d40588774d9a65f0ee7e",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC721/IERC721Receiver.sol:IERC721Receiver",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "bde1a80bb56029eb5f7f349f5195acd87dd13d46d7d946439d886c518e295637",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC721/extensions/IERC721Metadata.sol:IERC721Metadata",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "138c8a8a17a2fabff8548fa8254e6b234db4bb96356cce1c0096035694609f76",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC721/utils/ERC721Utils.sol:ERC721Utils",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "0b529f163bd2152d81659cfa920dbd28539ddc53c9afb70de6e99f45aee4e99e",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Panic.sol:Panic",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "5edf16c63dd85ff07e093e83771d33930b4cce62541c94f9c630f64d548a25dd",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Strings.sol:Strings",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "306dff268566e13aa5b55eb8efead7b6780df18035fb2a72d5cbb9d81f4f25fd",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/introspection/IERC165.sol:IERC165",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "681ff19ac08df1a1c616f539240b562986c6bc6d6ad004b0935c07195277ac7d",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/math/Math.sol:Math",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "e42654b645c48ebf8d458b5bc76a49a0e5618e26e8c129910e58dc5491e84c6f",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/math/SafeCast.sol:SafeCast",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "ba454317e7ac621facb27cf6cdabf816b1d97fe0ea2fa5e3760920f005c4b394",
+      "replay_matched": true
+    },
+    {
+      "contract": "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/math/SignedMath.sol:SignedMath",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 85,
+      "standard_input_sha256": "6044bee301277f99757897d62edce4c788a392cfe962c492e5e13ac330a6df60",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Tokens/GreetingCards.sol:CryftGreetingCards",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 18283,
+      "standard_input_sha256": "c18f7b4ba895ea6bdf75ee649e82a7e1ad244a42065a319a31d96ab23d458fdb",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Tokens/Interfaces/ICodeManager.sol:ICodeManager",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "e1bde9df46cb1c77acfad94860aa0791c03e50fded293dfb265676f44def4f12",
+      "replay_matched": true
+    },
+    {
+      "contract": "source/Tokens/Interfaces/IRedeemable.sol:IRedeemable",
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 0,
+      "standard_input_sha256": "0b440ef8343600bbbc7c8add8c778adf485338b62cd1862ae9ca8aa4e83a0b5b",
+      "replay_matched": true
+    }
+  ]
+}

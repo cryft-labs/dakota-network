@@ -1,0 +1,34 @@
+[Unit]
+Description=Cryft unprivileged HTTP reverse proxy
+Wants=network-online.target
+After=network-online.target dnclient.service
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=exec
+User=cryft-proxy
+Group=cryft-proxy
+RuntimeDirectory=cryft-nginx
+CacheDirectory=cryft-nginx
+LogsDirectory=cryft-nginx
+ExecStartPre=/usr/sbin/nginx -t -c /etc/cryft/nginx/nginx.conf
+ExecStart=/usr/sbin/nginx -c /etc/cryft/nginx/nginx.conf -g "daemon off;"
+ExecReload=/usr/sbin/nginx -t -c /etc/cryft/nginx/nginx.conf
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGQUIT
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=15
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

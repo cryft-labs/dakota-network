@@ -7,71 +7,22 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 /*
-   ___                 __       ______           __       ______
-  / _ \ __ (_)  _____ / /____  / ___/__  __ _  / /  ___ / __/ /____  _______ ____ ____
- / ___/ _// / |/ / _ `/ __/ -_) /__/ _ \/  ' \/ _ \/ _ \\ \/ __/ _ \/ __/ _ `/ _ `/ -_)
-/_/  /_/ /_/|___/\_,_/\__/\__/\___/\___/_/_/_/_.__/\___/___/\__/\___/_/ \_,_/\_, /\__/
-                                                                            /___/ By: CryftCreator
-
-  Version 1.0 — Private Combo Storage  [PENTE PRIVACY GROUP]
-
-  ┌──────────────── Contract Architecture ──────────────────────────┐
-  │                                                                 │
-  │  DEPLOYED INSIDE A PALADIN PENTE PRIVACY GROUP.                 │
-  │  All state is private to privacy group members.                 │
-  │  All configuration is compile-time constant — changes           │
-  │  require a contract upgrade via proxy.                          │
-  │                                                                 │
-  │  Designed for client-generated redeemable codes:                │
-  │  codes are created off-chain, hashed, and submitted             │
-  │  in batches via storeDataBatch(StoreBatchRequest).              │
-  │  The contract assigns PIN routing keys and stores               │
-  │  hashes for O(1) verification. No cleartext code                │
-  │  ever touches the chain.                                        │
-  │                                                                 │
-  │  Caller-supplied entropy drives PIN assignment.                 │
-  │  Collision resolution chains keccak256(entropy)                 │
-  │  silently — no revert, no information leakage.                  │
-  │  Each PIN slot holds up to MAX_PER_PIN entries.                 │
-  │                                                                 │
-  │  ── Private Active State & Selective Mirroring ───────────────  │
-  │                                                                 │
-  │  Active/frozen status is tracked here privately.                │
-  │  At store time, mirrorStatuses[i] controls whether              │
-  │  each UID's active state is mirrored to CodeManager:            │
-  │    true  → state changes route to CodeManager publicly          │
-  │    false → state stays private; CodeManager sees only           │
-  │            USE_DEFAULT_ACTIVE_STATE (no public override)        │
-  │                                                                 │
-  │  setUniqueIdActiveBatch() updates private execution             │
-  │  state first, then mirrors only non-disabled UIDs               │
-  │  to CodeManager via PenteExternalCall.                          │
-  │                                                                 │
-  │  Redemption checks private UID state first, so                  │
-  │  inactive or redeemed UIDs are skipped before any               │
-  │  external redemption transition is emitted.                     │
-  │  CodeManager catches gift contract reverts via                  │
-  │  try/catch — private state is never rolled back                 │
-  │  by a faulty downstream contract.                               │
-  │                                                                 │
-  │  ── Per-UID Manager Delegation ───────────────────────────────  │
-  │                                                                 │
-  │  Each UID can optionally have a dedicated manager               │
-  │  address that can update its active state. If no                │
-  │  manager is assigned, only ADMIN or AUTHORIZED                  │
-  │  may act. Managers are set at store time or via                 │
-  │  setUniqueIdManagersBatch().                                    │
-  │                                                                 │
-  │  ── Contract Identifier Whitelisting ─────────────────────────  │
-  │                                                                 │
-  │  The contract-identifier prefix (derived from                   │
-  │  CodeManager + gift contract + chainId) must be                 │
-  │  whitelisted before codes can be stored for it.                 │
-  │  Managed via setContractIdentifierWhitelist().                  │
-  │                                                                 │
-  │  Patent: U.S. App. Ser. No. 18/930,857                          │
-  └─────────────────────────────────────────────────────────────────┘
+Private Combo Storage: state executes inside a Paladin Pente privacy group.
+Initialize the private proxy atomically with admin, service and optional trusted
+forwarder; the implementation constructor prevents direct initialization.
+Administration uses two-step transfer. Service and forwarder addresses rotate
+without recompilation. CODE_MANAGER and capacity limits remain code constants.
+Client-generated code hashes use per-batch PIN settings and entropy. Reservations
+are recorded within each batch before later entries allocate the same PIN/hash.
+Only registered canonical UIDs may be stored. Batch operations are bounded.
+Private active/redemption state drives selective PenteExternalCall events to the
+public CodeManager. Public delivery failures have committed-recipient retry state.
+UID managers, identifiers and service credentials require an explicit handover
+inventory; changing the admin does not automatically clear every UID manager.
+Patent: U.S. Application Serial No. 18/930,857.
 */
+
+import "./CanonicalUid.sol";
 
 contract PrivateComboStorage {
     enum UniqueIdLocalStatus {
@@ -96,10 +47,8 @@ contract PrivateComboStorage {
 
     // ── State ─────────────────────────────────────────────
     //
-    //    All configuration is compile-time constant. To change
-    //    addresses, limits, or access control, deploy a new
-    //    implementation and upgrade the proxy. Constants are
-    //    embedded in bytecode — no state trie lookups needed.
+    //    Public routing and capacity constants are embedded in bytecode.
+    //    Administrative and service roles live in appended storage.
     //
 
     /// @dev The CodeManager address on the public chain.
@@ -108,19 +57,19 @@ contract PrivateComboStorage {
     address public constant CODE_MANAGER = address(0x000000000000000000000000000000000000c0DE);
 
     /// @dev Admin — authorized to call storeDataBatch and redeemCodeBatch.
-    ///      Update via contract upgrade.
-    address public constant ADMIN = address(0x01d5E8F6aa4650e571acAa8733F46c3d16fa13cB);
+    ///      Managed through initialized roles and explicit administrative updates.
+    // ADMIN is initialized in appended storage below.
 
     /// @dev Authorized service account — also authorized to call
     ///      storeDataBatch and redeemCodeBatch (e.g., redemption service).
-    ///      Update via contract upgrade.
-    address public constant AUTHORIZED = address(0xc0dE49f742792913219DA0606f59a27431BCC0de);
+    ///      Managed through initialized roles and explicit administrative updates.
+    // AUTHORIZED is initialized in appended storage below.
 
     /// @dev Trusted meta-transaction forwarder (ERC-2771). When this
     ///      contract is called by the forwarder, the original signer's
     ///      address is extracted from the last 20 bytes of msg.data.
-    ///      Update via contract upgrade.
-    address public constant TRUSTED_FORWARDER = address(0x0000000000000000000000000000000000F04D);
+    ///      Managed through initialized roles and explicit administrative updates.
+    // TRUSTED_FORWARDER is initialized in appended storage below.
 
     /// @dev Default active state defined in CodeManager. Private status writes
     ///      only route deviations from this default.
@@ -161,7 +110,7 @@ contract PrivateComboStorage {
 
     /// @dev Maximum entries per PIN slot. When a slot reaches this cap,
     ///      the entropy chain skips to the next PIN automatically.
-    ///      Update via contract upgrade.
+    ///      Managed through initialized roles and explicit administrative updates.
     uint256 public constant MAX_PER_PIN = 32;
 
     /// @dev PIN → codeHash → code metadata. The PIN is a contract-assigned
@@ -202,6 +151,88 @@ contract PrivateComboStorage {
 
     /// @dev Private sparse execution state for each UID.
     mapping(bytes32 => UniqueIdLocalStatus) private _uniqueIdLocalStatuses;
+
+    // Appended fields preserve all preexisting private code/UID storage slots.
+    address public ADMIN;
+    address public AUTHORIZED;
+    address public TRUSTED_FORWARDER;
+    address public pendingAdmin;
+    bool private _authorityInitialized;
+    uint256 public constant MAX_BATCH_SIZE = 100;
+
+    event AdminTransferStarted(address indexed previousAdmin, address indexed pendingAdmin);
+    event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
+    event AuthorizedChanged(address indexed previousService, address indexed newService);
+    event TrustedForwarderChanged(address indexed previousForwarder, address indexed newForwarder);
+
+    constructor() { _authorityInitialized = true; }
+
+    /// @notice Call atomically with fresh private proxy deployment. Forwarder may
+    /// be zero for native private calls; enable a relay only when required.
+    function initialize(address admin_, address authorized_, address forwarder_) external {
+        require(!_authorityInitialized, "Already initialized");
+        _checkAdmin(admin_);
+        require(authorized_ != address(this), "Invalid service");
+        _checkForwarder(forwarder_);
+        _authorityInitialized = true;
+        ADMIN = admin_;
+        AUTHORIZED = authorized_;
+        TRUSTED_FORWARDER = forwarder_;
+        emit AdminTransferred(address(0), admin_);
+        emit AuthorizedChanged(address(0), authorized_);
+        emit TrustedForwarderChanged(address(0), forwarder_);
+    }
+
+    function transferAdmin(address next) external onlyAdmin {
+        _checkAdmin(next);
+        require(next != ADMIN, "Already admin");
+        pendingAdmin = next;
+        emit AdminTransferStarted(ADMIN, next);
+    }
+
+    function cancelAdminTransfer() external onlyAdmin {
+        pendingAdmin = address(0);
+        emit AdminTransferStarted(ADMIN, address(0));
+    }
+
+    function acceptAdmin() external {
+        address next = _msgSender();
+        require(next != address(0) && next == pendingAdmin, "Not pending admin");
+        address previous = ADMIN;
+        ADMIN = next;
+        pendingAdmin = address(0);
+        // A temporary administrator used as the service must not retain that
+        // independent global permission after handing over administration.
+        if (AUTHORIZED == previous) {
+            AUTHORIZED = address(0);
+            emit AuthorizedChanged(previous, address(0));
+        }
+        emit AdminTransferred(previous, next);
+    }
+
+    function setAuthorized(address next) external onlyAdmin {
+        require(next != address(this), "Invalid service");
+        emit AuthorizedChanged(AUTHORIZED, next);
+        AUTHORIZED = next;
+    }
+
+    function setTrustedForwarder(address next) external onlyAdmin {
+        _checkForwarder(next);
+        emit TrustedForwarderChanged(TRUSTED_FORWARDER, next);
+        TRUSTED_FORWARDER = next;
+    }
+
+    function _checkAdmin(address next) private view {
+        address proxyAdmin;
+        assembly ("memory-safe") { proxyAdmin := sload(0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103) }
+        require(next != address(0) && next != address(this) && next != proxyAdmin
+            && next != 0x0000000000000000000000000000000000FacAdE, "Invalid admin");
+    }
+
+    function _checkForwarder(address next) private view {
+        require(next == address(0) || (next != address(this) && next.code.length != 0), "Invalid forwarder");
+    }
+
 
     // ── Events ────────────────────────────────────────────
 
@@ -276,8 +307,8 @@ contract PrivateComboStorage {
     // ── ERC-2771 Trusted Forwarder ────────────────────────
 
     /// @notice Returns true if the given address is the trusted ERC-2771 forwarder.
-    function isTrustedForwarder(address forwarder) public pure returns (bool) {
-        return forwarder == TRUSTED_FORWARDER;
+    function isTrustedForwarder(address forwarder) public view returns (bool) {
+        return forwarder != address(0) && forwarder == TRUSTED_FORWARDER;
     }
 
     /// @dev ERC-2771: returns the original sender when called via the trusted
@@ -293,11 +324,6 @@ contract PrivateComboStorage {
         }
     }
 
-    // ── Constructor ───────────────────────────────────────
-
-    /// @dev No constructor logic needed. All configuration is
-    ///      compile-time constant. Upgrades are handled via proxy.
-
     // ── Admin Configuration ─────────────────────────────
 
     /// @notice Allow or disallow one or more contract identifiers for private storage.
@@ -307,7 +333,7 @@ contract PrivateComboStorage {
     ) external onlyAdmin {
         uint256 len = contractIdentifiers.length;
         require(len == allowed.length, "Array length mismatch");
-        require(len > 0, "Empty batch");
+        require(len > 0 && len <= MAX_BATCH_SIZE, "Batch size must be 1-100");
 
         for (uint256 i = 0; i < len; ) {
             require(bytes(contractIdentifiers[i]).length > 0, "Empty contract identifier");
@@ -334,7 +360,7 @@ contract PrivateComboStorage {
     ) external onlyAuthorized {
         uint256 len = contractIdentifiers.length;
         require(len == registeredCounts.length, "Array length mismatch");
-        require(len > 0, "Empty batch");
+        require(len > 0 && len <= MAX_BATCH_SIZE, "Batch size must be 1-100");
 
         for (uint256 i = 0; i < len; ) {
             require(bytes(contractIdentifiers[i]).length > 0, "Empty contract identifier");
@@ -418,9 +444,10 @@ contract PrivateComboStorage {
                 && len == request.mirrorStatuses.length,
             "Array length mismatch"
         );
-        require(len > 0, "Empty batch");
+        require(len > 0 && len <= MAX_BATCH_SIZE, "Batch size must be 1-100");
         require(request.pinLength > 0 && request.pinLength <= 8, "PIN length must be 1-8");
 
+        require(CanonicalUid.validIdentifier(request.contractIdentifier), "Invalid contract identifier");
         bytes32 contractIdHash = keccak256(bytes(request.contractIdentifier));
         require(isWhitelistedContractIdentifier[contractIdHash], "Contract identifier not whitelisted");
         require(registeredCodeCount[contractIdHash] > 0, "Registered count not synced");
@@ -428,16 +455,6 @@ contract PrivateComboStorage {
         StorePreparation memory preparation = _prepareStoreBatch(request, contractIdHash);
 
         assignedPins = preparation.assignedPins;
-
-        _persistStoredHashes(
-            contractIdHash,
-            request.counters,
-            request.codeHashes,
-            preparation.validIndexes,
-            preparation.validCount,
-            preparation.assignedPins,
-            preparation.computedUniqueIds
-        );
 
         _persistStoredUniqueIdConfig(
             preparation.computedUniqueIds,
@@ -473,14 +490,18 @@ contract PrivateComboStorage {
             unchecked { ++i; }
         }
 
-        preparation.assignedPins = _assignPinsForValidEntries(
-            request.codeHashes,
-            request.pinLength,
-            request.useSpecialChars,
-            request.entropies,
-            preparation.validIndexes,
-            preparation.validCount
-        );
+        preparation.assignedPins = new string[](request.codeHashes.length);
+        for (uint256 i; i < preparation.validCount; ++i) {
+            uint256 index = preparation.validIndexes[i];
+            string memory pin = _assignPin(request.entropies[index], request.pinLength,
+                request.useSpecialChars, request.codeHashes[index]);
+            preparation.assignedPins[index] = pin;
+            pinToHash[pin][request.codeHashes[index]] = CodeMetadata({
+                contractIdHash: contractIdHash, counter: request.counters[index], exists: true
+            });
+            ++pinSlotCount[pin];
+            emit DataStoredStatus(preparation.computedUniqueIds[i], pin);
+        }
     }
 
     /// @dev Phase 1 helper for storeDataBatch.
@@ -551,53 +572,6 @@ contract PrivateComboStorage {
         }
     }
 
-    /// @dev Assign PINs for all locally validated entries.
-    function _assignPinsForValidEntries(
-        bytes32[] calldata codeHashes,
-        uint256 pinLength,
-        bool useSpecialChars,
-        bytes32[] calldata entropies,
-        uint256[] memory validIndexes,
-        uint256 validCount
-    ) internal view returns (string[] memory assignedPins) {
-        assignedPins = new string[](validIndexes.length);
-
-        for (uint256 i = 0; i < validCount; ) {
-            uint256 index = validIndexes[i];
-            assignedPins[index] = _assignPin(
-                entropies[index],
-                pinLength,
-                useSpecialChars,
-                codeHashes[index]
-            );
-            unchecked { ++i; }
-        }
-    }
-
-    /// @dev Persist code-hash metadata for validated entries.
-    function _persistStoredHashes(
-        bytes32 contractIdHash,
-        uint256[] calldata counters,
-        bytes32[] calldata codeHashes,
-        uint256[] memory validIndexes,
-        uint256 validCount,
-        string[] memory assignedPins,
-        string[] memory computedUniqueIds
-    ) internal {
-        for (uint256 i = 0; i < validCount; ) {
-            uint256 index = validIndexes[i];
-            pinToHash[assignedPins[index]][codeHashes[index]] = CodeMetadata({
-                contractIdHash: contractIdHash,
-                counter: counters[index],
-                exists: true
-            });
-            pinSlotCount[assignedPins[index]]++;
-
-            emit DataStoredStatus(computedUniqueIds[i], assignedPins[index]);
-            unchecked { ++i; }
-        }
-    }
-
     /// @dev Persist UID-level config for validated entries.
     function _persistStoredUniqueIdConfig(
         string[] memory computedUniqueIds,
@@ -635,7 +609,7 @@ contract PrivateComboStorage {
     ) external {
         uint256 len = uniqueIds.length;
         require(len == newManagers.length, "Array length mismatch");
-        require(len > 0, "Empty batch");
+        require(len > 0 && len <= MAX_BATCH_SIZE, "Batch size must be 1-100");
 
         address sender = _msgSender();
 
@@ -683,7 +657,7 @@ contract PrivateComboStorage {
     ) external {
         uint256 len = uniqueIds.length;
         require(len == activeStates.length, "Array length mismatch");
-        require(len > 0, "Empty batch");
+        require(len > 0 && len <= MAX_BATCH_SIZE, "Batch size must be 1-100");
 
         ActiveBatchContext memory context = ActiveBatchContext({
             mirroredUniqueIds: new string[](len),
@@ -835,7 +809,7 @@ contract PrivateComboStorage {
     ) external onlyAuthorized {
         uint256 len = pins.length;
         require(len == codeHashes.length && len == redeemers.length, "Array length mismatch");
-        require(len > 0, "Empty batch");
+        require(len > 0 && len <= MAX_BATCH_SIZE, "Batch size must be 1-100");
 
         bytes32[] memory seenHashes = new bytes32[](len);
         uint256 seenCount;

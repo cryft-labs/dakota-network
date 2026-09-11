@@ -1,0 +1,6 @@
+pytest==9.1.1
+web3==8.0.0
+eth-tester==0.14.0b1
+py-evm==0.12.1b1
+py-solc-x==2.0.5
+certifi==2026.7.22

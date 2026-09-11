@@ -1,0 +1,26 @@
+[Unit]
+Description=Cryft read-only IPFS gateway tunnel
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=exec
+User=cryft-tunnel
+Group=cryft-tunnel
+ExecStart=/opt/cryft/cloudflared/current/cloudflared --no-autoupdate --config /etc/cryft/ipfs-tunnel.yml tunnel run
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

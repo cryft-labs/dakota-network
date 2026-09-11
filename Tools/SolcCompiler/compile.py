@@ -6,7 +6,9 @@
 Solidity Runtime Bytecode Compiler
 ===================================
 Compiles Solidity contracts locally and extracts runtime bytecode
-without deploying to a testnet. Uses Osaka EVM and Solidity 0.8.x+.
+without deploying to a testnet. Exports self-contained Solidity standard JSON
+verification inputs. Public target: Osaka; validator: London/0.8.19; private
+target: Shanghai until the separately reviewed Pente runtime supports a newer fork.
 
 Directory layout:
     dakota-network/
@@ -28,12 +30,14 @@ Usage:
     python compile.py                          # compile all .sol in Contracts/
     python compile.py --clean-cache            # clear downloaded import cache
     python compile.py --clean-output           # clear previous compiled output
-    python compile.py --solc-version 0.8.0     # override compiler version
+    python compile.py --solc-version 0.8.37    # public/private compiler override
     python compile.py --evm berlin             # override EVM target
+    python compile.py --private --file Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol
 """
 
 import argparse
 import json
+import hashlib
 import os
 import sys
 import re
@@ -57,8 +61,6 @@ try:
     _ssl_context = ssl.create_default_context(cafile=_ca_bundle)
 except Exception:
     _ssl_context = ssl.create_default_context()
-    _ssl_context.check_hostname = False
-    _ssl_context.verify_mode = ssl.CERT_NONE
 
 # Monkey-patch ssl.create_default_context so all libraries (requests, urllib3,
 # solcx) pick up certifi certs automatically.
@@ -71,10 +73,7 @@ ssl.create_default_context = _patched_create_default_context
 try:
     import solcx
 except ImportError:
-    print("Installing py-solc-x...")
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "py-solc-x"])
-    import solcx
+    raise SystemExit("Install the pinned compiler dependencies: python -m pip install py-solc-x==2.0.5")
 
 # Patch requests to use our SSL certs (fixes solcx download issues)
 try:
@@ -88,7 +87,7 @@ try:
     _original_request = requests.Session.request
     def _patched_request(self, method, url, **kwargs):
         if "verify" not in kwargs:
-            kwargs["verify"] = _ca_bundle if _ca_bundle else False
+            kwargs["verify"] = _ca_bundle if _ca_bundle else True
         return _original_request(self, method, url, **kwargs)
     requests.Session.request = _patched_request
 except ImportError:
@@ -326,8 +325,8 @@ def copy_local_tree(src_file: Path, work_dir: Path,
     _copy_normalized(src_file, dst)
 
     content = src_file.read_text(encoding="utf-8", errors="replace")
-    imports = re.findall(r'import\s+"([^"]+)";', content)
-    imports += re.findall(r"import\s+'([^']+)';", content)
+    imports = re.findall(r'import\s+(?:\{[^}]*\}\s+from\s+)?"([^"]+)";', content)
+    imports += re.findall(r"import\s+(?:\{[^}]*\}\s+from\s+)?'([^']+)';", content)
 
     for imp in imports:
         if imp.startswith("http") or imp.startswith("@"):
@@ -348,12 +347,33 @@ VALID_EVM_VERSIONS = [
     "prague", "osaka",
 ]
 
-DEFAULT_SOLC_VERSION = "0.8.34"
+DEFAULT_SOLC_VERSION = "0.8.37"
 DEFAULT_EVM_VERSION = "osaka"
 
-# Contracts whose filename matches these patterns (case-insensitive) are
-# compiled targeting Shanghai EVM instead of the global default.
-_SHANGHAI_FILENAME_PATTERNS = ["private"]
+# Pente v1.0.0 bundles Besu EVM 24.5.4, but its transaction selector only
+# accepts London, Paris and Shanghai. A Cancun helper exists but is not wired.
+# The private target must be raised together with a reviewed Pente upgrade.
+DEFAULT_PRIVATE_EVM_VERSION = "shanghai"
+PRIVATE_ENTRYPOINTS = {
+    "codemanagement/privatecombostorage.sol",
+    "codemanagement/privatemetatxrelay.sol",
+    "codemanagement/interfaces/iprivatemetatxrelay.sol",
+}
+VALIDATOR_SOLC_VERSION = "0.8.19"
+VALIDATOR_EVM_VERSION = "london"
+
+
+def contract_compile_settings(sol_path, solc_version, evm_version, private_evm_version, private=False):
+    relative = Path(sol_path).resolve().relative_to(CONTRACTS_DIR.resolve()).as_posix().lower()
+    if relative.startswith("genesis/validatorcontracts/"):
+        return VALIDATOR_SOLC_VERSION, VALIDATOR_EVM_VERSION
+    if private or relative in PRIVATE_ENTRYPOINTS:
+        if private_evm_version not in {"london", "paris", "shanghai"}:
+            raise ValueError("Pente v1.0.0 selects at most Shanghai; review a Pente runtime upgrade before raising this target")
+        evm_version = private_evm_version
+    if evm_version not in VALID_EVM_VERSIONS:
+        raise ValueError(f"Invalid EVM target: {evm_version}")
+    return solc_version or DEFAULT_SOLC_VERSION, evm_version
 
 # Maximum EVM version supported by each solc range
 _SOLC_EVM_CAPS = [
@@ -469,6 +489,8 @@ def compile_contract(
     contract_name: str = None,
     optimize: bool = True,
     optimize_runs: int = 200,
+    private_evm_version: str = DEFAULT_PRIVATE_EVM_VERSION,
+    private: bool = False,
 ) -> dict:
     """
     Compile a Solidity file and return bytecode info for all contracts.
@@ -487,27 +509,11 @@ def compile_contract(
 
     source = sol_path.read_text(encoding="utf-8", errors="replace")
 
-    # Determine solc version
-    if not solc_version:
-        solc_version = pick_solc_version(source)
-        print(f"Selected Solidity version: {solc_version}")
-
-    if not solc_version.startswith("0.8"):
-        print(f"Warning: Version {solc_version} is not 0.8.x — forcing {DEFAULT_SOLC_VERSION}")
-        solc_version = DEFAULT_SOLC_VERSION
-
+    solc_version, evm_version = contract_compile_settings(
+        sol_path, solc_version, evm_version, private_evm_version, private)
     install_solc(solc_version)
-
-    # Validate EVM version
-    if evm_version not in VALID_EVM_VERSIONS:
-        print(f"Warning: Invalid EVM version '{evm_version}', using 'cancun'")
-        evm_version = DEFAULT_EVM_VERSION
-
-    # Clamp EVM version to max supported by this solc
-    original_evm = evm_version
-    evm_version = clamp_evm_version(solc_version, evm_version)
-    if evm_version != original_evm:
-        print(f"Note: EVM clamped from {original_evm} → {evm_version} (solc {solc_version} limit)")
+    # Fail on incompatible compiler/target combinations instead of silently
+    # emitting a different release target. Validator settings are explicitly pinned.
 
     print(f"\nCompiling with:")
     print(f"  Solidity: {solc_version}")
@@ -543,10 +549,11 @@ def compile_contract(
             optimize=optimize,
             optimize_runs=optimize_runs,
             allow_paths=allow_paths,
+            base_path=str(IMPORT_CACHE_DIR),
         )
     except solcx.exceptions.SolcError as e:
         print(f"\nCompilation failed:\n{e}")
-        sys.exit(1)
+        raise
 
     results = {}
     source_base = (IMPORT_CACHE_DIR / "source").resolve()
@@ -559,7 +566,11 @@ def compile_contract(
         # External cached dependencies are grouped under External/<owner>/<repo>/
         # <version>/..., so artifact layout stays deterministic and clearly
         # separated from in-repo contracts.
-        source_file = Path(key.rsplit(":", 1)[0]).resolve()
+        source_name = key.rsplit(":", 1)[0]
+        source_file = Path(source_name)
+        if not source_file.is_absolute():
+            source_file = IMPORT_CACHE_DIR / source_file
+        source_file = source_file.resolve()
         try:
             source_rel = str(source_file.relative_to(source_base))
         except ValueError:
@@ -568,12 +579,15 @@ def compile_contract(
             except ValueError:
                 source_rel = str(Path("External") / source_file.name)
 
-        # Skip interfaces and abstract contracts (empty bytecode)
+        # Export verification input for interfaces and abstract contracts too.
         runtime = contract_data.get("bin-runtime", "")
         creation = contract_data.get("bin", "")
-        if not runtime and not creation:
-            continue
 
+        if contract_name and name != contract_name:
+            continue
+        if name in results:
+            raise ValueError(f"Duplicate contract name in compilation: {name}; compile distinct source units separately")
+        standard_input = standard_json_input(contract_data.get("metadata", ""))
         results[name] = {
             "runtime_bytecode": f"0x{runtime}" if runtime else "",
             "creation_bytecode": f"0x{creation}" if creation else "",
@@ -582,7 +596,12 @@ def compile_contract(
             "metadata": contract_data.get("metadata", ""),
             "runtime_size_bytes": len(bytes.fromhex(runtime)) if runtime else 0,
             "creation_size_bytes": len(bytes.fromhex(creation)) if creation else 0,
-            "source_rel_path": source_rel,
+            "source_rel_path": source_rel.replace("\\", "/"),
+            "fully_qualified_name": f"{source_name}:{name}",
+            "compiler_version": solc_version,
+            "evm_version": evm_version,
+            "deployable": bool(creation),
+            "standard_json_input": standard_input,
         }
 
     return results
@@ -622,6 +641,32 @@ def print_results(results: dict, contract_name: str = None):
         print()
 
 
+def standard_json_input(metadata_text: str) -> dict:
+    """Embed the exact compiled sources with solc's metadata-derived settings.
+
+    Source unit names are relative to the import cache, so verification never
+    needs the operator's filesystem or an HTTP import callback.
+    """
+    metadata = json.loads(metadata_text)
+    settings = dict(metadata["settings"])
+    targets = settings.pop("compilationTarget")
+    settings["outputSelection"] = {
+        source: {name: ["abi", "metadata", "storageLayout", "evm.bytecode", "evm.deployedBytecode"]}
+        for source, name in targets.items()
+    }
+    sources = {}
+    cache = IMPORT_CACHE_DIR.resolve()
+    for name in sorted(metadata["sources"]):
+        source = (cache / name).resolve()
+        if not source.is_relative_to(cache):
+            raise ValueError(f"Compiled source is outside the import cache: {name}")
+        if Path(name).is_absolute() or "\\" in name:
+            raise ValueError(f"Nonportable source unit name: {name}")
+        # Preserve the compiled bytes, including CRLF, for metadata/source CIDs.
+        sources[name] = {"content": source.read_bytes().decode("utf-8")}
+    return {"language": "Solidity", "sources": sources, "settings": settings}
+
+
 def save_results(results: dict, output_dir: str, quiet: bool = False):
     """Save compilation artifacts to files."""
     out = Path(output_dir)
@@ -633,11 +678,18 @@ def save_results(results: dict, output_dir: str, quiet: bool = False):
         (out / f"{name}_creation.bin").write_text(data["creation_bytecode"], newline="\n")
         # ABI
         (out / f"{name}_abi.json").write_text(json.dumps(data["abi"], indent=2), newline="\n")
+        # The exact source graph and metadata-derived settings are self-contained.
+        standard_input = data.get("standard_json_input")
+        if standard_input:
+            encoded = json.dumps(standard_input, indent=2, sort_keys=True) + "\n"
+            (out / f"{name}_standard_input.json").write_text(encoded, encoding="utf-8", newline="\n")
+            data["standard_input_sha256"] = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
         # Full artifact
         (out / f"{name}_artifact.json").write_text(json.dumps(data, indent=2), newline="\n")
         # Solc metadata (the JSON whose IPFS hash is embedded in bytecode)
         if data.get("metadata"):
-            (out / f"{name}_metadata.json").write_text(data["metadata"], newline="\n")
+            # IPFS identifies these exact bytes: no BOM, added newline or reformatting.
+            (out / f"{name}_metadata.json").write_bytes(data["metadata"].encode("utf-8"))
 
     if not quiet:
         print(f"Artifacts saved to: {out.resolve()}")
@@ -675,18 +727,26 @@ def normalize_external_source_rel_path(cache_relative_path: Path) -> Path:
     return Path("External") / owner / repo_name / version / remainder
 
 
-def get_contract_output_dir(output_root: Path, source_rel_path: str, contract_name: str) -> Path:
+def get_contract_output_dir(output_root: Path, source_rel_path: str, contract_name: str, evm_version: str = DEFAULT_EVM_VERSION) -> Path:
     """Build an artifact directory that mirrors the Contracts tree dynamically.
 
     Artifacts are stored under:
-        compiled_output/<source parent directories>/<contract_name>/
+        compiled_output/<evm version>/<source parent directories>/<contract_name>/
 
     This preserves the source directory hierarchy without hardcoded folder rules
     and ensures each concrete contract gets its own directory even when multiple
     contracts are compiled from the same Solidity file.
     """
     source_rel = Path(source_rel_path)
-    return output_root / source_rel.parent / contract_name
+    directory = output_root / evm_version / source_rel.parent / contract_name
+    # Preserve the readable source hierarchy even beyond Windows MAX_PATH.
+    # The extended absolute form also survives manifest-driven IPFS publication.
+    if os.name == "nt":
+        absolute = str(directory.resolve())
+        if not absolute.startswith("\\\\?\\"):
+            absolute = "\\\\?\\UNC\\" + absolute[2:] if absolute.startswith("\\\\") else "\\\\?\\" + absolute
+        return Path(absolute)
+    return directory
 
 
 # ────────────────────────────────────────────
@@ -702,8 +762,8 @@ def discover_sol_files(contracts_dir: Path) -> list:
 def get_local_imports(sol_file: Path) -> set:
     """Extract local relative import paths from a .sol file (not HTTP/package imports)."""
     content = sol_file.read_text(encoding="utf-8", errors="replace")
-    imports = re.findall(r'import\s+"([^"]+)";', content)
-    imports += re.findall(r"import\s+'([^']+)';", content)
+    imports = re.findall(r'import\s+(?:\{[^}]*\}\s+from\s+)?"([^"]+)";', content)
+    imports += re.findall(r"import\s+(?:\{[^}]*\}\s+from\s+)?'([^']+)';", content)
     # Also match import {X} from "path" style
     imports += re.findall(r'from\s+"([^"]+)"', content)
     imports += re.findall(r"from\s+'([^']+)'", content)
@@ -745,6 +805,8 @@ def compile_all(
     evm_version: str = DEFAULT_EVM_VERSION,
     optimize: bool = True,
     optimize_runs: int = 200,
+    private_evm_version: str = DEFAULT_PRIVATE_EVM_VERSION,
+    private: bool = False,
 ):
     """Compile all .sol files in the contracts/ directory and output artifacts."""
     # Ensure directories exist
@@ -791,19 +853,14 @@ def compile_all(
         print(f"{'─'*60}")
 
         try:
-            # Override EVM to shanghai for contracts with 'private' in the name
-            file_evm = evm_version
-            stem_lower = sol_file.stem.lower()
-            if any(pat in stem_lower for pat in _SHANGHAI_FILENAME_PATTERNS):
-                file_evm = "shanghai"
-                print(f"  ⚙  EVM override: {evm_version} → shanghai (filename contains 'private')")
-
             results = compile_contract(
                 str(sol_file),
                 solc_version=solc_version,
-                evm_version=file_evm,
+                evm_version=evm_version,
                 optimize=optimize,
                 optimize_runs=optimize_runs,
+                private_evm_version=private_evm_version,
+                private=private,
             )
 
             if results:
@@ -815,6 +872,7 @@ def compile_all(
                         OUTPUT_DIR,
                         cdata.get("source_rel_path", f"{cname}.sol"),
                         cname,
+                        cdata["evm_version"],
                     )
                     save_results({cname: cdata}, str(contract_out), quiet=True)
                 print(f"Artifacts saved to: {OUTPUT_DIR.resolve()}")
@@ -824,6 +882,7 @@ def compile_all(
                         OUTPUT_DIR,
                         data.get("source_rel_path", f"{name}.sol"),
                         name,
+                        data["evm_version"],
                     )
                     summary.append({
                         "source": data.get("source_rel_path", str(rel_path)),
@@ -832,6 +891,9 @@ def compile_all(
                         "creation_bytes": data["creation_size_bytes"],
                         "output": str(contract_out),
                         "over_limit": data["runtime_size_bytes"] > 24576,
+                        "evm_version": data["evm_version"],
+                        "compiler_version": data["compiler_version"],
+                        "standard_input_sha256": data.get("standard_input_sha256", ""),
                     })
             else:
                 print(f"  No concrete contracts found in {rel_path}")
@@ -880,6 +942,9 @@ def compile_all(
     print(f"\n  Artifacts: {OUTPUT_DIR}")
     print(f"  Manifest:  {manifest_path}")
     print()
+    if total_failed:
+        raise RuntimeError(f"{total_failed} Solidity source files failed to compile; see {manifest_path}")
+    return summary
 
 
 def compile_selected(
@@ -888,6 +953,8 @@ def compile_selected(
     evm_version: str = DEFAULT_EVM_VERSION,
     optimize: bool = True,
     optimize_runs: int = 200,
+    private_evm_version: str = DEFAULT_PRIVATE_EVM_VERSION,
+    private: bool = False,
 ):
     """Compile only the specified Solidity files and output artifacts."""
     CONTRACTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -938,18 +1005,14 @@ def compile_selected(
         print(f"{'─'*60}")
 
         try:
-            file_evm = evm_version
-            stem_lower = sol_file.stem.lower()
-            if any(pat in stem_lower for pat in _SHANGHAI_FILENAME_PATTERNS):
-                file_evm = "shanghai"
-                print(f"  ⚙  EVM override: {evm_version} → shanghai (filename contains 'private')")
-
             results = compile_contract(
                 str(sol_file),
                 solc_version=solc_version,
-                evm_version=file_evm,
+                evm_version=evm_version,
                 optimize=optimize,
                 optimize_runs=optimize_runs,
+                private_evm_version=private_evm_version,
+                private=private,
             )
 
             if results:
@@ -959,6 +1022,7 @@ def compile_selected(
                         OUTPUT_DIR,
                         cdata.get("source_rel_path", f"{cname}.sol"),
                         cname,
+                        cdata["evm_version"],
                     )
                     save_results({cname: cdata}, str(contract_out), quiet=True)
                 print(f"Artifacts saved to: {OUTPUT_DIR.resolve()}")
@@ -968,6 +1032,7 @@ def compile_selected(
                         OUTPUT_DIR,
                         data.get("source_rel_path", f"{name}.sol"),
                         name,
+                        data["evm_version"],
                     )
                     summary.append({
                         "source": data.get("source_rel_path", str(rel_path)),
@@ -976,6 +1041,9 @@ def compile_selected(
                         "creation_bytes": data["creation_size_bytes"],
                         "output": str(contract_out),
                         "over_limit": data["runtime_size_bytes"] > 24576,
+                        "evm_version": data["evm_version"],
+                        "compiler_version": data["compiler_version"],
+                        "standard_input_sha256": data.get("standard_input_sha256", ""),
                     })
             else:
                 print(f"  No concrete contracts found in {rel_path}")
@@ -1020,6 +1088,9 @@ def compile_selected(
     print(f"\n  Artifacts: {OUTPUT_DIR}")
     print(f"  Manifest:  {manifest_path}")
     print()
+    if total_failed:
+        raise RuntimeError(f"{total_failed} Solidity source files failed to compile; see {manifest_path}")
+    return summary
 
 
 # ────────────────────────────────────────────
@@ -1027,6 +1098,12 @@ def compile_selected(
 # ────────────────────────────────────────────
 
 def main():
+    global OUTPUT_DIR
+    # Redirected Windows output otherwise uses a legacy code page and can abort
+    # a successful build on the progress table's Unicode characters.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = argparse.ArgumentParser(
         description="Compile Solidity contracts from the contracts directory or a selected file list"
     )
@@ -1038,12 +1115,22 @@ def main():
     )
     parser.add_argument("--solc-version", default=None, help=f"Solidity compiler version (default: auto-detect, fallback: {DEFAULT_SOLC_VERSION})")
     parser.add_argument("--evm", default=DEFAULT_EVM_VERSION, help=f"EVM version (default: {DEFAULT_EVM_VERSION})")
+    parser.add_argument("--output-dir", type=Path, help="Write review artifacts outside the checked-in historical output directory")
+    parser.add_argument("--private-evm", default=DEFAULT_PRIVATE_EVM_VERSION, choices=["london", "paris", "shanghai"], help="Pente private target; default Shanghai for Paladin v1.0.0")
+    parser.add_argument("--private", action="store_true", help="Compile selected dependencies/proxies for a Pente group too")
     parser.add_argument("--no-optimize", action="store_true", help="Disable optimizer")
     parser.add_argument("--runs", type=int, default=200, help="Optimizer runs (default: 200)")
     parser.add_argument("--clean-cache", action="store_true", help="Clear the downloaded import cache")
     parser.add_argument("--clean-output", action="store_true", help="Clear previous compiled output before compiling")
+    parser.add_argument("--ipfs-api", help="Kubo API base URL; defaults to IPFS_API_URL")
+    parser.add_argument("--no-ipfs", action="store_true", help="Explicit local-only build; skip automatic IPFS publication")
+    parser.add_argument("--publish-only", action="store_true", help="Retry publishing the current output manifest without recompiling")
 
     args = parser.parse_args()
+    if args.publish_only and (args.clean_cache or args.clean_output):
+        parser.error("--publish-only cannot clear the cache or output")
+    if args.output_dir:
+        OUTPUT_DIR = args.output_dir.resolve()
 
     if args.clean_cache:
         if IMPORT_CACHE_DIR.exists():
@@ -1059,21 +1146,31 @@ def main():
         if args.clean_cache:
             return
 
-    if args.file:
-        compile_selected(
-            file_paths=args.file,
-            solc_version=args.solc_version,
-            evm_version=args.evm,
-            optimize=not args.no_optimize,
-            optimize_runs=args.runs,
-        )
+    # Import only for CLI publication; library compilation/export stays offline.
+    from ipfs_publish import configured_client, publish_manifest, write_receipt
+    write_receipt(OUTPUT_DIR, {"version": 1, "status": "not_started"})
+    try:
+        client = configured_client(args.ipfs_api, args.no_ipfs)
+        if args.publish_only:
+            if args.file or args.no_ipfs or client is None:
+                raise ValueError("--publish-only requires an IPFS endpoint and cannot use --file or --no-ipfs")
+            summary = json.loads((OUTPUT_DIR / "manifest.json").read_text(encoding="utf-8"))
+        else:
+            options = dict(solc_version=args.solc_version, evm_version=args.evm,
+                           optimize=not args.no_optimize, optimize_runs=args.runs,
+                           private_evm_version=args.private_evm, private=args.private)
+            summary = compile_selected(file_paths=args.file, **options) if args.file else compile_all(**options)
+    except Exception:
+        write_receipt(OUTPUT_DIR, {"version": 1, "status": "failed_before_publication"})
+        raise
+    if client is None:
+        reason = "explicitly_disabled" if args.no_ipfs or os.getenv("IPFS_AUTO_PUBLISH", "").lower() == "false" else "not_configured"
+        write_receipt(OUTPUT_DIR, {"version": 1, "status": "skipped", "reason": reason})
+        print(f"IPFS publication skipped ({reason}); files are local only.")
     else:
-        compile_all(
-            solc_version=args.solc_version,
-            evm_version=args.evm,
-            optimize=not args.no_optimize,
-            optimize_runs=args.runs,
-        )
+        receipt = publish_manifest(OUTPUT_DIR, summary, client)
+        print(f"IPFS: verified {len(receipt['objects'])} pinned objects; release bundle {receipt['release_bundle_cid']}")
+        print("Backend pin/read-back verified; external gateway reachability requires a separate deployment check.")
 
 
 if __name__ == "__main__":

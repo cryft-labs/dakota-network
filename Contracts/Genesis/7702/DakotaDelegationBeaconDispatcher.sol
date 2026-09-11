@@ -7,55 +7,21 @@
 pragma solidity >=0.8.20 <0.9.0;
 
 /*
-  ___       _        _          ___  _               _      _
- |   \ __ _| | _____| |_ __ _  |   \(_)____ __  __ _| |_ __| |_  ___ _ _
- | |) / _` | |/ / _ \  _/ _` | | |) | (_-< '_ \/ _` |  _/ _| ' \/ -_) '_|
- |___/\__,_|_|\_\___/\__\__,_| |___/|_/__/ .__/\__,_|\__\__|_||_\___|_|
-                                          |_|      By: CryftCreator
-
-  Version 1.0.0 — Production Delegation Dispatcher  [IMMUTABLE]
-
-  ┌──────────────── Contract Architecture ─────────────────────────────┐
-  │                                                                    │
-  │  NATIVE EIP-7702 BEACON DISPATCH                                   │
-  │                                                                    │
-  │  Per-account route:                                                │
-  │    user EOA → 0x0000...de1E6A7E genesis entry                      │
-  │    → user EIP-1967 implementation slot → this dispatcher           │
-  │    → shared beacon → DakotaDelegation implementation               │
-  │                                                                    │
-  │  Selector surface:                                                 │
-  │    • payable fallback only                                         │
-  │    • intentionally empty external ABI                              │
-  │    • no management, initialization, or upgrade selectors           │
-  │                                                                    │
-  │  Construction checks:                                              │
-  │    • beacon must be nonzero and contain runtime code               │
-  │    • beacon must resolve valid implementation code at deployment   │
-  │    • immutable self and beacon addresses prevent dispatch cycles   │
-  │                                                                    │
-  │  Dispatch guarantees:                                              │
-  │    • resolves IBeacon.implementation() on every call               │
-  │    • rejects zero, beacon, self, and code-free implementations     │
-  │    • delegates with original calldata, caller, value, and storage  │
-  │    • returns or reverts with the implementation's exact data       │
-  │                                                                    │
-  │  Storage and upgrades:                                             │
-  │    • no mutable dispatcher storage                                 │
-  │    • execution remains in the delegated user account context       │
-  │    • normal logic upgrades occur once at the shared beacon         │
-  │    • per-account dispatcher replacement is recovery-only           │
-  └────────────────────────────────────────────────────────────────────┘
+Dakota direct delegation dispatcher, protocol v2 (immutable).
+User EOA -> immutable dispatcher -> shared beacon -> DakotaDelegation.
+The EIP-7702 authorization designates this deployed dispatcher directly. There is
+no per-account EIP-1967 link or initializer. Immutable configuration works in the
+EOA's execution context. delegationBeacon() and dispatcherProtocolId() expose
+the route; other selectors delegate with the account's caller, value and storage.
+The dispatcher validates beacon/implementation code and rejects direct cycles.
 */
 
 import "../Upgradeable/Proxy/Beacon/IBeacon.sol";
 
 /// @title DakotaDelegationBeaconDispatcher
-/// @notice Immutable bridge from each delegated account's EIP-1967 slot to the
-///         shared Dakota delegation beacon.
-/// @dev This contract deliberately exposes no function selectors. Every call
-///      resolves the beacon implementation and delegates with the caller's
-///      original account context and storage.
+/// @notice Immutable route from an EIP-7702 account to its shared beacon.
+/// @dev Configuration getters read immutables; fallback resolves the shared logic
+///      and delegates in the original account context without account linking.
 contract DakotaDelegationBeaconDispatcher {
     error InvalidBeacon(address beacon);
     error InvalidImplementation(address implementation);
@@ -72,25 +38,32 @@ contract DakotaDelegationBeaconDispatcher {
         _implementation();
     }
 
+    /// @notice Read immutable routing configuration on the dispatcher itself.
+    function delegationBeacon() external view returns (address) { return _beacon; }
+    function dispatcherProtocolId() external pure returns (bytes32) {
+        return keccak256("dakota.delegation.direct-beacon-dispatch.v2");
+    }
+
     fallback() external payable {
         address implementation_ = _implementation();
         assembly ("memory-safe") {
-            calldatacopy(0, 0, calldatasize())
+            let pointer := mload(0x40)
+            calldatacopy(pointer, 0, calldatasize())
             let result := delegatecall(
                 gas(),
                 implementation_,
-                0,
+                pointer,
                 calldatasize(),
                 0,
                 0
             )
-            returndatacopy(0, 0, returndatasize())
+            returndatacopy(pointer, 0, returndatasize())
             switch result
             case 0 {
-                revert(0, returndatasize())
+                revert(pointer, returndatasize())
             }
             default {
-                return(0, returndatasize())
+                return(pointer, returndatasize())
             }
         }
     }

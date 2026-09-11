@@ -7,55 +7,14 @@
 pragma solidity >=0.8.20 <0.9.0;
 
 /*
-  ___       _        _          ___      _                 _   _
- |   \ __ _| | _____| |_ __ _  |   \ ___| |___ __ _ __ _| |_(_)___ _ _
- | |) / _` | |/ / _ \  _/ _` | | |) / -_) / -_) _` / _` |  _| / _ \ ' \
- |___/\__,_|_|\_\___/\__\__,_| |___/\___|_|\___\__, \__,_|\__|_\___/_||_|
-                                                |___/ By: CryftCreator
-
-  Version 1.0.0 — Dakota Delegation Registry  [UPGRADEABLE CONTROL PLANE]
-
-  ┌──────────────── Contract Architecture ─────────────────────────────┐
-  │                                                                    │
-  │  NATIVE EIP-7702 RELEASE CONTROL PLANE                             │
-  │                                                                    │
-  │  Fixed entry and system bindings:                                  │
-  │    • fixed delegation entry: 0x0000...de1E6A7E                     │
-  │    • dispatcher, shared beacon, and native gas sponsor             │
-  │    • expected entry bytecode and delegation protocol ID            │
-  │    • direct entry calls expose the shared registry surface         │
-  │                                                                    │
-  │  Release activation:                                               │
-  │    • the fixed delegation entry must own the shared beacon         │
-  │    • upgrade and release recording occur atomically                │
-  │    • exact implementation runtime-code hash is required            │
-  │    • protocol ID, capability bitmap, and interfaces are checked    │
-  │    • each accepted release is appended to immutable history        │
-  │                                                                    │
-  │  System introspection:                                             │
-  │    • reports beacon owner, implementation, code hash, protocol,    │
-  │      capabilities, version, sponsor binding, and release match     │
-  │    • exposes current and historical release snapshots              │
-  │                                                                    │
-  │  Delegated-account readiness:                                      │
-  │    • verifies delegation designator and dispatcher initialization  │
-  │    • checks protocol, required interfaces, and sponsor readiness   │
-  │    • exposes account nonce, domain separator, and execution digest │
-  │      helpers for relayers and platform services                    │
-  │                                                                    │
-  │  Governance and migration:                                         │
-  │    • live validator root becomes the initial registry admin        │
-  │    • two-step registry-admin transfer                              │
-  │    • explicit beacon-ownership transfer for registry migration     │
-  │    • no arbitrary implementation or account-storage write path     │
-  │                                                                    │
-  │  Storage and execution boundary:                                   │
-  │    • first-linked once through the fixed genesis proxy             │
-  │    • implementation initialization is permanently disabled         │
-  │    • registry state uses its own ERC-7201 namespace                │
-  │    • delegated execution remains in each user's EOA context        │
-  │    • each user independently links the immutable dispatcher        │
-  └────────────────────────────────────────────────────────────────────┘
+Dakota delegation registry v2: upgradeable release control plane at 0x...de1E6A7E.
+The genesis proxy hosts registry state and owns the shared beacon after a two-step
+handover. User EOAs designate the immutable dispatcher, not this proxy.
+Initialization validates the dispatcher's immutable beacon and v2 protocol.
+Releases validate implementation code hash, protocol, capabilities and interfaces.
+Account readiness verifies the EIP-7702 designator, dispatcher runtime and account
+protocol. The legacy proxyInitialized result now indicates immutable-route validity.
+Registry administration and beacon ownership use explicit proposal/acceptance.
 */
 
 import "./Interfaces/IDakotaDelegation.sol";
@@ -72,6 +31,8 @@ interface IDakotaDelegationBeaconControl {
     function upgradeTo(address newImplementation) external;
 
     function transferOwnership(address newOwner) external;
+    function acceptOwnership() external;
+    function cancelOwnershipTransfer() external;
 }
 
 interface IDakotaDelegationRootRegistry {
@@ -82,7 +43,7 @@ interface IDakotaDelegationRootRegistry {
 /// @notice Release authority and introspection surface for Dakota EIP-7702.
 /// @dev This implementation is first-linked at the fixed delegation entry.
 ///      That proxy owns the beacon and stores the shared release directory.
-///      EIP-7702 users independently link the dispatcher in their own account.
+///      EIP-7702 users designate the immutable dispatcher in their authorization.
 contract DakotaDelegationRegistry is
     Initializable,
     IDakotaDelegationRegistry
@@ -177,6 +138,16 @@ contract DakotaDelegationRegistry is
         address beacon_,
         address gasSponsor_
     ) external override initializer {
+        _initializeRegistry(dispatcher_, beacon_, gasSponsor_, msg.sender);
+    }
+
+    function initializeWithAdmin(address dispatcher_, address beacon_, address gasSponsor_, address admin_) external initializer {
+        _initializeRegistry(dispatcher_, beacon_, gasSponsor_, admin_);
+    }
+
+    function _initializeRegistry(address dispatcher_, address beacon_, address gasSponsor_, address admin_) private {
+        require(admin_ != address(0) && admin_ != address(this)
+            && admin_ != 0x0000000000000000000000000000000000FacAdE, "Invalid registry admin");
         if (address(this) != _DELEGATION_ENTRY) {
             revert WrongDelegationEntry(address(this));
         }
@@ -188,14 +159,18 @@ contract DakotaDelegationRegistry is
         _requireContract(gasSponsor_);
 
         DelegationRegistryStorage storage state = _registryStorage();
-        state.delegationEntryCodeHash = address(this).codehash;
+        (bool beaconMatches, address embeddedBeacon) = _tryReadAddress(dispatcher_, abi.encodeWithSignature("delegationBeacon()"));
+        require(beaconMatches && embeddedBeacon == beacon_, "Dispatcher beacon mismatch");
+        (bool protocolMatches, bytes memory protocolData) = dispatcher_.staticcall{gas: _READ_GAS_LIMIT}(abi.encodeWithSignature("dispatcherProtocolId()"));
+        require(protocolMatches && protocolData.length == 32 && abi.decode(protocolData, (bytes32)) == keccak256("dakota.delegation.direct-beacon-dispatch.v2"), "Invalid dispatcher");
+        state.delegationEntryCodeHash = dispatcher_.codehash;
         state.expectedAccountCodeHash = keccak256(
-            abi.encodePacked(hex"ef0100", _DELEGATION_ENTRY)
+            abi.encodePacked(hex"ef0100", dispatcher_)
         );
         state.dispatcher = dispatcher_;
         state.beacon = beacon_;
         state.gasSponsor = gasSponsor_;
-        state.registryAdmin = msg.sender;
+        state.registryAdmin = admin_;
 
         address initialImplementation =
             IDakotaDelegationBeaconControl(beacon_).implementation();
@@ -208,15 +183,15 @@ contract DakotaDelegationRegistry is
             dispatcher_,
             beacon_,
             gasSponsor_,
-            msg.sender,
+            admin_,
             metadata.protocolId
         );
-        emit RegistryAdminTransferred(address(0), msg.sender);
+        emit RegistryAdminTransferred(address(0), admin_);
     }
 
     /// @inheritdoc IDakotaDelegationRegistry
-    function delegationEntry() external pure override returns (address) {
-        return _DELEGATION_ENTRY;
+    function delegationEntry() external view override returns (address) {
+        return _registryStorage().dispatcher;
     }
 
     /// @inheritdoc IDakotaDelegationRegistry
@@ -314,6 +289,7 @@ contract DakotaDelegationRegistry is
         address pendingAdmin_
     ) external override onlyAdmin {
         _requireNonZero(pendingAdmin_);
+        require(pendingAdmin_ != address(this) && pendingAdmin_ != 0x0000000000000000000000000000000000FacAdE, "Invalid registry administrator");
         DelegationRegistryStorage storage state = _registryStorage();
         state.pendingRegistryAdmin = pendingAdmin_;
         emit RegistryAdminTransferProposed(
@@ -421,7 +397,22 @@ contract DakotaDelegationRegistry is
             revert BeaconNotControlled(previousOwner);
         }
         beaconControl.transferOwnership(newOwner);
-        emit BeaconOwnershipTransferred(previousOwner, newOwner);
+        emit BeaconOwnershipTransferProposed(previousOwner, newOwner);
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function acceptBeaconOwnership() external override onlyAdmin {
+        IDakotaDelegationBeaconControl beaconControl = IDakotaDelegationBeaconControl(_registryStorage().beacon);
+        address previousOwner = beaconControl.owner();
+        beaconControl.acceptOwnership();
+        require(beaconControl.owner() == address(this), "Beacon handover failed");
+        emit BeaconOwnershipTransferred(previousOwner, address(this));
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function cancelBeaconOwnershipTransfer() external override onlyAdmin {
+        IDakotaDelegationBeaconControl(_registryStorage().beacon).cancelOwnershipTransfer();
+        emit BeaconOwnershipTransferProposed(address(this), address(0));
     }
 
     /// @inheritdoc IDakotaDelegationRegistry
@@ -450,7 +441,7 @@ contract DakotaDelegationRegistry is
                 abi.encodeCall(IGasSponsor.approvedDelegate, ())
             );
         if (sponsorDelegateSuccess) {
-            sponsorUsesEntry = approvedDelegate_ == _DELEGATION_ENTRY;
+            sponsorUsesEntry = approvedDelegate_ == state.dispatcher;
         }
 
         bool matchesLatest;
@@ -463,14 +454,14 @@ contract DakotaDelegationRegistry is
         }
 
         snapshot = DelegationSnapshot({
-            delegationEntry: _DELEGATION_ENTRY,
+            delegationEntry: state.dispatcher,
             delegationEntryCodeHash: state.delegationEntryCodeHash,
             expectedAccountCodeHash: state.expectedAccountCodeHash,
             dispatcher: state.dispatcher,
             beacon: state.beacon,
             beaconOwner: beaconOwner,
             registryImplementation: _registryImplementation(),
-            registryVersion: "1.0.0",
+            registryVersion: "2.0.0",
             implementation: implementation_,
             implementationCodeHash: implementation_.codehash,
             protocolId: metadata.protocolId,
@@ -502,7 +493,8 @@ contract DakotaDelegationRegistry is
             return status;
         }
 
-        status.proxyInitialized = _accountProxyInitialized(account);
+        // Legacy ABI field retained: direct dispatch requires no EOA proxy slots.
+        status.proxyInitialized = state.dispatcher.codehash == state.delegationEntryCodeHash;
         (status.protocolCompatible, status.protocolId) =
             _accountProtocol(account);
         status.capabilities = _accountCapabilities(account);

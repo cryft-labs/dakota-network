@@ -85,6 +85,7 @@ interface IDakotaDelegationRegistry {
         address indexed previousOwner,
         address indexed newOwner
     );
+    event BeaconOwnershipTransferProposed(address indexed previousOwner, address indexed pendingOwner);
 
     /// @notice First-links the control plane; the live root caller is admin.
     function initialize(
@@ -110,8 +111,13 @@ interface IDakotaDelegationRegistry {
     /// @notice Records a current beacon implementation changed before control.
     function recordCurrentImplementation() external;
 
-    /// @notice Transfers the beacon out for an explicit registry migration.
+    /// @notice Proposes an ownership handover; the recipient must accept on the beacon.
     function transferBeaconOwnership(address newOwner) external;
+
+    /// @notice Accept a beacon ownership handover proposed to this registry.
+    function acceptBeaconOwnership() external;
+    /// @notice Cancel an outgoing handover while this registry still owns the beacon.
+    function cancelBeaconOwnershipTransfer() external;
 
     function currentSnapshot()
         external

@@ -16,19 +16,35 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ---
 
+
+## Development release status
+
+Changes are published on `review/compiler-standard-json`; `main` remains the
+production baseline until owner approval. See [implementation and operations](IMPLEMENTATION.md)
+and [the deployment prompt](docs/ONE_SHOT_DEPLOYMENT.md). Local regression tests
+cover governance, UID/delivery rules and native sponsored execution. Live Besu,
+Pente delegation, restart, explorer, API lifecycle and load acceptance remain
+required before production promotion. Compiler/IPFS receipts distinguish local
+exports from remotely pinned content.
+
+The management address is `0x9247524040D91D5dd1521A25f2e7711d4a0fe921`.
+Bootstrap authority is temporary: final handover must remove deployment-account
+roles only after the new controller has accepted and demonstrated control.
+
 ## Quick Reference
 
 | Component                | Version | Notes                                                        |
 | ------------------------ | ------- | ------------------------------------------------------------ |
-| **Besu**                 | 26.1.0  | Java 21, QBFT consensus                                      |
-| **solc**                 | 0.8.34  | All contracts except validator contracts                     |
+| **Besu**                 | 26.8.1  | Java 25, QBFT consensus                                      |
+| **solc**                 | 0.8.37  | All contracts except validator contracts                     |
 | **solc**                 | 0.8.19  | Validator contracts only (pragma `<0.8.20`)                  |
-| **EVM target**           | Osaka   | All contracts compiled with solc 0.8.34                      |
+| **EVM target**           | Osaka   | Public contracts compiled with solc 0.8.37                   |
+| **Private EVM target**   | Shanghai | Compatible target pending the Pente runtime upgrade decision |
 | **EVM target**           | London  | Validator contracts (solc 0.8.19 maximum)                    |
-| **Paladin**              | latest  | Pente privacy domain (replaces Tessera)                      |
+| **Paladin**              | v1.0.0  | Pente privacy domain (replaces Tessera)                      |
 | **Native sponsorship**   | 1.0.0   | EIP-7702; no ERC-4337, bundler, EntryPoint, or paymaster     |
 
-> **Full installation instructions** — Besu setup, Paladin deployment (Docker / build-from-source / k3s+Helm), genesis configuration, security notes, and documentation references — are in the **[Implementation Guide](IMPLEMENTATION.md#3-layer-1--besu-network-setup)**.
+> **Full installation instructions** — Besu setup, Paladin deployment (Docker / build-from-source / k3s+Helm), genesis configuration, security notes, and documentation references — are in the **[Implementation Guide](IMPLEMENTATION.md)**.
 
 ---
 
@@ -45,7 +61,7 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ### Genesis File Breakdown
 
-The genesis file (`Contracts/Genesis/BesuGenesis.7z`, compressed) contains the full initial state for the network. Extract with 7-Zip before use — the uncompressed JSON is ~1.07 GB.
+The genesis file (`Contracts/Genesis/besuGenesis.7z`, compressed) contains the full initial state for the network. Extract with 7-Zip before use — the uncompressed JSON is ~1.25 GB.
 
 #### Chain Parameters
 
@@ -58,30 +74,23 @@ The genesis file (`Contracts/Genesis/BesuGenesis.7z`, compressed) contains the f
 | **Contract size limit** | 32,768 bytes (32 KiB)                                                      |
 | **EVM fork**            | Osaka + BPO2 (all forks through Osaka plus BPO1/BPO2 enabled from genesis) |
 
+The development genesis uses **`config.contractSizeLimit: 32768`**. The compiler and
+runtime receipts identify its exact bytecodes. Besu 26.8.1 requires the supported
+`emptyBlockPeriodSeconds` name for the existing 64-second interval. Preserve all
+other chain settings from the archive. A live boundary deployment remains an
+acceptance test; historical `compiled_output/` files are not current release inputs.
+
 #### Ethereum Fork Activation
 
 All Ethereum hard forks through Osaka are activated from genesis (block 0 / timestamp 0), along with BPO1 and BPO2 Blob Parameter Only upgrades. Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention. BPO upgrades adjust blob-related parameters (target and maximum blobs per block) without requiring a full hard fork, enabling incremental Layer 2 data throughput scaling.
 
-| Fork               | Genesis Key                         | Activation  | Notable EIPs                                                                                                                    |
-| ------------------ | ----------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Homestead**      | `homesteadBlock: 0`                 | Block 0     | EIP-2 (tx validation), EIP-7 (DELEGATECALL)                                                                                     |
-| **EIP-150**        | `eip150Block: 0`                    | Block 0     | Gas cost rebalancing (Tangerine Whistle)                                                                                        |
-| **EIP-155/158**    | `eip155Block: 0` / `eip158Block: 0` | Block 0     | Replay protection, state clearing (Spurious Dragon)                                                                             |
-| **Byzantium**      | `byzantiumBlock: 0`                 | Block 0     | REVERT opcode, STATICCALL, precompiles                                                                                          |
-| **Constantinople** | `constantinopleBlock: 0`            | Block 0     | SHL/SHR/SAR opcodes, CREATE2, EXTCODEHASH                                                                                       |
-| **Petersburg**     | `petersburgBlock: 0`                | Block 0     | Removed EIP-1283 (SSTORE re-entrancy fix)                                                                                       |
-| **Istanbul**       | `istanbulBlock: 0`                  | Block 0     | ChainID opcode, SELFBALANCE, Blake2 precompile                                                                                  |
-| **Muir Glacier**   | `muirglacierblock: 0`               | Block 0     | Difficulty bomb delay (no EVM changes)                                                                                          |
-| **Berlin**         | `berlinBlock: 0`                    | Block 0     | Access lists (EIP-2929/2930), cold/warm storage pricing                                                                         |
-| **London**         | `londonBlock: 0`                    | Block 0     | EIP-1559 base fee, EIP-3529 refund reduction                                                                                    |
-| **Shanghai**       | `shanghaiTime: 0`                   | Timestamp 0 | PUSH0 (EIP-3855), warm COINBASE (EIP-3651), initcode limits (EIP-3860)                                                          |
-| **Cancun**         | `cancunTime: 0`                     | Timestamp 0 | Transient storage TSTORE/TLOAD (EIP-1153), MCOPY (EIP-5656), SELFDESTRUCT neutered (EIP-6780)                                   |
-| **Prague/Pectra**  | `pragueTime: 0`                     | Timestamp 0 | EIP-7702 (EOA code delegation), EIP-7251 (max effective balance), EIP-7002 (execution layer withdrawals)                        |
-| **Osaka**          | `osakaTime: 0`                      | Timestamp 0 | EIP-7594 (PeerDAS), EIP-7692 (EOF v1), EIP-7823 (set max blob count), EIP-7691 (blob throughput increase)                       |
-| **BPO1**           | `bpo1Time: 0`                       | Timestamp 0 | Blob Parameter Only upgrade 1 — raises blob target from 6→10, max from 9→15 (Mainnet: 2025-12-09 14:21:11 UTC, epoch 412,672)   |
-| **BPO2**           | `bpo2Time: 0`                       | Timestamp 0 | Blob Parameter Only upgrade 2 — raises blob target from 10→14, max from 15→21 (Mainnet: 2026-01-07 01:01:11 UTC, epoch 419,072) |
+The archive enables Homestead, EIP-150, EIP-155/158, Byzantium,
+Constantinople, Petersburg, Istanbul, Muir Glacier, Berlin and London at block 0;
+Shanghai, Cancun, Prague, Osaka, BPO1 and BPO2 at timestamp 0. The archive is the
+source of truth for exact field names and values. Besu compatibility must be
+verified against the pinned binary; do not substitute a generic development genesis.
 
-#### Alloc Entries (32,434 total)
+#### Alloc Entries (32,436 total)
 
 | Category                    | Count  | Description                                                                  |
 | --------------------------- | ------ | ---------------------------------------------------------------------------- |
@@ -89,7 +98,7 @@ All Ethereum hard forks through Osaka are activated from genesis (block 0 / time
 | Addresses ending in `c0DE`  | 100    | Pre-deployed contract instances (code management service)                    |
 | Repeating-pattern addresses | 4      | Reserved contract slots (`0x2222...`, `0x2323...`, `0x3232...`, `0x3333...`) |
 | Reserved system addresses   | 7      | Governance and infrastructure contracts (see below)                          |
-| EOA accounts                | 1      | Deployer account with 32 ETH initial balance                                 |
+| EOA accounts                | 3      | Management account: 32 ETH; deployment and delegation test accounts: 1 ETH each                                 |
 
 #### Reserved System Addresses
 
@@ -100,7 +109,7 @@ All Ethereum hard forks through Osaka are activated from genesis (block 0 / time
 | `0x0000...c0DE`     | CodeManager smart contract | `CodeManager` — official Dakota code management service (patent-covered)      |
 | `0x0000...Face`     | ERC-8004 Agent Registry    | Official ERC-8004 agent identity contract                                     |
 | `0x0000...FacAdE`   | ProxyAdmin smart contract  | `ProxyAdmin` — guardian-gated ERC1967 upgrade dispatch                        |
-| `0x0000...de1E6A7E` | EIP-7702 delegation entry  | Fixed custom genesis proxy hosting the shared registry; each delegated EOA links its own dispatcher slot |
+| `0x0000...de1E6A7E` | EIP-7702 delegation entry  | Registry control plane; user EOAs authorize the separate immutable dispatcher directly |
 | `0x0000...FEeD`     | GasSponsor proxy           | Fixed custom genesis proxy; first-linked once with `GasSponsor.initialize(...)` |
 
 ---
@@ -136,108 +145,35 @@ Dakota genesis slots use a **Cryft Labs-modified transparent proxy derived from 
 
 ---
 
-### ValidatorSmartContractAllowList (`0x0000...1111`)
+### ValidatorSmartContractAllowList
 
-The core governance contract for the QBFT consensus layer. Deployed at genesis address `0x0000000000000000000000000000000000001111`. The initializer (`initialize()`) becomes the first voter — there is no guardian role in this contract, all operations are voter-driven.
+The registry at `0x0000000000000000000000000000000000001111` retains voter-governed validator, voter, and root-overlord membership. Decisions require `ceil(2N/3)` approvals from the unique approved electorate. This is the retained governance model, with the pre-genesis fixes described below.
 
-#### Access Control
+**Besu compatibility:** `getValidators()` remains `public view override returns (address[] memory)`, with the same selector and standard ABI encoding. The registry address and `ValidatorSmartContractInterface` are unchanged. Compile this contract with **Solidity 0.8.19, London, optimizer 200 runs**. The initial list comes from reviewed genesis storage; later queries return the approved validator set without consulting external providers on Besu's read path. Updated sets are unique and sorted by address.
 
-| Role      | How Assigned                          | Powers                       |
-| --------- | ------------------------------------- | ---------------------------- |
-| **Voter** | Supermajority vote of existing voters | All governance actions below |
+#### Governance changes
 
-All state changes require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`.
+| Area | Current behavior |
+| --- | --- |
+| Membership ballots | A proposal can receive its second and subsequent votes. Membership proposals no longer block themselves through `activeVoteCount`. |
+| Quorum | Each ballot freezes its unique electorate, threshold, and expiry when its first vote is cast. An address receives one vote even when present in several registries. |
+| External providers | Membership changes and explicit refreshes validate bounded provider responses. Provider failure leaves the last approved list and pending ballot threshold intact. |
+| Membership refresh | `previewVoters`, `previewValidators`, and `previewRoots` expose candidate lists and their hashes. The corresponding `voteToRefresh*` action adopts the exact reviewed list. Provider changes are not adopted automatically. |
+| Atomic recovery | `voteToSetVoterConfiguration`, `voteToSetValidatorConfiguration`, and `voteToSetRootConfiguration` replace local members and providers together. This permits removing multiple failed providers or transferring sole authority without an empty intermediate set. |
+| Pending ballots | An approved voter configuration or refresh advances the governance epoch, invalidating other pending ballots. Already approved application funding remains subject to its original execution rules. |
+| Validator safety | Membership changes retain at least four unique validators and do not exceed `maxValidators`. The configurable maximum is 4–64. `voteToReplaceValidator` replaces a local validator atomically, including at the minimum. |
+| Authority safety | Changes cannot empty the effective voter or root-overlord set. Zero addresses, self-administration, and the fixed ProxyAdmin facade cannot become effective governance members. |
+| Expiry | New ballots use 1–100,000 blocks, default 1,000. Anyone may clear an expired tally with `resetExpiredTally`; this grants no voting authority. |
 
-#### Governance Actions (all require voter supermajority)
+`getVoters`, `getValidators`, `getRootOverlords`, their count functions, and their membership predicates all describe the same respective approved sets. Existing voting function selectors and enum values remain; new values are appended. `getVoteTally`, `hasVoted`, and `activeVoteCount` retain their callable signatures. `getProposalSnapshot` and `governanceEpoch` expose the additional ballot state. The active counter includes expired ballots until cleanup/restart and resets on epoch invalidation.
 
-| Action                             | Function                                | Constraints                                                           |   |                                                             |
-| ---------------------------------- | --------------------------------------- | --------------------------------------------------------------------- | - | ----------------------------------------------------------- |
-| Add validator                      | `voteToAddValidator()`                  | Must not exceed `MAX_VALIDATORS` cap; not already in list             |   |                                                             |
-| Remove validator                   | `voteToRemoveValidator()`               | Must exist in local list                                              |   |                                                             |
-| Add voter                          | `voteToAddVoter()`                      | Must not already be a voter (aggregated)                              |   |                                                             |
-| Remove voter                       | `voteToRemoveVoter()`                   | `getVoters().length > 1` — cannot remove the last voter               |   |                                                             |
-| Add external validator contract    | `voteToAddOtherValidatorContract()`     | Must be a contract implementing `getValidators()` and `isValidator()` |   |                                                             |
-| Remove external validator contract | `voteToRemoveOtherValidatorContract()`  | Must exist in list                                                    |   |                                                             |
-| Add external voter contract        | `voteToAddOtherVoterContract()`         | Must implement `getVoters()` and `isVoter()`                          |   |                                                             |
-| Remove external voter contract     | `voteToRemoveOtherVoterContract()`      | `votersArray.length > 0 \                                             | \ | otherVoterContracts.length > 1` — prevents empty voter pool |
-| Add root overlord                  | `voteToAddRootOverlord()`               | Not `address(0)`, not already an overlord                             |   |                                                             |
-| Remove root overlord               | `voteToRemoveRootOverlord()`            | Must exist in local list                                              |   |                                                             |
-| Add external overlord contract     | `voteToAddOtherOverlordContract()`      | Must implement `getRootOverlords()` and `isRootOverlord()`            |   |                                                             |
-| Remove external overlord contract  | `voteToRemoveOtherOverlordContract()`   | Must exist in list                                                    |   |                                                             |
-| Change max validators              | `voteToChangeMaxValidators()`           | Must be > 0 (no upper bound)                                          |   |                                                             |
-| Change vote tally block threshold  | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 blocks                                                   |   |                                                             |
+#### External management revocation
 
-#### Vote Tally Mechanics
+The existing irreversible revocation sequence remains: root-overlord management, validator management, then voter management. Each revoked domain must have no local entries and a usable external set; validators must still number at least four. Revocation freezes local/provider configuration, including the new atomic configuration methods. Explicit refresh votes remain available to adopt upstream changes. It does not introduce a bypass for a failed permanently selected provider.
 
-- Each vote type + target pair has an independent tally with a start block.
-- Votes expire after `voteTallyBlockThreshold` blocks (default: 1,000, ~50 min at 3s blocks).
-- Expired tallies auto-reset on the next vote attempt for that target, or via the voter-only `resetExpiredTally()` function (`external onlyVoters`).
-- Voter-pool changes (add/remove voter, add/remove external voter contract, revoke voter management) are blocked while any tally is active (`activeVoteCount > 0`), ensuring the supermajority threshold remains stable for in-flight votes.
+**Bootstrap decision retained:** `initialize()` still checks whether the local voter array is empty. This is not a permanent initialization guard, including after a later external-only handover. Restricted initial access was the operator's explicit decision; the initializer must be revisited before broader access or that handover. No new root EOA or validator addresses have been selected by this change.
 
-#### Federated Expansion (Pluggable External Contracts)
-
-Three categories of external contracts can be plugged in:
-
-| Array                       | Interface Required                       | Aggregation Function                                           |
-| --------------------------- | ---------------------------------------- | -------------------------------------------------------------- |
-| `otherValidatorContracts[]` | `getValidators()`, `isValidator()`       | `getValidators()` — union of local + all external validators   |
-| `otherVoterContracts[]`     | `getVoters()`, `isVoter()`               | `getVoters()` — union of local + all external voters           |
-| `otherOverlordContracts[]`  | `getRootOverlords()`, `isRootOverlord()` | `getRootOverlords()` — union of local + all external overlords |
-
-All external calls use `try/catch` — a failing external contract is silently skipped (returns 0 entries), preventing a single broken contract from bricking governance.
-
-#### Permanent Management Revocation
-
-Three independent management domains can be **permanently and irreversibly** revoked via voter supermajority, delegating all future governance to external contracts:
-
-**1. Overlord Management Revocation** (`voteToRevokeOverlordManagement()`)
-- Pre-conditions: `rootOverlords[]` must be empty; `otherOverlordContracts[]` must have ≥1 entry
-- Effect: Blocks `ADD_ROOT_OVERLORD`, `REMOVE_ROOT_OVERLORD`, `ADD_OTHER_OVERLORD_CONTRACT`, `REMOVE_OTHER_OVERLORD_CONTRACT`
-
-**2. Validator Management Revocation** (`voteToRevokeValidatorManagement()`)
-- Pre-conditions: `validators[]` must be empty; `otherValidatorContracts[]` must have ≥1 entry; `getValidators()` must return ≥4 addresses (aggregated)
-- Effect: Blocks `ADD_VALIDATOR`, `REMOVE_VALIDATOR`, `ADD_OTHER_VALIDATOR_CONTRACT`, `REMOVE_OTHER_VALIDATOR_CONTRACT`
-
-**3. Voter Management Revocation** (`voteToRevokeVoterManagement()`) — **must be last**
-- Pre-conditions: Overlord management already revoked; validator management already revoked; `votersArray[]` must be empty; `otherVoterContracts[]` must have ≥1 entry; `getVoters()` must return ≥1 address (aggregated)
-- Effect: Blocks `ADD_VOTER`, `REMOVE_VOTER`, `ADD_OTHER_VOTER_CONTRACT`, `REMOVE_OTHER_VOTER_CONTRACT`
-
-Once all three are revoked, this contract's local lists are permanently frozen. All governance is delegated to the listed external contracts. The contract continues to serve aggregation queries (`getValidators()`, `getVoters()`, `getRootOverlords()`) combining local (frozen) and external (live) data.
-
-#### Convenience View Functions
-
-| Function                           | Returns                                                             | Description                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `isVoter(address)`                 | `bool`                                                              | Check if address is a voter (local + external contracts)                     |
-| `isValidator(address)`             | `bool`                                                              | Check if address is an active validator (local + external)                   |
-| `isRootOverlord(address)`          | `bool`                                                              | Check if address is a root overlord (local + external)                       |
-| `getVoters()`                      | `address[]`                                                         | All voters (local `votersArray` + external contracts)                        |
-| `getValidators()`                  | `address[]`                                                         | All validators (local + external contracts)                                  |
-| `getRootOverlords()`               | `address[]`                                                         | All root overlords (local + external contracts)                              |
-| `getVoterCount()`                  | `uint256`                                                           | Total voter count (local + external) without materializing the array         |
-| `getValidatorCount()`              | `uint256`                                                           | Total validator count (local + external) without materializing the array     |
-| `getRootOverlordCount()`           | `uint256`                                                           | Total root overlord count (local + external) without materializing the array |
-| `getSupermajorityThreshold()`      | `uint256`                                                           | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3`         |
-| `getVoteTally(VoteType, target)`   | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target                                    |
-| `MAX_VALIDATORS`                   | `uint256`                                                           | Current validator cap                                                        |
-| `voteTallyBlockThreshold`          | `uint256`                                                           | Blocks before a vote tally expires (default: 1,000)                          |
-| `activeVoteCount`                  | `uint256`                                                           | Number of currently active vote tallies                                      |
-| `overlordManagementRevoked`        | `bool`                                                              | Whether overlord management has been permanently revoked                     |
-| `validatorManagementRevoked`       | `bool`                                                              | Whether validator management has been permanently revoked                    |
-| `voterManagementRevoked`           | `bool`                                                              | Whether voter management has been permanently revoked                        |
-| `hasVoted[VoteType][target][addr]` | `bool`                                                              | Whether an address has voted on a specific tally                             |
-
-#### Lockout Prevention
-
-| Scenario                                                 | Guard                                                                                |   |                                 |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------ | - | ------------------------------- |
-| Remove last voter                                        | `getVoters().length > 1` enforced before removal                                     |   |                                 |
-| Remove last external voter contract when no local voters | `votersArray.length > 0 \                                                            | \ | otherVoterContracts.length > 1` |
-| Voter-pool change during active tally                    | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |   |                                 |
-| Revoke voter management with no external voters          | Requires `otherVoterContracts.length > 0` and `getVoters().length >= 1`              |   |                                 |
-| Revoke validator management with too few validators      | Requires `getValidators().length >= 4` (QBFT minimum)                                |   |                                 |
-| Revoke voter management before other domains             | Requires overlord + validator management already revoked                             |   |                                 |
-| `address(0)` as voter/validator/overlord                 | All entry points require `!= address(0)`                                             |   |                                 |
+See the [governance maintenance guide](Contracts/Genesis/GOVERNANCE.md) for operational steps, limits, authority differences, and fresh-genesis requirements, and [local regression tests](Tests/Governance/README.md) for verification.
 
 ---
 
@@ -268,7 +204,7 @@ Destructive operations (funding, burns) require two phases:
 | Burn native coin | `voteToBurnNativeCoin(amount)` | `executeCoinBurn(amount)` | Guardian only |
 
 All execute functions are protected by `ReentrancyGuard`. Direct funding uses
-`.call{value:}`, while sponsor funding invokes the typed `depositFor` entry
+`.call{value:}`, while sponsor funding invokes the typed `depositGasCredit` entry
 point and verifies the exact balance deltas on both contracts.
 
 #### Sponsor-Ledger Funding (`caFE` -> `FEeD`)
@@ -312,15 +248,15 @@ Voters can burn any amount of the contract's native coin balance via `voteToBurn
 
 #### Voter Pool (Independent)
 
-The GasManager has its own local `votersArray[]` and pluggable `otherVoterContracts[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External voter contracts must implement `getVoters()` and `isVoter()`. 2/3 supermajority quorum: `(totalVoterCount * 2 + 2) / 3`.
+The GasManager has its own local `votersArray[]` and pluggable `otherVoterContracts[]`, completely independent from the ValidatorSmartContractAllowList voter pool. External providers supply `getVoters()`; membership checks use the approved unique array rather than trusting a separate provider predicate. The shared snapshot, explicit refresh, and atomic recovery rules above apply. A membership change must leave at least one effective voter; successful changes invalidate pending ballots.
 
 #### Convenience View Functions
 
 | Function                           | Returns                                                             | Description                                                          |
 | ---------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `isVoter(address)`                 | `bool`                                                              | Check if address is a voter (local + external contracts)             |
-| `getVoters()`                      | `address[]`                                                         | All voters (local `votersArray` + external contracts)                |
-| `getVoterCount()`                  | `uint256`                                                           | Total voter count (local + external) without materializing the array |
+| `getVoters()`                      | `address[]`                                                         | Unique approved local and external voters                |
+| `getVoterCount()`                  | `uint256`                                                           | Number of unique approved voters |
 | `getSupermajorityThreshold()`      | `uint256`                                                           | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
 | `getVoteTally(VoteType, target)`   | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target                            |
 | `getContractBalance()`             | `uint256`                                                           | Native coin balance held by this contract                            |
@@ -338,19 +274,13 @@ The GasManager has its own local `votersArray[]` and pluggable `otherVoterContra
 
 #### Lockout Prevention
 
-| Scenario                                                 | Guard                                                                                |   |                                 |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------ | - | ------------------------------- |
-| Remove last voter                                        | `getVoters().length > 1` enforced before removal                                     |   |                                 |
-| Remove last external voter contract when no local voters | `votersArray.length > 0 \                                                            | \ | otherVoterContracts.length > 1` |
-| Voter-pool change during active tally                    | `activeVoteCount == 0` required; use `resetExpiredTally()` to clean up stale tallies |   |                                 |
-| `address(0)` as voter/guardian/recipient                 | All entry points require `!= address(0)`                                             |   |                                 |
-| Clear guardians when none exist                          | `guardiansArray.length > 0` required                                                 |   |                                 |
-| Re-entrancy on fund/burn execution                       | `ReentrancyGuard` modifier on all execute functions                                  |   |                                 |
-| Balance discrepancy after fund transfer                  | Exact balance delta check: `balanceBefore - balanceAfter == _amount`                 |   |                                 |
+The shared governance engine rejects empty effective voter sets and invalid authorities. Atomic voter configuration permits a sole-voter handover and removal of several failed providers. Snapshot thresholds cannot fall when a provider fails, and expired ballots can be cleared without voter privileges.
+
+Guardians remain operational roles that voters can add again after removal; an empty guardian list therefore does not destroy governance. Funding and burn execution retain reentrancy and balance checks. Funding recipients remain bound to their approved requests. GasManager's named custom errors replace several revert strings; integrations must use the rebuilt ABI when decoding failures.
 
 #### Upgradeability
 
-GasManager inherits `Initializable` and `ReentrancyGuardUpgradeable` from OpenZeppelin v4.9.6. The constructor calls `_disableInitializers()` to prevent re-initialization of the implementation contract.
+GasManager inherits `Initializable` and `ReentrancyGuardUpgradeable` from OpenZeppelin v4.9.6. The constructor calls `_disableInitializers()` to lock the implementation contract. `initialize()` retains direct-caller setup; `initializeWithVoter(address)` supports an explicit usable voter during atomic proxy/factory initialization. This explicit initializer is also available on CodeManager. Neither accepts the application itself or the fixed ProxyAdmin facade as the voter.
 
 ---
 
@@ -367,11 +297,11 @@ Extended OpenZeppelin ERC1967 transparent proxy with multi-party overlord/guardi
 | **Guardian**                    | Added via 2/3 supermajority overlord vote                                                                 | Operational: `proxy_linkLogicAdmin()` (one-time), trigger upgrades via ProxyAdmin |
 | **Admin** (ProxyAdmin contract) | Immutable — baked into bytecode at compile/genesis time (3-gas reads)                                     | ERC1967 upgrade dispatch (`upgradeTo`, `upgradeToAndCall`)                        |
 
-Root overlords are **not stored** in the proxy — they are read live from the validator contract via `try/catch`. If the validator contract is unreachable, root overlord calls return `false` / empty array (safe degradation).
+Root authority is read dynamically from the validator registry; no root EOA is compiled into the proxy. The registry serves its last approved root set independently of upstream provider availability. Proxy ballot membership reads fail closed if the registry itself cannot return a valid bounded list, rather than silently reducing quorum.
 
 #### Overlord Count and Supermajority Threshold
 
-- `proxy_getOverlordCount()` = non-root overlords + root overlord count (when active)
+- `proxy_getOverlordCount()` = unique union of local overlords and active roots; an overlapping address counts once
 - 2/3 supermajority threshold = `ceil(count × 2 / 3)` = `(count * 2 + 2) / 3`
 - Examples: 1→1, 2→2, 3→2, 4→3, 5→4, 6→4
 
@@ -386,7 +316,7 @@ A single overlord can pass any proposal unilaterally (supermajority threshold = 
 | Add guardian          | `proxy_proposeGuardianChange(target, true)`  | Not `address(0)`, not the validator contract, not an overlord, max 10 guardians    |
 | Remove guardian       | `proxy_proposeGuardianChange(target, false)` | Must be a guardian                                                                 |
 | Clear all guardians   | `proxy_proposeClearGuardians()`              | At least 1 guardian exists                                                         |
-| Change vote expiry    | `proxy_proposeExpiryChange(newExpiry)`       | Minimum 100 blocks (~5 min at 3s blocks)                                           |
+| Change vote expiry    | `proxy_proposeExpiryChange(newExpiry)`       | 100–100,000 blocks                                           |
 | Revoke root overlord  | `proxy_proposeRevokeRootOverlord()`          | Root not already revoked; at least 1 non-root overlord exists                      |
 | Restore root overlord | `proxy_proposeRestoreRootOverlord()`         | Root must be revoked; only non-root overlords can propose (root is excluded)       |
 
@@ -403,13 +333,13 @@ Direct root overlord changes also increment the vote epoch, invalidating all pen
 #### Voting Mechanics
 
 - **Single-session lock**: Only one proposal can be actively voted on at a time. A second proposal reverts unless the first has expired.
-- **Vote expiry**: Default 60,000 blocks (~1 week at 3s blocks). Expired proposals auto-increment their round, invalidating stale votes.
-- **Vote epoch**: Incremented on every executed proposal or direct overlord change. Changing the epoch invalidates all pending proposals across all proposal types.
+- **Vote expiry**: Default 60,000 blocks; a ballot freezes its expiry at its first vote. Allowed settings are 100–100,000 blocks. Expired proposals start a new round.
+- **Vote context**: A fingerprint includes the current unique root/local controller set, root-revocation state, and epoch. Root rotation or a local governance change invalidates pending proxy votes. Each ballot freezes its electorate and threshold.
 - **Proposal rounds**: Each proposal key tracks a round counter. On expiry, the round increments, creating a fresh proposal ID while preserving the base key.
 
 #### Storage Design
 
-All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., `keccak256("TransparentUpgradeableProxy.overlordMap")`) to avoid collisions with the implementation contract's storage. This is critical — standard Solidity storage slots 0, 1, 2... would conflict with the proxied contract.
+All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., `keccak256("TransparentUpgradeableProxy.overlordMap")`) to avoid collisions with the implementation contract's storage. Proxy voting uses `keccak256("cryft.proxy.governance.votes.v1")`; application voting uses `keccak256("cryft.governance.snapshot.v1")`. These must stay separate because the application executes through delegatecall at the same address. Local proxy-controller enumeration is fresh-genesis state, not an automatic migration of a previously deployed shell.
 
 #### Proxy Linkage (One-Time)
 
@@ -417,16 +347,16 @@ All proxy governance state is stored in **namespaced `keccak256` slots** (e.g., 
 
 #### Lockout Prevention
 
-| Scenario                                            | Guard                                                                                                            |   |                              |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | - | ---------------------------- |
-| Remove last non-root overlord when root is inactive | `_rawOverlordCount() > 1 \                                                                                       | \ | (rootCount > 0 && !revoked)` |
-| Voluntary root revoke with no non-root overlords    | `_rawOverlordCount() > 0`                                                                                        |   |                              |
-| Force-revoke root with no non-root overlords        | Same check in `proxy_proposeRevokeRootOverlord()`                                                                |   |                              |
-| Link logic with `address(0)` logic                  | Checked `!= address(0)` in `proxy_linkLogicAdmin()`                                                              |   |                              |
-| Overlord/guardian dual-role                         | Both `proxy_addOverlord` and `proxy_proposeGuardianChange` cross-check to prevent any address holding both roles |   |                              |
-| Mid-vote membership manipulation                    | Every direct add/remove calls `_incrementVoteEpoch()`, invalidating all pending proposals                        |   |                              |
-| Single overlord stuck (threshold too high)          | Threshold formula: `(1*2+2)/3 = 1` — a single overlord passes anything                                           |   |                              |
-| Guardian overflow                                   | Hard cap: `MAX_GUARDIANS = 10`                                                                                   |   |                              |
+| Scenario | Guard or recovery |
+| --- | --- |
+| Remove the final effective controller | Rejected; local and active root membership are counted uniquely |
+| Revoke roots without a local controller | Rejected for both direct and voted revocation |
+| Remove every explicit guardian | Controllers can vote to add operational guardians again |
+| Change controller membership during a ballot | The membership fingerprint and epoch invalidate stale approvals |
+| Configure an unusable vote expiry | Only 100–100,000 blocks are accepted |
+| Overlap local and root roles | A controller counts once toward quorum |
+| Interfere with application voting through the proxy | Proxy and application ballots use separate storage namespaces |
+| Upgrade through ProxyAdmin after root rotation | The former root loses authority; the current root is resolved dynamically |
 
 #### Constants
 
@@ -499,12 +429,12 @@ CodeManager (independent)
 
 | Contract                | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CodeManager**         | **Patent-covered.** Permissionless unique ID registry with an independent voter pool, 2/3 supermajority quorum, public mirrored UID state, and Pente routing. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`.                                                                                                                                                                      |
-| **PrivateComboStorage** | **Patent-covered.** Pente privacy group deployment. Stores code hashes privately with contract-assigned PINs, verifies redemption codes via hash comparison, tracks execution-time UID active state privately, and emits `PenteExternalCall` events to mirror UID status and route redemptions through CodeManager. Supports ERC-2771 trusted forwarder for meta-transactions via PrivateMetaTxRelay. All configuration (admin, authorized caller, CodeManager address, trusted forwarder, max-per-PIN limit) is embedded as compile-time constants — changes require recompilation and proxy upgrade. |
-| **PrivateMetaTxRelay**  | **Patent-covered.** Pente privacy group deployment. EIP-712 / ERC-2771 meta-transaction relay for PrivateComboStorage. Any privacy group member can submit signed requests; the relay verifies the signature, increments a per-signer nonce, and forwards the call with the recovered signer appended per ERC-2771. Authorization is enforced by PrivateComboStorage, not the relay. |
+| **CodeManager**         | **Patent-covered.** Gift-authorized unique ID registry with an independent voter pool, 2/3 supermajority quorum, public mirrored UID state, and Pente routing. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`.                                                                                                                                                                      |
+| **PrivateComboStorage** | Private hash/PIN state, bounded batches, rotatable service roles and two-step administration. |
+| **PrivateMetaTxRelay** | Disabled legacy fallback; requires separate hardening if live delegation tests establish a need. |
 | **DakotaDelegation**    | Initial v1 EIP-7702 execution logic. Verifies an account-owner EIP-712 signature, enforces per-account nonces/deadlines/execution gas budgets, executes bounded call batches, and supports EIP-1271 validation. It intentionally exposes no generic owner/session-key execution API.                                                                                                                                                                                                              |
 | **DakotaDelegationBeacon** | Shared implementation beacon whose constructor accepts only the implementation and derives its temporary owner from the root caller validated by `0x...1111`. After bootstrap, the fixed delegation entry owns it and Registry upgrades call `upgradeTo(newImplementation)` once.                                                                                                                                                                                                                  |
-| **DakotaDelegationBeaconDispatcher** | Immutable, stateless per-account dispatcher. Each delegated EOA stores this dispatcher in its own EIP-1967 implementation slot; the dispatcher resolves current logic through the beacon.                                                                                                                                                                                                                                                                                         |
+| **DakotaDelegationBeaconDispatcher** | Immutable direct EIP-7702 route with beacon/protocol getters. |
 | **GasSponsor**          | Initial v1 platform-managed sponsorship treasury. Validates platform-signed vouchers, approved EIP-7702 delegation, allowlisted relayers, tenant/sponsor limits, operation replay protection, gas envelopes, and bounded reimbursement.                                                                                                                                                                                                                                                           |
 | **CryftGreetingCards**  | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase from pre-registered supply. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license.                                                                                                                                     |
 
@@ -512,9 +442,9 @@ CodeManager (independent)
 
 ### CodeManager (Unique ID Registry + Pente Router)
 
-Permissionless unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The voter pool is the union of local `votersArray[]` and all addresses returned by contracts in `otherVoterContracts[]`. Voter-pool changes are blocked while any tally is active (`activeVoteCount > 0`).
+Gift-authorized unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The approved voter pool is the unique union of local and explicitly adopted external members. It uses the same snapshot, refresh, atomic recovery, and last-voter protections as the validator registry. Membership ballots can finish while other ballots are pending; approval invalidates the other pending ballots.
 
-Also serves as the public mirror and Pente router. Authorized privacy groups call `recordRedemption`, which resolves the UID to its gift contract, marks the UID terminally redeemed, and forwards to the gift contract via try/catch. The function never reverts on precondition failures (emits `RedemptionRejected`) or gift contract errors (emits `RedemptionFailed`), guaranteeing that every `PenteExternalCall` succeeds from Pente's perspective and private state is always preserved. Active/inactive state is mirrored publicly from the private contract using sparse per-UID overrides over a default active state.
+Also serves as the public mirror and Pente router. Authorized privacy groups call `recordRedemption`, which resolves the UID to its gift contract, marks the UID terminally redeemed, and forwards to the gift contract with bounded gas and return data. Application rejections and gift delivery failures are recorded in events; accepted redemptions retain their committed recipient for permissionless retry. Authorization, reentrancy and resource checks may still revert; test the complete private/public transition path. Active/inactive state is mirrored publicly from the private contract using sparse per-UID overrides over a default active state.
 
 #### Governance Actions (all require voter supermajority)
 
@@ -524,34 +454,34 @@ Also serves as the public mirror and Pente router. Authorized privacy groups cal
 | Remove whitelisted address           | `voteToRemoveWhitelistedAddress(address)`      | Voter supermajority required                                           |
 | Update registration fee              | `voteToUpdateRegistrationFee(uint256)`         | Voter supermajority required                                           |
 | Update fee vault                     | `voteToUpdateFeeVault(address)`                | Voter supermajority required                                           |
-| Add voter                            | `voteToAddVoter(address)`                      | `activeVoteCount == 0`; not already a voter                            |
-| Remove voter                         | `voteToRemoveVoter(address)`                   | `activeVoteCount == 0`; `getVoters().length > 1`                       |
-| Add external voter contract          | `voteToAddOtherVoterContract(address)`         | `activeVoteCount == 0`; must implement `getVoters()` + `isVoter()`     |
-| Remove external voter contract       | `voteToRemoveOtherVoterContract(address)`      | `activeVoteCount == 0`                                                 |
+| Add voter                            | `voteToAddVoter(address)`                      | Not already an effective voter; safe resulting set                            |
+| Remove voter                         | `voteToRemoveVoter(address)`                   | Resulting effective voter set must remain nonempty                       |
+| Add external voter contract          | `voteToAddOtherVoterContract(address)`         | Bounded `getVoters()` response; safe unique resulting set     |
+| Remove external voter contract       | `voteToRemoveOtherVoterContract(address)`      | Safe resulting effective voter set                                                 |
 | Update vote tally block threshold    | `voteToUpdateVoteTallyBlockThreshold(uint256)` | 1 to 100,000 blocks                                                    |
 | Authorize/de-authorize privacy group | `voteToAuthorizePrivacyGroup(address)`         | Toggles `isAuthorizedPrivacyGroup[addr]`; voter supermajority required |
-| Reset expired tally                  | `resetExpiredTally(VoteType, uint256)`         | Voter-only; tally must have expired                                    |
+| Reset expired tally                  | `resetExpiredTally(VoteType, uint256)`         | Permissionless; tally must have expired                                    |
 
 #### Pente Router Functions (called by authorized privacy groups)
 
 | Function                                          | Description                                                                                                                                                                                                          |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `recordRedemption(uniqueId, redeemer)`            | Resolves UID → gift contract, marks REDEEMED, calls `IRedeemable.recordRedemption()` via try/catch. Never reverts — emits `RedemptionRejected` on precondition failures, `RedemptionFailed` on gift contract errors. |
+| `recordRedemption(uniqueId, redeemer)`            | Resolves UID → gift contract, marks REDEEMED, calls `IRedeemable.recordRedemption()` with bounded delivery and a committed-recipient retry record. Inspect application and delivery status separately. |
 | `setUniqueIdActiveBatch(uniqueIds, activeStates)` | Mirrors sparse UID active-state changes from an authorized privacy group. Redeemed UIDs are rejected and left terminal.                                                                                              |
 
-#### Registration (permissionless)
+#### Registration (gift-authorized)
 
 | Function                                             | Description                                                                                                         |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `registerUniqueIds(giftContract, chainId, quantity)` | Payable — `registrationFee × quantity`. Forwards fee to `feeVault`. Increments counter range for the gift contract. |
+| `registerUniqueIds(giftContract, chainId, quantity)` | Gift or approved registrar only; payable — `registrationFee × quantity`. Forwards fee to `feeVault`. Increments counter range for the gift contract. |
 
 #### Convenience View Functions
 
 | Function                                      | Returns                                                             | Description                                                          |
 | --------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `isVoter(address)`                            | `bool`                                                              | Check if address is a voter (local + external contracts)             |
-| `getVoters()`                                 | `address[]`                                                         | All voters (local `votersArray` + external contracts)                |
-| `getVoterCount()`                             | `uint256`                                                           | Total voter count (local + external) without materializing the array |
+| `getVoters()`                                 | `address[]`                                                         | Unique approved local and external voters                |
+| `getVoterCount()`                             | `uint256`                                                           | Number of unique approved voters |
 | `getSupermajorityThreshold()`                 | `uint256`                                                           | Current 2/3 supermajority threshold: `(totalVoterCount * 2 + 2) / 3` |
 | `getVoteTally(VoteType, target)`              | `(totalVotes, startVoteBlock, voteExpirationBlock, votedAddresses)` | Full tally state for a vote type + target                            |
 | `validateUniqueId(uniqueId)`                  | `bool`                                                              | Check if a UID is valid (registered and within counter range)        |
@@ -570,306 +500,47 @@ Also serves as the public mirror and Pente router. Authorized privacy groups cal
 
 ---
 
-### PrivateComboStorage (Pente Privacy Group)
-
-Deployed inside a Paladin Pente privacy group. All state is private to privacy group members. Stores code hashes with contract-assigned PINs, verifies codes via hash comparison, and is the execution-time source of truth for UID active state. Valid status changes are mirrored publicly through CodeManager. On redemption, inactive or already-redeemed UIDs are skipped privately before any external redemption route is emitted.
-
-All configuration is embedded as **compile-time constants** — no constructor, no initializer, no storage-based admin. Changes require recompilation and redeployment via proxy upgrade.
-
-#### Constants (set at compile time)
-
-| Constant            | Type      | Description                                                       |
-| ------------------- | --------- | ----------------------------------------------------------------- |
-| `ADMIN`             | `address` | Primary authorized caller                                         |
-| `AUTHORIZED`        | `address` | Secondary authorized caller                                       |
-| `CODE_MANAGER`      | `address` | CodeManager address on the public chain                           |
-| `TRUSTED_FORWARDER` | `address` | ERC-2771 trusted forwarder (PrivateMetaTxRelay proxy address)     |
-| `MAX_PER_PIN`       | `uint256` | Maximum entries per PIN slot (32)                                 |
-
-#### Write Functions
-
-| Function                                                                  | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `syncRegisteredCodeCountBatch(contractIdentifiers[], registeredCounts[])` | Sync the public CodeManager counter ceiling for one or more whitelisted contract identifiers. This local mirror is the store-time source of truth used to reject unregistered counters before any external call is considered.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `storeDataBatch(request)`                                                 | Bulk store code hashes using a batch-level `contractIdentifier`, batch-level PIN config (`pinLength` 1–8, `useSpecialChars`), and per-entry pre-registered `counters`. PIN settings are per-batch, not per-contract — different batches for the same gift contract can use different PIN lengths and character sets, letting callers choose security level per batch. Each entry also supplies its entropy seed and optional per-UID manager (`address(0)` means no dedicated manager). The contract reconstructs `uniqueId = contractIdentifier-counter`, rejects any counter above the synced public registration ceiling or already stored privately, assigns a PIN, and stores the hash. Returns `string[] assignedPins`. |
-| `setUniqueIdManagersBatch(uniqueIds[], newManagers[])`                    | Reassign or clear per-UID managers. Current UID manager, `ADMIN`, or `AUTHORIZED` may update each UID.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `setUniqueIdActiveBatch(uniqueIds[], activeStates[])`                     | Update private execution-time UID active state and mirror valid entries to CodeManager. UID manager, `ADMIN`, or `AUTHORIZED` may update each UID.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `redeemCodeBatch(pins[], codeHashes[], redeemers[])`                      | Batch-verify codes, skip inactive/redeemed UIDs privately, delete consumed entries, mark redeemed locally, and emit `PenteExternalCall` per valid entry to route `recordRedemption` through CodeManager. CodeManager never reverts on precondition failures or gift contract errors, so Pente private state is always preserved.                                                                                                                                                                                                                                                                                                                                                                                              |
-
-#### View Functions
-
-| Function                       | Returns   | Description                                                            |
-| ------------------------------ | --------- | ---------------------------------------------------------------------- |
-| `pinSlotCount(pin)`            | `uint256` | Number of hashes stored under a PIN                                    |
-| `isTrustedForwarder(address)`  | `bool`    | Whether the given address is the ERC-2771 trusted forwarder            |
-| `ADMIN()`                      | `address` | Admin constant                                                         |
-| `AUTHORIZED()`                 | `address` | Authorized caller constant                                             |
-| `CODE_MANAGER()`               | `address` | CodeManager address constant                                           |
-| `TRUSTED_FORWARDER()`          | `address` | ERC-2771 trusted forwarder address (PrivateMetaTxRelay proxy)          |
-| `MAX_PER_PIN()`                | `uint256` | Max entries per PIN slot constant                                      |
-
----
-
-### PrivateMetaTxRelay (Pente Privacy Group)
-
-Deployed inside the same Paladin Pente privacy group as PrivateComboStorage. Implements the EIP-712 / ERC-2771 meta-transaction relay pattern — any privacy group member can submit signed requests on behalf of external signers. The relay verifies signatures, manages per-signer nonces, and forwards calls to PrivateComboStorage with the recovered signer address appended per the ERC-2771 trusted forwarder specification.
-
-The relay itself is open — it performs no caller authorization. Authorization is enforced entirely by PrivateComboStorage's `_msgSender()`, which extracts the appended signer and checks it against `ADMIN`, `AUTHORIZED`, or the per-UID manager depending on the target function.
-
-All configuration is embedded as **compile-time constants** — no constructor, no initializer.
-
-#### Constants (set at compile time)
-
-| Constant                | Type      | Description                                                 |
-| ----------------------- | --------- | ----------------------------------------------------------- |
-| `ADMIN`                 | `address` | Paladin signer address (retained for future admin functions) |
-| `PRIVATE_COMBO_STORAGE` | `address` | Target PrivateComboStorage proxy address within the group   |
-
-#### EIP-712 Signing Domain
-
-| Field               | Value                                        |
-| ------------------- | -------------------------------------------- |
-| `name`              | `"PrivateMetaTxRelay"`                      |
-| `version`           | `"1"`                                       |
-| `chainId`           | `block.chainid`                              |
-| `verifyingContract` | `address(this)` (proxy address in Pente)     |
-
-#### ForwardRequest Struct
-
-```solidity
-struct ForwardRequest {
-    address from;       // The original signer (recovered via ecrecover)
-    bytes   data;       // ABI-encoded function call to PrivateComboStorage
-    uint256 nonce;      // Per-signer replay-protection nonce
-    uint256 deadline;   // block.timestamp expiry
-}
-```
-
-#### Write Functions
-
-| Function                                       | Description                                                                                                                                                                                   |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `execute(request, signature)`                  | Forward a single signed request. Verifies signature, consumes nonce, calls PrivateComboStorage with `abi.encodePacked(request.data, request.from)`. Reverts if signature or forwarded call fails. |
-| `executeBatch(requests[], signatures[])`        | Forward multiple independent signed requests. Invalid entries (bad signature length, expired, wrong nonce, bad signature) are skipped with `MetaTxFailed` events. Failed forwarded calls are reported, not reverted. |
-
-#### View Functions
-
-| Function                       | Returns   | Description                                                                |
-| ------------------------------ | --------- | -------------------------------------------------------------------------- |
-| `getNonce(address)`            | `uint256` | Current nonce for a signer (monotonically increasing)                      |
-| `verify(request, signature)`   | `bool`    | Non-consuming check: would this request pass verification at current block |
-| `domainSeparator()`            | `bytes32` | EIP-712 domain separator for this relay instance                           |
-| `ADMIN()`                      | `address` | Admin constant                                                             |
-| `PRIVATE_COMBO_STORAGE()`      | `address` | Target contract constant                                                   |
-
-#### Security Model
-
-- **Open relay, enforced target**: The relay has no `onlyAdmin` gate — any privacy group member may submit. Authorization is enforced by PrivateComboStorage's `_msgSender()` against the recovered signer.
-- **EIP-712 typed signatures**: Prevent cross-chain and cross-contract replay via domain separator.
-- **Per-signer nonces**: Monotonically increasing, consumed on successful verification. Prevents replay of the same request.
-- **Deadline enforcement**: Requests expire at `block.timestamp > deadline`.
-- **EIP-2 low-s check**: Rejects malleable signatures (`s > secp256k1n/2`).
-- **ERC-2771 forwarding**: `abi.encodePacked(request.data, request.from)` appends the 20-byte signer address. PrivateComboStorage's `_msgSender()` extracts it when `msg.sender == TRUSTED_FORWARDER`.
-
----
-
-### Native EIP-7702 Delegation and Gas Sponsorship
-
-The current sponsorship stack is an initial v1 deployment built directly on EIP-7702. It does **not** use ERC-4337, a bundler, an EntryPoint, or a paymaster. The authoritative deployment and canary procedure is [Contracts/Genesis/7702/GAS-SPONSORSHIP.md](Contracts/Genesis/7702/GAS-SPONSORSHIP.md).
-
-#### Fixed Deployment Anchors
-
-| Purpose | Address |
-| --- | --- |
-| Chain ID | `112311` |
-| Validator/root registry | `0x0000000000000000000000000000000000001111` |
-| ProxyAdmin | `0x0000000000000000000000000000000000FacAdE` |
-| EIP-7702 delegation entry | `0x00000000000000000000000000000000de1E6A7E` |
-| GasSponsor proxy | `0x000000000000000000000000000000000000FEeD` |
-| Retained root overlord | `0x2B7361056b31D2bf201E6764e7825fd31c0D223A` |
-
-The retained root is already an overlord and guardian on both custom genesis proxies. Do not add it again or revoke it during this deployment.
-
-#### Runtime Route
-
-```text
-relayer
-  -> GasSponsor at 0x...FEeD
-  -> delegated user EOA
-  -> EIP-7702 indicator: 0xef0100 || 0x...de1E6A7E
-  -> genesis proxy code executing in the user account context
-  -> user EIP-1967 implementation slot
-  -> DakotaDelegationBeaconDispatcher
-  -> DakotaDelegationBeacon
-  -> DakotaDelegation
-  -> authorized target calls
-```
-
-At its own address, `0x...de1E6A7E` is first-linked to the upgradeable `DakotaDelegationRegistry` control plane. Direct calls to the fixed entry expose canonical component addresses, the current registry and delegation implementations, verified release history, capabilities, and delegated-account readiness.
-
-Each authorized user account has separate proxy storage and links `DakotaDelegationBeaconDispatcher` in that account's EIP-1967 implementation slot. The dispatcher is immutable and stateless; user execution therefore bypasses registry logic and normal delegation upgrades update the shared beacon once. The fixed entry owns that beacon and registry calls validate and record each implementation activation atomically.
-
-#### Initial-Release and Storage Rules
-
-- Before first deployment, both reserved genesis proxies must report `proxy_getIsInit() == false` and a zero EIP-1967 implementation slot.
-- `DakotaDelegationRegistry` uses `initialize(...)` with `initializer`, and its implementation constructor disables direct initialization.
-- `GasSponsor` uses `initialize(...)` with `initializer`. There is no `initializeV2(...)`, numbered reinitializer, or prior implementation state to migrate.
-- The `GasSponsor` implementation constructor disables direct initialization.
-- Direct execution against the `DakotaDelegation` implementation is rejected; it must execute through a delegated account.
-- Genesis proxy governance state is namespaced and implementation routing uses the EIP-1967 slot.
-- Delegation registry state uses `erc7201:dakota.storage.DakotaDelegationRegistry`.
-- Sponsorship state uses `erc7201:dakota.storage.GasSponsor`.
-- Per-user nonce and reentrancy state use `erc7201:dakota.storage.DakotaDelegation`.
-
-#### Contract Set
-
-| Contract | Responsibility |
-| --- | --- |
-| `DakotaDelegation` | Verifies the user-account EIP-712 signature, account nonce, deadline, executor, call count, and execution gas budget before executing up to 32 calls. |
-| `DakotaDelegationBeacon` | Shared beacon with root-validated bootstrap ownership. Deploy it directly from a root recognized by `0x...1111`, then transfer ownership to the fixed delegation entry. Do not renounce ownership. |
-| `DakotaDelegationBeaconDispatcher` | Stateless resolver stored in each delegated account's EIP-1967 implementation slot. |
-| `DakotaDelegationRegistry` | Upgradeable implementation first-linked at `0x...de1E6A7E`; the fixed entry owns the beacon and exposes the verified release ledger, current implementation directory, capability surface, and delegated-account readiness view. |
-| `GasSponsor` | Validates sponsorship vouchers and delegation readiness, enforces global pause/relayer controls plus sponsor and tenant limits, prevents operation replay, executes the signed account calldata, and reimburses the relayer within the signed cap. |
-
-#### Build and Deployment
-
-Compile with Solidity `0.8.34`, Osaka, optimizer enabled, and `200` runs. The deployment gate is:
-
-```bash
-python Tools/SolcCompiler/check_gas_sponsor.py
-```
-
-The gate checks initial-release naming and initializer semantics, ERC-7201 storage locations, linear storage, retired selector absence, proxy selector collisions, shared capability assignments, registry control-plane invariants, dispatcher statelessness, and runtime size. Archive and verify the exact Standard JSON input; flattened sources are not the deployment source of truth.
-
-Deploy in this order:
-
-1. `DakotaDelegation()` version `1.1.0`
-2. From `ROOT`, `DakotaDelegationBeacon(delegationImplementation)`; the
-   constructor validates `msg.sender` against `0x...1111` and makes that
-   validated caller the temporary owner.
-3. `DakotaDelegationBeaconDispatcher(beacon)`
-4. `DakotaDelegationRegistry()`
-5. `GasSponsor()`
-
-Encode `DakotaDelegationRegistry.initialize(dispatcher, beacon, 0x...FEeD)`;
-the live root caller becomes registry admin. Then `ROOT` first-links `0x...de1E6A7E` with:
-
-```solidity
-proxy_linkLogicAdmin(
-    DAKOTA_DELEGATION_REGISTRY_IMPLEMENTATION,
-    REGISTRY_INITIALIZE_CALLDATA
-)
-```
-
-Transfer beacon ownership to `0x...de1E6A7E`. The fixed entry must report one
-initial release and `currentSnapshot().registryControlsBeacon == true`. Normal
-delegation upgrades call `upgradeDelegation(newImplementation,
-expectedRuntimeCodeHash)` through the registry ABI at `0x...de1E6A7E`.
-
-Encode the initial sponsor state:
-
-```solidity
-GasSponsor.initialize(
-    PLATFORM_ADMIN,
-    VOUCHER_SIGNER,
-    0x00000000000000000000000000000000de1E6A7E,
-    100000
-)
-```
-
-Then `ROOT` performs the one-time first link at `0x...FEeD`:
-
-```solidity
-proxy_linkLogicAdmin(GAS_SPONSOR_IMPLEMENTATION, INITIALIZE_CALLDATA)
-```
-
-Do not use `ProxyAdmin.upgrade(...)` for this first link: it would not set the custom genesis initialization flag. After linking, `implementationVersion()` must return `"1.0.0"` and sponsorship must remain paused until configuration and exact-transaction simulation are complete.
-
-#### User Onboarding
-
-The user signs an EIP-7702 authorization for chain `112311`, contract `0x...de1E6A7E`, and the user's current account nonce. The user never provides a private key. `ROOT` submits the type-4 transaction to the user account with:
-
-```solidity
-proxy_linkLogicAdmin(DAKOTA_DELEGATION_DISPATCHER, hex"")
-```
-
-After onboarding, confirm the EIP-7702 code indicator, custom proxy initialization flag, per-account dispatcher slot, retained root authority, `implementationVersion() == "1.1.0"`, the required capability bitmap, registry readiness, and `GasSponsor.isDelegationReady(account) == true`.
-
-#### DakotaDelegation API
-
-| Function | Description |
-| --- | --- |
-| `executeSponsored(request, ownerSignature)` | Executes the signed, nonce-bound, executor-bound call batch through the delegated user account. |
-| `getNonce()` | Returns the current per-account sponsored-execution nonce. |
-| `hashCalls(calls)` | Produces the canonical hash of the call array. |
-| `getExecutionDigest(...)` | Produces the user EIP-712 digest before signing. |
-| `domainSeparator()` | Returns the account-specific `DakotaDelegation` / version `1` domain separator. |
-| `isValidSignature(hash, signature)` | Implements EIP-1271 for the delegated account. |
-| `delegationProtocolId()` | Returns the initial sponsored-execution protocol identifier. |
-| `delegationCapabilities()` | Returns the stable v1 capability bitmap for dashboard and router feature discovery. |
-| `implementationVersion()` | Returns `"1.1.0"`. |
-| `supportsInterface(interfaceId)` | Reports the delegation, ERC-165, EIP-1271, ERC-721 receiver, and ERC-1155 receiver surfaces. |
-
-#### DakotaDelegationRegistry API
-
-| Scope | Functions | Purpose |
-| --- | --- | --- |
-| Initial link | `initialize` | Binds the dispatcher, beacon, sponsor, initial admin, protocol, and first verified release at the fixed delegation entry. |
-| Registry admin | `proposeAdmin`, `acceptAdmin`, `cancelAdminTransfer` | Two-step control-plane administration without an ownerless state. |
-| Registry admin | `upgradeDelegation` | Validates the exact runtime code hash, protocol, required capabilities, and interfaces before atomically upgrading and recording. |
-| Registry admin | `recordCurrentImplementation` | Captures an implementation changed before the fixed delegation entry acquired beacon ownership. |
-| Registry admin | `transferBeaconOwnership` | Explicit migration escape hatch to a replacement control plane. |
-| Read paths | `currentSnapshot`, `currentRelease`, `releaseAt`, `releaseCount` | Exposes canonical routing and release history. |
-| Entry reads | `registryImplementation`, `registryVersion`, `registryStorageLocation`, `genesisProxyAdmin` | Exposes the control-plane implementation and fixed proxy integration details. |
-| Account reads | `accountStatus`, `isAccountReady`, `getAccountNonce`, `getAccountDomainSeparator`, `getAccountExecutionDigest` | Consolidates EIP-7702, proxy, protocol, capability, signer, and sponsor readiness. |
-
-#### GasSponsor API
-
-| Scope | Functions | Purpose |
-| --- | --- | --- |
-| Platform admin | `setVoucherSigner`, `setApprovedDelegate`, `setRelayer`, `setPaused`, `setFixedOverheadGas` | Controls the global signing, delegation, relayer, pause, and gas-overhead policy. |
-| Platform admin | `configureSponsor`, `setSponsorManager`, `setSponsorAdminEnabled` | Binds a stable sponsor address to a canonical tenant ID hash, manager, hard limits, and platform enable switch. |
-| Sponsor manager | `setTenantLimits`, `setTenantEnabled`, `withdrawSponsor` | Applies tenant limits no greater than platform limits, controls the tenant enable switch, and withdraws sponsor funds. |
-| Any funder | `depositFor` | Directly deposits native currency into an already configured sponsor account; platform allocations should use the governed `caFE` sponsor-funding flow. |
-| Allowlisted relayer | `executeSponsored` | Submits signed execution calldata plus a platform-signed voucher and receives bounded reimbursement. |
-| Read paths | `getSponsorAccount`, `voucherDigest`, `isDelegationReady`, `isOperationConsumed`, `isRelayer` | Exposes configuration and readiness checks needed by the router, dashboard, and relayer. |
-
-Use a stable tenant-owned address, normally its tenant registry, as `SPONSOR`. Derive `tenantId` consistently as `keccak256(bytes(canonicalTenantId))`. Effective per-operation and daily limits are the lower of the platform and tenant values, and both platform and tenant enable switches must remain active.
-
-The user signs `SponsoredExecutionRequest` under:
-
-```text
-name = DakotaDelegation
-version = 1
-chainId = 112311
-verifyingContract = user account
-executor = 0x...FEeD
-```
-
-The platform signs `SponsorshipVoucher` under:
-
-```text
-name = DakotaGasSponsor
-version = 1
-chainId = 112311
-verifyingContract = 0x...FEeD
-delegate = 0x...de1E6A7E
-executionHash = keccak256(executionData)
-relayer = allowlisted relayer
-```
-
-The relayer calls `GasSponsor.executeSponsored(voucher, executionData, voucherSignature)`. Each `operationId` is single-use. A failed user execution still consumes the operation and reimburses the relayer within the signed cap.
-
-#### Upgrade Paths
-
-- Delegation logic: pause sponsorship, deploy and verify compatible logic, derive its runtime code hash from the archived artifact, call `upgradeDelegation(newImplementation, expectedCodeHash)` at `0x...de1E6A7E`, then confirm the release record and existing-account nonce preservation before unpausing.
-- Delegation control plane: preserve the `Initializable` linear prefix and `erc7201:dakota.storage.DakotaDelegationRegistry`, then use the fixed ProxyAdmin to upgrade `0x...de1E6A7E`; use `upgradeAndCall` only if a future implementation introduces a numbered migration.
-- GasSponsor without migration: pause sponsorship, deploy and verify storage-compatible logic, then call `ProxyAdmin.upgrade(GAS_SPONSOR_PROXY, newImplementation)`.
-- GasSponsor with a future migration: use `ProxyAdmin.upgradeAndCall(...)` and introduce a numbered reinitializer only in that future implementation.
-- GasManager sponsor funding: deploy and verify the storage-compatible implementation, confirm its linear layout still ends at slot `71`, then call `ProxyAdmin.upgrade(GAS_MANAGER_PROXY, newImplementation)`. No reinitializer is required because sponsor bindings use a new ERC-7201 namespace with valid zero-state defaults. Confirm `implementationVersion() == "2.5.0"` and `gasSponsor() == 0x...FEeD` through the `0x...caFE` proxy after upgrading.
-- Per-account dispatcher replacement is a recovery path, not the normal delegation upgrade mechanism.
-
----
+### PrivateComboStorage (Pente privacy group)
+
+Private state stores hashes, assigned PINs, registered counter ceilings, active
+status and redemption state. Initialize a private proxy atomically using
+`initialize(admin, service, forwarder)`. `ADMIN`, `AUTHORIZED` and
+`TRUSTED_FORWARDER` are storage-backed getters; addresses can change without
+recompiling. Use zero forwarder for the direct/delegated path. The implementation
+is locked against direct initialization. Use a private-domain proxy whose authority
+exists in that group; the public validator registry cannot be assumed available there.
+
+Admin transfer is proposed, accepted by the recipient, or cancelled. Rotate the
+service/forwarder and audit per-UID managers during handover. Batch operations are
+bounded to 100 entries. PIN/hash reservations within a batch prevent duplicate
+allocation; canonical identifiers prevent ambiguous registration/redemption routes.
+Public delivery retries retain the original committed redemption recipient.
+
+### PrivateMetaTxRelay (legacy fallback, disabled)
+
+The existing v1 source remains for compatibility research. It has compile-time
+addresses and an older signature envelope. It is not enabled in the deployment
+profile. Test private native delegation and sponsored Pente transition settlement
+first. Use a relay only after evidence establishes that it is required, followed by
+a separate hardening review and live tests. A successful public EIP-7702 transaction
+does not establish private EIP-7702 support.
+
+### Native EIP-7702 delegation and gas sponsorship
+
+The account route is `EOA -> immutable v2 dispatcher -> beacon -> account logic`.
+The reserved `0x...de1E6A7E` proxy hosts the release registry. The reserved
+`0x...FEeD` proxy hosts GasSponsor. Neither requires a fixed implementation baked
+into genesis. No per-account proxy initializer or EIP-1967 slot write is needed.
+
+The sponsor verifies the direct authorization route, dispatcher code hash,
+execution signature and voucher limits. Query `minimumCallGas` before signing;
+return data and gas forwarding are bounded. `depositFor` funds a refundable tenant
+balance; `depositGasCredit` funds restricted sponsorship credit. GasManager uses
+restricted credit, which tenant managers cannot withdraw. Credit is spent first.
+
+Use the current [sponsorship guide](Contracts/Genesis/7702/GAS-SPONSORSHIP.md)
+for deployment order, readiness checks, replay protection and ownership handover.
+The July live-deployment runbook is historical evidence, not this release's configuration.
 
 ### CryftGreetingCards (ERC-721 NFT)
 
@@ -1107,15 +778,20 @@ python3 Tools/TxSimulator/tx_simulator.py \
 
 Local Solidity compiler using [py-solc-x](https://github.com/iamdefinitelyahuman/py-solc-x). Compiles all `.sol` files under `Contracts/`, resolves imports (vendored OZ 4.9.6 for Genesis contracts, GitHub download for others), and outputs ABI + bytecode artifacts to `compiled_output/`.
 
+Each compiled contract, library, interface and abstract contract now has a self-contained `<Contract>_standard_input.json` for verification. Output folders include the EVM target; compiler identity and input SHA-256 are recorded in the artifact/manifest. Validators stay pinned to solc 0.8.19/London. Private contracts use the target supported by the selected Pente runtime, independently of the public chain. See the [compiler guide](Tools/SolcCompiler/README.md) for verification replay, private proxies and the pending EVM upgrade.
+
 ```bash
-pip install py-solc-x
-python3 Tools/SolcCompiler/compile.py
+pip install py-solc-x==2.0.5
+python3 Tools/SolcCompiler/compile.py --output-dir /absolute/path/to/review-artifacts
 ```
 
 Options:
 - `--clean-cache` — clear downloaded import cache
-- `--solc-version 0.8.34` — override compiler version
+- `--solc-version 0.8.37` — override compiler version
 - `--evm osaka` — override EVM target (default: `osaka`)
+- `--private` — compile a selected proxy/dependency for the private EVM too
+- `--private-evm shanghai` — explicit private target, subject to Pente support
+- `--output-dir PATH` — write review artifacts outside historical checked-in output
 
 ### `Tools/RedeemableCodeGenerator/generate_redeemable_codes.py`
 
@@ -1140,7 +816,7 @@ Options:
 
 #### Memory-Safe Assembly
 
-All inline assembly blocks across the codebase are annotated for memory safety. Contracts targeting solc 0.8.34 (Osaka EVM) use the inline `assembly ("memory-safe") { ... }` syntax introduced in solc 0.8.13. Validator contracts targeting solc <0.8.20 (London EVM) use the NatSpec annotation `/// @solidity memory-safe-assembly` above each `assembly { ... }` block, which is the equivalent mechanism for older compiler versions.
+All inline assembly blocks across the codebase are annotated for memory safety. Contracts targeting solc 0.8.37 (Osaka EVM) use the inline `assembly ("memory-safe") { ... }` syntax introduced in solc 0.8.13. Validator contracts targeting solc <0.8.20 (London EVM) use the NatSpec annotation `/// @solidity memory-safe-assembly` above each `assembly { ... }` block, which is the equivalent mechanism for older compiler versions.
 
 These annotations enable the Solidity optimizer's stack-to-memory variable relocation, producing more efficient bytecode. Every annotated block has been audited to confirm it either (a) only uses `sload`/`sstore` on namespaced storage slots, (b) reads from Solidity-allocated memory without writing, or (c) takes full control of memory but never returns to Solidity (e.g., the proxy `_delegate()` pattern that terminates via EVM `return`/`revert`).
 
@@ -1211,7 +887,7 @@ dakota-network/
 │   │       └── Utils/                # Address, StorageSlot, StringsUpgradeable
 │   │           └── Math/             # MathUpgradeable, SignedMathUpgradeable
 │   ├── CodeManagement/
-│   │   ├── CodeManager.sol       # Permissionless unique ID registry (fee-based)
+│   │   ├── CodeManager.sol       # Gift-authorized unique ID registry (fee-based)
 │   │   ├── PrivateComboStorage.sol # Pente privacy group (private redemption)
 │   │   └── Interfaces/
 │   │       ├── ICodeManager.sol

@@ -69,4 +69,6 @@ interface ICodeManager {
         string memory chainId,
         uint256 quantity
     ) external payable;
+    function getRedemptionRecipient(string calldata uniqueId) external view returns (address);
+    function retryRedemptionDelivery(string calldata uniqueId) external;
 }

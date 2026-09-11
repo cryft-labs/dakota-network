@@ -1,0 +1,8 @@
+tunnel: ${IPFS_CLOUDFLARE_TUNNEL_ID}
+credentials-file: /etc/cryft/secrets/ipfs-tunnel.json
+ingress:
+  - hostname: ${IPFS_PUBLIC_GATEWAY_HOSTNAME}
+    service: http://127.0.0.1:8080
+    originRequest:
+      httpHostHeader: ${IPFS_PUBLIC_GATEWAY_HOSTNAME}
+  - service: http_status:404

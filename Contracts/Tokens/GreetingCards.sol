@@ -251,6 +251,7 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/
 import "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/v5.2.0/contracts/utils/ReentrancyGuardUpgradeable.sol";
 
 import "./Interfaces/ICodeManager.sol";
+import "../CodeManagement/CanonicalUid.sol";
 import "./Interfaces/IRedeemable.sol";
 
 contract CryftGreetingCards is
@@ -307,6 +308,8 @@ contract CryftGreetingCards is
         string  redeemedBaseURI;
     }
     PurchaseSegment[] private _purchaseSegments;
+    address private _pendingCardOwner;
+    event OwnershipTransferStarted(address indexed previousOwner, address indexed pendingOwner);
 
 
     // ──────────────────── Events ────────────────────────
@@ -344,14 +347,57 @@ contract CryftGreetingCards is
         address codeManager_,
         string memory chainId_
     ) public initializer {
+        _initializeCard(name_, symbol_, baseURI_, codeManager_, chainId_, msg.sender);
+    }
+
+    function initializeWithOwner(string memory name_, string memory symbol_, string memory baseURI_,
+        address codeManager_, string memory chainId_, address owner_) external initializer {
+        _initializeCard(name_, symbol_, baseURI_, codeManager_, chainId_, owner_);
+    }
+
+    function _initializeCard(string memory name_, string memory symbol_, string memory baseURI_,
+        address codeManager_, string memory chainId_, address owner_) private onlyInitializing {
+        _checkCardOwner(owner_);
+        require(codeManager_.code.length != 0, "Invalid CodeManager");
+        (bool validChain,) = CanonicalUid.parseCounter(chainId_);
+        require(validChain, "Invalid chain ID");
         __ERC721_init(name_, symbol_);
-        __Ownable_init(msg.sender);
+        __Ownable_init(owner_);
         __ReentrancyGuard_init();
 
         baseTokenURI = baseURI_;
         codeManagerAddress = codeManager_;
         chainId = chainId_;
         _contractIdentifier = _computeContractIdentifier(chainId_);
+    }
+
+    function pendingOwner() external view returns (address) { return _pendingCardOwner; }
+
+    function transferOwnership(address next) public override onlyOwner {
+        _checkCardOwner(next);
+        require(next != owner(), "Already owner");
+        _pendingCardOwner = next;
+        emit OwnershipTransferStarted(owner(), next);
+    }
+
+    function cancelOwnershipTransfer() external onlyOwner {
+        _pendingCardOwner = address(0);
+        emit OwnershipTransferStarted(owner(), address(0));
+    }
+
+    function acceptOwnership() external {
+        require(msg.sender == _pendingCardOwner && msg.sender != address(0), "Not pending owner");
+        _pendingCardOwner = address(0);
+        _transferOwnership(msg.sender);
+    }
+
+    function renounceOwnership() public override onlyOwner { revert("Ownership required for maintenance"); }
+
+    function _checkCardOwner(address next) private view {
+        address proxyAdmin;
+        assembly ("memory-safe") { proxyAdmin := sload(0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103) }
+        require(next != address(0) && next != address(this) && next != proxyAdmin
+            && next != 0x0000000000000000000000000000000000FacAdE, "Invalid owner");
     }
 
     /// @dev Replicates CodeManager.incrementCounter's identifier algorithm exactly.
@@ -378,29 +424,11 @@ contract CryftGreetingCards is
     ///      within the minted range, and confirms the full string matches
     ///      the deterministic format. Returns (false, 0) on any failure.
     function _parseTokenId(string memory uniqueId) internal view returns (bool valid, uint256 tokenId) {
-        bytes memory b = bytes(uniqueId);
-        if (b.length == 0) return (false, 0);
-
-        uint256 multiplier = 1;
-        uint256 i = b.length;
-
-        // Walk backward, parsing digits until we hit the '-' separator
-        while (i > 0) {
-            unchecked { --i; }
-            if (b[i] == 0x2D) break; // '-'
-            uint8 d = uint8(b[i]) - 48;
-            if (d > 9) return (false, 0);
-            tokenId += d * multiplier;
-            multiplier *= 10;
-        }
-
-        if (tokenId == 0 || tokenId > _totalMinted) return (false, 0);
-
-        // Verify full uniqueId matches the deterministic format
-        if (keccak256(bytes(uniqueId)) != keccak256(abi.encodePacked(_contractIdentifier, "-", tokenId.toString()))) {
+        string memory identifier;
+        (valid, identifier, tokenId) = CanonicalUid.split(uniqueId);
+        if (!valid || tokenId > _totalMinted || keccak256(bytes(identifier)) != keccak256(bytes(_contractIdentifier))) {
             return (false, 0);
         }
-
         return (true, tokenId);
     }
 
@@ -716,6 +744,7 @@ contract CryftGreetingCards is
     ///         and call this function to complete the gift-contract side effect.
     function syncRedemption(string calldata uniqueId, address redeemer) external onlyOwner {
         require(redeemer != address(0), "Redeemer cannot be zero address");
+        require(ICodeManager(codeManagerAddress).getRedemptionRecipient(uniqueId) == redeemer, "Recipient differs from committed redemption");
         require(
             ICodeManager(codeManagerAddress).isUniqueIdRedeemed(uniqueId),
             "UniqueId not redeemed on CodeManager"
@@ -725,8 +754,8 @@ contract CryftGreetingCards is
         require(valid && _ownerOf(tokenId) != address(0), "Invalid uniqueId");
         require(ownerOf(tokenId) == address(this), "Not in vault");
 
-        unchecked { ++totalRedeems; }
-        _transfer(address(this), redeemer, tokenId);
+        ICodeManager(codeManagerAddress).retryRedemptionDelivery(uniqueId);
+        require(_ownerOf(tokenId) == redeemer, "Committed delivery still pending");
         emit RedemptionSynced(tokenId, uniqueId, redeemer);
     }
 

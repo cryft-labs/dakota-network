@@ -19,9 +19,9 @@ pragma solidity >=0.8.20 <0.9.0;
   │                                                                    │
   │  NATIVE EIP-7702 SPONSORED EXECUTION                               │
   │                                                                    │
-  │  Fixed delegation entry: 0x0000...de1E6A7E                         │
+  │  Registry control plane: 0x0000...de1E6A7E                         │
   │  Per-account route:                                                │
-  │    user EOA → genesis entry → EIP-1967 dispatcher                  │
+  │    user EOA → immutable dispatcher                  │
   │    → shared beacon → this implementation                           │
   │                                                                    │
   │  Signed execution contract:                                        │
@@ -49,15 +49,15 @@ pragma solidity >=0.8.20 <0.9.0;
   └────────────────────────────────────────────────────────────────────┘
 */
 
+import "./DelegationGas.sol";
 import "./Interfaces/IDakotaDelegation.sol";
 import "./Libraries/DakotaDelegationCapabilities.sol";
 import "./Libraries/DakotaECDSA.sol";
 
 /// @title DakotaDelegation
 /// @notice Shared account logic for widget-driven, relayed EIP-7702 execution.
-/// @dev User EOAs delegate to the fixed genesis entry at 0x...de1E6A7E. The
-///      entry reads the account's EIP-1967 dispatcher, which resolves this
-///      implementation through the shared Dakota delegation beacon.
+/// @dev User EOAs designate the immutable dispatcher directly. It resolves this
+///      implementation through the shared beacon without per-account proxy slots.
 contract DakotaDelegation is IDakotaDelegation {
     using DakotaECDSA for bytes32;
 
@@ -73,6 +73,7 @@ contract DakotaDelegation is IDakotaDelegation {
     error InsufficientExecutionGas(uint256 available, uint256 required);
     error ExecutionGasBudgetExceeded(uint256 consumed, uint256 limit);
     error CallReverted(uint256 callIndex);
+    error ReturnDataTooLarge(uint256 callIndex, uint256 size);
 
     uint256 private constant _MAX_CALLS = 32;
     uint256 private constant _MAX_EXECUTION_GAS_LIMIT = 5_000_000;
@@ -176,10 +177,7 @@ contract DakotaDelegation is IDakotaDelegation {
         }
 
         uint256 availableGas = gasleft();
-        uint256 requiredGas =
-            execution.executionGasLimit +
-            (execution.executionGasLimit / 63) +
-            _POST_EXECUTION_GAS_RESERVE;
+        uint256 requiredGas = DelegationGas.executionReserve(execution.executionGasLimit);
         if (
             execution.executionGasLimit == 0 ||
             execution.executionGasLimit > _MAX_EXECUTION_GAS_LIMIT ||
@@ -360,6 +358,24 @@ contract DakotaDelegation is IDakotaDelegation {
         return keccak256(abi.encode(callHashes));
     }
 
+    function _boundedTargetCall(Call calldata item, uint256 budget, uint256 index, uint256 remainingReturnBytes)
+        private returns (bytes memory result)
+    {
+        bytes memory input = item.data;
+        address target = item.target;
+        uint256 value = item.value;
+        bool success;
+        uint256 size;
+        assembly ("memory-safe") {
+            success := call(budget, target, value, add(input, 32), mload(input), 0, 0)
+            size := returndatasize()
+        }
+        if (size > 4096 || size > remainingReturnBytes) revert ReturnDataTooLarge(index, size);
+        result = new bytes(size);
+        assembly ("memory-safe") { returndatacopy(add(result, 32), 0, size) }
+        if (!success) _bubbleRevert(result, index);
+    }
+
     function _executeCalls(
         bytes32 operationId,
         Call[] calldata calls,
@@ -368,6 +384,7 @@ contract DakotaDelegation is IDakotaDelegation {
         uint256 callCount = calls.length;
         uint256 executionStartGas = gasleft();
         results = new bytes[](callCount);
+        uint256 totalReturnBytes;
         for (uint256 i; i < callCount; ) {
             Call calldata callItem = calls[i];
             if (
@@ -385,13 +402,8 @@ contract DakotaDelegation is IDakotaDelegation {
                 );
             }
             uint256 remainingGas = executionGasLimit - consumedGas;
-            (bool success, bytes memory result) = callItem.target.call{
-                value: callItem.value,
-                gas: remainingGas
-            }(callItem.data);
-            if (!success) {
-                _bubbleRevert(result, i);
-            }
+            bytes memory result = _boundedTargetCall(callItem, remainingGas, i, 16384 - totalReturnBytes);
+            totalReturnBytes += result.length;
 
             results[i] = result;
             emit CallExecuted(

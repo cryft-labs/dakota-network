@@ -1,0 +1,109 @@
+{
+  "status": "compiled_archive_ready_for_development_deployment",
+  "production_approved": false,
+  "live_transactions_sent": false,
+  "genesis_sha256": "95b4b05f4dea051a6f6cbf3babc164456044d55369d28548aa8026787a75e0ee",
+  "genesis_bytes": 1244949693,
+  "archive_sha256": "7e114986e59908933ca4ee835d125b050650b24827c7518428f1d93845bc410c",
+  "archive_bytes": 283399,
+  "previous_genesis_sha256": "ac53b0da6a81c00467215eac88f4209e2f706b40613979b94db37d38fdd82ce8",
+  "previous_archive_sha256": "9a7c96a22c9738d4cbffd7acc312070e45a33b1e10486f45e86c64fc438baa44",
+  "counts": {
+    "allocations": 32436,
+    "ValidatorSmartContractAllowList": 1,
+    "ProxyAdmin": 1,
+    "TransparentUpgradeableProxy": 32431
+  },
+  "runtimes": {
+    "ValidatorSmartContractAllowList": {
+      "solc": "0.8.19",
+      "evm": "london",
+      "runtime_bytes": 21412,
+      "runtime_keccak256": "0xce4b017e983eb21e5dcbe3f9dca4590a54451eaa53633f6cfaca145cf38cc1c7",
+      "standard_input_sha256": "639adfd449215c68210f27ec9b12d3161ca81bef982aba0505cb85cb5e89f44d",
+      "replayed": true
+    },
+    "ProxyAdmin": {
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 3200,
+      "runtime_keccak256": "0xeba4bc4e1e0d7f50206a4a4717a01f38c461299d259a878a4fbdb25bd4f46dd2",
+      "standard_input_sha256": "bae3f59b1c109e9fc501bfda6a65f4572a24ccfd3c02f398443ba9d0e7a5a02a",
+      "replayed": true
+    },
+    "TransparentUpgradeableProxy": {
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "runtime_bytes": 19115,
+      "runtime_keccak256": "0x296f5dd491d5636dace06af3ec059d6ec043237c5eed680d41efb19f06e455f5",
+      "standard_input_sha256": "79c93cb153978813e5e5b6c2fbd3e624aa00c9dc698a0934b398dc18b743d9f8",
+      "replayed": true
+    }
+  },
+  "chain_header": {
+    "nonce": "0x0",
+    "timestamp": "0x699FBAAD",
+    "extraData": "0xe5a00000000000000000000000000000000000000000000000000000000000000000c0c080c0",
+    "gasLimit": "0x3D09000",
+    "gasUsed": "0x0",
+    "number": "0x0",
+    "difficulty": "0x1",
+    "coinbase": "0x0000000000000000000000000000000000000000",
+    "mixHash": "0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365",
+    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "config": {
+      "chainId": 112311,
+      "homesteadBlock": 0,
+      "eip150Block": 0,
+      "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "eip155Block": 0,
+      "eip158Block": 0,
+      "byzantiumBlock": 0,
+      "constantinopleBlock": 0,
+      "petersburgBlock": 0,
+      "istanbulBlock": 0,
+      "muirGlacierBlock": 0,
+      "berlinBlock": 0,
+      "londonBlock": 0,
+      "shanghaiTime": 0,
+      "cancunTime": 0,
+      "pragueTime": 0,
+      "osakaTime": 0,
+      "bpo1Time": 0,
+      "bpo2Time": 0,
+      "qbft": {
+        "blockPeriodSeconds": 1,
+        "epochLength": 86000,
+        "requestTimeoutSeconds": 86,
+        "blockReward": "0x2C68AF0BB1400000",
+        "validatorContractAddress": "0x0000000000000000000000000000000000001111",
+        "miningBeneficiary": "0x000000000000000000000000000000000000cafE",
+        "emptyBlockPeriodSeconds": 64
+      },
+      "contractSizeLimit": 32768
+    }
+  },
+  "validators": [
+    "0xCdC8d72552dC91EC70b381Cc5b869ad64cEf8451",
+    "0x4E84562aCD2A3846C6dA115F00127EBf8279457d",
+    "0xCaBE4444b7d2f7A859dC0a9e9963a0dD0d6D8400",
+    "0xAFd389303A515D57dc2A97f46908c0E9DDdfa33C"
+  ],
+  "initial_roots": [
+    "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "0x633309d1155fD658a717e4f5E4FA853615400867"
+  ],
+  "initial_voters": [
+    "0x633309d1155fD658a717e4f5E4FA853615400867"
+  ],
+  "management_address": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+  "initial_total_wei": "34000000000000000000",
+  "all_allocation_storage_and_balances_preserved": true,
+  "validator_abi_readback_verified": true,
+  "archive_extraction_roundtrip_verified": true,
+  "besu_alias_change": {
+    "previous": "xemptyBlockPeriodSeconds",
+    "current": "emptyBlockPeriodSeconds",
+    "value": 64
+  }
+}

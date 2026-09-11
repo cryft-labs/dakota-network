@@ -20,7 +20,7 @@ pragma solidity >=0.8.20 <0.9.0;
   │  NATIVE EIP-7702 GAS SPONSORSHIP                                   │
   │                                                                    │
   │  Fixed proxy: 0x0000...FEeD                                        │
-  │  Approved delegation entry: 0x0000...de1E6A7E                      │
+  │  Approved delegate: immutable v2 dispatcher                      │
   │  No ERC-4337, bundler, EntryPoint, or paymaster.                   │
   │                                                                    │
   │  Initial release:                                                  │
@@ -38,7 +38,7 @@ pragma solidity >=0.8.20 <0.9.0;
   │    • stable sponsor address bound to canonical tenant ID hash      │
   │    • manager sets limits no greater than platform hard limits      │
   │    • platform and tenant enable switches must both be active       │
-  │    • deposits are permissionless; withdrawals are manager-only     │
+  │    • deposits split refundable funds from restricted gas credit     │
   │                                                                    │
   │  Signed voucher envelope:                                          │
   │    • operation and campaign IDs, sponsor, tenant, account,         │
@@ -62,6 +62,7 @@ pragma solidity >=0.8.20 <0.9.0;
   └────────────────────────────────────────────────────────────────────┘
 */
 
+import "./DelegationGas.sol";
 import "../Upgradeable/ReentrancyGuardUpgradeable.sol";
 import "../Upgradeable/Initializable.sol";
 
@@ -146,6 +147,8 @@ contract GasSponsor is
         mapping(address => bool) relayers;
         mapping(bytes32 => bool) consumedOperations;
         mapping(address => SponsorState) sponsors;
+        bytes32 approvedDelegateCodeHash;
+        mapping(address => uint256) restrictedGasCredit;
     }
 
     bytes32 private constant _GAS_SPONSOR_STORAGE_LOCATION =
@@ -166,15 +169,12 @@ contract GasSponsor is
     );
 
     bytes4 private constant _EIP1271_MAGIC = 0x1626ba7e;
-    bytes4 private constant _PROXY_GET_IS_INIT_SELECTOR =
-        bytes4(keccak256("proxy_getIsInit()"));
     bytes32 private constant _EXPECTED_DELEGATION_PROTOCOL_ID =
         keccak256("dakota.delegation.sponsored-execution.v1");
     uint256 private constant _MIN_CALL_GAS_LIMIT = 25_000;
     uint256 private constant _MAX_CALL_GAS_LIMIT = 5_000_000;
     uint256 private constant _MIN_OVERHEAD_GAS = 50_000;
     uint256 private constant _MAX_OVERHEAD_GAS = 500_000;
-    uint256 private constant _DELEGATE_ENTRY_GAS_RESERVE = 100_000;
     uint256 private constant _POST_CALL_GAS_RESERVE = 60_000;
     uint256 private constant _MAX_EXECUTION_DATA_BYTES = 65_536;
     uint256 private constant _MAX_RETURN_DATA_BYTES = 512;
@@ -210,6 +210,7 @@ contract GasSponsor is
             revert NotInitializationAuthority(msg.sender);
         }
         _requireNonZero(platformAdmin_);
+        require(platformAdmin_ != address(this) && platformAdmin_ != _GENESIS_PROXY_ADMIN, "Invalid platform administrator");
         _requireNonZero(voucherSigner_);
         _requireDelegate(approvedDelegate_);
         _validateOverheadGas(fixedOverheadGas_);
@@ -220,6 +221,7 @@ contract GasSponsor is
         state.platformAdmin = platformAdmin_;
         state.voucherSigner = voucherSigner_;
         state.approvedDelegate = approvedDelegate_;
+        state.approvedDelegateCodeHash = approvedDelegate_.codehash;
         state.fixedOverheadGas = fixedOverheadGas_;
         state.paused = true;
 
@@ -237,6 +239,7 @@ contract GasSponsor is
         address pendingAdmin_
     ) external override onlyPlatformAdmin {
         _requireNonZero(pendingAdmin_);
+        require(pendingAdmin_ != address(this) && pendingAdmin_ != _GENESIS_PROXY_ADMIN, "Invalid platform administrator");
         GasSponsorStorage storage state = _sponsorStorage();
         state.pendingPlatformAdmin = pendingAdmin_;
         emit PlatformAdminTransferProposed(
@@ -258,6 +261,13 @@ contract GasSponsor is
     }
 
     /// @inheritdoc IGasSponsor
+    function cancelPlatformAdminTransfer() external override onlyPlatformAdmin {
+        GasSponsorStorage storage state = _sponsorStorage();
+        state.pendingPlatformAdmin = address(0);
+        emit PlatformAdminTransferProposed(state.platformAdmin, address(0));
+    }
+
+    /// @inheritdoc IGasSponsor
     function setVoucherSigner(
         address signer
     ) external override onlyPlatformAdmin {
@@ -276,6 +286,7 @@ contract GasSponsor is
         GasSponsorStorage storage state = _sponsorStorage();
         address previousDelegate = state.approvedDelegate;
         state.approvedDelegate = delegate;
+        state.approvedDelegateCodeHash = delegate.codehash;
         emit ApprovedDelegateUpdated(previousDelegate, delegate);
     }
 
@@ -435,6 +446,37 @@ contract GasSponsor is
         emit Deposited(sponsor, msg.sender, msg.value);
     }
 
+    event GasCreditDeposited(address indexed sponsor, address indexed funder, uint256 amount);
+    event GasCreditRecovered(address indexed sponsor, address indexed recipient, uint256 amount);
+
+    /// @notice Restricted subsidy: usable for gas, never a tenant withdrawal.
+    /// Ordinary depositFor retains its refundable deposit/grant behavior.
+    function depositGasCredit(address sponsor) external payable override {
+        if (msg.value == 0) revert ZeroValue();
+        _sponsorState(sponsor).balance += msg.value;
+        _sponsorStorage().restrictedGasCredit[sponsor] += msg.value;
+        emit GasCreditDeposited(sponsor, msg.sender, msg.value);
+    }
+
+    function getSponsorFunding(address sponsor) external view returns (uint256 refundable, uint256 gasCredit) {
+        gasCredit = _sponsorStorage().restrictedGasCredit[sponsor];
+        refundable = _sponsorStorage().sponsors[sponsor].balance - gasCredit;
+    }
+
+    function recoverGasCredit(address sponsor, address payable recipient, uint256 amount) external onlyPlatformAdmin nonReentrant {
+        _requireNonZero(recipient);
+        require(amount > 0 && amount <= _sponsorStorage().restrictedGasCredit[sponsor], "Insufficient gas credit");
+        _sponsorStorage().restrictedGasCredit[sponsor] -= amount;
+        _sponsorState(sponsor).balance -= amount;
+        (bool sent,) = recipient.call{value: amount}("");
+        if (!sent) revert NativeTransferFailed();
+        emit GasCreditRecovered(sponsor, recipient, amount);
+    }
+
+    function minimumCallGas(uint256 executionGasLimit, uint256 executionDataBytes) external pure returns (uint256) {
+        return DelegationGas.minimumCallGas(executionGasLimit, executionDataBytes);
+    }
+
     /// @inheritdoc IGasSponsor
     function withdrawSponsor(
         address sponsor,
@@ -449,9 +491,9 @@ contract GasSponsor is
         _requireNonZero(recipient);
         if (amount == 0) revert ZeroValue();
         SponsorState storage sponsorState = _sponsorState(sponsor);
-        if (sponsorState.balance < amount) {
+        if (sponsorState.balance - _sponsorStorage().restrictedGasCredit[sponsor] < amount) {
             revert InsufficientSponsorBalance(
-                sponsorState.balance,
+                sponsorState.balance - _sponsorStorage().restrictedGasCredit[sponsor],
                 amount
             );
         }
@@ -836,6 +878,8 @@ contract GasSponsor is
 
         SponsorState storage sponsorState =
             _sponsorState(voucher.sponsor);
+        uint256 creditUsed = _min(reimbursement, _sponsorStorage().restrictedGasCredit[voucher.sponsor]);
+        _sponsorStorage().restrictedGasCredit[voucher.sponsor] -= creditUsed;
         sponsorState.balance -= reimbursement;
         sponsorState.dailySpent += reimbursement;
 
@@ -919,8 +963,8 @@ contract GasSponsor is
             address(uint160(executorWord)) != address(this) ||
             delegatedDeadline != expectedDeadline ||
             delegatedExecutionGasLimit == 0 ||
-            delegatedExecutionGasLimit + _DELEGATE_ENTRY_GAS_RESERVE >
-            outerCallGasLimit
+            delegatedExecutionGasLimit > DelegationGas.MAX_EXECUTION_GAS ||
+            DelegationGas.minimumCallGas(delegatedExecutionGasLimit, executionData.length) > outerCallGasLimit
         ) {
             revert InvalidExecutionEnvelope();
         }
@@ -1038,17 +1082,7 @@ contract GasSponsor is
             return false;
         }
 
-        (bool initializedSuccess, bytes memory initializedResult) =
-            account.staticcall{gas: _READINESS_CALL_GAS_LIMIT}(
-                abi.encodeWithSelector(_PROXY_GET_IS_INIT_SELECTOR)
-            );
-        if (
-            !initializedSuccess ||
-            initializedResult.length != 32 ||
-            !abi.decode(initializedResult, (bool))
-        ) {
-            return false;
-        }
+        if (delegate.codehash != _sponsorStorage().approvedDelegateCodeHash) return false;
 
         (bool protocolSuccess, bytes memory protocolResult) =
             account.staticcall{gas: _READINESS_CALL_GAS_LIMIT}(
@@ -1064,9 +1098,11 @@ contract GasSponsor is
     }
 
     function _requireDelegate(address delegate) private view {
-        if (delegate == address(0) || delegate.code.length == 0) {
-            revert ZeroAddress();
-        }
+        if (delegate == address(0) || delegate.code.length == 0) revert ZeroAddress();
+        (bool ok, bytes memory result) = delegate.staticcall{gas: _READINESS_CALL_GAS_LIMIT}(
+            abi.encodeWithSignature("dispatcherProtocolId()"));
+        if (!ok || result.length != 32 || abi.decode(result, (bytes32)) !=
+            keccak256("dakota.delegation.direct-beacon-dispatch.v2")) revert InvalidConfiguration();
     }
 
     function _requireNonZero(address value) private pure {
