@@ -50,7 +50,8 @@ def main():
     resolve('contracts/domains/pente/PenteFactory.sol')
     upstream_input = {'language':'Solidity','sources':sources,'settings':{'optimizer':{'enabled':True,'runs':200},'viaIR':True,'evmVersion':'osaka','metadata':{'bytecodeHash':'ipfs'}}}
     for name in ['PenteFactory','PentePrivacyGroup','ERC1967Proxy']: inputs[name] = upstream_input
-    lock = {}
+    lockpath = Path(__file__).with_name('artifact-lock.json')
+    lock = json.loads(lockpath.read_text()) if lockpath.exists() else {}
     for name, standard in inputs.items():
         standard = json.loads(json.dumps(standard))
         standard['settings']['outputSelection'] = {'*':{'*':['abi','metadata','storageLayout','evm.bytecode','evm.deployedBytecode']}}
@@ -64,6 +65,8 @@ def main():
                     'storage_layout':compiled['storageLayout']}
         target=out/name; target.mkdir(exist_ok=True)
         blob=(json.dumps(artifact,indent=2)+'\n').encode()
+        if name in lock:
+            assert hashlib.sha256(blob).hexdigest()==lock[name]['artifact_sha256'], 'Preserve historical artifact aliases; use build-strict.py or the recorded original source commit: '+name
         if (target/'artifact.json').exists():
             assert (target/'artifact.json').read_bytes()==blob, 'Use a versioned artifact alias for changed deployed contracts: '+name
         (target/'artifact.json').write_bytes(blob)
@@ -73,6 +76,6 @@ def main():
         lock[name]={'artifact_sha256':hashlib.sha256(blob).hexdigest(),'runtime_bytes':len(runtime)//2,
                     'immutable_references':evm['deployedBytecode'].get('immutableReferences',{}),'evm':artifact['evm'],'compiler':artifact['compiler']}
         print(name, len(runtime)//2, artifact['evm'], flush=True)
-    (Path(__file__).with_name('artifact-lock.json')).write_bytes((json.dumps(lock,indent=2)+'\n').encode())
+    lockpath.write_bytes((json.dumps(lock,indent=2)+'\n').encode())
 
 if __name__=='__main__': main()

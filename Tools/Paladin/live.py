@@ -40,12 +40,12 @@ class Live(Deployment):
     def private(self,label,request):
         assert self.execute
         previous=self.journal['private_transactions'].get(label)
+        digest=hashlib.sha256(json.dumps(request,sort_keys=True).encode()).hexdigest()
+        if previous: assert previous['input_sha256']==digest, 'Journal label reused with a different private request: '+label
         if previous and previous.get('id'): txid=previous['id']
         else:
             key='dakota-live-20260911:'+label
             # Persist a stable idempotency key before RPC; resuming never invents a new request.
-            digest=hashlib.sha256(json.dumps(request,sort_keys=True).encode()).hexdigest()
-            if previous: assert previous['input_sha256']==digest
             row={'idempotency_key':key,'input_sha256':digest,'source_commit':self.commit}
             self.journal['private_transactions'][label]=row; self.save()
             txid=self.rpc('pgroup_sendTransaction',dict(request,idempotencyKey=key)); row['id']=txid; self.save()
