@@ -1,6 +1,23 @@
 # Kota full-system development deployment prompt
 
-Revision 2, 2026-09-11. Copy this entire document into the deployment task.
+Revision 3, 2026-09-11. Copy this entire document into the deployment task.
+
+Resume checkpoint: the development chain and Nebula explorer are running, and the
+four named genesis services have been linked and initialized. Public governance,
+funding, code delivery, real EIP-7702 sponsorship and beacon upgrades passed live
+checks with 100 confirmed transactions. Read `docs/live-genesis-acceptance-20260911.md`,
+`Tools/LiveGenesis/README.md`, the current transaction journal and live state first.
+Do not reset genesis or blindly repeat completed deployment steps below. Unused
+genesis proxies, including the agent-registry slot Face, remain reserved.
+
+Sponsorship is paused after testing; temporary canary roles/funding are cleaned up.
+The supplied admin is nominated for GasSponsor and registry acceptance, while
+bootstrap authority remains for full application deployment. Exact runtime metadata
+and source pins/readback were verified on Backend-01's private IPFS API/gateway.
+Public Cloudflare gateway, explorer source-verifier, private Paladin delegation,
+Kota Router/application deployment and final owner handover remain pending. Use
+`Tools/LiveGenesis/FOLLOW_AND_HANDOFF_PROMPT.md` for concurrent read-only observation
+or an explicit transfer of execution; never run two signers against the same nonce.
 
 Act as Cryft Labs' implementation and operations engineer. Complete the authorized
 hardening and deploy the full Dakota/Kota development system on the seven supplied
@@ -149,10 +166,10 @@ RELEASE_APPROVAL_RECORD=
 
 CHAIN_ID=112311
 CHAIN_NETWORK_ID=112311
-GENESIS_SHA256=95b4b05f4dea051a6f6cbf3babc164456044d55369d28548aa8026787a75e0ee
-CONTRACT_ADDRESS_MANIFEST_FILE=
-GENESIS_ALLOCATION_POLICY=
-DELEGATION_ROUTE_POLICY=
+GENESIS_SHA256=29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217
+CONTRACT_ADDRESS_MANIFEST_FILE=docs/live-genesis-addresses-20260911.json
+GENESIS_ALLOCATION_POLICY=admin_32_deployer_1_tester_1
+DELEGATION_ROUTE_POLICY=direct_beacon_dispatch_v2
 PRIVATE_GROUP_DEPLOYMENT_DOMAIN=
 VALIDATOR_KEY_SECRET_STORE=
 PALADIN_KEY_SECRET_STORE=

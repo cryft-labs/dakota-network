@@ -162,8 +162,11 @@ For every active named system contract and deployed implementation:
 - Resolve compiler-reported immutable references from the actual constructor
   arguments and deployed address. Never strip arbitrary bytecode differences or
   accept matching metadata alone as proof that executable code matches.
-- Confirm initialization is single-use, implementation initializers are locked,
-  permissions reject unauthorized callers, and controllers remain recoverable.
+- Confirm service initialization is single-use, implementation initializers are
+  locked, permissions reject unauthorized callers, and controllers remain recoverable.
+  Preserve the explicitly acknowledged validator exception in GOVERNANCE.md:
+  its initializer only guards against an empty local voter array. Do not move to
+  external-only voters without revisiting that unresolved initialization issue.
 - Follow receipts and decoded events. A successful outer receipt does not prove
   an inner sponsored call or caught gift callback succeeded. Inspect the explicit
   success flag, committed recipient, delivery status, nonce and balance changes.
@@ -233,6 +236,11 @@ Relevant implementation: network repo Tools/SolcCompiler/{compile.py,ipfs_publis
 and workspace work/production-hardening/publish_backend_ipfs.py. Inspect them before
 use; the existing helper targets the core bundle and must not be blindly repurposed
 for a new canary bundle or overwrite the core publication receipt.
+
+The current dedicated readback tool is Tools/LiveGenesis/verify_ipfs.py. Its default
+mode is read-only; --publish-missing is an EXECUTOR action. It writes a separate
+outputs/live-genesis-20260911/ipfs-verification.json receipt and also checks the
+private gateway. Tools/LiveGenesis/verify_chain.py writes chain-verification.json.
 
 Use the existing pinned-host-key SSH helper work/production-hardening/hostctl.py.
 Do not dump service environment files. Keys and host pins are already protected

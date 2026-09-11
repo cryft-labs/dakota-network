@@ -1,0 +1,78 @@
+{
+  "chain_id": 112311,
+  "genesis_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+  "checked_at": "2026-09-11T05:23:48.153922+00:00",
+  "fixed": {
+    "ValidatorSmartContractAllowList": "0x0000000000000000000000000000000000001111",
+    "ProxyAdmin": "0x0000000000000000000000000000000000FacAdE",
+    "GasManager": "0x000000000000000000000000000000000000cafE",
+    "CodeManager": "0x000000000000000000000000000000000000c0DE",
+    "GasSponsor": "0x000000000000000000000000000000000000FEeD",
+    "DakotaDelegationRegistry": "0x00000000000000000000000000000000de1E6A7E",
+    "ReservedAgentRegistry": "0x000000000000000000000000000000000000Face"
+  },
+  "deployments": {
+    "GasManager": {
+      "address": "0x2537E8005d9f5f3eC0e843A878fb53F658FA00f3",
+      "runtime_keccak256": "0x78790a488f04674251071356bf9506fbe72501df774f6fb61827049296a19858",
+      "matches_reviewed_deployment": true
+    },
+    "CodeManager": {
+      "address": "0x31d95306D43E75ED1D38cAf44F4cDf6d01537bB9",
+      "runtime_keccak256": "0x33b366e2e14c66fd269697acc3330dbb08eb9858030f4545f738fbe359516352",
+      "matches_reviewed_deployment": true
+    },
+    "DakotaDelegation": {
+      "address": "0x6F7d7571f7B861C6124E3ff2A2C76C013701bbca",
+      "runtime_keccak256": "0x27b107f5d9c27c01d360049604833afd8af4fc50fc2430a0ca375c1c09d30d63",
+      "matches_reviewed_deployment": true
+    },
+    "DakotaDelegationBeacon": {
+      "address": "0xb15883C65f85cbc6C6d0157B31AE2089f4acc8C2",
+      "runtime_keccak256": "0x7c30d15e9fa9c3f58a39666bcba2e9c2bc8e3a3a12d0235c1b757832d68b2216",
+      "matches_reviewed_deployment": true
+    },
+    "DakotaDelegationBeaconDispatcher": {
+      "address": "0x5191D200046a732754DFC9126e5F5A43CD45de67",
+      "runtime_keccak256": "0x9e271e0ed3f5651c25fbe7c7ae685a379f9de53acddedae4a56f1dbae2eebd5c",
+      "matches_reviewed_deployment": true
+    },
+    "GasSponsor": {
+      "address": "0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E",
+      "runtime_keccak256": "0x4b2e44ef33127497273c5e4dd0380a4ee61587a06e0410857a8e2c9061dfb30b",
+      "matches_reviewed_deployment": true
+    },
+    "DakotaDelegationRegistry": {
+      "address": "0x56ff7f6A7b2e37f6C619910ABa775B8De3D06aB8",
+      "runtime_keccak256": "0x78d9d2e1315a38c5200b1538abb5c7b0892df18c5e44c7f10a80b7f300dab5b5",
+      "matches_reviewed_deployment": true
+    },
+    "GenesisCanary": {
+      "address": "0x3C85c5777aB858a7e31F80e38FD6BBdB34b997D2",
+      "runtime_keccak256": "0x007c151767fd30006a429f7b6bbd6311b6be741758c3a3f386f4beb4d5bc265a",
+      "matches_reviewed_deployment": true
+    },
+    "DakotaDelegationUpgradeCanary": {
+      "address": "0xA198Ae8890FD7Dc008f7A9F5d64CAe315F56AB6E",
+      "runtime_keccak256": "0x1ad8689666943f5b55c5dcd63fe0e74c54bff8bb37f5826041d642df8fb46c54",
+      "matches_reviewed_deployment": true
+    }
+  },
+  "authority": {
+    "roots": [
+      "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+      "0x633309d1155fD658a717e4f5E4FA853615400867"
+    ],
+    "temporary_voter": "0x633309d1155fD658a717e4f5E4FA853615400867",
+    "platform_and_registry_admin": "0x633309d1155fD658a717e4f5E4FA853615400867",
+    "pending_platform_and_registry_admin": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "beacon_owner": "0x00000000000000000000000000000000de1E6A7E",
+    "temporary_validation_roles_removed": true,
+    "sponsorship_paused": true,
+    "test_tenant_funding_zero": true,
+    "handover_complete": false
+  },
+  "reserved_agent_registry_initialized": false,
+  "production_approved": false,
+  "sponsorship_enabled": false
+}

@@ -27,6 +27,15 @@ Pente delegation, restart, explorer, API lifecycle and load acceptance remain
 required before production promotion. Compiler/IPFS receipts distinguish local
 exports from remotely pinned content.
 
+The September 11 development deployment has initialized the four named genesis
+services and passed public-chain governance, funding, redemption and real EIP-7702
+sponsorship checks. All 100 submitted receipts were reconfirmed, and nested calls
+are indexed by the Nebula explorer. Metadata/source CIDs were read back from
+Backend-01's IPFS pins and private gateway. See [live acceptance](docs/live-genesis-acceptance-20260911.md)
+and [the observer/handoff prompt](Tools/LiveGenesis/FOLLOW_AND_HANDOFF_PROMPT.md).
+Sponsorship is paused after canary cleanup. Final admin acceptance, private Paladin
+flows, application integration and production acceptance remain outstanding.
+
 The management address is `0x9247524040D91D5dd1521A25f2e7711d4a0fe921`.
 Bootstrap authority is temporary: final handover must remove deployment-account
 roles only after the new controller has accepted and demonstrated control.

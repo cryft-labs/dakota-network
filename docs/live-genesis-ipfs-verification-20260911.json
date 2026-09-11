@@ -1,0 +1,773 @@
+{
+  "checked_at": "2026-09-11T05:24:20.135909+00:00",
+  "chain_id": 112311,
+  "host": "Backend-01",
+  "transport": "pinned-host-key SSH over Nebula to loopback Kubo API/gateway",
+  "public_gateway_verified": false,
+  "contracts": [
+    {
+      "name": "ValidatorSmartContractAllowList",
+      "address": "0x0000000000000000000000000000000000001111",
+      "runtime_keccak256": "0xce4b017e983eb21e5dcbe3f9dca4590a54451eaa53633f6cfaca145cf38cc1c7",
+      "metadata_cid": "QmNaCrRQu9fwxkfnJAuwa2FDPZXXEs6LS4QPy5xEheefyS",
+      "compiler": "0.8.19+commit.7dd6d404",
+      "evm": "london",
+      "compilation_target": {
+        "source/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol": "ValidatorSmartContractAllowList"
+      },
+      "sources": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3",
+        "source/Genesis/Governance/GovernanceVotes.sol": "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT",
+        "source/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol": "QmUBV5MHbf6NLamdZMdq9f5jVBUsbszP4HfMq49w3D6qS3",
+        "source/Genesis/validatorContracts/ValidatorSmartContractInterface.sol": "QmXr68dHYGKJEwgdLXC2JUUoKeZLiXqW7MW7ZKyPTVKZBV"
+      }
+    },
+    {
+      "name": "ProxyAdmin",
+      "address": "0x0000000000000000000000000000000000FacAdE",
+      "runtime_keccak256": "0xeba4bc4e1e0d7f50206a4a4717a01f38c461299d259a878a4fbdb25bd4f46dd2",
+      "metadata_cid": "QmYhY7xhnBeZtajwJJHYk8LQLXWn7ue2iTtn47kbKkijUo",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol": "ProxyAdmin"
+      },
+      "sources": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3",
+        "source/Genesis/Governance/GovernanceVotes.sol": "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT",
+        "source/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": "QmQxAUfrCDohipkyD5FUYfXUTXzjKBPJ7ywknEfvwiFuCV",
+        "source/Genesis/Upgradeable/Interfaces/IERC1967.sol": "Qmdrw7V7QAjxwRTvY1axsDqEmYDXtQUjG4CE1Cf1EKLmoT",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "QmRacwNbWcGWQusvRARYyLq8QkYGvFBFzEXmCFV81LHj6y",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": "QmQUSkfKbLDu9JX9H8HKzcRy3NfkNx5zFsshFJvjitj1ua",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": "QmSkgcTafPL1kh9ByWknYXQzTTr7T296QvcYkYXbAeaSwK",
+        "source/Genesis/Upgradeable/Proxy/Proxy.sol": "QmTYJYZAhove6cTwPy9RhnmfNpjRaieGdA8qnqedXZbfDh",
+        "source/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol": "QmSMUavtT4pMmJEGRCgmDcxT7wBi86gJrnFeGn6Yhu4ytZ",
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "QmTnqxAtAxuF7bpDhwfskfCdBg5Bx5aJpUAyyNErNuS2XQ",
+        "source/Genesis/Upgradeable/Utils/Address.sol": "QmNbTRr4XGx4ygqbaRAZx71NJttkZYa3Y4AqhWmD68vGbW",
+        "source/Genesis/Upgradeable/Utils/StorageSlot.sol": "QmT1pgDwBuT7go7BYzKf235ciwFGzBKrKzA4CHEFTXAdnk"
+      }
+    },
+    {
+      "name": "TransparentUpgradeableProxy",
+      "address": "0x000000000000000000000000000000000000cafE",
+      "runtime_keccak256": "0x296f5dd491d5636dace06af3ec059d6ec043237c5eed680d41efb19f06e455f5",
+      "metadata_cid": "QmfXfNi8ESZQRTDhoYRseHgHFtit9FGZV3BEHFkt7cHgba",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "TransparentUpgradeableProxy"
+      },
+      "sources": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3",
+        "source/Genesis/Governance/GovernanceVotes.sol": "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT",
+        "source/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": "QmQxAUfrCDohipkyD5FUYfXUTXzjKBPJ7ywknEfvwiFuCV",
+        "source/Genesis/Upgradeable/Interfaces/IERC1967.sol": "Qmdrw7V7QAjxwRTvY1axsDqEmYDXtQUjG4CE1Cf1EKLmoT",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "QmRacwNbWcGWQusvRARYyLq8QkYGvFBFzEXmCFV81LHj6y",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": "QmQUSkfKbLDu9JX9H8HKzcRy3NfkNx5zFsshFJvjitj1ua",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": "QmSkgcTafPL1kh9ByWknYXQzTTr7T296QvcYkYXbAeaSwK",
+        "source/Genesis/Upgradeable/Proxy/Proxy.sol": "QmTYJYZAhove6cTwPy9RhnmfNpjRaieGdA8qnqedXZbfDh",
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "QmTnqxAtAxuF7bpDhwfskfCdBg5Bx5aJpUAyyNErNuS2XQ",
+        "source/Genesis/Upgradeable/Utils/Address.sol": "QmNbTRr4XGx4ygqbaRAZx71NJttkZYa3Y4AqhWmD68vGbW",
+        "source/Genesis/Upgradeable/Utils/StorageSlot.sol": "QmT1pgDwBuT7go7BYzKf235ciwFGzBKrKzA4CHEFTXAdnk"
+      }
+    },
+    {
+      "name": "TransparentUpgradeableProxy",
+      "address": "0x000000000000000000000000000000000000c0DE",
+      "runtime_keccak256": "0x296f5dd491d5636dace06af3ec059d6ec043237c5eed680d41efb19f06e455f5",
+      "metadata_cid": "QmfXfNi8ESZQRTDhoYRseHgHFtit9FGZV3BEHFkt7cHgba",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "TransparentUpgradeableProxy"
+      },
+      "sources": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3",
+        "source/Genesis/Governance/GovernanceVotes.sol": "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT",
+        "source/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": "QmQxAUfrCDohipkyD5FUYfXUTXzjKBPJ7ywknEfvwiFuCV",
+        "source/Genesis/Upgradeable/Interfaces/IERC1967.sol": "Qmdrw7V7QAjxwRTvY1axsDqEmYDXtQUjG4CE1Cf1EKLmoT",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "QmRacwNbWcGWQusvRARYyLq8QkYGvFBFzEXmCFV81LHj6y",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": "QmQUSkfKbLDu9JX9H8HKzcRy3NfkNx5zFsshFJvjitj1ua",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": "QmSkgcTafPL1kh9ByWknYXQzTTr7T296QvcYkYXbAeaSwK",
+        "source/Genesis/Upgradeable/Proxy/Proxy.sol": "QmTYJYZAhove6cTwPy9RhnmfNpjRaieGdA8qnqedXZbfDh",
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "QmTnqxAtAxuF7bpDhwfskfCdBg5Bx5aJpUAyyNErNuS2XQ",
+        "source/Genesis/Upgradeable/Utils/Address.sol": "QmNbTRr4XGx4ygqbaRAZx71NJttkZYa3Y4AqhWmD68vGbW",
+        "source/Genesis/Upgradeable/Utils/StorageSlot.sol": "QmT1pgDwBuT7go7BYzKf235ciwFGzBKrKzA4CHEFTXAdnk"
+      }
+    },
+    {
+      "name": "TransparentUpgradeableProxy",
+      "address": "0x000000000000000000000000000000000000FEeD",
+      "runtime_keccak256": "0x296f5dd491d5636dace06af3ec059d6ec043237c5eed680d41efb19f06e455f5",
+      "metadata_cid": "QmfXfNi8ESZQRTDhoYRseHgHFtit9FGZV3BEHFkt7cHgba",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "TransparentUpgradeableProxy"
+      },
+      "sources": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3",
+        "source/Genesis/Governance/GovernanceVotes.sol": "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT",
+        "source/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": "QmQxAUfrCDohipkyD5FUYfXUTXzjKBPJ7ywknEfvwiFuCV",
+        "source/Genesis/Upgradeable/Interfaces/IERC1967.sol": "Qmdrw7V7QAjxwRTvY1axsDqEmYDXtQUjG4CE1Cf1EKLmoT",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "QmRacwNbWcGWQusvRARYyLq8QkYGvFBFzEXmCFV81LHj6y",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": "QmQUSkfKbLDu9JX9H8HKzcRy3NfkNx5zFsshFJvjitj1ua",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": "QmSkgcTafPL1kh9ByWknYXQzTTr7T296QvcYkYXbAeaSwK",
+        "source/Genesis/Upgradeable/Proxy/Proxy.sol": "QmTYJYZAhove6cTwPy9RhnmfNpjRaieGdA8qnqedXZbfDh",
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "QmTnqxAtAxuF7bpDhwfskfCdBg5Bx5aJpUAyyNErNuS2XQ",
+        "source/Genesis/Upgradeable/Utils/Address.sol": "QmNbTRr4XGx4ygqbaRAZx71NJttkZYa3Y4AqhWmD68vGbW",
+        "source/Genesis/Upgradeable/Utils/StorageSlot.sol": "QmT1pgDwBuT7go7BYzKf235ciwFGzBKrKzA4CHEFTXAdnk"
+      }
+    },
+    {
+      "name": "TransparentUpgradeableProxy",
+      "address": "0x00000000000000000000000000000000de1E6A7E",
+      "runtime_keccak256": "0x296f5dd491d5636dace06af3ec059d6ec043237c5eed680d41efb19f06e455f5",
+      "metadata_cid": "QmfXfNi8ESZQRTDhoYRseHgHFtit9FGZV3BEHFkt7cHgba",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "TransparentUpgradeableProxy"
+      },
+      "sources": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3",
+        "source/Genesis/Governance/GovernanceVotes.sol": "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT",
+        "source/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": "QmQxAUfrCDohipkyD5FUYfXUTXzjKBPJ7ywknEfvwiFuCV",
+        "source/Genesis/Upgradeable/Interfaces/IERC1967.sol": "Qmdrw7V7QAjxwRTvY1axsDqEmYDXtQUjG4CE1Cf1EKLmoT",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "QmRacwNbWcGWQusvRARYyLq8QkYGvFBFzEXmCFV81LHj6y",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": "QmQUSkfKbLDu9JX9H8HKzcRy3NfkNx5zFsshFJvjitj1ua",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": "QmSkgcTafPL1kh9ByWknYXQzTTr7T296QvcYkYXbAeaSwK",
+        "source/Genesis/Upgradeable/Proxy/Proxy.sol": "QmTYJYZAhove6cTwPy9RhnmfNpjRaieGdA8qnqedXZbfDh",
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "QmTnqxAtAxuF7bpDhwfskfCdBg5Bx5aJpUAyyNErNuS2XQ",
+        "source/Genesis/Upgradeable/Utils/Address.sol": "QmNbTRr4XGx4ygqbaRAZx71NJttkZYa3Y4AqhWmD68vGbW",
+        "source/Genesis/Upgradeable/Utils/StorageSlot.sol": "QmT1pgDwBuT7go7BYzKf235ciwFGzBKrKzA4CHEFTXAdnk"
+      }
+    },
+    {
+      "name": "TransparentUpgradeableProxy",
+      "address": "0x000000000000000000000000000000000000Face",
+      "runtime_keccak256": "0x296f5dd491d5636dace06af3ec059d6ec043237c5eed680d41efb19f06e455f5",
+      "metadata_cid": "QmfXfNi8ESZQRTDhoYRseHgHFtit9FGZV3BEHFkt7cHgba",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "TransparentUpgradeableProxy"
+      },
+      "sources": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3",
+        "source/Genesis/Governance/GovernanceVotes.sol": "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT",
+        "source/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": "QmQxAUfrCDohipkyD5FUYfXUTXzjKBPJ7ywknEfvwiFuCV",
+        "source/Genesis/Upgradeable/Interfaces/IERC1967.sol": "Qmdrw7V7QAjxwRTvY1axsDqEmYDXtQUjG4CE1Cf1EKLmoT",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "QmRacwNbWcGWQusvRARYyLq8QkYGvFBFzEXmCFV81LHj6y",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": "QmQUSkfKbLDu9JX9H8HKzcRy3NfkNx5zFsshFJvjitj1ua",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": "QmSkgcTafPL1kh9ByWknYXQzTTr7T296QvcYkYXbAeaSwK",
+        "source/Genesis/Upgradeable/Proxy/Proxy.sol": "QmTYJYZAhove6cTwPy9RhnmfNpjRaieGdA8qnqedXZbfDh",
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "QmTnqxAtAxuF7bpDhwfskfCdBg5Bx5aJpUAyyNErNuS2XQ",
+        "source/Genesis/Upgradeable/Utils/Address.sol": "QmNbTRr4XGx4ygqbaRAZx71NJttkZYa3Y4AqhWmD68vGbW",
+        "source/Genesis/Upgradeable/Utils/StorageSlot.sol": "QmT1pgDwBuT7go7BYzKf235ciwFGzBKrKzA4CHEFTXAdnk"
+      }
+    },
+    {
+      "name": "GasManager",
+      "address": "0x2537E8005d9f5f3eC0e843A878fb53F658FA00f3",
+      "runtime_keccak256": "0x78790a488f04674251071356bf9506fbe72501df774f6fb61827049296a19858",
+      "metadata_cid": "QmNXrCCwNSsS8ZRfDKjRug29dvA5zL1THC95toqsXT9puh",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/GasManager/GasManager.sol": "GasManager"
+      },
+      "sources": {
+        "source/Genesis/GasManager/GasManager.sol": "QmZThdf17DkFe4DQiSmQzTt8zhBkQfHGNVXNjGZrWodz1f",
+        "source/Genesis/Governance/GovernanceMembers.sol": "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3",
+        "source/Genesis/Governance/GovernanceVotes.sol": "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng"
+      }
+    },
+    {
+      "name": "CodeManager",
+      "address": "0x31d95306D43E75ED1D38cAf44F4cDf6d01537bB9",
+      "runtime_keccak256": "0x33b366e2e14c66fd269697acc3330dbb08eb9858030f4545f738fbe359516352",
+      "metadata_cid": "Qmaz3oGfNZVA7pvjBHGKHREDv2NV64EPnW5yHu7K1VNXhg",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/CodeManagement/CodeManager.sol": "CodeManager"
+      },
+      "sources": {
+        "source/CodeManagement/CanonicalUid.sol": "QmT1wrwYqHMZg6asZWRs8Xh42HujgtXt49QLHrTE2Zo5dk",
+        "source/CodeManagement/CodeManager.sol": "QmcgRh6FDgBDKn7wkx1LWMdpzfheAKmadGhsoDYyAAYdD6",
+        "source/CodeManagement/Interfaces/ICodeManager.sol": "QmRSzSo148ksiFfdsQDAGnLVxYwdJaMA44swKSRzH3P3Rt",
+        "source/CodeManagement/Interfaces/IRedeemable.sol": "QmTtTY3dDVcyNxwcJSHF76su9A28kDxcmdX9kHRKqKBQzZ",
+        "source/Genesis/Governance/GovernanceMembers.sol": "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3",
+        "source/Genesis/Governance/GovernanceVotes.sol": "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng",
+        "source/Genesis/Upgradeable/Utils/Math/MathUpgradeable.sol": "QmRSJU5AfAqMjAK53hPMWyAfLaSyciPfQZMGwvWusoT8Pk",
+        "source/Genesis/Upgradeable/Utils/Math/SignedMathUpgradeable.sol": "QmVcjavt9ptJHUdgvzbi1i7a5Qdj2JMD9zzRxnaZbw4QtA",
+        "source/Genesis/Upgradeable/Utils/StringsUpgradeable.sol": "QmZnbhjScj1VPHPTfq9kJbHwnFhnaYNxhKPMy3ByT8T4f9"
+      }
+    },
+    {
+      "name": "DakotaDelegation",
+      "address": "0x6F7d7571f7B861C6124E3ff2A2C76C013701bbca",
+      "runtime_keccak256": "0x27b107f5d9c27c01d360049604833afd8af4fc50fc2430a0ca375c1c09d30d63",
+      "metadata_cid": "QmUk63wNz1aW6xS87YfHnYuup87tgfxZvNSkUEVi73B7Xb",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/7702/DakotaDelegation.sol": "DakotaDelegation"
+      },
+      "sources": {
+        "source/Genesis/7702/DakotaDelegation.sol": "QmRmSdrtP3Xwv58eLPhaM3aLiPugNwN1KW1PceQSJ9GafK",
+        "source/Genesis/7702/DelegationGas.sol": "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw",
+        "source/Genesis/7702/Libraries/DakotaDelegationCapabilities.sol": "QmcL8yV1wjBUdokZf5eqX4uSTkaoSg3zFNgcezjos3UJrp",
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp"
+      }
+    },
+    {
+      "name": "DakotaDelegationBeacon",
+      "address": "0xb15883C65f85cbc6C6d0157B31AE2089f4acc8C2",
+      "runtime_keccak256": "0x7c30d15e9fa9c3f58a39666bcba2e9c2bc8e3a3a12d0235c1b757832d68b2216",
+      "metadata_cid": "Qmd2L1jhk1dFV8AsHfUxqiEPYcnVqUTP6eYShUWuiwSsnd",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/7702/DakotaDelegationBeacon.sol": "DakotaDelegationBeacon"
+      },
+      "sources": {
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/access/Ownable.sol": "QmfEckWLmZkDDcoWrkEvMWhms66xwTLff9DDhegYpvHo1a",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/beacon/IBeacon.sol": "QmWRMh4Q9DpaU9GvsiXmDdoNYMyyece9if7hnfLz7uqzWM",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/beacon/UpgradeableBeacon.sol": "QmewGAzKsPXYfSjCKxuH1SekKxtdyzhdbdyxjF5gohLigt",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Context.sol": "Qmax9WHBnVsZP46ZxEMNRQpLQnrdE4dK8LehML1Py8FowF",
+        "source/Genesis/7702/DakotaDelegationBeacon.sol": "QmPpizxu2JedMpvG4wTyBF9c8KiTD2658dJj5YNhRXQaNv"
+      }
+    },
+    {
+      "name": "DakotaDelegationBeaconDispatcher",
+      "address": "0x5191D200046a732754DFC9126e5F5A43CD45de67",
+      "runtime_keccak256": "0x9e271e0ed3f5651c25fbe7c7ae685a379f9de53acddedae4a56f1dbae2eebd5c",
+      "metadata_cid": "QmboFGhNxdMCgVK1ooVZeLLtiUFdhHmQnzJX4zNgDikkzx",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/7702/DakotaDelegationBeaconDispatcher.sol": "DakotaDelegationBeaconDispatcher"
+      },
+      "sources": {
+        "source/Genesis/7702/DakotaDelegationBeaconDispatcher.sol": "QmPM3d5wXy1Cg4ztfZ9fCm2bJNLoqBmG4H7ahmUfxzV4kT",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "QmRacwNbWcGWQusvRARYyLq8QkYGvFBFzEXmCFV81LHj6y"
+      }
+    },
+    {
+      "name": "GasSponsor",
+      "address": "0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E",
+      "runtime_keccak256": "0x4b2e44ef33127497273c5e4dd0380a4ee61587a06e0410857a8e2c9061dfb30b",
+      "metadata_cid": "QmfAHZbdiv1qXBU74XuY5DfNbnjXTMBM5QwYSBDeCXjuas",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/7702/GasSponsor.sol": "GasSponsor"
+      },
+      "sources": {
+        "source/Genesis/7702/DelegationGas.sol": "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh",
+        "source/Genesis/7702/GasSponsor.sol": "Qmc9NdshyzDsvQQ4YB71MiqgHswUCfKj8njzzy5ZMY1MbL",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw",
+        "source/Genesis/7702/Interfaces/IGasSponsor.sol": "QmTTsyYsthMKZiWvzG2Mz7qsCbrjXfYqWKay8n8bMRENs3",
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng"
+      }
+    },
+    {
+      "name": "DakotaDelegationRegistry",
+      "address": "0x56ff7f6A7b2e37f6C619910ABa775B8De3D06aB8",
+      "runtime_keccak256": "0x78d9d2e1315a38c5200b1538abb5c7b0892df18c5e44c7f10a80b7f300dab5b5",
+      "metadata_cid": "QmSHWAqkc7TezrdNTc72viv92eikZUzsUwu1LLFqFoWB9F",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/7702/DakotaDelegationRegistry.sol": "DakotaDelegationRegistry"
+      },
+      "sources": {
+        "source/Genesis/7702/DakotaDelegationRegistry.sol": "QmXAeVrirT57epG21mN9DX41zC5uCxaQ4oeAZuZWPZaCbo",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw",
+        "source/Genesis/7702/Interfaces/IDakotaDelegationRegistry.sol": "QmSz1s1aEJJfg3VZtHtFHzmq1SiXntaWufekZUhw6pxw7N",
+        "source/Genesis/7702/Interfaces/IGasSponsor.sol": "QmTTsyYsthMKZiWvzG2Mz7qsCbrjXfYqWKay8n8bMRENs3",
+        "source/Genesis/7702/Libraries/DakotaDelegationCapabilities.sol": "QmcL8yV1wjBUdokZf5eqX4uSTkaoSg3zFNgcezjos3UJrp",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv"
+      }
+    },
+    {
+      "name": "GenesisCanary",
+      "address": "0x3C85c5777aB858a7e31F80e38FD6BBdB34b997D2",
+      "runtime_keccak256": "0x007c151767fd30006a429f7b6bbd6311b6be741758c3a3f386f4beb4d5bc265a",
+      "metadata_cid": "QmRrJBsejffvLnHvZFhtRomaYGkcdc3LQzxWUiSSjLJryD",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "GenesisCanary.sol": "GenesisCanary"
+      },
+      "sources": {
+        "GenesisCanary.sol": "QmSr9L4tunfAfx1GuAzXRstP7iKehLpe6ECNhbRGV5PKhJ"
+      }
+    },
+    {
+      "name": "DakotaDelegation",
+      "address": "0xA198Ae8890FD7Dc008f7A9F5d64CAe315F56AB6E",
+      "runtime_keccak256": "0x1ad8689666943f5b55c5dcd63fe0e74c54bff8bb37f5826041d642df8fb46c54",
+      "metadata_cid": "QmUk63wNz1aW6xS87YfHnYuup87tgfxZvNSkUEVi73B7Xb",
+      "compiler": "0.8.37+commit.f401782d",
+      "evm": "osaka",
+      "compilation_target": {
+        "source/Genesis/7702/DakotaDelegation.sol": "DakotaDelegation"
+      },
+      "sources": {
+        "source/Genesis/7702/DakotaDelegation.sol": "QmRmSdrtP3Xwv58eLPhaM3aLiPugNwN1KW1PceQSJ9GafK",
+        "source/Genesis/7702/DelegationGas.sol": "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw",
+        "source/Genesis/7702/Libraries/DakotaDelegationCapabilities.sol": "QmcL8yV1wjBUdokZf5eqX4uSTkaoSg3zFNgcezjos3UJrp",
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp"
+      }
+    }
+  ],
+  "objects": {
+    "QmNaCrRQu9fwxkfnJAuwa2FDPZXXEs6LS4QPy5xEheefyS": {
+      "sha256": "e80125efef9a687e254fd72ae524721309182f1374c4e163a5ea3c803fc7e3ff",
+      "bytes": 19119,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmXdfV4EKHrmi8MaYXHRpXjA8UWchCARsMLir6XDXDF1r3": {
+      "sha256": "68888b74a3dd9a13bf4032eabc1db1b6e9b5c5cb36c62ef6a2e97d270fb268fc",
+      "bytes": 4449,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmcF4oc3Lxjuc7XhrN9i5mVaddJ3cp5NGPnya9cxLFGwuT": {
+      "sha256": "93e8100b8fe2164d485cb8d54314837386fd9b8f288d6542796158f5649ae66c",
+      "bytes": 5523,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmUBV5MHbf6NLamdZMdq9f5jVBUsbszP4HfMq49w3D6qS3": {
+      "sha256": "0d2ef41087115b922f85786e94acafb0af7b3021d278288006cf32030db7a633",
+      "bytes": 40296,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmXr68dHYGKJEwgdLXC2JUUoKeZLiXqW7MW7ZKyPTVKZBV": {
+      "sha256": "473405506dabdb2aec8af12b92501a2cfbb7472c008b724f9620f6495960bb2c",
+      "bytes": 1506,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmYhY7xhnBeZtajwJJHYk8LQLXWn7ue2iTtn47kbKkijUo": {
+      "sha256": "7fa2718181325f4afa992d3faf4b378079cea5a8b86abeb45a2a74d9175c3f8a",
+      "bytes": 7567,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmQxAUfrCDohipkyD5FUYfXUTXzjKBPJ7ywknEfvwiFuCV": {
+      "sha256": "f97d9e04062efaf6ab8f5226ccd87e9a43259bbc5283d870096a138bb7af05b0",
+      "bytes": 1109,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "Qmdrw7V7QAjxwRTvY1axsDqEmYDXtQUjG4CE1Cf1EKLmoT": {
+      "sha256": "8e26c8799828a910d1c990e67c5eab93e6262bec585d73533ccf365c0c694988",
+      "bytes": 759,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmRacwNbWcGWQusvRARYyLq8QkYGvFBFzEXmCFV81LHj6y": {
+      "sha256": "f914f74e3619ad8740d838df396bffb0eee22f45d95718ed734002a9131998d5",
+      "bytes": 680,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmQUSkfKbLDu9JX9H8HKzcRy3NfkNx5zFsshFJvjitj1ua": {
+      "sha256": "ef9be4d14d1209fde0ba082a38ee44efdf7213dd8491ad04a1828e47eaadfb51",
+      "bytes": 1535,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmSkgcTafPL1kh9ByWknYXQzTTr7T296QvcYkYXbAeaSwK": {
+      "sha256": "0e0e5ac702f3595f6389878c0af9de53ab7acf93dd6f9898a63325f923f9a8a4",
+      "bytes": 5254,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmTYJYZAhove6cTwPy9RhnmfNpjRaieGdA8qnqedXZbfDh": {
+      "sha256": "efebdd99d33aec6db91244a0cf4adc133cb302909226f38ccfb52c1b6128b371",
+      "bytes": 3496,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmSMUavtT4pMmJEGRCgmDcxT7wBi86gJrnFeGn6Yhu4ytZ": {
+      "sha256": "9f01779d1e70bcd1e6360d3daf5f39bc57ffcb95ff9661523411dcb49a72b269",
+      "bytes": 6807,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmTnqxAtAxuF7bpDhwfskfCdBg5Bx5aJpUAyyNErNuS2XQ": {
+      "sha256": "85413e5eafbcdd8a7f6bcc6bb63d335537826eeb1096b1076e1cf65c55044395",
+      "bytes": 52690,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmNbTRr4XGx4ygqbaRAZx71NJttkZYa3Y4AqhWmD68vGbW": {
+      "sha256": "488ccbcb068f4c9f446563d4b39c519fbda1266dc8e10702ec9eefde548173d1",
+      "bytes": 9563,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmT1pgDwBuT7go7BYzKf235ciwFGzBKrKzA4CHEFTXAdnk": {
+      "sha256": "7318461f15595b76a827d151b1222a04aaab1406db7e875c371f188cb4df3e23",
+      "bytes": 4120,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmfXfNi8ESZQRTDhoYRseHgHFtit9FGZV3BEHFkt7cHgba": {
+      "sha256": "5341d152f96964ba56e0e4d1febb7b6891b86c28c1e9eab106ecec789909f732",
+      "bytes": 23406,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmNXrCCwNSsS8ZRfDKjRug29dvA5zL1THC95toqsXT9puh": {
+      "sha256": "b0c5da936d0afbd6ec3ee169999e660461dd20fffbb4b162782248f93c74d7f9",
+      "bytes": 31731,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmZThdf17DkFe4DQiSmQzTt8zhBkQfHGNVXNjGZrWodz1f": {
+      "sha256": "eb91d8b49dc915f55b11b7c6acc1b5169730f4d4ac9767eca3c8b3e80ecd6f43",
+      "bytes": 53693,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg": {
+      "sha256": "30d84cbc514daf1a0f8b8fc10daa0f3cb1948e279ad57bed2a17dc6432a8f591",
+      "bytes": 9599,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv": {
+      "sha256": "14038e68f1a79aa28f16560d82ed21840330d2aabaaf0e1a4dfdb30ac25e14c0",
+      "bytes": 6876,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng": {
+      "sha256": "677c22c0f88df68408c82c5a9109cd0e91cff02ce75a97f8c2f85352ae5b7d54",
+      "bytes": 3927,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "Qmaz3oGfNZVA7pvjBHGKHREDv2NV64EPnW5yHu7K1VNXhg": {
+      "sha256": "a6559c400920b932a0cda1af3be05077faa9aa47569e6419855913089a045439",
+      "bytes": 27622,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmT1wrwYqHMZg6asZWRs8Xh42HujgtXt49QLHrTE2Zo5dk": {
+      "sha256": "40d70632210f826c16bd0eee90f593c4b5676d3c0bea1b5ee449cc4f436e660e",
+      "bytes": 2152,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmcgRh6FDgBDKn7wkx1LWMdpzfheAKmadGhsoDYyAAYdD6": {
+      "sha256": "23c19fa281c5d310cc503743952cf69c82d6d262fff42603aba7237380c88892",
+      "bytes": 39868,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmRSzSo148ksiFfdsQDAGnLVxYwdJaMA44swKSRzH3P3Rt": {
+      "sha256": "ead50c0f625282935718e6d2c1c6c0d0db9796d79bb6d4b0b083ae8962891ab9",
+      "bytes": 2737,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmTtTY3dDVcyNxwcJSHF76su9A28kDxcmdX9kHRKqKBQzZ": {
+      "sha256": "bd509e1a3f0dbb799e44e342dafec6b1d7f1b4216c58be3dde35e9ad56662918",
+      "bytes": 2887,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmRSJU5AfAqMjAK53hPMWyAfLaSyciPfQZMGwvWusoT8Pk": {
+      "sha256": "bc2b3fc19ee45d4444230e8cf5c5d7425ca236a2fb7b7aa483cb97fecc5d07ca",
+      "bytes": 13089,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmVcjavt9ptJHUdgvzbi1i7a5Qdj2JMD9zzRxnaZbw4QtA": {
+      "sha256": "e6268913bbf64a3866339bbfb3c986725a56f52d0720ac20fbfc7ae445720c68",
+      "bytes": 1519,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmZnbhjScj1VPHPTfq9kJbHwnFhnaYNxhKPMy3ByT8T4f9": {
+      "sha256": "19a38d8282de0961221cd6b289cb5af15b1577271e34807786cf2105ef9c537e",
+      "bytes": 3083,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmUk63wNz1aW6xS87YfHnYuup87tgfxZvNSkUEVi73B7Xb": {
+      "sha256": "dee5e5c69011883b20238e9350bff7f685ad2da1f5f7f077bbb9342503ad5925",
+      "bytes": 9725,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmRmSdrtP3Xwv58eLPhaM3aLiPugNwN1KW1PceQSJ9GafK": {
+      "sha256": "32d1941c2d0bb26e094c08cdb3e3c541ba6155c242702e344ea15e1865b99a51",
+      "bytes": 16443,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh": {
+      "sha256": "3e4f2f107a3d130dad9a651baa0218d23e42aefc168dcff2cf1629930b21cef8",
+      "bytes": 1089,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw": {
+      "sha256": "ae1c57ec6e7461323f2fea96e9d4a4879fd57d1f28e0cdaec105c2fccfa7bf6f",
+      "bytes": 2656,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmcL8yV1wjBUdokZf5eqX4uSTkaoSg3zFNgcezjos3UJrp": {
+      "sha256": "af0e8adea8d19f50dfd0c71e2d8419f9eaf87fda80b5deaed417b225b0c793c8",
+      "bytes": 1176,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp": {
+      "sha256": "98d13864457ce57c28c70de70867a30a20acd3933e4f52a20c5bf71741e5aae7",
+      "bytes": 1862,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "Qmd2L1jhk1dFV8AsHfUxqiEPYcnVqUTP6eYShUWuiwSsnd": {
+      "sha256": "6ddaf5593493d7d94afd4f8ccacd2df32ff658d0cfe1e2bba385f7965081fd7c",
+      "bytes": 5991,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmfEckWLmZkDDcoWrkEvMWhms66xwTLff9DDhegYpvHo1a": {
+      "sha256": "38578bd71c0a909840e67202db527cc6b4e6b437e0f39f0c909da32c1e30cb81",
+      "bytes": 3102,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmWRMh4Q9DpaU9GvsiXmDdoNYMyyece9if7hnfLz7uqzWM": {
+      "sha256": "422eabc0e645e24c3a52898f6255b349323b013544a3ebdc4b2d3f7fc5bb7e9e",
+      "bytes": 472,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmewGAzKsPXYfSjCKxuH1SekKxtdyzhdbdyxjF5gohLigt": {
+      "sha256": "26dda9d5bb961b3df26602d49f9f5a0647cfdb78b63cc253aed8527030a64f25",
+      "bytes": 2219,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "Qmax9WHBnVsZP46ZxEMNRQpLQnrdE4dK8LehML1Py8FowF": {
+      "sha256": "847fda5460fee70f56f4200f59b82ae622bb03c79c77e67af010e31b7e2cc5b6",
+      "bytes": 963,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmPpizxu2JedMpvG4wTyBF9c8KiTD2658dJj5YNhRXQaNv": {
+      "sha256": "f59ac5ab7a5ee3dfde908f2f988db1a66c52a6e77cff0d5590c71ee7c58dbc0c",
+      "bytes": 5051,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmboFGhNxdMCgVK1ooVZeLLtiUFdhHmQnzJX4zNgDikkzx": {
+      "sha256": "997c6cb199584d5cd72c2d0cb8b88776aeff1cabad09ec03d3459b90efce00a7",
+      "bytes": 2169,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmPM3d5wXy1Cg4ztfZ9fCm2bJNLoqBmG4H7ahmUfxzV4kT": {
+      "sha256": "232277ff415073b23f18a0d3610606ca08ff240da42b7400dd62fdeb814e5cba",
+      "bytes": 3270,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmfAHZbdiv1qXBU74XuY5DfNbnjXTMBM5QwYSBDeCXjuas": {
+      "sha256": "d7aaa4cadc63910892196868c2fb3e20e5fd521ced22c6791f2921f725414ccd",
+      "bytes": 22794,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "Qmc9NdshyzDsvQQ4YB71MiqgHswUCfKj8njzzy5ZMY1MbL": {
+      "sha256": "71843b098c9be3c52395d7caecbbe9e38339d98f19054ebc5a682b8ff4ce267c",
+      "bytes": 40493,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmTTsyYsthMKZiWvzG2Mz7qsCbrjXfYqWKay8n8bMRENs3": {
+      "sha256": "7ced3ee3ceab9280602d5ce4f06fbc15de064a4a713c93dcefa7a704745bc6d1",
+      "bytes": 6513,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmSHWAqkc7TezrdNTc72viv92eikZUzsUwu1LLFqFoWB9F": {
+      "sha256": "fe796495439f692aba4aaeab39c864aed73981826e81c4ef1e4cb89187d395ef",
+      "bytes": 18860,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmXAeVrirT57epG21mN9DX41zC5uCxaQ4oeAZuZWPZaCbo": {
+      "sha256": "7b5f23c144308030bf7dcdac4bbc63d002cf16345fb7655ed7903078a1ca5135",
+      "bytes": 33664,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmSz1s1aEJJfg3VZtHtFHzmq1SiXntaWufekZUhw6pxw7N": {
+      "sha256": "d969e74143f8ab26834549263d3eb1005de5f9d42fafda5cbefb5c3f839e627e",
+      "bytes": 6777,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmRrJBsejffvLnHvZFhtRomaYGkcdc3LQzxWUiSSjLJryD": {
+      "sha256": "a1b05f50b03577820107d123ed1386c41265837416b80aa459122f9fe5a85372",
+      "bytes": 5546,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmSr9L4tunfAfx1GuAzXRstP7iKehLpe6ECNhbRGV5PKhJ": {
+      "sha256": "6ce27953d4241bc786fa271357c32dedc7785877ca3b50778df22ff0da24668d",
+      "bytes": 2102,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    },
+    "QmSuawtJhsHhAJNS2VtPx4UHTEPvQgDbJD7vKmkV7smMaf": {
+      "sha256": "b8c7ba3fb064ec6db3408e2254307095d14190047173c3f855920d1a09234b18",
+      "bytes": 1408515,
+      "recursive_pin_verified": true,
+      "api_readback_verified": true,
+      "private_gateway_readback_verified": true,
+      "published_this_run": false
+    }
+  },
+  "source_commit": "7f4fbe27302912b9649d54e897f7c34149599910",
+  "peer_id": "12D3KooWMdxg1ZLq8dBb3NggnqYLRHy9LxskqQBmd9QusFy6RCBt",
+  "core_bundle": {
+    "cid": "QmSuawtJhsHhAJNS2VtPx4UHTEPvQgDbJD7vKmkV7smMaf",
+    "contracts": 90,
+    "verified": true
+  },
+  "passed": true
+}

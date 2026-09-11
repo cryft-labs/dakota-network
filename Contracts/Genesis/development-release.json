@@ -1,7 +1,7 @@
 {
-  "status": "compiled_archive_ready_for_development_deployment",
+  "status": "development_genesis_initialized_and_public_functionality_validated",
   "production_approved": false,
-  "live_transactions_sent": false,
+  "live_transactions_sent": true,
   "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
   "genesis_bytes": 1244949762,
   "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
@@ -131,5 +131,14 @@
     "all_six_besu_nodes_synced": true,
     "observed_block_after_rollout": 43,
     "chain_data_reset": false
+  },
+  "live_acceptance": {
+    "checked_at": "2026-09-11T05:23:48.153922+00:00",
+    "confirmed_transactions": 100,
+    "recorded_checks": 172,
+    "receipt": "../../docs/live-genesis-chain-verification-20260911.json",
+    "metadata_receipt": "../../docs/live-genesis-ipfs-verification-20260911.json",
+    "production_approved": false,
+    "handover_complete": false
   }
 }

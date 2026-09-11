@@ -188,6 +188,35 @@ temporary rights after replacement control succeeds. See `development-release.js
 
 ## 7. Contract deployment and governance
 
+### Live initialization and functional acceptance: 2026-09-11
+
+The named GasManager, CodeManager, GasSponsor and DakotaDelegationRegistry proxies
+are initialized on the running development chain. The validator registry and
+ProxyAdmin retain their reviewed genesis runtime. The shared beacon is owned by
+the fixed delegation registry. Do not repeat first-link initialization.
+
+The live suite confirmed 100 transaction receipts and 172 checks covering voter
+quorum/recovery, proxy role separation and upgrades, native funding/burns, restricted
+gas credit, code registration/redemption/delivery repair, real public EIP-7702
+sponsorship, replay/owner-signature enforcement and beacon-upgrade nonce retention.
+The explorer indexes the nested calls, including the sponsored redemption. See
+[the full acceptance record](docs/live-genesis-acceptance-20260911.md),
+[deployment tools](Tools/LiveGenesis/README.md), and
+[the observer/handoff prompt](Tools/LiveGenesis/FOLLOW_AND_HANDOFF_PROMPT.md).
+
+Cleanup removed temporary test voters/controllers, the canary privacy-group grant,
+treasury guardian and relayer. Sponsorship is paused; the canary tenant is disabled
+and its funding is zero. Remaining bootstrap voters/root/platform administrator
+and voucher signer are retained for the authorized application deployment. The
+supplied management address is nominated for GasSponsor and registry admin
+acceptance; it has not accepted, and final ownership handover is not complete.
+
+Face remains an unlinked reserved agent-registry proxy because an approved
+implementation is unavailable. The development canary is not a production gift
+or account-registration service. Paladin private execution and Router integration
+remain separate acceptance work. The retained validator initializer exception in
+GOVERNANCE.md must be revisited before any external-only voter configuration.
+
 Reserved proxies initially have zero implementation and unset initialization.
 Deploy implementations separately, verify runtime and storage layouts, and link
 with initializer calldata atomically. Public proxy governance resolves roots from
@@ -230,7 +259,7 @@ indexer/API, then the explorer UI on Frontend-01. Configure the UI's API through
 same-origin Nginx routes over Nebula; the browser must not be asked to reach backend
 localhost. Verify Blocks, Transactions and a transaction detail against live RPC.
 
-Planned operator URL: `http://100.111.69.1:8080`. The browser connects through
+Live operator URL: `http://100.111.69.1:8080`. The browser connects through
 Nebula; the UI origin remains `127.0.0.1:3001`. Inform the owner only after this URL
 has been checked from their computer. Indexing lag must be visible and monitored.
 Configure contract verification using exact standard JSON and compiler versions.
@@ -270,10 +299,19 @@ tokens, latency, concurrency and cost; test errors and cancellation.
 ## 12. IPFS and verification artifacts
 
 Backend-01 hosts persistent Kubo with loopback API/gateway and Nebula-only peers.
-Disable public bootstraps/discovery and constrain swarm routes. Cloudflare exposes
-the read-only gateway through Nginx; it does not enable peer discovery. Public
-peering is a separate later configuration change. Protect publishing with mTLS
-over Nebula. Follow `Tools/SolcCompiler/deploy/backend-ipfs/README.md`.
+Public bootstraps/discovery remain disabled. Current publishing uses pinned-host-key
+SSH over Nebula to the loopback API. The private loopback gateway has been verified
+through that SSH connection. Cloudflare gateway exposure and persistent mTLS
+publishing are planned, not installed. A tunnel to the read-only gateway does not
+enable peer discovery; public peering is a separate later configuration change.
+Follow `Tools/SolcCompiler/deploy/backend-ipfs/README.md`.
+
+Live deployed bytecode trailers were decoded and their exact metadata/source bytes
+checked against Backend-01 recursive pins, API readback and private gateway readback.
+The core 90-artifact bundle remains
+`QmSuawtJhsHhAJNS2VtPx4UHTEPvQgDbJD7vKmkV7smMaf`; the development fixture has its
+own metadata CID. `Tools/LiveGenesis/verify_ipfs.py` records per-address CIDs and
+source hashes. Explorer source-verification status is a separate pending capability.
 
 The compiler automatically publishes when configured, verifies metadata/source CIDs
 against embedded bytecode references, pins each object, reads back bytes, and records
