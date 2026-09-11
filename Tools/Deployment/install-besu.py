@@ -125,6 +125,7 @@ def main():
     # inherited. Always derive afresh from the actual protected node key.
     exported = subprocess.check_output([str(RUNTIME/'bin/besu'),'public-key','export-address',
         '--node-private-key-file='+str(key_path)],env=java_env,text=True)
+    exported = re.sub(r'\x1b\[[0-9;]*m','',exported)
     derived = [line.strip() for line in exported.splitlines() if re.fullmatch(r'0x[0-9a-fA-F]{40}',line.strip())]
     assert len(derived) == 1, 'Expected one derived node address'
     node_address = derived[0]
