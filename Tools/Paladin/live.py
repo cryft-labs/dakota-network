@@ -101,7 +101,7 @@ def group(d):
         d.journal['group']=existing[0] if existing else d.rpc('pgroup_createGroup',request); d.save()
     g=d.journal['group']; receipt=d.wait_private(g['genesisTransaction'])
     g=d.rpc('pgroup_getGroupById','pente',g['id']); assert g['contractAddress']; d.journal['group']=g; d.save()
-    d.check('pente:group_on_chain',len(d.w3.eth.get_code(g['contractAddress']))>0)
+    d.check('pente:group_on_chain',len(d.w3.eth.get_code(d.w3.to_checksum_address(g['contractAddress'])))>0)
     print(json.dumps({'group':g,'settlement':address}))
 
 def application(d):
