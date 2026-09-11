@@ -55,6 +55,7 @@ defmodule DakotaGenesisVerification do
     limit = String.to_integer(System.get_env("DAKOTA_VERIFICATION_LIMIT", "32433"))
     dry = System.get_env("DAKOTA_VERIFICATION_DRY_RUN", "false") == "true"
     rows = data["addresses"] |> Enum.drop(offset) |> Enum.take(limit)
+    save(Path.join(dir, "failure.json"), %{error: nil})
     save(Path.join(dir, "progress.json"), %{checked: 0, total: length(rows), offset: offset, dry_run: dry,
       block: head, source_commit: data["source_commit"], completed: false})
     cache = Map.new(data["builds"], fn {name, build} ->
@@ -118,7 +119,7 @@ defmodule DakotaGenesisVerification do
               on_conflict: {:replace, [:contract_code, :updated_at]}, fields_to_update: [:contract_code]}})
           end
           assert!(to_string(Explorer.Repo.get!(Address, hash).contract_code) == c.runtime, "Indexed code does not match live code")
-          contract = Explorer.Repo.get(SmartContract, hash)
+          contract = Explorer.Repo.get_by(SmartContract, address_hash: hash)
           if contract do
             validate_existing!(contract, c.build)
           else
