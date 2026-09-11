@@ -53,7 +53,7 @@ class Live(Deployment):
         receipt=self.wait_private(txid)
         # Domain receipts can expose PINs/codes; persist only non-secret evidence.
         row=self.journal['private_transactions'][label]
-        row['success']=True; row['public_receipt']=receipt.get('blockchainLocation')
+        row['success']=True; row['public_receipt']={k:receipt.get(k) for k in ['transactionHash','blockNumber','source']}
         row['contract_address']=receipt.get('domainReceipt',{}).get('receipt',{}).get('contractAddress')
         self.save(); print('PRIVATE PASS '+label,flush=True)
         return receipt
