@@ -54,6 +54,17 @@ over Nebula before closing public SSH or disabling root login. Retain provider-c
 recovery. Nebula requires its configured underlay UDP path; do not block that path
 while attempting to remove public application exposure.
 
+For an owner-requested address or enrollment replacement, use the committed
+`Tools/Deployment/enroll-nebula.py` with protected SSH-stdin JSON and
+`replace_existing: true`. Use the pinned bootstrap/recovery connection during the
+transition; the old tunnel can stop working as soon as its certificate is replaced.
+The default preserves existing enrollment. Replacement enrolls in place and
+restarts `dnclient` after success, without deleting identity files. This follows
+[Defined's server migration procedure](https://docs.defined.net/guides/migrating-between-networks/).
+Verify the actual assigned address, enabled/active service, and a fresh private SSH
+connection; update inventory if the assigned address differs. A successful code
+submission alone does not prove tunnel reachability.
+
 All validator/P2P, internal RPC and inter-host application traffic uses Nebula with
 role-specific firewall rules. Application HTTP origins bind 127.0.0.1. Cloudflare
 Tunnel reaches local Nginx for public websites; sensitive admin routes require
