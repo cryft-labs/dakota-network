@@ -33,7 +33,9 @@ def main():
             path.write_bytes(z.read(item));os.chmod(path,0o644)
     pod('exec','cryft-explorer-api','mkdir','-p',CONTAINER_DIR)
     pod('cp',str(target)+'/.','cryft-explorer-api:'+CONTAINER_DIR)
-    pod('exec','--user','0','cryft-explorer-api','chown','-R','10001:10001',CONTAINER_DIR)
+    # The live container intentionally drops CHOWN; use the existing rootless
+    # user namespace for host-volume ownership instead of adding capabilities.
+    pod('unshare','chown','-R','10001:10001',str(BASE/'dets/verification-20260911'))
     script=target/'genesis-worker.exs'
     assert script.exists()
     # An extra release process starts Explorer in API mode; no new web listener or
