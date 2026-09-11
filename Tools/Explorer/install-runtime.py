@@ -135,7 +135,9 @@ UMask=0077
         run('systemctl', 'daemon-reload')
         run('systemctl', 'enable', '--now', 'cryft-explorer-db', 'cryft-explorer-redis')
         for attempt in range(60):
-            probe = subprocess.run(prefix + ['exec', 'cryft-explorer-db', 'pg_isready', '-U', 'postgres'], capture_output=True)
+            # The image's temporary initialization server only opens a Unix socket.
+            # Wait for TCP so migrations cannot race its shutdown/restart.
+            probe = subprocess.run(prefix + ['exec', 'cryft-explorer-db', 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'], capture_output=True)
             if probe.returncode == 0:
                 break
             time.sleep(1)
