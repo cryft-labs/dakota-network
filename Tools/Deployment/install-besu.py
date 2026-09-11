@@ -15,6 +15,7 @@ import secrets
 import subprocess
 import tarfile
 import tempfile
+import tomllib
 
 VERSION = '26.8.1'
 ARCHIVE_SHA = '0e0ed9cc0d8fa9091081b6c5d4646f15bbf7e33a6eb1e9f7bfb2ef831fe9aaf4'
@@ -57,6 +58,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--commit', required=True)
     parser.add_argument('--host', required=True)
+    parser.add_argument('--update-config', action='store_true')
     args = parser.parse_args()
     assert os.geteuid() == 0
     assert re.fullmatch(r'[0-9a-f]{40}', args.commit)
@@ -143,19 +145,31 @@ def main():
         'network-id':112311, 'sync-mode':'FULL', 'data-storage-format':storage,
         'p2p-interface':ip, 'p2p-host':ip, 'p2p-port':30303,
         'p2p-ipv6-outbound-enabled':False, 'nat-method':'NONE', 'discovery-enabled':False,
-        'bootnodes':[], 'static-nodes-file':str(ETC/'static-nodes.json'),
+        'static-nodes-file':str(ETC/'static-nodes.json'),
         'max-peers':20, 'sync-min-peers':1,
         'rpc-http-enabled':True, 'rpc-http-host':'127.0.0.1', 'rpc-http-port':8545,
         'rpc-http-api':apis, 'rpc-http-max-active-connections':200,
         'rpc-ws-enabled':True, 'rpc-ws-host':'127.0.0.1', 'rpc-ws-port':8546,
         'rpc-ws-api':['ETH','NET','WEB3'], 'rpc-ws-max-active-connections':100,
-        'host-allowlist':['localhost','127.0.0.1'], 'rpc-http-cors-origins':[],
+        'host-allowlist':['localhost','127.0.0.1'],
         'metrics-enabled':True, 'metrics-host':'127.0.0.1', 'metrics-port':9545,
         'min-gas-price':1000000000, 'revert-reason-enabled':True, 'logging':'INFO',
     }
     # JSON scalar/array syntax is also valid TOML for these primitive values.
     toml = ''.join(k+'='+json.dumps(v)+'\n' for k,v in config.items())
-    atomic(ETC/'config.toml',toml,0o640,user.pw_gid,preserve=True)
+    config_path = ETC/'config.toml'
+    if config_path.exists() and config_path.read_text() != toml:
+        assert args.update_config, 'Configuration change requires --update-config'
+        previous = json.loads((ETC/'runtime-installation.json').read_text())
+        previous_hash = sha(config_path)
+        # The initial installer did not record the config hash. Recognize only
+        # its exact settings plus the two empty arrays rejected by Besu's parser.
+        legacy = tomllib.loads(config_path.read_text()) == dict(config,bootnodes=[],**{'rpc-http-cors-origins':[]})
+        assert previous.get('config_sha256') == previous_hash or legacy, 'Unrecorded host edits require review'
+        atomic(ETC/('config.toml.'+previous_hash+'.bak'),config_path.read_text(),0o640,user.pw_gid,preserve=True)
+    atomic(config_path,toml,0o640,user.pw_gid)
+    # Parse the actual generated settings without starting the blockchain node.
+    run(str(RUNTIME/'bin/besu'),'--config-file='+str(config_path),'--version',env=java_env)
     heap,high,maximum = (8,14,16) if archive else (6,10,12)
     unit = f'''[Unit]
 Description=Dakota Besu {VERSION} ({host['name']})
@@ -207,7 +221,7 @@ WantedBy=multi-user.target
     run('systemctl','daemon-reload')
     run('systemctl','enable','cryft-besu.service')
     receipt = {'source_commit':args.commit,'host':host['name'],'version':version,
-        'archive_sha256':ARCHIVE_SHA,'genesis_sha256':GENESIS_SHA,'node_address':node_address,
+        'archive_sha256':ARCHIVE_SHA,'genesis_sha256':GENESIS_SHA,'config_sha256':sha(config_path),'node_address':node_address,
         'nebula_ip':ip,'storage_format':storage,'sync_mode':'FULL','runtime_user':'cryft-besu',
         'service':'cryft-besu.service','service_enabled':True,'start_requested':False,
         'http_origin':'127.0.0.1:8545','ws_origin':'127.0.0.1:8546','p2p':ip+':30303',
