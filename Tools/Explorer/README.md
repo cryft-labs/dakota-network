@@ -101,6 +101,11 @@ the indexer as a small chain-spec configuration file.
 
 ### Source verification checkpoint — 2026-09-11
 
+Source verification has now completed for all 32,451 public addresses, including
+all genesis contracts. See [the independent final report](../../docs/blockscout-verification-20260911.md).
+The initial capability check described below is historical; the missing genesis
+records and source-upload backlog have been resolved.
+
 The live verification config now reports the Rust verifier enabled, Standard JSON
 support and both deployed compiler versions available. This supersedes the initial
 deployment checkpoint where verification was pending. No contract upload is implied:

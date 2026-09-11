@@ -993,6 +993,11 @@ dakota-network/
 
 ### Deployed artifact verification
 
+**Source verification is complete for all 32,451 public addresses**, including
+every genesis proxy. Independent checks matched every stored runtime/source hash
+and license, with no partial matches or failures. Read the
+[final report and evidence](docs/blockscout-verification-20260911.md).
+
 The [2026-09-11 verification package](Contracts/Verification/20260911/README.md)
 includes Standard JSON input/output, exact compiler metadata, ABI and bytecode for
 all 21 distinct audited deployed builds. Its inventories cover 32,433 genesis

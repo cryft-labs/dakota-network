@@ -99,11 +99,20 @@ print(json.dumps({'path':str(target),'bytes':target.stat().st_size,'read_only':T
             'explorer_url':'http://100.111.69.1:8080/address/'+address+'?tab=contract','runtime_sha256':runtime_hash,'source_files_checked':len(sources)})
     ipfs=json.loads((workspace/'outputs/blockscout-ipfs-revalidation.json').read_text());private=json.loads((workspace/'outputs/blockscout-private-code-validation.json').read_text())
     assert ipfs['passed'] and private['passed']
+    inventory=json.loads((REPO/'docs/current-contract-addresses.json').read_text())
+    links={r['proxy'].lower():r['implementation'].lower() for r in inventory['active_core_implementations'].values()}
+    links[inventory['pente_group']['proxy'].lower()]=inventory['pente_group']['implementation'].lower()
+    app=inventory['public_application_addresses'];links[app['PenteFactoryProxy'].lower()]=app['PenteFactory'].lower();links[app['CardProxy'].lower()]=app['CryftGreetingCards'].lower()
+    observed_links={r['address']:[x['address_hash'].lower() for x in r['implementations']] for r in api_evidence if r['address'] in links}
+    assert observed_links=={k:[v] for k,v in links.items()}
+    (workspace/'outputs/blockscout-proxy-link-validation.json').write_text(json.dumps({'passed':True,'checked':len(links),'links':links},indent=2))
+    creations=json.loads((workspace/'outputs/blockscout-new-creation-check.json').read_text());assert not creations['new_creations_since_audit']
     summary={'checked_at':datetime.now(timezone.utc).isoformat(),'passed':True,'chain_id':112311,'genesis_block_hash':manifest['genesis_block_hash'],
         'public_fully_verified':len(rows),'genesis_fully_verified':len(genesis),'later_public_fully_verified':len(public),
         'partial':0,'failed':0,'license_mismatches':0,'database_all_runtime_and_source_hashes_checked':True,
         'public_api_addresses_checked':len(api_evidence),'genesis_live_code_proof':progress,'private_code_hashes_checked':len(private['private_contracts']),
-        'native_precompiles_not_solidity':18,'ipfs_objects_revalidated':ipfs['objects_checked'],
+        'native_precompiles_not_solidity':18,'ipfs_objects_revalidated':ipfs['objects_checked'],'proxy_links_checked':len(links),
+        'no_additional_creations_through_block':creations['through_block'],
         'genesis_method':'Genuine Rust FULL compilation results reused only after exact per-address live runtime equality; normal Blockscout publisher, no fabricated verification flags.',
         'api_evidence':api_evidence,'production_approval':False}
     buffer=io.StringIO(newline='');writer=csv.DictWriter(buffer,fieldnames=FIELDS,lineterminator='\n');writer.writeheader();writer.writerows(rows)
@@ -113,8 +122,10 @@ print(json.dumps({'path':str(target),'bytes':target.stat().st_size,'read_only':T
         for name in ['addresses.csv','summary.json','progress.json','verified.jsonl','database.csv.gz']:
             z.write(out/name,name)
         for path in out.glob('rust-result-*.json'):z.write(path,'rust-results/'+path.name)
-        for name in ['blockscout-ipfs-revalidation.json','blockscout-private-code-validation.json','blockscout-new-creation-check.json']:
+        for name in ['blockscout-ipfs-revalidation.json','blockscout-private-code-validation.json','blockscout-new-creation-check.json','blockscout-proxy-link-validation.json']:
             z.write(workspace/'outputs'/name,name)
+        if (workspace/'outputs/blockscout-completion-health.json').exists():
+            z.write(workspace/'outputs/blockscout-completion-health.json','blockscout-completion-health.json')
         for path in (workspace/'outputs/blockscout-verification-receipts').glob('*.json'):z.write(path,'api-receipts/'+path.name)
     summary['evidence_archive_sha256']=sha(archive.read_bytes());summary['evidence_archive_bytes']=archive.stat().st_size
     (out/'summary.json').write_bytes((json.dumps(summary,indent=2)+'\n').encode())

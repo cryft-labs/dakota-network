@@ -1,5 +1,9 @@
 # Deployed contract verification package — 2026-09-11
 
+Subsequent source uploads are complete: see [the final verification report](../../../docs/blockscout-verification-20260911.md)
+for all 32,451 public addresses. The immutable manifest below records the earlier
+artifact audit and remains byte-for-byte identical to its published IPFS object.
+
 Read [the runbook](../../../Tools/BlockscoutVerification/README.md) and
 [the upload handoff](../../../Tools/BlockscoutVerification/HANDOFF_PROMPT.md).
 

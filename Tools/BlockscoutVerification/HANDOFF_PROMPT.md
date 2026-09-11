@@ -1,5 +1,12 @@
 # Dakota Blockscout verification and IPFS validation handoff
 
+**Execution checkpoint, 2026-09-11:** the owner reassigned this work to the original
+agent, which completed all 32,451 public source verifications. Read
+`docs/blockscout-verification-20260911.md` and its evidence before doing any work.
+The instructions below are retained for revalidation and future deployments; do
+not assume the original missing-address/upload backlog still exists. All 224 IPFS
+objects and all five private code hashes were revalidated successfully.
+
 Act as the engineer completing source verification for the existing Dakota
 development chain. Upload and validate the audited public Solidity contracts on
 our running Blockscout. Validate the IPFS metadata/source/artifact pins. Finish

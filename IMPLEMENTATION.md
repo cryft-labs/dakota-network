@@ -137,8 +137,10 @@ home page and block 72 detail were verified; the API subsequently matched Besu a
 block 76 and reported indexing complete. Same-origin RPC, validator list, WebSocket
 subscription, runtime KOTA branding, closed raw origins and a controlled API restart
 were verified. See [explorer acceptance](docs/explorer-nebula-acceptance.json) and
-[the runbook](Tools/Explorer/README.md). Genesis allocation import, self-hosted
-contract verification and wallet-write/account UI configuration remain pending.
+[the runbook](Tools/Explorer/README.md). All genesis contract address/code records
+are now indexed and all 32,451 public addresses are fully source verified; this
+does not reimport genesis balance history. Wallet-write/account UI configuration
+remains pending. See [the independent verification report](docs/blockscout-verification-20260911.md).
 
 Paladin/Pente deployment and direct private-code-to-public-NFT acceptance are
 complete for the development group. Five NFTs were delivered, native public gas
@@ -361,8 +363,11 @@ source hashes. The additional Paladin/application artifacts are tracked separate
 in `docs/paladin-acceptance-20260911.json`: ten builds, 88 compiler objects, and two
 preserved NFT metadata directories. Deployed public runtime bytes and private code
 hashes match those pinned artifacts. The latest verification API check reports the
-Rust verifier enabled with both required compilers. Source uploads and missing
-genesis address indexing are still pending; availability is not upload completion.
+Rust verifier enabled with both required compilers. Subsequent source verification
+completed for all 32,451 public addresses, with every stored runtime/source hash and
+license checked independently. Missing genesis contract records were resolved.
+The completed maintenance job is disabled; its evidence and pre-import database
+backup remain on Backend-01. See `docs/blockscout-verification-20260911.md`.
 
 The complete deployed-contract package is
 [`Contracts/Verification/20260911`](Contracts/Verification/20260911/README.md): 21

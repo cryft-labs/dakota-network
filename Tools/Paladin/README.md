@@ -309,7 +309,10 @@ NFTs 1–4 retain directory `QmeCdJ3uwNspKHnL9oK8hz4vE3aY77YYn48m6EMUK5d5Kz`;
 NFT 5 uses `QmdqZ72P2SjJLTS1NiB2hbqxQ3sycHg7cXyaCEuagboDo2`. Filenames are `<id>.json`.
 Both directories are pinned and verified. Backend API/gateway are `127.0.0.1:5001`
 and `127.0.0.1:8081`; no public Cloudflare gateway is configured yet. Source pinning
-is separate from Blockscout source verification, which is still pending.
+is separate from Blockscout source verification, which has now completed for all
+32,451 public addresses. Five private code hashes were independently revalidated;
+private addresses remain outside public explorer source verification. See
+[the final report](../../docs/blockscout-verification-20260911.md).
 
 For later compatible upgrades, compare full storage layouts and ABI behavior, pin
 artifacts, read actual implementation addresses, record a durable transaction label,
@@ -330,7 +333,6 @@ must use those same endpoints; no browser may receive node signing access.
 
 Outstanding: Router/API and account-registration integration; deployed moment.cards
 and widget/admin UI; final management acceptance and private identity handover;
-public Cloudflare/IPFS gateway and explorer source uploads (the verifier now reports
-enabled); production SSH/network
+public Cloudflare/IPFS gateway; production SSH/network
 lockdown; full reboot/backup-restore/multiparty/load tests. This runbook documents
 working development settlement, not production approval.

@@ -1,6 +1,6 @@
 # Kota full-system development deployment prompt
 
-Revision 5, 2026-09-11. Copy this entire document into the deployment task.
+Revision 6, 2026-09-11. Copy this entire document into the deployment task.
 
 Resume checkpoint: the development chain and Nebula explorer are running, and the
 four named genesis services have been linked and initialized. Public governance,
@@ -23,8 +23,11 @@ CodeManager/Combo strict upgrades are already applied; do not replay older first
 or application setup scripts. Their existing proxy addresses and private group remain.
 Public Osaka and private Shanghai are the verified targets. Private EIP-7702 processing
 is not established; no MetaTx fallback is needed for verified public sponsorship.
-The explorer Rust verifier is now enabled with the required compilers; contract
-uploads and missing genesis address indexing remain pending. Use
+The explorer Rust verifier is enabled and source verification is complete for all
+32,451 public addresses, including every genesis proxy. Read
+`docs/blockscout-verification-20260911.md` before attempting any uploads or imports.
+All source/license/runtime checks, 224 IPFS objects and five private code hashes
+passed. Use
 `Tools/BlockscoutVerification/HANDOFF_PROMPT.md` and the complete deployed package
 `Contracts/Verification/20260911` for exact Standard JSON input/output, metadata,
 constructor data and explicit Apache/MIT license mapping. Native precompiles and

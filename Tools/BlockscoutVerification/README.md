@@ -1,5 +1,11 @@
 # Contract artifacts and Blockscout verification
 
+**Completion checkpoint:** [the 2026-09-11 final report](../../docs/blockscout-verification-20260911.md)
+records 32,451 fully verified public addresses, with every runtime and source hash
+audited independently and zero license mismatches. The initial artifact-audit and
+handoff sections below preserve their original scope; source uploads have since
+completed. Use the final report before deciding that any upload is still needed.
+
 ## 1. Scope and evidence
 
 The 2026-09-11 audit is in [Contracts/Verification/20260911](../../Contracts/Verification/20260911).
@@ -79,10 +85,11 @@ Explorer: `http://100.111.69.1:8080/`. Archive RPC:
 `http://100.111.69.1:8547/`. Both are Nginx-protected Nebula endpoints. Backend-01
 hosts the rootless explorer API/database; Frontend-01 hosts the UI/archive.
 
-At this audit, `/api/v2/smart-contracts/verification/config` reports the Rust verifier
+At the initial artifact audit, `/api/v2/smart-contracts/verification/config` reported the Rust verifier
 enabled, Standard JSON available and both required compilers present. Inspect this
 live state before changing services. No uploads were performed by the audit.
-Some genesis addresses return 404 because address records are not indexed yet.
+Some genesis addresses initially returned 404. The completed maintenance job has
+now indexed and fully verified all audited genesis contracts.
 
 In the installed Blockscout v11.3.0 source (commit
 `43af7ea84797e2f3a55ac1191d9cbe67436eb3e8`), on-demand code fetching requires an
