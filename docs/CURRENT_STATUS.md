@@ -2,9 +2,10 @@
 
 ## 1. Source promotion
 
-The owner approved source/documentation promotion to `main` on September 11, 2026.
-Use network main and `CryftCreator/KotaRouter/main` for the published baseline;
-retain the review branches for history. The website implementation remains on
+The September 11, 2026 update publishes maintenance documentation to main.
+Network source already on main is unchanged. KotaRouter main receives documentation
+only; current contract/service implementation and artifacts remain on
+`review/primary-api-lmstudio`. Retain review branches and resolve exact commits. The website implementation remains on
 `CryftCreator/cryftcomingsoon-main:review/moment-dakota-tenant`; its documentation
 is published separately on main. No host release, DNS, tunnel, signing permission
 or production traffic changes merely because source is promoted.

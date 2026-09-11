@@ -19,7 +19,9 @@ All project-owned contracts are licensed under **Apache 2.0**. This software is 
 
 ## Development release status
 
-The owner approved source and documentation promotion to `main` on September 11.
+The September 11 update publishes current maintenance documentation to `main`.
+Network code already on main is unchanged; KotaRouter implementation remains on
+its `review/primary-api-lmstudio` branch.
 Review branches remain for traceability. Start with [current status and documentation
 index](docs/CURRENT_STATUS.md), [operations](IMPLEMENTATION.md), and the
 [resume prompt](docs/ONE_SHOT_DEPLOYMENT.md). Main records development work and is

@@ -56,10 +56,11 @@ Do not substitute legacy implementations or claim a scaffold is live settlement.
 The owner has authorized compatible upgrades, branch publication, compressed-genesis
 updates and autonomous development deployment/testing. Before any live test, commit
 and push every current code/configuration change to the existing review branches,
-verify remote SHAs. The owner subsequently authorized promoting reviewed network and Kota Router
-source/artifacts and all updated documentation to main. Website documentation is
-also promoted; its unfinished implementation stays on `review/moment-dakota-tenant`.
-The review branches remain available for provenance and historical tool guards.
+verify remote SHAs. The latest update publishes documentation to main only.
+Network source already on main is unchanged; current KotaRouter implementation
+and artifacts stay on `review/primary-api-lmstudio`, and website implementation
+stays on `review/moment-dakota-tenant`. Use those branches/recorded source commits
+for continued development. Do not infer implementation promotion from main docs.
 Deploy only recorded
 commits and pinned dependencies/images. Publish subsequent fixes before applying
 them to hosts. Production deployment still requires extensive testing and owner
@@ -82,10 +83,11 @@ PRODUCTION_PROMOTION_APPROVED=false
 DEPLOYMENT_ENVIRONMENT=development
 NETWORK_SOURCE_BRANCH=main
 NETWORK_REVIEW_BRANCH=review/compiler-standard-json
-API_SOURCE_BRANCH=main
+API_SOURCE_BRANCH=review/primary-api-lmstudio
 API_REVIEW_BRANCH=review/primary-api-lmstudio
 SITE_IMPLEMENTATION_BRANCH=review/moment-dakota-tenant
-SOURCE_PROMOTION_APPROVED=true
+DOCUMENTATION_PROMOTION_APPROVED=true
+IMPLEMENTATION_PROMOTED_BY_THIS_UPDATE=false
 PUSH_BEFORE_LIVE_TESTS=true
 GENESIS_ARCHIVE_PATH=Contracts/Genesis/besuGenesis.7z
 GENESIS_ARCHIVE_SHA256=11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f
@@ -316,7 +318,7 @@ EXPLORER_START_EARLY=true
 1. Inspect the current local and remote state, read repository instructions, preserve
    existing files/data and recover the latest checkpoint. Review changes, verify
    compiler exports/regressions and secret exclusions, commit/push to review branches,
-   then record full remote SHAs and the authorized main promotion. Never treat
+   then record full remote SHAs and distinguish documentation-only main updates. Never treat
    source promotion as production acceptance. Update the technical manual
    as each fact is verified. A published test checkpoint is not production certification.
 2. The seven hosts are already enrolled; use their existing Nebula identities. Only
@@ -447,5 +449,6 @@ material change so a new developer can maintain the system without prior context
 Finish with published source branch/commit links, actual service and explorer URLs,
 test results and limitations, genesis/archive hashes, contract/address/ownership
 manifest, IPFS publication receipts, maintenance manual and any truly missing input.
-The owner approved the documented source promotion to main. Production deployment
+This update publishes documentation to main; current Kota implementation stays
+on its recorded review branch. Production deployment
 remains gated on integration/acceptance and a separate cutover decision.

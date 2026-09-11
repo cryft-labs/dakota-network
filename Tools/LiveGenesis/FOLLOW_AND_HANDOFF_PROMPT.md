@@ -18,9 +18,9 @@ development deployment and testing. Never reset genesis, regenerate existing key
 delete a transaction journal, deploy a substitute into an occupied address, or
 remove management controls to get past a failed check. The user requires changes
 committed and pushed on review branches before applying GitHub-based changes.
-The owner has since approved source/documentation promotion to network and
-Kota Router main. This supersedes the old main-preservation rule for that release;
-production cutover and remaining ownership transfers are separate decisions.
+The latest update publishes documentation to main only. Kota Router source and
+artifacts remain on its review branch; network code already on main is unchanged.
+Production cutover and remaining ownership transfers are separate decisions.
 
 Ask only for genuinely missing access or decisions. Public contract inspection
 requires no wallet key. Never ask for, print, commit or place private keys,
@@ -45,7 +45,7 @@ GitHub: https://github.com/cryft-labs/dakota-network
 Documentation/source baseline: main; historical execution branch: review/compiler-standard-json
 Router checkout: work/source/KotaRouter
 GitHub: https://github.com/CryftCreator/KotaRouter
-Documentation/source baseline: main; historical execution branch: review/primary-api-lmstudio
+Documentation: main; current implementation/artifacts: review/primary-api-lmstudio
 Explorer checkout: work/source/dakota-explorer
 Branch: review/nebula-development-deployment
 
@@ -292,6 +292,6 @@ Distinguish: initialized; bytecode reproduced; on-chain bytecode verified; funct
 checks passed; explorer source verified; metadata pinned/read back; public gateway
 available; admin handover complete. Do not collapse these into a single “verified”.
 List every unresolved item, exact failing evidence and the next safe action.
-Include explorer transaction links and IPFS CIDs. Protect secrets. Keep main
-unchanged. Do not claim production readiness until the complete application,
+Include explorer transaction links and IPFS CIDs. Protect secrets. Publish new
+implementation work to review branches; keep documentation/main scope explicit. Do not claim production readiness until the complete application,
 private-execution, infrastructure and ownership acceptance criteria have passed.
