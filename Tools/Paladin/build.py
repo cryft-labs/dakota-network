@@ -63,7 +63,10 @@ def main():
                     'metadata':compiled['metadata'],'standard_json_input':standard,'source':unit,'compiler':'0.8.37','evm':standard['settings']['evmVersion'],
                     'storage_layout':compiled['storageLayout']}
         target=out/name; target.mkdir(exist_ok=True)
-        blob=(json.dumps(artifact,indent=2)+'\n').encode(); (target/'artifact.json').write_bytes(blob)
+        blob=(json.dumps(artifact,indent=2)+'\n').encode()
+        if (target/'artifact.json').exists():
+            assert (target/'artifact.json').read_bytes()==blob, 'Use a versioned artifact alias for changed deployed contracts: '+name
+        (target/'artifact.json').write_bytes(blob)
         (target/'standard-input.json').write_text(json.dumps(standard,indent=2)+'\n',encoding='utf-8')
         (target/'standard-output.json').write_text(json.dumps(result)+'\n',encoding='utf-8')
         (target/'metadata.json').write_text(compiled['metadata'],encoding='utf-8')

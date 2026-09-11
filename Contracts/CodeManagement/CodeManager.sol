@@ -465,20 +465,19 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     ///         This function NEVER reverts on precondition failures. Invalid UIDs,
     ///         unregistered identifiers, out-of-range counters, and inactive/redeemed
     ///         UIDs emit a RedemptionRejected event and return gracefully. This
-    ///         guarantees that every PenteExternalCall from redeemCodeBatch succeeds
-    ///         from Pente's perspective — private state changes (hash deletion,
-    ///         local REDEEMED marking) are never rolled back by a public-chain
-    ///         precondition failure.
+    ///         preserves the legacy best-effort ABI. Private code consumption must
+    ///         use recordRedemptionStrict so a rejected public precondition rolls
+    ///         back the Pente transition rather than consuming an undeliverable code.
     ///
     ///         CodeManager marks the UID as REDEEMED before calling the gift contract.
     ///         If the gift contract reverts, CodeManager catches the error and emits
     ///         a RedemptionFailed event instead of propagating the revert.
     ///
     ///         The UID remains terminally REDEEMED in CodeManager regardless of
-    ///         gift contract outcome. Admin monitoring should watch for
-    ///         RedemptionFailed events and resolve the gift-contract side effect
-    ///         (e.g., manual NFT transfer) separately.
-    function recordRedemption(string memory uniqueId, address redeemer) external onlyAuthorizedPrivacyGroup nonReentrant {
+    ///         gift contract outcome. Monitor RedemptionFailed and repair the
+    ///         delivery target before calling retryRedemptionDelivery. The retry
+    ///         retains the committed recipient and never reopens the spent code.
+    function recordRedemption(string memory uniqueId, address redeemer) public onlyAuthorizedPrivacyGroup nonReentrant {
         // ── Precondition checks (graceful skip, never revert) ──
         (bool splitOk, string memory contractIdentifier, ) = _trySplitUniqueId(uniqueId);
         if (!splitOk) {
@@ -513,6 +512,18 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
 
         _deliveries[keccak256(bytes(uniqueId))].recipient = redeemer;
         _attemptDelivery(uniqueId, data.giftContract);
+    }
+
+    /// @notice Atomic private/public boundary: reject without consuming private state.
+    /// @dev The guarded public function is called internally, preserving msg.sender.
+    ///      A gift delivery failure still commits the recipient and supports retry.
+    ///      A public precondition failure reverts the entire enclosing Pente transition.
+    function recordRedemptionStrict(string memory uniqueId, address redeemer) external {
+        bytes32 uidHash = keccak256(bytes(uniqueId));
+        require(_deliveries[uidHash].recipient == address(0), "Redemption already committed");
+        recordRedemption(uniqueId, redeemer);
+        require(redeemer != address(0) && _deliveries[uidHash].recipient == redeemer,
+            "Public redemption precondition rejected");
     }
 
     function getRedemptionRecipient(string calldata uniqueId) external view returns (address) {

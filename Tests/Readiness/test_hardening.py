@@ -153,6 +153,28 @@ def test_delivery_retry_preserves_recipient_and_is_idempotent(chain):
     assert cm.functions.getRedemptionDelivery(uid).call()==[a[4],True,2]
 
 
+def test_strict_redemption_rejects_preconditions_but_preserves_delivery_repair(chain):
+    c=chain; cm=manager(c); a=c['accounts']; gift=deploy(c,'Gift'); uid=registered(c,cm,gift)
+    tx(c,cm.functions.voteToSetPrivacyGroupGift(a[6],gift.address,True))
+    tx(c,cm.functions.setUniqueIdActiveBatch([uid],[False]),a[6])
+    fails(c,cm.functions.recordRedemptionStrict(uid,a[4]),a[6])
+    assert not cm.functions.isUniqueIdRedeemed(uid).call()
+    assert cm.functions.getRedemptionDelivery(uid).call()==['0x'+'0'*40,False,0]
+    # Existing callers retain the original best-effort ABI.
+    tx(c,cm.functions.recordRedemption(uid,a[4]),a[6])
+    assert not cm.functions.isUniqueIdRedeemed(uid).call()
+    tx(c,cm.functions.setUniqueIdActiveBatch([uid],[True]),a[6])
+    fails(c,cm.functions.recordRedemptionStrict(uid,'0x'+'0'*40),a[6])
+    fails(c,cm.functions.recordRedemptionStrict(uid,a[4]),a[7])
+    tx(c,gift.functions.setBroken(True))
+    tx(c,cm.functions.recordRedemptionStrict(uid,a[4]),a[6])
+    assert cm.functions.getRedemptionDelivery(uid).call()==[a[4],False,1]
+    fails(c,cm.functions.recordRedemptionStrict(uid,a[4]),a[6])
+    tx(c,gift.functions.setBroken(False))
+    tx(c,cm.functions.retryRedemptionDelivery(uid),a[8])
+    assert cm.functions.getRedemptionDelivery(uid).call()==[a[4],True,2]
+
+
 def private(c):
     p=proxy_contract(c,'PrivateComboStorage',(c['accounts'][0],c['accounts'][1],'0x'+'0'*40))
     tx(c,p.functions.setContractIdentifierWhitelist(['review'],[True]))

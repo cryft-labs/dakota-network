@@ -799,6 +799,8 @@ contract PrivateComboStorage {
     ///         RedemptionFailed event instead of propagating the revert, so
     ///         the Pente transition succeeds and private state changes
     ///         (code-hash deletion, REDEEMED marking) are preserved.
+    ///         Public precondition rejections instead revert the enclosing Pente
+    ///         transition through recordRedemptionStrict, preserving unspent codes.
     /// @param pins      Array of PINs (assigned during storage).
     /// @param codeHashes Array of keccak256(code) hashes.
     /// @param redeemers  Array of redeemer addresses to receive the NFTs.
@@ -888,7 +890,7 @@ contract PrivateComboStorage {
             emit PenteExternalCall(
                 CODE_MANAGER,
                 abi.encodeWithSignature(
-                    "recordRedemption(string,address)",
+                    "recordRedemptionStrict(string,address)",
                     redeemedUniqueId,
                     redeemers[i]
                 )

@@ -3,7 +3,7 @@ import argparse, ctypes, json, secrets
 from ctypes import wintypes
 from live import Live, TESTER, ADMIN, DEPLOYER, ZERO, hx
 
-def local_fixture(d):
+def local_fixture(d,count=4):
     # These are new local acceptance codes, never exported Paladin wallet secrets.
     path=d.out/'acceptance-fixture.dpapi'
     class Blob(ctypes.Structure): _fields_=[('size',wintypes.DWORD),('data',ctypes.POINTER(ctypes.c_ubyte))]
@@ -20,6 +20,11 @@ def local_fixture(d):
         raw=json.dumps({'codes':[secrets.token_urlsafe(32) for _ in range(4)],'entropies':['0x'+secrets.token_hex(32) for _ in range(4)]}).encode()
         path.write_bytes(transform(raw,True))
     fixture=json.loads(transform(path.read_bytes(),False))
+    if len(fixture['codes']) < count:
+        missing=count-len(fixture['codes'])
+        fixture['codes'].extend(secrets.token_urlsafe(32) for _ in range(missing))
+        fixture['entropies'].extend('0x'+secrets.token_hex(32) for _ in range(missing))
+        path.write_bytes(transform(json.dumps(fixture).encode(),True))
     fixture['hashes']=[hx(d.w3.keccak(text=code)) for code in fixture['codes']]
     return fixture
 

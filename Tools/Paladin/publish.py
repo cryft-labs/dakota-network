@@ -50,7 +50,7 @@ def main():
             standard=(d.out/'artifacts'/name/'standard-input.json').read_bytes()
             report['contracts'][name]={'metadata_cid':cid,'standard_input_cid':confirm(standard),'evm':artifact['evm']}
             print('PINNED '+name+' '+cid,flush=True)
-        cardfiles={str(i)+'.json':(json.dumps({'name':'moment.cards Development Card #'+str(i),'description':'Development acceptance card for the Dakota redemption service.','attributes':[{'trait_type':'Environment','value':'Development'}]},sort_keys=True)+'\n').encode() for i in range(1,5)}
+        cardfiles={str(i)+'.json':(json.dumps({'name':'moment.cards Development Card #'+str(i),'description':'Development acceptance card for the Dakota redemption service.','attributes':[{'trait_type':'Environment','value':'Development'}]},sort_keys=True)+'\n').encode() for i in range(1,6)}
         response=d.http.post(endpoint+'/api/v0/add',params={'wrap-with-directory':'true','pin':'true','cid-version':0,'raw-leaves':'false'},
                  files=[('file',(name,body,'application/json')) for name,body in cardfiles.items()],timeout=40); response.raise_for_status()
         entries=[json.loads(line) for line in response.text.splitlines()]; directory=entries[-1]['Hash']
@@ -58,6 +58,15 @@ def main():
         for name,body in cardfiles.items():
             with opener.open(gateway+directory+'/'+name,timeout=25) as r: assert r.read(len(body)+1)==body
         report['card_metadata']={'directory_cid':directory,'base_uri':'ipfs://'+directory+'/','files':list(cardfiles),'pinned':True,'gateway_readback':True}
+        previous_path=d.out/'ipfs-verification.json'
+        if previous_path.exists():
+            previous=json.loads(previous_path.read_text())
+            historical=previous.get('historical_card_metadata',[])+[previous['card_metadata']]
+            report['historical_card_metadata']=list({x['directory_cid']:x for x in historical if x['directory_cid']!=directory}.values())
+            for item in report['historical_card_metadata']:
+                assert item['directory_cid'] in json.loads(api.request('pin/ls',{'arg':item['directory_cid'],'type':'recursive'}))['Keys']
+                for filename in item['files']:
+                    with opener.open(gateway+item['directory_cid']+'/'+filename,timeout=25) as r: assert r.read()==cardfiles[filename]
         report['passed']=True; (d.out/'ipfs-verification.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
         print('IPFS verified '+str(len(report['objects']))+' compiler objects and card directory '+directory,flush=True)
     finally:

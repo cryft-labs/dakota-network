@@ -86,7 +86,20 @@ def at(chain, name, address):
     return chain['w3'].eth.contract(address=address, abi=chain['builds'][name]['abi'])
 
 @pytest.fixture
-def chain(builds):
+def chain(builds, monkeypatch):
+    # Match Dakota's reviewed genesis limit; Ethereum's default is only 24 KiB.
+    import eth.vm.forks.spurious_dragon.computation as spurious_computation
+    release = json.loads((REPO/'Contracts/Genesis/development-release.json').read_text())
+    def find_limit(value):
+        if isinstance(value,dict):
+            if 'contractSizeLimit' in value:return value['contractSizeLimit']
+            for child in value.values():
+                limit=find_limit(child)
+                if limit is not None:return limit
+        return None
+    limit=find_limit(release)
+    assert limit==32768
+    monkeypatch.setattr(spurious_computation,'EIP170_CODE_SIZE_LIMIT',limit)
     state = PyEVMBackend.generate_genesis_state()
     accounts = list(state)
     slots = {1:4}

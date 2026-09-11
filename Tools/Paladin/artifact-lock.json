@@ -76,5 +76,21 @@
     "immutable_references": {},
     "evm": "osaka",
     "compiler": "0.8.37"
+  },
+  "CodeManagerStrict": {
+    "artifact_sha256": "6a77ba969c52122bc621e637d22b26e9c2f2f83ce4f0a6caef305ceba2148e28",
+    "runtime_bytes": 24784,
+    "immutable_references": {},
+    "evm": "osaka",
+    "compiler": "0.8.37",
+    "storage_compatible_with": "CodeManager"
+  },
+  "PrivateComboStorageStrict": {
+    "artifact_sha256": "ecb9fe52b1785c44d4c66731407a21fd6615a06fb83e1ffa798891b7b4fa419a",
+    "runtime_bytes": 17127,
+    "immutable_references": {},
+    "evm": "shanghai",
+    "compiler": "0.8.37",
+    "storage_compatible_with": "PrivateComboStorage"
   }
 }
