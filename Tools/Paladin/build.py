@@ -23,6 +23,7 @@ def main():
     for file, evm, names in [
         ('CodeManagement/PrivateComboStorage.sol', 'shanghai', ['PrivateComboStorage']),
         ('Tokens/GreetingCards.sol', 'osaka', ['CryftGreetingCards']),
+        ('Paladin/DeliveryFailureProbe.sol', 'osaka', ['DeliveryFailureProbe']),
         ('Paladin/ManagedProxyAdmin.sol', 'shanghai', ['ManagedProxyAdmin','ManagedApplicationProxy']),
     ]:
         result = compiler.compile_contract(REPO/'Contracts'/file, solc_version='0.8.37', evm_version=evm)

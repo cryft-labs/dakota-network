@@ -13,6 +13,13 @@
     "evm": "osaka",
     "compiler": "0.8.37"
   },
+  "DeliveryFailureProbe": {
+    "artifact_sha256": "eb94b88c4d120f0900345e0b0b24f77d030b01844b9f1fe840cb907228a910fb",
+    "runtime_bytes": 145,
+    "immutable_references": {},
+    "evm": "osaka",
+    "compiler": "0.8.37"
+  },
   "ManagedProxyAdmin": {
     "artifact_sha256": "aa197322f9b112224c69cb9a96cccbd4d12a013c05fe6e02e79b7f87e36e1714",
     "runtime_bytes": 2051,
