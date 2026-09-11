@@ -88,5 +88,87 @@
   "historical_genesis_deployment_manifest": "live-genesis-addresses-20260911.json",
   "current_acceptance": "paladin-acceptance-20260911.json",
   "handover_complete": false,
-  "production_approved": false
+  "production_approved": false,
+  "kota_tenants": {
+    "schema": "kota.tenant.deployment.v1",
+    "chain_id": 112311,
+    "genesis_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+    "checked_at": "2026-09-11T10:46:52.821437+00:00",
+    "block": 611,
+    "deployment_source_commit": "d1402eb7071a32af98a6359d9992578226c766a7",
+    "release": "20260911-v1.4.0",
+    "compiler": "v0.8.34+commit.80d5c536",
+    "evm_version": "osaka",
+    "addresses": {
+      "KotaAccessSBT": "0x523A094069F1e79bCA85b7ff9fb07385a4B0ed72",
+      "KotaAccessFactory": "0x294Cd799535bEBCd2141B07e94e6ac1A8b06e96d",
+      "KotaTenantAccessSBT": "0x0DE39372a4a172755cD4DC614383D84a89f66704",
+      "KotaAccessProxy": "0xa6a1161Fc96561c5DD94Ab4082D8b867E7C102C0",
+      "KotaFactoryProxy": "0xD99A083A2125dB1881e1D315885c7ba0FAc933d0",
+      "KotaAccessProxyAdmin": "0xB16c628E03AE8fdEE4747C071D3d1AFae29b23Fe",
+      "KotaFactoryProxyAdmin": "0xab188CE93Ef845be4a32DDC5dBdcc296C71f9C49",
+      "TenantRegistryBeacon": "0xfD78357ffC5121f1d6390dCB819520165e2a3190",
+      "moment.cards": "0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340",
+      "kota-validation-20260911": "0xf42b08252A486608D2b146581b34a62A1Ac2A902"
+    },
+    "final_admin": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "deployment_blocks": [
+      570,
+      609
+    ],
+    "successful_transactions": 40,
+    "live_checks": 32,
+    "local_tests": {
+      "full_contract_suite": "passed",
+      "original_failures_reproduced": 7,
+      "recovery_regressions": "passed",
+      "legacy_proxy_beacon_upgrade": "passed",
+      "storage_layout": "passed",
+      "runtime_size_gate": "passed"
+    },
+    "explorer": {
+      "url": "http://100.111.69.1:8080/",
+      "fully_verified_contracts": 10,
+      "correct_license": "MIT"
+    },
+    "ipfs": {
+      "verified_objects": 43,
+      "public_peering": false,
+      "publication_receipt": "receipts/ipfs.json"
+    },
+    "moment": {
+      "tenant_id": "moment.cards",
+      "registry": "0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340",
+      "active_holders": 0,
+      "locked": false,
+      "max_holders": 10000,
+      "max_active_registries": 3,
+      "max_lifetime_registry_slots": 128,
+      "allowed_origins": [
+        "https://moment.cards",
+        "https://www.moment.cards"
+      ],
+      "contract_uri": "ipfs://QmfPecPwenTDaj14bbpVp2DQTpsTvMTXaqHf9C5uDVykio",
+      "runtime_minter_authorized": false
+    },
+    "handover": {
+      "issuer_and_factory_admin": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+      "tenant_operators": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+      "both_proxy_admin_owners": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+      "beacon_owner": "0xD99A083A2125dB1881e1D315885c7ba0FAc933d0",
+      "temporary_deployer_and_tester_credentials_removed": true,
+      "temporary_minters_invalidated": true
+    },
+    "balances_kota": {
+      "0x9247524040D91D5dd1521A25f2e7711d4a0fe921": "32",
+      "0x633309d1155fD658a717e4f5E4FA853615400867": "0.89290914",
+      "0x991acc255761dEE0421Ccd3F436788C24425122E": "0.997052368"
+    },
+    "fees_kota": "0.01739705",
+    "remaining_integration": [
+      "Authorize a narrowly scoped service minter through the root operator when enabling issuance.",
+      "Apply the reviewed router bindings and register the moment.cards widget tenant; validate direct API and widget flows.",
+      "Run the full card issuance/redemption lifecycle through the service. Tenant membership deployment does not complete that integration."
+    ]
+  }
 }

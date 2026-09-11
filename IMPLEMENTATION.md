@@ -436,3 +436,34 @@ redeem/delivery/retry; duplicate/race/crash recovery; tenant isolation; admin ha
 explorer visibility; IPFS retrieval; API/widget/direct integration; backups/restore;
 and measured concurrency. Do not promote unresolved critical API, contract or
 privacy-path blockers. Send production promotion for owner review after these pass.
+
+## 16. Kota tenant access contracts — validated deployment
+
+Kota tenant release `1.4.0` is deployed on the existing chain and genesis, from
+`CryftCreator/KotaRouter:review/primary-api-lmstudio` commit
+`d1402eb7071a32af98a6359d9992578226c766a7`. The access credential proxy is
+`0xa6a1161Fc96561c5DD94Ab4082D8b867E7C102C0` and factory proxy is `0xD99A083A2125dB1881e1D315885c7ba0FAc933d0`.
+The moment.cards membership registry/public routing key is `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`.
+These are service access credentials, separate from the existing redeemable card NFT.
+
+Forty successful transactions and 32 live checks validated issuance, caps, locks,
+metadata, recovery and removal of temporary authority. All ten implementation,
+proxy, ProxyAdmin and beacon addresses are fully verified in Blockscout with MIT
+licensing. All 43 public source/metadata objects were pinned and retrieved through
+Backend-01 IPFS. Compiler 0.8.34 targets Osaka; no genesis or Paladin state changed.
+
+The final root `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` controls issuer, factory admin, both tenant operators
+and both ProxyAdmins. The factory owns the shared beacon. Temporary deployer and
+tester credentials were revoked and their tenant minting rights invalidated.
+The test registry is empty and locked; moment.cards is empty and unlocked, with
+three active registries allowed, 10000 holders each and a 128 lifetime-slot bound.
+
+See KotaRouter `router_v4/contracts/deployment/README.md`, `addresses.json`,
+`router-bindings.env.example`, and `receipts/` for the full maintenance procedure,
+review findings, metadata CIDs, all addresses and transaction evidence. The network
+inventory `docs/current-contract-addresses.json` includes this deployment under
+`kota_tenants`, retaining the earlier verification timestamp for other contracts.
+The router/widget binding and redemption API lifecycle still require integration.
+No service minter is authorized yet; the root operator must explicitly approve
+a runtime issuance wallet when that integration is ready. Fund that wallet with
+native gas or an approved sponsor policy; do not fund the membership contracts.
