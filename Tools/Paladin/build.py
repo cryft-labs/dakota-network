@@ -69,6 +69,6 @@ def main():
         lock[name]={'artifact_sha256':hashlib.sha256(blob).hexdigest(),'runtime_bytes':len(runtime)//2,
                     'immutable_references':evm['deployedBytecode'].get('immutableReferences',{}),'evm':artifact['evm'],'compiler':artifact['compiler']}
         print(name, len(runtime)//2, artifact['evm'], flush=True)
-    (Path(__file__).with_name('artifact-lock.json')).write_text(json.dumps(lock,indent=2)+'\n',encoding='utf-8')
+    (Path(__file__).with_name('artifact-lock.json')).write_bytes((json.dumps(lock,indent=2)+'\n').encode())
 
 if __name__=='__main__': main()

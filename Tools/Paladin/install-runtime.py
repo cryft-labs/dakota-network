@@ -78,9 +78,9 @@ UMask=0077
 WantedBy=multi-user.target
 '''
         path=Path('/etc/systemd/system')/(name+'.service'); write(path,content); run('systemd-analyze','verify',path)
-    service('cryft-paladin-db',['--user=999:999','--publish=127.0.0.1:5433:5432','--env-file',str(CONFIG/'postgres.env'),
+    service('cryft-paladin-db',['--network=slirp4netns','--user=999:999','--publish=127.0.0.1:5433:5432','--env-file',str(CONFIG/'postgres.env'),
          '--volume',f'{pg}:/var/lib/postgresql/data','--shm-size=256m',POSTGRES,'postgres','-c','shared_buffers=512MB','-c','max_connections=60','-c','work_mem=8MB'], '2G',100,'')
-    run('systemctl','daemon-reload'); run('systemctl','enable','--now','cryft-paladin-db')
+    run('systemctl','daemon-reload'); run('systemctl','enable','cryft-paladin-db'); run('systemctl','reset-failed','cryft-paladin-db'); run('systemctl','restart','cryft-paladin-db')
     for _ in range(50):
         if subprocess.run(prefix+['exec','cryft-paladin-db','pg_isready','-h','127.0.0.1','-U','postgres'],capture_output=True).returncode==0: break
         time.sleep(1)

@@ -67,10 +67,28 @@ def infrastructure(d):
     d.reject('factory:proxy_reinitialization_blocked',d.at('PenteFactory',proxy.address).functions.initialize())
     print(json.dumps({'factory':proxy.address,'from_block':d.journal['transactions']['deploy:PenteFactory']['receipt']['blockNumber']}))
 
+def group(d):
+    assert d.execute
+    address=d.w3.to_checksum_address(d.rpc('keymgr_resolveEthAddress','settlement'))
+    d.journal['settlement_address']=address; d.save()
+    d.tx('fund:paladin-settlement',transaction={'to':address,'value':3*10**16,'gas':21000,'gasPrice':10**9})
+    if not d.journal.get('group'):
+        existing=d.rpc('pgroup_queryGroups',{'eq':[{'field':'name','value':'moment-cards-development'}],'limit':10})
+        assert len(existing)<=1,'Ambiguous existing groups'
+        request={'domain':'pente','name':'moment-cards-development','members':['operator@paladin01'],
+                 'configuration':{'evmVersion':'shanghai','endorsementType':'group_scoped_identities','externalCallsEnabled':'true'},
+                 'transactionOptions':{'idempotencyKey':'dakota-live-20260911:group','gas':6000000}}
+        d.journal['group']=existing[0] if existing else d.rpc('pgroup_createGroup',request); d.save()
+    g=d.journal['group']; receipt=d.wait_private(g['genesisTransaction'])
+    g=d.rpc('pgroup_getGroupById','pente',g['id']); assert g['contractAddress']; d.journal['group']=g; d.save()
+    d.check('pente:group_on_chain',len(d.w3.eth.get_code(g['contractAddress']))>0)
+    print(json.dumps({'group':g,'settlement':address}))
+
 def main():
-    p=argparse.ArgumentParser(); p.add_argument('--workspace',required=True); p.add_argument('--execute',action='store_true'); p.add_argument('stage',choices=['infrastructure','inspect']); a=p.parse_args()
+    p=argparse.ArgumentParser(); p.add_argument('--workspace',required=True); p.add_argument('--execute',action='store_true'); p.add_argument('stage',choices=['infrastructure','group','inspect']); a=p.parse_args()
     d=Live(a.workspace,a.execute)
     if a.stage=='infrastructure': infrastructure(d)
+    elif a.stage=='group': group(d)
     else: print(json.dumps({'head':d.w3.eth.block_number,'wallets':d.rpc('keymgr_wallets'),'domains':d.rpc('ptx_listDomains')}))
 
 if __name__=='__main__': main()
