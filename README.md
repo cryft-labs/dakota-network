@@ -991,6 +991,20 @@ dakota-network/
 
 ## License
 
+### Deployed artifact verification
+
+The [2026-09-11 verification package](Contracts/Verification/20260911/README.md)
+includes Standard JSON input/output, exact compiler metadata, ABI and bytecode for
+all 21 distinct audited deployed builds. Its inventories cover 32,433 genesis
+contracts, 18 later public creations, five private deployments and 18 native
+precompile exclusions. Every Solidity build reproduced exactly. See the manifest
+for the audit block and precise coverage; this does not assert completed explorer
+uploads. The [Blockscout runbook](Tools/BlockscoutVerification/README.md) and
+[handoff prompt](Tools/BlockscoutVerification/HANDOFF_PROMPT.md) preserve actual
+per-target licenses: Apache-2.0 uses `apache_2_0` (12), MIT uses `mit` (3).
+
+### Source notices
+
 Project-owned contracts and tools generally use the **Apache License, Version 2.0**.
 The new `Contracts/Paladin/ManagedProxyAdmin.sol` and `DeliveryFailureProbe.sol`
 declare **MIT**; preserve each source file's actual SPDX notice and deployed metadata.

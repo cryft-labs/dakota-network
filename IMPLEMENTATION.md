@@ -357,8 +357,22 @@ own metadata CID. `Tools/LiveGenesis/verify_ipfs.py` records per-address CIDs an
 source hashes. The additional Paladin/application artifacts are tracked separately
 in `docs/paladin-acceptance-20260911.json`: ten builds, 88 compiler objects, and two
 preserved NFT metadata directories. Deployed public runtime bytes and private code
-hashes match those pinned artifacts. Explorer source-verification status remains a
-separate pending capability.
+hashes match those pinned artifacts. The latest verification API check reports the
+Rust verifier enabled with both required compilers. Source uploads and missing
+genesis address indexing are still pending; availability is not upload completion.
+
+The complete deployed-contract package is
+[`Contracts/Verification/20260911`](Contracts/Verification/20260911/README.md): 21
+replayed builds, all 32,433 genesis contracts, 18 later public creations and five
+private deployments at the manifest's recorded audit block. It includes Standard
+JSON input **and full output**, exact metadata, ABI, bytecode, per-file hashes,
+constructor arguments and per-target SPDX/API licenses. Eighteen native precompiles
+are catalogued as client code with no Solidity metadata. Use
+[the verification runbook](Tools/BlockscoutVerification/README.md) and
+[the other-LLM handoff](Tools/BlockscoutVerification/HANDOFF_PROMPT.md).
+The publication receipt is `docs/blockscout-artifact-ipfs-20260911.json`; it records
+all pinned artifact/source CIDs and exact API/gateway readback. Do not confuse MIT
+proxy licenses with their Apache-2.0 implementation licenses.
 
 The compiler automatically publishes when configured, verifies metadata/source CIDs
 against embedded bytecode references, pins each object, reads back bytes, and records

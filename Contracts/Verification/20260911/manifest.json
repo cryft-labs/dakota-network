@@ -1,0 +1,1806 @@
+{
+  "builds": {
+    "CodeManager": {
+      "artifact_alias": "CodeManager",
+      "contract_name": "CodeManager",
+      "source_path": "source/CodeManagement/CodeManager.sol",
+      "qualified_contract_name": "source/CodeManagement/CodeManager.sol:CodeManager",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/CodeManagement/CanonicalUid.sol": "Apache-2.0",
+        "source/CodeManagement/CodeManager.sol": "Apache-2.0",
+        "source/CodeManagement/Interfaces/ICodeManager.sol": "Apache-2.0",
+        "source/CodeManagement/Interfaces/IRedeemable.sol": "Apache-2.0",
+        "source/Genesis/Governance/GovernanceMembers.sol": "Apache-2.0",
+        "source/Genesis/Governance/GovernanceVotes.sol": "Apache-2.0",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Initializable.sol": "MIT",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/Math/MathUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/Math/SignedMathUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/StringsUpgradeable.sol": "MIT"
+      },
+      "metadata_cid": "Qmaz3oGfNZVA7pvjBHGKHREDv2NV64EPnW5yHu7K1VNXhg",
+      "runtime_bytes": 24480,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "CodeManager/standard-input.json",
+          "sha256": "2062f8de1100a02e16f98012d67ae0069b242d47a693e893ada29dc6ffbe2929"
+        },
+        "standard-output.json": {
+          "path": "CodeManager/standard-output.json",
+          "sha256": "f8de77075b07eec07850f23586e02b414b5a4c65335c361834c8c9854dfc47b1"
+        },
+        "metadata.json": {
+          "path": "CodeManager/metadata.json",
+          "sha256": "a6559c400920b932a0cda1af3be05077faa9aa47569e6419855913089a045439"
+        },
+        "abi.json": {
+          "path": "CodeManager/abi.json",
+          "sha256": "0b57744068b7e19cb406ad1859c6906d760d0ff52dbc4b097be15470e100fcd3"
+        },
+        "creation-bytecode.txt": {
+          "path": "CodeManager/creation-bytecode.txt",
+          "sha256": "443686ced068c572ff5fc5fb67877b54b7afa4c6d0b2cf6071fa7df02af88cb7"
+        },
+        "runtime-bytecode.txt": {
+          "path": "CodeManager/runtime-bytecode.txt",
+          "sha256": "ea77e3766f5d7acb81a0f7188b667daefe87562eddedb70386ab1f1dcf235611"
+        }
+      },
+      "original_artifact_sha256": "c0e6321fa05e09e501041634a6afddb34a69d079c5386b9203b0ce3ee2597265",
+      "compiler_replay_passed": true
+    },
+    "DakotaDelegation": {
+      "artifact_alias": "DakotaDelegation",
+      "contract_name": "DakotaDelegation",
+      "source_path": "source/Genesis/7702/DakotaDelegation.sol",
+      "qualified_contract_name": "source/Genesis/7702/DakotaDelegation.sol:DakotaDelegation",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/Genesis/7702/DakotaDelegation.sol": "Apache-2.0",
+        "source/Genesis/7702/DelegationGas.sol": "Apache-2.0",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "Apache-2.0",
+        "source/Genesis/7702/Libraries/DakotaDelegationCapabilities.sol": "Apache-2.0",
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Apache-2.0"
+      },
+      "metadata_cid": "QmUk63wNz1aW6xS87YfHnYuup87tgfxZvNSkUEVi73B7Xb",
+      "runtime_bytes": 5531,
+      "immutable_references": {
+        "110": [
+          {
+            "length": 32,
+            "start": 235
+          },
+          {
+            "length": 32,
+            "start": 1106
+          }
+        ]
+      },
+      "files": {
+        "standard-input.json": {
+          "path": "DakotaDelegation/standard-input.json",
+          "sha256": "9df89d34396821738cd2d9088884c3c14c99369de63a67c1f97965d0a3ed36e0"
+        },
+        "standard-output.json": {
+          "path": "DakotaDelegation/standard-output.json",
+          "sha256": "1e7f4b97bc16f14753f1d39a124b4f1f69894f4712262f2c9d65b25eed419a7f"
+        },
+        "metadata.json": {
+          "path": "DakotaDelegation/metadata.json",
+          "sha256": "dee5e5c69011883b20238e9350bff7f685ad2da1f5f7f077bbb9342503ad5925"
+        },
+        "abi.json": {
+          "path": "DakotaDelegation/abi.json",
+          "sha256": "150b477f9c465e21a26102c0a65133e72cea970d96faa7cd2e347f61b63b49c5"
+        },
+        "creation-bytecode.txt": {
+          "path": "DakotaDelegation/creation-bytecode.txt",
+          "sha256": "4df00847d79b96e3202028df1bd9bd4b2f94a7481d06abf833e060e0adbaca09"
+        },
+        "runtime-bytecode.txt": {
+          "path": "DakotaDelegation/runtime-bytecode.txt",
+          "sha256": "a4a8cbc9d47d2d6143e498ae75d50f66f0be7f3ae6826475803988957c7dac0f"
+        }
+      },
+      "original_artifact_sha256": "95e6aca72664048e67216dcca0fd901e36e9a5d62814f942cb9f198962196648",
+      "compiler_replay_passed": true
+    },
+    "DakotaDelegationBeacon": {
+      "artifact_alias": "DakotaDelegationBeacon",
+      "contract_name": "DakotaDelegationBeacon",
+      "source_path": "source/Genesis/7702/DakotaDelegationBeacon.sol",
+      "qualified_contract_name": "source/Genesis/7702/DakotaDelegationBeacon.sol:DakotaDelegationBeacon",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/access/Ownable.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/beacon/IBeacon.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/proxy/beacon/UpgradeableBeacon.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Context.sol": "MIT",
+        "source/Genesis/7702/DakotaDelegationBeacon.sol": "Apache-2.0"
+      },
+      "metadata_cid": "Qmd2L1jhk1dFV8AsHfUxqiEPYcnVqUTP6eYShUWuiwSsnd",
+      "runtime_bytes": 1046,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "DakotaDelegationBeacon/standard-input.json",
+          "sha256": "133377b5fb0e31be9e7b3fe87ad8934b78ceab7a94c0d357731348d6f7abeaca"
+        },
+        "standard-output.json": {
+          "path": "DakotaDelegationBeacon/standard-output.json",
+          "sha256": "71b6537c36fd2fee4b5f986af0a5969ca826e5644a8eb7fc9605d8ca80cfaed9"
+        },
+        "metadata.json": {
+          "path": "DakotaDelegationBeacon/metadata.json",
+          "sha256": "6ddaf5593493d7d94afd4f8ccacd2df32ff658d0cfe1e2bba385f7965081fd7c"
+        },
+        "abi.json": {
+          "path": "DakotaDelegationBeacon/abi.json",
+          "sha256": "3ecb63f6f9bad09e6ea83ce26ea28c9cadcab83c791e097ef2689b7180849ac2"
+        },
+        "creation-bytecode.txt": {
+          "path": "DakotaDelegationBeacon/creation-bytecode.txt",
+          "sha256": "ebbd5a2e34ea4d2f055e835f31a3058bb5003bd25293362d509077efc9dc65a1"
+        },
+        "runtime-bytecode.txt": {
+          "path": "DakotaDelegationBeacon/runtime-bytecode.txt",
+          "sha256": "49ea46066cc5148f236076cb6dbc57993c3a1d78f81efe4b2d3cad1b9e122811"
+        }
+      },
+      "original_artifact_sha256": "b23a3982653989ae85b1b7de46ae16d8b66eb29a4b3b1111e2f3b74f6263ffb4",
+      "compiler_replay_passed": true
+    },
+    "DakotaDelegationBeaconDispatcher": {
+      "artifact_alias": "DakotaDelegationBeaconDispatcher",
+      "contract_name": "DakotaDelegationBeaconDispatcher",
+      "source_path": "source/Genesis/7702/DakotaDelegationBeaconDispatcher.sol",
+      "qualified_contract_name": "source/Genesis/7702/DakotaDelegationBeaconDispatcher.sol:DakotaDelegationBeaconDispatcher",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/Genesis/7702/DakotaDelegationBeaconDispatcher.sol": "Apache-2.0",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "MIT"
+      },
+      "metadata_cid": "QmboFGhNxdMCgVK1ooVZeLLtiUFdhHmQnzJX4zNgDikkzx",
+      "runtime_bytes": 813,
+      "immutable_references": {
+        "13": [
+          {
+            "length": 32,
+            "start": 109
+          },
+          {
+            "length": 32,
+            "start": 272
+          },
+          {
+            "length": 32,
+            "start": 424
+          },
+          {
+            "length": 32,
+            "start": 515
+          }
+        ],
+        "15": [
+          {
+            "length": 32,
+            "start": 575
+          }
+        ]
+      },
+      "files": {
+        "standard-input.json": {
+          "path": "DakotaDelegationBeaconDispatcher/standard-input.json",
+          "sha256": "f754abd8104be3a348a88dd4a3650f7ee9381bcf58fbfcd5cff36f3d278734f5"
+        },
+        "standard-output.json": {
+          "path": "DakotaDelegationBeaconDispatcher/standard-output.json",
+          "sha256": "9fb1439a12077ce5b5278c15e4e06d3b2884b6e03a948ffd494f25186c5f7cc9"
+        },
+        "metadata.json": {
+          "path": "DakotaDelegationBeaconDispatcher/metadata.json",
+          "sha256": "997c6cb199584d5cd72c2d0cb8b88776aeff1cabad09ec03d3459b90efce00a7"
+        },
+        "abi.json": {
+          "path": "DakotaDelegationBeaconDispatcher/abi.json",
+          "sha256": "23e8be4f7300f8562f68bf348cb0693c12fdcee81ba4d9530112fb07cbac6007"
+        },
+        "creation-bytecode.txt": {
+          "path": "DakotaDelegationBeaconDispatcher/creation-bytecode.txt",
+          "sha256": "900734af89224b08da0a650ffde8e666108c8838731a36b770f814b9c633a3c2"
+        },
+        "runtime-bytecode.txt": {
+          "path": "DakotaDelegationBeaconDispatcher/runtime-bytecode.txt",
+          "sha256": "7258b2db8be433d9a4b124808f6aa08e6d916437714a3574ff48986744d11632"
+        }
+      },
+      "original_artifact_sha256": "d9990fc4cdcf43fa4ec5a9fc0ffd4305d0b1ccd6d8593bec6e794b02ed9b1170",
+      "compiler_replay_passed": true
+    },
+    "DakotaDelegationRegistry": {
+      "artifact_alias": "DakotaDelegationRegistry",
+      "contract_name": "DakotaDelegationRegistry",
+      "source_path": "source/Genesis/7702/DakotaDelegationRegistry.sol",
+      "qualified_contract_name": "source/Genesis/7702/DakotaDelegationRegistry.sol:DakotaDelegationRegistry",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/Genesis/7702/DakotaDelegationRegistry.sol": "Apache-2.0",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "Apache-2.0",
+        "source/Genesis/7702/Interfaces/IDakotaDelegationRegistry.sol": "Apache-2.0",
+        "source/Genesis/7702/Interfaces/IGasSponsor.sol": "Apache-2.0",
+        "source/Genesis/7702/Libraries/DakotaDelegationCapabilities.sol": "Apache-2.0",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Initializable.sol": "MIT"
+      },
+      "metadata_cid": "QmSHWAqkc7TezrdNTc72viv92eikZUzsUwu1LLFqFoWB9F",
+      "runtime_bytes": 14089,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "DakotaDelegationRegistry/standard-input.json",
+          "sha256": "e66701384a328458302c5ca90ecab9d3b3b5f91c38d0b2214f18fbf8c5d75750"
+        },
+        "standard-output.json": {
+          "path": "DakotaDelegationRegistry/standard-output.json",
+          "sha256": "831dcf2a06a7c8908c5889964a8ccba4d13b004aad75c26e8b0c7c33ae4b7044"
+        },
+        "metadata.json": {
+          "path": "DakotaDelegationRegistry/metadata.json",
+          "sha256": "fe796495439f692aba4aaeab39c864aed73981826e81c4ef1e4cb89187d395ef"
+        },
+        "abi.json": {
+          "path": "DakotaDelegationRegistry/abi.json",
+          "sha256": "73fa27830ceb466d824232c39ce87cee0109f48acc70e1a9ee4e876d53821dc3"
+        },
+        "creation-bytecode.txt": {
+          "path": "DakotaDelegationRegistry/creation-bytecode.txt",
+          "sha256": "efb08a39975ed6cc033d750a0f3574186f8f6cd116f861a65b3203c1ef7a616c"
+        },
+        "runtime-bytecode.txt": {
+          "path": "DakotaDelegationRegistry/runtime-bytecode.txt",
+          "sha256": "5c416d79db6024829102ac5aa87a9626b6b20ee480ad4a7e34b1cbf8b01c16cf"
+        }
+      },
+      "original_artifact_sha256": "83bae986838b8f8dbd36e3ce45a75db580e1d4a5818c23ae93665b3ae4837fd0",
+      "compiler_replay_passed": true
+    },
+    "GasManager": {
+      "artifact_alias": "GasManager",
+      "contract_name": "GasManager",
+      "source_path": "source/Genesis/GasManager/GasManager.sol",
+      "qualified_contract_name": "source/Genesis/GasManager/GasManager.sol:GasManager",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/Genesis/GasManager/GasManager.sol": "Apache-2.0",
+        "source/Genesis/Governance/GovernanceMembers.sol": "Apache-2.0",
+        "source/Genesis/Governance/GovernanceVotes.sol": "Apache-2.0",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Initializable.sol": "MIT",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "MIT"
+      },
+      "metadata_cid": "QmNXrCCwNSsS8ZRfDKjRug29dvA5zL1THC95toqsXT9puh",
+      "runtime_bytes": 23588,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "GasManager/standard-input.json",
+          "sha256": "9f5eb7ea757333217659737c8f034a239bdb7d3c3b70f31c5ba65699fb54d79e"
+        },
+        "standard-output.json": {
+          "path": "GasManager/standard-output.json",
+          "sha256": "b4587ab96607aa55dbd6e743279f46276def2d68a7d648eea5bb854ac4b24fec"
+        },
+        "metadata.json": {
+          "path": "GasManager/metadata.json",
+          "sha256": "b0c5da936d0afbd6ec3ee169999e660461dd20fffbb4b162782248f93c74d7f9"
+        },
+        "abi.json": {
+          "path": "GasManager/abi.json",
+          "sha256": "4df7be7c7bbb6484cfa4cbd308f26f5f65a4509bdbf672f70d3f0512a274356a"
+        },
+        "creation-bytecode.txt": {
+          "path": "GasManager/creation-bytecode.txt",
+          "sha256": "fb10b7293d88be188a9b92a8f130bccd9f471231405120e633732bea7cd6c912"
+        },
+        "runtime-bytecode.txt": {
+          "path": "GasManager/runtime-bytecode.txt",
+          "sha256": "904baa67674d64673302bf1f942a46e4e3cd3dfa08a8184a917a9fe6c7500594"
+        }
+      },
+      "original_artifact_sha256": "6c471bf9fa0a097d8844ab51a486a56e9869c752a7446b22bebae41521e5b9da",
+      "compiler_replay_passed": true
+    },
+    "GasSponsor": {
+      "artifact_alias": "GasSponsor",
+      "contract_name": "GasSponsor",
+      "source_path": "source/Genesis/7702/GasSponsor.sol",
+      "qualified_contract_name": "source/Genesis/7702/GasSponsor.sol:GasSponsor",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/Genesis/7702/DelegationGas.sol": "Apache-2.0",
+        "source/Genesis/7702/GasSponsor.sol": "Apache-2.0",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "Apache-2.0",
+        "source/Genesis/7702/Interfaces/IGasSponsor.sol": "Apache-2.0",
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Apache-2.0",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Initializable.sol": "MIT",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "MIT"
+      },
+      "metadata_cid": "QmfAHZbdiv1qXBU74XuY5DfNbnjXTMBM5QwYSBDeCXjuas",
+      "runtime_bytes": 13751,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "GasSponsor/standard-input.json",
+          "sha256": "a879c47664e889d2dcbc2159274fc99a328c3cb1d97304bdab05a0b9557fd677"
+        },
+        "standard-output.json": {
+          "path": "GasSponsor/standard-output.json",
+          "sha256": "e784dbf1fa2b95b7d13a74b0d6cd91344580a9023772d033d0c296dc127aecd5"
+        },
+        "metadata.json": {
+          "path": "GasSponsor/metadata.json",
+          "sha256": "d7aaa4cadc63910892196868c2fb3e20e5fd521ced22c6791f2921f725414ccd"
+        },
+        "abi.json": {
+          "path": "GasSponsor/abi.json",
+          "sha256": "b7df07bbd745745b8ecee58e002fb910afd58aca8b0b3f1759b4f205fcae5df8"
+        },
+        "creation-bytecode.txt": {
+          "path": "GasSponsor/creation-bytecode.txt",
+          "sha256": "239657b5799f6461e764a6004688ff9e5d7f78f4d7231bcf0ca4cc835ddd9008"
+        },
+        "runtime-bytecode.txt": {
+          "path": "GasSponsor/runtime-bytecode.txt",
+          "sha256": "4f43a44ac551d3fae1cd44c1b85465dadd97f095b22cb1a7db97f2ef3de02edf"
+        }
+      },
+      "original_artifact_sha256": "e96397b11ec5f06f3387387e870d64929cfaa1671af2797ea74439d94770757c",
+      "compiler_replay_passed": true
+    },
+    "GenesisCanary": {
+      "artifact_alias": "GenesisCanary",
+      "contract_name": "GenesisCanary",
+      "source_path": "GenesisCanary.sol",
+      "qualified_contract_name": "GenesisCanary.sol:GenesisCanary",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "GenesisCanary.sol": "Apache-2.0"
+      },
+      "metadata_cid": "QmRrJBsejffvLnHvZFhtRomaYGkcdc3LQzxWUiSSjLJryD",
+      "runtime_bytes": 2441,
+      "immutable_references": {
+        "14": [
+          {
+            "length": 32,
+            "start": 583
+          },
+          {
+            "length": 32,
+            "start": 1471
+          },
+          {
+            "length": 32,
+            "start": 1670
+          }
+        ],
+        "16": [
+          {
+            "length": 32,
+            "start": 532
+          },
+          {
+            "length": 32,
+            "start": 1170
+          }
+        ],
+        "18": [
+          {
+            "length": 32,
+            "start": 248
+          },
+          {
+            "length": 32,
+            "start": 792
+          },
+          {
+            "length": 32,
+            "start": 1824
+          }
+        ]
+      },
+      "files": {
+        "standard-input.json": {
+          "path": "GenesisCanary/standard-input.json",
+          "sha256": "c0a0abf51391c7667522fd7dc6ce8f925cae852ee3d2438a3f4cb581dcf258d7"
+        },
+        "standard-output.json": {
+          "path": "GenesisCanary/standard-output.json",
+          "sha256": "7ec84b41b858bd63268afb6cdf8bc30d1c5948f7322dd077504ab996ee91225a"
+        },
+        "metadata.json": {
+          "path": "GenesisCanary/metadata.json",
+          "sha256": "a1b05f50b03577820107d123ed1386c41265837416b80aa459122f9fe5a85372"
+        },
+        "abi.json": {
+          "path": "GenesisCanary/abi.json",
+          "sha256": "7e725988a6b99e0702f1ac8d7e62f1561b517920d8bcaf14bf936c5d5e70afff"
+        },
+        "creation-bytecode.txt": {
+          "path": "GenesisCanary/creation-bytecode.txt",
+          "sha256": "7e04347ea168581dbd85b398d81b5929a50df00d5eeeb7ab99b6a6574494c28b"
+        },
+        "runtime-bytecode.txt": {
+          "path": "GenesisCanary/runtime-bytecode.txt",
+          "sha256": "43a06af7e602a6da34c7f6aadc7d06c20d33d1d2318895971493b41cf3b13258"
+        }
+      },
+      "original_artifact_sha256": "85f780c56cbefa1b980932f36578687292a147349f4689e353f1f4747252a17f",
+      "compiler_replay_passed": true
+    },
+    "ProxyAdmin": {
+      "artifact_alias": "ProxyAdmin",
+      "contract_name": "ProxyAdmin",
+      "source_path": "source/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol",
+      "qualified_contract_name": "source/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol:ProxyAdmin",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "MIT",
+      "license_type": "mit",
+      "license_type_id": 3,
+      "source_licenses": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "Apache-2.0",
+        "source/Genesis/Governance/GovernanceVotes.sol": "Apache-2.0",
+        "source/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": "MIT",
+        "source/Genesis/Upgradeable/Interfaces/IERC1967.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/Proxy.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/Address.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/StorageSlot.sol": "MIT"
+      },
+      "metadata_cid": "QmYhY7xhnBeZtajwJJHYk8LQLXWn7ue2iTtn47kbKkijUo",
+      "runtime_bytes": 3200,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "ProxyAdmin/standard-input.json",
+          "sha256": "be3ad06c78b402263f13e72ef5275cb2db3e8058fb5f2abd34d8966343b0832b"
+        },
+        "standard-output.json": {
+          "path": "ProxyAdmin/standard-output.json",
+          "sha256": "4f67ea3d4a4e33293e55aa19ce5c77e3545a478b7cd94f7c4bd86aa46a9caaff"
+        },
+        "metadata.json": {
+          "path": "ProxyAdmin/metadata.json",
+          "sha256": "7fa2718181325f4afa992d3faf4b378079cea5a8b86abeb45a2a74d9175c3f8a"
+        },
+        "abi.json": {
+          "path": "ProxyAdmin/abi.json",
+          "sha256": "f08842da08a1a1c2ed0879435d0304e69490176b4a180bb18aeddd6abd17242e"
+        },
+        "creation-bytecode.txt": {
+          "path": "ProxyAdmin/creation-bytecode.txt",
+          "sha256": "62e89590078924d4a6689f7c3af9c673df304a967849fb5705a0a2b9e640df42"
+        },
+        "runtime-bytecode.txt": {
+          "path": "ProxyAdmin/runtime-bytecode.txt",
+          "sha256": "0d215f35d0c8799b9d122334d9e3f2c85c5a90a9194babdbbbd98fc5bec5be2b"
+        }
+      },
+      "original_artifact_sha256": "a11da18d36d4b80818e841ee51a9ce360aa37cc5dfa2d896f9509a7e626b5d24",
+      "compiler_replay_passed": true
+    },
+    "TransparentUpgradeableProxy": {
+      "artifact_alias": "TransparentUpgradeableProxy",
+      "contract_name": "TransparentUpgradeableProxy",
+      "source_path": "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol",
+      "qualified_contract_name": "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "MIT",
+      "license_type": "mit",
+      "license_type_id": 3,
+      "source_licenses": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "Apache-2.0",
+        "source/Genesis/Governance/GovernanceVotes.sol": "Apache-2.0",
+        "source/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": "MIT",
+        "source/Genesis/Upgradeable/Interfaces/IERC1967.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/Proxy.sol": "MIT",
+        "source/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/Address.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/StorageSlot.sol": "MIT"
+      },
+      "metadata_cid": "QmfXfNi8ESZQRTDhoYRseHgHFtit9FGZV3BEHFkt7cHgba",
+      "runtime_bytes": 19115,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "TransparentUpgradeableProxy/standard-input.json",
+          "sha256": "d45ea577caac5dddb9ed4edf549d502ba596da8f99813977832514cb69117fe0"
+        },
+        "standard-output.json": {
+          "path": "TransparentUpgradeableProxy/standard-output.json",
+          "sha256": "e300d770518493c5bc0bd6d436a0dd4fdfbfa5e3a215fb3c7d451cf8e69d3d2a"
+        },
+        "metadata.json": {
+          "path": "TransparentUpgradeableProxy/metadata.json",
+          "sha256": "5341d152f96964ba56e0e4d1febb7b6891b86c28c1e9eab106ecec789909f732"
+        },
+        "abi.json": {
+          "path": "TransparentUpgradeableProxy/abi.json",
+          "sha256": "12490e64f744637dbee7a80886772c712b305cad62ba2a321aabedda1fbf012a"
+        },
+        "creation-bytecode.txt": {
+          "path": "TransparentUpgradeableProxy/creation-bytecode.txt",
+          "sha256": "14aeaf09cebaa5e1d9d4f47e986b7eed7c737c80000cf598de00dbf0baebd027"
+        },
+        "runtime-bytecode.txt": {
+          "path": "TransparentUpgradeableProxy/runtime-bytecode.txt",
+          "sha256": "597585d56f14a74c5b19b537e96c15a7874d83367588ecc86bc762bf32bbe872"
+        }
+      },
+      "original_artifact_sha256": "06a7c96c2e891c60a5a8d7a740b91f69b608ee9cfd349ef95dcf8867a5aeeeac",
+      "compiler_replay_passed": true
+    },
+    "ValidatorSmartContractAllowList": {
+      "artifact_alias": "ValidatorSmartContractAllowList",
+      "contract_name": "ValidatorSmartContractAllowList",
+      "source_path": "source/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol",
+      "qualified_contract_name": "source/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol:ValidatorSmartContractAllowList",
+      "compiler_version": "v0.8.19+commit.7dd6d404",
+      "evm_version": "london",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/Genesis/Governance/GovernanceMembers.sol": "Apache-2.0",
+        "source/Genesis/Governance/GovernanceVotes.sol": "Apache-2.0",
+        "source/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol": "Apache-2.0",
+        "source/Genesis/validatorContracts/ValidatorSmartContractInterface.sol": "Apache-2.0"
+      },
+      "metadata_cid": "QmNaCrRQu9fwxkfnJAuwa2FDPZXXEs6LS4QPy5xEheefyS",
+      "runtime_bytes": 21412,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "ValidatorSmartContractAllowList/standard-input.json",
+          "sha256": "81d8a085a9a6b3b7c3ed4c233f6ed64c1118cf8d84455632776086d32c7fb4a8"
+        },
+        "standard-output.json": {
+          "path": "ValidatorSmartContractAllowList/standard-output.json",
+          "sha256": "9205ae02bd952bca8ce376a46ec47924267ef626d31097d0f1931d679a614f8e"
+        },
+        "metadata.json": {
+          "path": "ValidatorSmartContractAllowList/metadata.json",
+          "sha256": "e80125efef9a687e254fd72ae524721309182f1374c4e163a5ea3c803fc7e3ff"
+        },
+        "abi.json": {
+          "path": "ValidatorSmartContractAllowList/abi.json",
+          "sha256": "7d0a5b7aab4ba5a277cbbfbf5866c3c1357cc7dce2a713cc641934fb487db3cb"
+        },
+        "creation-bytecode.txt": {
+          "path": "ValidatorSmartContractAllowList/creation-bytecode.txt",
+          "sha256": "9697d2e4b6193e99cd617143dec19df4b931efcac6b687aaf5a45883b8191800"
+        },
+        "runtime-bytecode.txt": {
+          "path": "ValidatorSmartContractAllowList/runtime-bytecode.txt",
+          "sha256": "8595e2616357af8de005673a0ca9c434fd318e399177482eb10ca7a4f3c4c536"
+        }
+      },
+      "original_artifact_sha256": "f7499fc6a8a6742175b0c01208ed8aca456a21f5f2dadbd3462ebf8d536fa2a2",
+      "compiler_replay_passed": true
+    },
+    "PrivateComboStorage": {
+      "artifact_alias": "PrivateComboStorage",
+      "contract_name": "PrivateComboStorage",
+      "source_path": "source/CodeManagement/PrivateComboStorage.sol",
+      "qualified_contract_name": "source/CodeManagement/PrivateComboStorage.sol:PrivateComboStorage",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "shanghai",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/CodeManagement/CanonicalUid.sol": "Apache-2.0",
+        "source/CodeManagement/PrivateComboStorage.sol": "Apache-2.0"
+      },
+      "metadata_cid": "Qmcx3Zm2KxuKJ8i2g2JKQMa7WNvzapz5fDsJ3Y5A5k9oT6",
+      "runtime_bytes": 17127,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "PrivateComboStorage/standard-input.json",
+          "sha256": "5561b66e8c7c2d168d244f25e9cf6d2d240073bfde567a21d3a2ba4d8a5655b4"
+        },
+        "standard-output.json": {
+          "path": "PrivateComboStorage/standard-output.json",
+          "sha256": "9029419d3d6d109b0a407a8a4583948ffbc84fa9c51984c7805069d6575eb499"
+        },
+        "metadata.json": {
+          "path": "PrivateComboStorage/metadata.json",
+          "sha256": "5870027a36d4f583adcb707741c289eeb8a1f4205b6d13fb7d5c6a5d72ead98e"
+        },
+        "abi.json": {
+          "path": "PrivateComboStorage/abi.json",
+          "sha256": "4c7d5dc00bd2ea31d2b5d3a02cafb80778fc6a54acdfa8917982f7125d023644"
+        },
+        "creation-bytecode.txt": {
+          "path": "PrivateComboStorage/creation-bytecode.txt",
+          "sha256": "af804f22db5cb17f96cec0614057f18c6b483f08de75f2e0ceb2814e876bff8e"
+        },
+        "runtime-bytecode.txt": {
+          "path": "PrivateComboStorage/runtime-bytecode.txt",
+          "sha256": "4c09a050df32f443a318a9c0991a4c4db353966f0252fe4e19f908598d14dfef"
+        }
+      },
+      "original_artifact_sha256": "c829400dadfed02ec37cc6c64c04ae3a57ca1a7d3cf6b3e5df61e45ece4117b2",
+      "compiler_replay_passed": true
+    },
+    "CryftGreetingCards": {
+      "artifact_alias": "CryftGreetingCards",
+      "contract_name": "CryftGreetingCards",
+      "source_path": "source/Tokens/GreetingCards.sol",
+      "qualified_contract_name": "source/Tokens/GreetingCards.sol:CryftGreetingCards",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/access/OwnableUpgradeable.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/proxy/utils/Initializable.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/token/ERC721/ERC721Upgradeable.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/utils/ContextUpgradeable.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/utils/ReentrancyGuardUpgradeable.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts-upgradeable/v5.2.0/contracts/utils/introspection/ERC165Upgradeable.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/interfaces/draft-IERC6093.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC20/IERC20.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC721/IERC721.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC721/IERC721Receiver.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC721/extensions/IERC721Metadata.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/token/ERC721/utils/ERC721Utils.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Panic.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/Strings.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/introspection/IERC165.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/math/Math.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/math/SafeCast.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v5.2.0/contracts/utils/math/SignedMath.sol": "MIT",
+        "source/CodeManagement/CanonicalUid.sol": "Apache-2.0",
+        "source/Tokens/GreetingCards.sol": "Apache-2.0",
+        "source/Tokens/Interfaces/ICodeManager.sol": "Apache-2.0",
+        "source/Tokens/Interfaces/IRedeemable.sol": "Apache-2.0"
+      },
+      "metadata_cid": "QmRMrNbavWwQi6wYardyX9872ZYXDD5JsYzkmEN7W8KkA6",
+      "runtime_bytes": 18283,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "CryftGreetingCards/standard-input.json",
+          "sha256": "9e6e7ef6db96e348f3da24ccf5a50f9560acc332dd5ba24397cc761ba0dbba13"
+        },
+        "standard-output.json": {
+          "path": "CryftGreetingCards/standard-output.json",
+          "sha256": "24620d0985596d3aa7cf98515670880339625d40cccadbbd8d09b40a9411b269"
+        },
+        "metadata.json": {
+          "path": "CryftGreetingCards/metadata.json",
+          "sha256": "d3f14883871a6da3468c660178186487e4e66265cd07b6a7082ca377e4a85a80"
+        },
+        "abi.json": {
+          "path": "CryftGreetingCards/abi.json",
+          "sha256": "e278004604d5f214a26eb125c5a1d2afd2609d2e2a396e0c09a7bbb484175c4e"
+        },
+        "creation-bytecode.txt": {
+          "path": "CryftGreetingCards/creation-bytecode.txt",
+          "sha256": "7250369b21a808981027e250d882f7d3ec09d6a5d9196ffa576d18a338768926"
+        },
+        "runtime-bytecode.txt": {
+          "path": "CryftGreetingCards/runtime-bytecode.txt",
+          "sha256": "eadda7a1d83dffe1d12fa8605e2ef820669c6fba88720b8e628f2ec924ca3e16"
+        }
+      },
+      "original_artifact_sha256": "f78fb0f16950b5f29d7a06f399ee3a7e6aa586acd06de3d904003fe52188489d",
+      "compiler_replay_passed": true
+    },
+    "DeliveryFailureProbe": {
+      "artifact_alias": "DeliveryFailureProbe",
+      "contract_name": "DeliveryFailureProbe",
+      "source_path": "source/Paladin/DeliveryFailureProbe.sol",
+      "qualified_contract_name": "source/Paladin/DeliveryFailureProbe.sol:DeliveryFailureProbe",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "MIT",
+      "license_type": "mit",
+      "license_type_id": 3,
+      "source_licenses": {
+        "source/Paladin/DeliveryFailureProbe.sol": "MIT"
+      },
+      "metadata_cid": "QmauneX4v6d1xira2XwYDt5TgjVHQ6d4kYyMJg4HzBAYQS",
+      "runtime_bytes": 145,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "DeliveryFailureProbe/standard-input.json",
+          "sha256": "2cdb98f73a5533c2ee7b3e86a1aa49268431395f38edacc8d0899e842bc2b7a8"
+        },
+        "standard-output.json": {
+          "path": "DeliveryFailureProbe/standard-output.json",
+          "sha256": "897386e94a5019cfadc6f302afbf99efd204d8126aa594fcd7129f0ec545ee76"
+        },
+        "metadata.json": {
+          "path": "DeliveryFailureProbe/metadata.json",
+          "sha256": "72a8a4b3fc4b0b5944133490f3ac574dcd9f089eb1ac6e7326c5244eefb3b0e2"
+        },
+        "abi.json": {
+          "path": "DeliveryFailureProbe/abi.json",
+          "sha256": "e292a80d1a314609a39b4dbc02e31c824b5a5a7a4c43898ae73783d6f5b0f803"
+        },
+        "creation-bytecode.txt": {
+          "path": "DeliveryFailureProbe/creation-bytecode.txt",
+          "sha256": "bb17cf51876c8103f7c2ae33f19f413e6e507332390384c5db53fd6849c82192"
+        },
+        "runtime-bytecode.txt": {
+          "path": "DeliveryFailureProbe/runtime-bytecode.txt",
+          "sha256": "1d04340552df47cb8be13bd077ff34a5a6c0e892155dcf82efd815f4411e0447"
+        }
+      },
+      "original_artifact_sha256": "eb94b88c4d120f0900345e0b0b24f77d030b01844b9f1fe840cb907228a910fb",
+      "compiler_replay_passed": true
+    },
+    "ManagedProxyAdmin": {
+      "artifact_alias": "ManagedProxyAdmin",
+      "contract_name": "ManagedProxyAdmin",
+      "source_path": "source/Paladin/ManagedProxyAdmin.sol",
+      "qualified_contract_name": "source/Paladin/ManagedProxyAdmin.sol:ManagedProxyAdmin",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "shanghai",
+      "spdx_license": "MIT",
+      "license_type": "mit",
+      "license_type_id": 3,
+      "source_licenses": {
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/access/Ownable.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/access/Ownable2Step.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/interfaces/IERC1967.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/interfaces/draft-IERC1822.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/ERC1967/ERC1967Proxy.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/ERC1967/ERC1967Upgrade.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/Proxy.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/beacon/IBeacon.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/transparent/ProxyAdmin.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/transparent/TransparentUpgradeableProxy.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Address.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Context.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/StorageSlot.sol": "MIT",
+        "source/Paladin/ManagedProxyAdmin.sol": "MIT"
+      },
+      "metadata_cid": "QmaZEZ4cxk5gPCH6y17A9xZCDn1Q4Sk6dQVCDK3BbGyDL5",
+      "runtime_bytes": 2051,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "ManagedProxyAdmin/standard-input.json",
+          "sha256": "58b6a240de210d199ab22b2158aeb297bee2b4b9e71065f5ab2d5e551f38849c"
+        },
+        "standard-output.json": {
+          "path": "ManagedProxyAdmin/standard-output.json",
+          "sha256": "d8e3b77c7c52e3e981e06f3f27ed0bb51600684dae5adc3aa99f1731cfedaa8e"
+        },
+        "metadata.json": {
+          "path": "ManagedProxyAdmin/metadata.json",
+          "sha256": "1076c7ddc0d37efde43b7ea0fd88bce3b41441802ff7636e65c5efa218eb3680"
+        },
+        "abi.json": {
+          "path": "ManagedProxyAdmin/abi.json",
+          "sha256": "b7e20a3c003b6beba6bca8dc46705f054d633527e2e5c0d9e16c66594b7fbb93"
+        },
+        "creation-bytecode.txt": {
+          "path": "ManagedProxyAdmin/creation-bytecode.txt",
+          "sha256": "28c5fd171ac0804b985ee6ed6cd35224ce640ec5444f5fe7c2b15f117a4bf5c0"
+        },
+        "runtime-bytecode.txt": {
+          "path": "ManagedProxyAdmin/runtime-bytecode.txt",
+          "sha256": "369e04e7d6f038a54d04f67e1d44681fe6c737338b174abcc47751c287c88b07"
+        }
+      },
+      "original_artifact_sha256": "aa197322f9b112224c69cb9a96cccbd4d12a013c05fe6e02e79b7f87e36e1714",
+      "compiler_replay_passed": true
+    },
+    "ManagedApplicationProxy": {
+      "artifact_alias": "ManagedApplicationProxy",
+      "contract_name": "ManagedApplicationProxy",
+      "source_path": "source/Paladin/ManagedProxyAdmin.sol",
+      "qualified_contract_name": "source/Paladin/ManagedProxyAdmin.sol:ManagedApplicationProxy",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "shanghai",
+      "spdx_license": "MIT",
+      "license_type": "mit",
+      "license_type_id": 3,
+      "source_licenses": {
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/access/Ownable.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/access/Ownable2Step.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/interfaces/IERC1967.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/interfaces/draft-IERC1822.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/ERC1967/ERC1967Proxy.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/ERC1967/ERC1967Upgrade.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/Proxy.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/beacon/IBeacon.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/transparent/ProxyAdmin.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/transparent/TransparentUpgradeableProxy.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Address.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Context.sol": "MIT",
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/StorageSlot.sol": "MIT",
+        "source/Paladin/ManagedProxyAdmin.sol": "MIT"
+      },
+      "metadata_cid": "QmSp3zFQkU1ejpDwfNaCVtagQ9cSrHZBxEC4yBm2Gs9Pbx",
+      "runtime_bytes": 2151,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "ManagedApplicationProxy/standard-input.json",
+          "sha256": "58b6a240de210d199ab22b2158aeb297bee2b4b9e71065f5ab2d5e551f38849c"
+        },
+        "standard-output.json": {
+          "path": "ManagedApplicationProxy/standard-output.json",
+          "sha256": "d8e3b77c7c52e3e981e06f3f27ed0bb51600684dae5adc3aa99f1731cfedaa8e"
+        },
+        "metadata.json": {
+          "path": "ManagedApplicationProxy/metadata.json",
+          "sha256": "1c5ac8f72d43e638dd2b708bf3123e6b3e1199c26859d914884acaf802237634"
+        },
+        "abi.json": {
+          "path": "ManagedApplicationProxy/abi.json",
+          "sha256": "b277b83f8c3855fd557b7b15a0f40fdbb87d364fcca854107f67e790dd4250ea"
+        },
+        "creation-bytecode.txt": {
+          "path": "ManagedApplicationProxy/creation-bytecode.txt",
+          "sha256": "68a2e5382437a3f4375ead7dd6e1a15bae6c9c773f7bb0079e4a92c08de6e37d"
+        },
+        "runtime-bytecode.txt": {
+          "path": "ManagedApplicationProxy/runtime-bytecode.txt",
+          "sha256": "7510d422f6b210d213a845284171072f1c68fec74a8ba76807b44053d1cd6f8e"
+        }
+      },
+      "original_artifact_sha256": "4156fba7a013dd3e3a561bed416d3774819c8a59684a9a88ffdb021757b049b2",
+      "compiler_replay_passed": true
+    },
+    "PenteFactory": {
+      "artifact_alias": "PenteFactory",
+      "contract_name": "PenteFactory",
+      "source_path": "contracts/domains/pente/PenteFactory.sol",
+      "qualified_contract_name": "contracts/domains/pente/PenteFactory.sol:PenteFactory",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol": "MIT",
+        "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol": "MIT",
+        "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol": "MIT",
+        "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol": "MIT",
+        "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol": "MIT",
+        "@openzeppelin/contracts/interfaces/IERC1967.sol": "MIT",
+        "@openzeppelin/contracts/interfaces/IERC5267.sol": "MIT",
+        "@openzeppelin/contracts/interfaces/draft-IERC1822.sol": "MIT",
+        "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol": "MIT",
+        "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol": "MIT",
+        "@openzeppelin/contracts/proxy/Proxy.sol": "MIT",
+        "@openzeppelin/contracts/proxy/beacon/IBeacon.sol": "MIT",
+        "@openzeppelin/contracts/utils/Address.sol": "MIT",
+        "@openzeppelin/contracts/utils/Errors.sol": "MIT",
+        "@openzeppelin/contracts/utils/Panic.sol": "MIT",
+        "@openzeppelin/contracts/utils/StorageSlot.sol": "MIT",
+        "@openzeppelin/contracts/utils/Strings.sol": "MIT",
+        "@openzeppelin/contracts/utils/cryptography/ECDSA.sol": "MIT",
+        "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol": "MIT",
+        "@openzeppelin/contracts/utils/math/Math.sol": "MIT",
+        "@openzeppelin/contracts/utils/math/SafeCast.sol": "MIT",
+        "@openzeppelin/contracts/utils/math/SignedMath.sol": "MIT",
+        "contracts/domains/interfaces/IPaladinContractRegistry.sol": "Apache-2.0",
+        "contracts/domains/interfaces/IPente.sol": "Apache-2.0",
+        "contracts/domains/pente/PenteFactory.sol": "Apache-2.0",
+        "contracts/domains/pente/PentePrivacyGroup.sol": "Apache-2.0"
+      },
+      "metadata_cid": "QmVghBNv3fFf2gKz1EN3m6kPRuNcm8xsT65LndRoruimuk",
+      "runtime_bytes": 10876,
+      "immutable_references": {
+        "482": [
+          {
+            "length": 32,
+            "start": 1103
+          },
+          {
+            "length": 32,
+            "start": 1249
+          }
+        ]
+      },
+      "files": {
+        "standard-input.json": {
+          "path": "PenteFactory/standard-input.json",
+          "sha256": "bde466560087f95ef707d39f5fb5a0ead71c93ece4d150298463ad3fba8ffe47"
+        },
+        "standard-output.json": {
+          "path": "PenteFactory/standard-output.json",
+          "sha256": "ae937008a7812166794c6ef6d87303cd390bf72cb559cd9dfc5d48a2871286db"
+        },
+        "metadata.json": {
+          "path": "PenteFactory/metadata.json",
+          "sha256": "982abc32c659075705ae7f78cce82f972a2563db1b2e99d4f76dbca33285f6ef"
+        },
+        "abi.json": {
+          "path": "PenteFactory/abi.json",
+          "sha256": "c764eef9b4394f194479ee4e2b1a7b8d0373f8215dd466752e6dd723a73bd062"
+        },
+        "creation-bytecode.txt": {
+          "path": "PenteFactory/creation-bytecode.txt",
+          "sha256": "73dcee96827c7ace09b0380a4830b4a0bcb5520c3bb37f16b1c90b0d70a6bd06"
+        },
+        "runtime-bytecode.txt": {
+          "path": "PenteFactory/runtime-bytecode.txt",
+          "sha256": "0c93f57f67a1495399ba9e1f297ce839e9884182507513553a4f5f6867f6dc5e"
+        }
+      },
+      "original_artifact_sha256": "8a38d24951473f25f80f1c3fabe825cbf566e00c7cbcd3427414fe01d44038a9",
+      "compiler_replay_passed": true
+    },
+    "PentePrivacyGroup": {
+      "artifact_alias": "PentePrivacyGroup",
+      "contract_name": "PentePrivacyGroup",
+      "source_path": "contracts/domains/pente/PentePrivacyGroup.sol",
+      "qualified_contract_name": "contracts/domains/pente/PentePrivacyGroup.sol:PentePrivacyGroup",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol": "MIT",
+        "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol": "MIT",
+        "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol": "MIT",
+        "@openzeppelin/contracts/interfaces/IERC1967.sol": "MIT",
+        "@openzeppelin/contracts/interfaces/IERC5267.sol": "MIT",
+        "@openzeppelin/contracts/interfaces/draft-IERC1822.sol": "MIT",
+        "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol": "MIT",
+        "@openzeppelin/contracts/proxy/beacon/IBeacon.sol": "MIT",
+        "@openzeppelin/contracts/utils/Address.sol": "MIT",
+        "@openzeppelin/contracts/utils/Errors.sol": "MIT",
+        "@openzeppelin/contracts/utils/Panic.sol": "MIT",
+        "@openzeppelin/contracts/utils/StorageSlot.sol": "MIT",
+        "@openzeppelin/contracts/utils/Strings.sol": "MIT",
+        "@openzeppelin/contracts/utils/cryptography/ECDSA.sol": "MIT",
+        "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol": "MIT",
+        "@openzeppelin/contracts/utils/math/Math.sol": "MIT",
+        "@openzeppelin/contracts/utils/math/SafeCast.sol": "MIT",
+        "@openzeppelin/contracts/utils/math/SignedMath.sol": "MIT",
+        "contracts/domains/interfaces/IPente.sol": "Apache-2.0",
+        "contracts/domains/pente/PentePrivacyGroup.sol": "Apache-2.0"
+      },
+      "metadata_cid": "QmcfxYrvgPbeqYgW6ZHFQsqrwCeNNvD5RD8jRCc9Kd6oJG",
+      "runtime_bytes": 7647,
+      "immutable_references": {
+        "482": [
+          {
+            "length": 32,
+            "start": 989
+          },
+          {
+            "length": 32,
+            "start": 1151
+          }
+        ]
+      },
+      "files": {
+        "standard-input.json": {
+          "path": "PentePrivacyGroup/standard-input.json",
+          "sha256": "bde466560087f95ef707d39f5fb5a0ead71c93ece4d150298463ad3fba8ffe47"
+        },
+        "standard-output.json": {
+          "path": "PentePrivacyGroup/standard-output.json",
+          "sha256": "ae937008a7812166794c6ef6d87303cd390bf72cb559cd9dfc5d48a2871286db"
+        },
+        "metadata.json": {
+          "path": "PentePrivacyGroup/metadata.json",
+          "sha256": "600411068a6f48300a9e5e227d71750d5db71edf29556ddceda118052c8f67e8"
+        },
+        "abi.json": {
+          "path": "PentePrivacyGroup/abi.json",
+          "sha256": "a1319554b7cbf2eba5e3d2199c0339005db9535b49cfb8cec138b08e19ec7e3c"
+        },
+        "creation-bytecode.txt": {
+          "path": "PentePrivacyGroup/creation-bytecode.txt",
+          "sha256": "9cd0839a7c2e5ab7ca0e9c97108a3146f1c1fbd032adea9aeb347e75cac259fc"
+        },
+        "runtime-bytecode.txt": {
+          "path": "PentePrivacyGroup/runtime-bytecode.txt",
+          "sha256": "99ac22e4f334e6b8d763d7a30efbc458c56a06fd0af25337ecf35ff0e78dbd9b"
+        }
+      },
+      "original_artifact_sha256": "6d05a251b757140d633dea046c5931ab5a2dfb7b1ac995209e89edd65e855a43",
+      "compiler_replay_passed": true
+    },
+    "ERC1967Proxy": {
+      "artifact_alias": "ERC1967Proxy",
+      "contract_name": "ERC1967Proxy",
+      "source_path": "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol",
+      "qualified_contract_name": "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "MIT",
+      "license_type": "mit",
+      "license_type_id": 3,
+      "source_licenses": {
+        "@openzeppelin/contracts/interfaces/IERC1967.sol": "MIT",
+        "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol": "MIT",
+        "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol": "MIT",
+        "@openzeppelin/contracts/proxy/Proxy.sol": "MIT",
+        "@openzeppelin/contracts/proxy/beacon/IBeacon.sol": "MIT",
+        "@openzeppelin/contracts/utils/Address.sol": "MIT",
+        "@openzeppelin/contracts/utils/Errors.sol": "MIT",
+        "@openzeppelin/contracts/utils/StorageSlot.sol": "MIT"
+      },
+      "metadata_cid": "QmR86vfJ3Wt6sfqjPgNwst6z1PvQRdfiM9PAqDzhDwB9TT",
+      "runtime_bytes": 130,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "ERC1967Proxy/standard-input.json",
+          "sha256": "bde466560087f95ef707d39f5fb5a0ead71c93ece4d150298463ad3fba8ffe47"
+        },
+        "standard-output.json": {
+          "path": "ERC1967Proxy/standard-output.json",
+          "sha256": "ae937008a7812166794c6ef6d87303cd390bf72cb559cd9dfc5d48a2871286db"
+        },
+        "metadata.json": {
+          "path": "ERC1967Proxy/metadata.json",
+          "sha256": "756bb4c81fd7ebbccf76ba2bfa5c0eb1eec73f8593f616fa946de2e5f657837a"
+        },
+        "abi.json": {
+          "path": "ERC1967Proxy/abi.json",
+          "sha256": "0a9aba08b74dc8d048aa8c3aea6e863fcb7dcf510c8cc6983333e335c9e38fd3"
+        },
+        "creation-bytecode.txt": {
+          "path": "ERC1967Proxy/creation-bytecode.txt",
+          "sha256": "6aecd9657f1f3daf3e86896b13d37d94b9156985f8f89a90f706e7dca4a7f6e8"
+        },
+        "runtime-bytecode.txt": {
+          "path": "ERC1967Proxy/runtime-bytecode.txt",
+          "sha256": "d0e3f1e5df95f9f236d6b1d1f2a33ccf7d2c72be777cc3619a44d7c798deec6f"
+        }
+      },
+      "original_artifact_sha256": "b9bb5fa7081846a00bd7b6c032f1ca493b9c4d9b183cb87a0009f54dd5639f42",
+      "compiler_replay_passed": true
+    },
+    "CodeManagerStrict": {
+      "artifact_alias": "CodeManagerStrict",
+      "contract_name": "CodeManager",
+      "source_path": "source/CodeManagement/CodeManager.sol",
+      "qualified_contract_name": "source/CodeManagement/CodeManager.sol:CodeManager",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "osaka",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/CodeManagement/CanonicalUid.sol": "Apache-2.0",
+        "source/CodeManagement/CodeManager.sol": "Apache-2.0",
+        "source/CodeManagement/Interfaces/ICodeManager.sol": "Apache-2.0",
+        "source/CodeManagement/Interfaces/IRedeemable.sol": "Apache-2.0",
+        "source/Genesis/Governance/GovernanceMembers.sol": "Apache-2.0",
+        "source/Genesis/Governance/GovernanceVotes.sol": "Apache-2.0",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Initializable.sol": "MIT",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/Math/MathUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/Math/SignedMathUpgradeable.sol": "MIT",
+        "source/Genesis/Upgradeable/Utils/StringsUpgradeable.sol": "MIT"
+      },
+      "metadata_cid": "QmYvDrmyXvqdF86gxRxMfyzXiZf1dLN7bwxdVnKD2CmNKs",
+      "runtime_bytes": 24784,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "CodeManagerStrict/standard-input.json",
+          "sha256": "65bf1737871291574880ae19293ed3b945b7608f0b6d975675b0c4dfb68d7f8f"
+        },
+        "standard-output.json": {
+          "path": "CodeManagerStrict/standard-output.json",
+          "sha256": "ed5b4e6c50d04e1bbc3075ea332185f178d1f6db671ae758bde4cc079941602f"
+        },
+        "metadata.json": {
+          "path": "CodeManagerStrict/metadata.json",
+          "sha256": "6a234c67659d2ffd4556880e4264eed4f58e27cb309c44ada169a61110717613"
+        },
+        "abi.json": {
+          "path": "CodeManagerStrict/abi.json",
+          "sha256": "23c1ac9c47a65d04af20737774057f2fa5e85c665044130e5646279a805a803e"
+        },
+        "creation-bytecode.txt": {
+          "path": "CodeManagerStrict/creation-bytecode.txt",
+          "sha256": "54f81309e7a4c991eaae99b74061bbf34daf079b54d3ddb3464b59e61f2c20e8"
+        },
+        "runtime-bytecode.txt": {
+          "path": "CodeManagerStrict/runtime-bytecode.txt",
+          "sha256": "0ce6283acfaad612eab0a815ba4687ecdf11c7489276d92860d35dc8ef1a8e2d"
+        }
+      },
+      "original_artifact_sha256": "6a77ba969c52122bc621e637d22b26e9c2f2f83ce4f0a6caef305ceba2148e28",
+      "compiler_replay_passed": true
+    },
+    "PrivateComboStorageStrict": {
+      "artifact_alias": "PrivateComboStorageStrict",
+      "contract_name": "PrivateComboStorage",
+      "source_path": "source/CodeManagement/PrivateComboStorage.sol",
+      "qualified_contract_name": "source/CodeManagement/PrivateComboStorage.sol:PrivateComboStorage",
+      "compiler_version": "v0.8.37+commit.f401782d",
+      "evm_version": "shanghai",
+      "spdx_license": "Apache-2.0",
+      "license_type": "apache_2_0",
+      "license_type_id": 12,
+      "source_licenses": {
+        "source/CodeManagement/CanonicalUid.sol": "Apache-2.0",
+        "source/CodeManagement/PrivateComboStorage.sol": "Apache-2.0"
+      },
+      "metadata_cid": "QmSAb4hForuwzfbFPj5n7LwbXQeyK3fzAsyAwxb2zNnPW4",
+      "runtime_bytes": 17127,
+      "immutable_references": {},
+      "files": {
+        "standard-input.json": {
+          "path": "PrivateComboStorageStrict/standard-input.json",
+          "sha256": "f053301721e24de2f1bdea3c22a8a208f99daa576e8b0f5b9e366a92bd68100b"
+        },
+        "standard-output.json": {
+          "path": "PrivateComboStorageStrict/standard-output.json",
+          "sha256": "552f213933e1d85d40bcd9c366c090a718532ff3bc7f732dc783df525f94c9c2"
+        },
+        "metadata.json": {
+          "path": "PrivateComboStorageStrict/metadata.json",
+          "sha256": "8acebce8d1e26cf7d0aa22322cd470f1bfeaef818c0e7deff214aa507c38a88e"
+        },
+        "abi.json": {
+          "path": "PrivateComboStorageStrict/abi.json",
+          "sha256": "4c7d5dc00bd2ea31d2b5d3a02cafb80778fc6a54acdfa8917982f7125d023644"
+        },
+        "creation-bytecode.txt": {
+          "path": "PrivateComboStorageStrict/creation-bytecode.txt",
+          "sha256": "8789c68568a45caa4b7bc562e0fad7f0d588a0ec61a19d426257b8ec79b92125"
+        },
+        "runtime-bytecode.txt": {
+          "path": "PrivateComboStorageStrict/runtime-bytecode.txt",
+          "sha256": "ffbda77cd144587a8a933757357685057d4b127fc96fe0c3e2b7263f934eb55a"
+        }
+      },
+      "original_artifact_sha256": "ecb9fe52b1785c44d4c66731407a21fd6615a06fb83e1ffa798891b7b4fa419a",
+      "compiler_replay_passed": true
+    }
+  },
+  "checked_at": "2026-09-11T07:32:48.746295+00:00",
+  "source_commit": "4b8f1bd6fe4c78ba31e8f92e654dab7083d70d6b",
+  "chain_id": 112311,
+  "genesis_block_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+  "blockscout_uploads_performed": false,
+  "build_count": 21,
+  "all_builds_replayed": true,
+  "genesis": {
+    "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+    "json_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+    "counts": {
+      "allocations": 32436,
+      "ValidatorSmartContractAllowList": 1,
+      "ProxyAdmin": 1,
+      "TransparentUpgradeableProxy": 32431
+    },
+    "all_genesis_bytecodes_match_replayed_builds": true,
+    "address_inventory": "genesis-addresses.csv",
+    "inventory_sha256": "ccefbba1e46db4233e10f9771b8f7abbac1b1bfd9ddbd30c20496ba265e12a79",
+    "non_contract_allocations": [
+      "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+      "0x633309d1155fD658a717e4f5E4FA853615400867",
+      "0x991acc255761dEE0421Ccd3F436788C24425122E"
+    ],
+    "native_precompile_collisions": [],
+    "live_block_zero_sample_addresses": [
+      "0x000000000000000000000000000000000000cafE",
+      "0x0000000000000000000000000000000000FacAdE",
+      "0x000000000000000000000000000000000000c0DE",
+      "0x00000000000000000000000000000000de1E6A7E",
+      "0x000000000000000000000000000000000000Face",
+      "0x000000000000000000000000000000000000FEeD",
+      "0x0000000000000000000000000000000000001111"
+    ],
+    "coverage": "All allocations checked locally against the live-chain genesis checksum; representative block-zero RPC code reads, not 32433 individual RPC reads."
+  },
+  "public_creations": {
+    "through_block": 391,
+    "block_hash": "0xb1a09d031bed08e6fd914fae28c790349c21bb1844f06f7280b8f964119ca2cd",
+    "trace_count": 806,
+    "successful_creation_count": 18,
+    "contracts": [
+      {
+        "address": "0x2537E8005d9f5f3eC0e843A878fb53F658FA00f3",
+        "artifact_alias": "GasManager",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmNXrCCwNSsS8ZRfDKjRug29dvA5zL1THC95toqsXT9puh",
+        "runtime_keccak256": "0x78790a488f04674251071356bf9506fbe72501df774f6fb61827049296a19858",
+        "immutable_values": {},
+        "creation_transaction_hash": "0x48a39cf26015ef76d8a972a10b1bb8cc1930ff04b1531fecdf7643b3155be564",
+        "creation_block": 95,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x31d95306D43E75ED1D38cAf44F4cDf6d01537bB9",
+        "artifact_alias": "CodeManager",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "Qmaz3oGfNZVA7pvjBHGKHREDv2NV64EPnW5yHu7K1VNXhg",
+        "runtime_keccak256": "0x33b366e2e14c66fd269697acc3330dbb08eb9858030f4545f738fbe359516352",
+        "immutable_values": {},
+        "creation_transaction_hash": "0xa8bd8b409b722d25f20e8305e32367566526d0a6be0b65f616efc7d213a0fac6",
+        "creation_block": 97,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x6F7d7571f7B861C6124E3ff2A2C76C013701bbca",
+        "artifact_alias": "DakotaDelegation",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmUk63wNz1aW6xS87YfHnYuup87tgfxZvNSkUEVi73B7Xb",
+        "runtime_keccak256": "0x27b107f5d9c27c01d360049604833afd8af4fc50fc2430a0ca375c1c09d30d63",
+        "immutable_values": {
+          "110": "0x0000000000000000000000006f7d7571f7b861c6124e3ff2a2c76c013701bbca"
+        },
+        "creation_transaction_hash": "0xbfb667069951d49ae10d495cb236fd1edc061772523f1d9a039c2c6718eb2bd8",
+        "creation_block": 100,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0xb15883C65f85cbc6C6d0157B31AE2089f4acc8C2",
+        "artifact_alias": "DakotaDelegationBeacon",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "Qmd2L1jhk1dFV8AsHfUxqiEPYcnVqUTP6eYShUWuiwSsnd",
+        "runtime_keccak256": "0x7c30d15e9fa9c3f58a39666bcba2e9c2bc8e3a3a12d0235c1b757832d68b2216",
+        "immutable_values": {},
+        "creation_transaction_hash": "0x77096627ff3424bd15244d4139f9fb415ee4da5591992f8ab3038516ee21f2e1",
+        "creation_block": 101,
+        "trace_address": [],
+        "constructor_arguments": "0000000000000000000000006f7d7571f7b861c6124e3ff2a2c76c013701bbca",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x5191D200046a732754DFC9126e5F5A43CD45de67",
+        "artifact_alias": "DakotaDelegationBeaconDispatcher",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmboFGhNxdMCgVK1ooVZeLLtiUFdhHmQnzJX4zNgDikkzx",
+        "runtime_keccak256": "0x9e271e0ed3f5651c25fbe7c7ae685a379f9de53acddedae4a56f1dbae2eebd5c",
+        "immutable_values": {
+          "13": "0x000000000000000000000000b15883c65f85cbc6c6d0157b31ae2089f4acc8c2",
+          "15": "0x0000000000000000000000005191d200046a732754dfc9126e5f5a43cd45de67"
+        },
+        "creation_transaction_hash": "0x5209d1fa51f312cbb2d13a271fb7fe6e5984a8a1dce2efbee47d2ed2ee2fc535",
+        "creation_block": 102,
+        "trace_address": [],
+        "constructor_arguments": "000000000000000000000000b15883c65f85cbc6c6d0157b31ae2089f4acc8c2",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E",
+        "artifact_alias": "GasSponsor",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmfAHZbdiv1qXBU74XuY5DfNbnjXTMBM5QwYSBDeCXjuas",
+        "runtime_keccak256": "0x4b2e44ef33127497273c5e4dd0380a4ee61587a06e0410857a8e2c9061dfb30b",
+        "immutable_values": {},
+        "creation_transaction_hash": "0x6ce53d3e70df4bed18e76b2b9c4a968c146796f0b5e933dd391893e96ffff00c",
+        "creation_block": 103,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x56ff7f6A7b2e37f6C619910ABa775B8De3D06aB8",
+        "artifact_alias": "DakotaDelegationRegistry",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmSHWAqkc7TezrdNTc72viv92eikZUzsUwu1LLFqFoWB9F",
+        "runtime_keccak256": "0x78d9d2e1315a38c5200b1538abb5c7b0892df18c5e44c7f10a80b7f300dab5b5",
+        "immutable_values": {},
+        "creation_transaction_hash": "0xee0f0d21ad5181ea48bebca73b69f519cdc3ce7a1fc7bc720a5af8087ff81b22",
+        "creation_block": 105,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x3C85c5777aB858a7e31F80e38FD6BBdB34b997D2",
+        "artifact_alias": "GenesisCanary",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmRrJBsejffvLnHvZFhtRomaYGkcdc3LQzxWUiSSjLJryD",
+        "runtime_keccak256": "0x007c151767fd30006a429f7b6bbd6311b6be741758c3a3f386f4beb4d5bc265a",
+        "immutable_values": {
+          "14": "0x000000000000000000000000633309d1155fd658a717e4f5e4fa853615400867",
+          "16": "0x000000000000000000000000991acc255761dee0421ccd3f436788c24425122e",
+          "18": "0x000000000000000000000000000000000000000000000000000000000000c0de"
+        },
+        "creation_transaction_hash": "0x425952af0ea3c27aeb23e02a22844d61c41c92a8d184e8c6d348e81075e77862",
+        "creation_block": 160,
+        "trace_address": [],
+        "constructor_arguments": "000000000000000000000000633309d1155fd658a717e4f5e4fa853615400867000000000000000000000000991acc255761dee0421ccd3f436788c24425122e000000000000000000000000000000000000000000000000000000000000c0de000000000000000000000000000000000000000000000000000000000000cafe",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0xA198Ae8890FD7Dc008f7A9F5d64CAe315F56AB6E",
+        "artifact_alias": "DakotaDelegation",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmUk63wNz1aW6xS87YfHnYuup87tgfxZvNSkUEVi73B7Xb",
+        "runtime_keccak256": "0x1ad8689666943f5b55c5dcd63fe0e74c54bff8bb37f5826041d642df8fb46c54",
+        "immutable_values": {
+          "110": "0x000000000000000000000000a198ae8890fd7dc008f7a9f5d64cae315f56ab6e"
+        },
+        "creation_transaction_hash": "0x05a270ef6ca538da71900102ad53d305c2de589969c7577b6bea2334efbad638",
+        "creation_block": 191,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x9E2ab1B3A9dB5308BEc62b14C64822157F41b5fb",
+        "artifact_alias": "PenteFactory",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmVghBNv3fFf2gKz1EN3m6kPRuNcm8xsT65LndRoruimuk",
+        "runtime_keccak256": "0x77bfce0ed52c2fcb18cb6a160cc51db1cb6f1c44068f5dacd4b675e523e3d723",
+        "immutable_values": {
+          "482": "0x0000000000000000000000009e2ab1b3a9db5308bec62b14c64822157f41b5fb"
+        },
+        "creation_transaction_hash": "0xc68467adf31a070573f9ee2aa8d41ee00b6d14cc17f79a460fa39feaedd77709",
+        "creation_block": 245,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x120052f8392c4a3b88b48d82e585138B6df80376",
+        "artifact_alias": "ERC1967Proxy",
+        "license_type": "mit",
+        "license_type_id": 3,
+        "metadata_cid": "QmR86vfJ3Wt6sfqjPgNwst6z1PvQRdfiM9PAqDzhDwB9TT",
+        "runtime_keccak256": "0x72937c6245da56bd51834ba238aeba269f1f0804d305a9f56b83e6421342932e",
+        "immutable_values": {},
+        "creation_transaction_hash": "0x24b00463f2a3c669598e17044b6e43f9caf0bf3e4a9060f2a9b047f52101a45e",
+        "creation_block": 246,
+        "trace_address": [],
+        "constructor_arguments": "0000000000000000000000009e2ab1b3a9db5308bec62b14c64822157f41b5fb000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000048129fc1c00000000000000000000000000000000000000000000000000000000",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x15d20F07e21210B36Ec16c9da6EFA97429A10D75",
+        "artifact_alias": "PentePrivacyGroup",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmcfxYrvgPbeqYgW6ZHFQsqrwCeNNvD5RD8jRCc9Kd6oJG",
+        "runtime_keccak256": "0x44219d14302e7ff616e1a1d0dd2c969155a3ea4cfa97a2b5b2f3e23384d024f6",
+        "immutable_values": {
+          "482": "0x00000000000000000000000015d20f07e21210b36ec16c9da6efa97429a10d75"
+        },
+        "creation_transaction_hash": "0x24b00463f2a3c669598e17044b6e43f9caf0bf3e4a9060f2a9b047f52101a45e",
+        "creation_block": 246,
+        "trace_address": [
+          0,
+          0
+        ],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x533E526f095407490BB0089D3fc38e73484523B0",
+        "artifact_alias": "ERC1967Proxy",
+        "license_type": "mit",
+        "license_type_id": 3,
+        "metadata_cid": "QmR86vfJ3Wt6sfqjPgNwst6z1PvQRdfiM9PAqDzhDwB9TT",
+        "runtime_keccak256": "0x72937c6245da56bd51834ba238aeba269f1f0804d305a9f56b83e6421342932e",
+        "immutable_values": {},
+        "creation_transaction_hash": "0x19cab06d42ba9a47127d04fe7324bc21e41000170f912c615cf79e541a079139",
+        "creation_block": 260,
+        "trace_address": [
+          0,
+          0
+        ],
+        "constructor_arguments": "00000000000000000000000015d20f07e21210b36ec16c9da6efa97429a10d7500000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000144439fab91000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000e4000100000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000087368616e6768616900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000003ba984619d50b4d042f79fee71fd737fa9070ffe0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0xf4DD94337a44E474bbAB986b095702f90367baD5",
+        "artifact_alias": "CryftGreetingCards",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmRMrNbavWwQi6wYardyX9872ZYXDD5JsYzkmEN7W8KkA6",
+        "runtime_keccak256": "0x834025845f46509f79c1b56e32d6391acb178ca13bf559e57d644c4ab8000caf",
+        "immutable_values": {},
+        "creation_transaction_hash": "0xc57cfef9ee49f9e7c6ad8fdd7d776500fadc2949f5f3550dc8e25940565a72e1",
+        "creation_block": 261,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x3571242a64Ac7166b36aAD18a1407853cCe52f71",
+        "artifact_alias": "ManagedProxyAdmin",
+        "license_type": "mit",
+        "license_type_id": 3,
+        "metadata_cid": "QmaZEZ4cxk5gPCH6y17A9xZCDn1Q4Sk6dQVCDK3BbGyDL5",
+        "runtime_keccak256": "0x27c7a5a1eb33b99a8bfb5decc75b749cf1549455e0f117d1d56734795125e7c6",
+        "immutable_values": {},
+        "creation_transaction_hash": "0x05f838f84d0a0cbfeee326b4f067e969ba4c3b8627057a8c9bf94d83bd6f1f5a",
+        "creation_block": 262,
+        "trace_address": [],
+        "constructor_arguments": "000000000000000000000000633309d1155fd658a717e4f5e4fa853615400867",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+        "artifact_alias": "ManagedApplicationProxy",
+        "license_type": "mit",
+        "license_type_id": 3,
+        "metadata_cid": "QmSp3zFQkU1ejpDwfNaCVtagQ9cSrHZBxEC4yBm2Gs9Pbx",
+        "runtime_keccak256": "0x2693bb5eb121a762d908058947869ce35630182832d42d7a82fbec9f8227f0c5",
+        "immutable_values": {},
+        "creation_transaction_hash": "0xcff1f6546621aaf586ef8bafe35141d497c59d07b03a2b0ebfdac284913aa656",
+        "creation_block": 263,
+        "trace_address": [],
+        "constructor_arguments": "000000000000000000000000f4dd94337a44e474bbab986b095702f90367bad50000000000000000000000003571242a64ac7166b36aad18a1407853cce52f71000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000001e48a02b4c200000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000c0de00000000000000000000000000000000000000000000000000000000000001a0000000000000000000000000633309d1155fd658a717e4f5e4fa85361540086700000000000000000000000000000000000000000000000000000000000000186d6f6d656e742e636172647320446576656c6f706d656e74000000000000000000000000000000000000000000000000000000000000000000000000000000094d4f4d454e5444455600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000036697066733a2f2f516d6543644a3375774e73704b486e4c396f4b38687a347645336159373759596e34386d36454d554b3564354b7a2f000000000000000000000000000000000000000000000000000000000000000000000000000000000006313132333131000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0x005F92A576F3bE202990b319d2eaac3538bb0F15",
+        "artifact_alias": "DeliveryFailureProbe",
+        "license_type": "mit",
+        "license_type_id": 3,
+        "metadata_cid": "QmauneX4v6d1xira2XwYDt5TgjVHQ6d4kYyMJg4HzBAYQS",
+        "runtime_keccak256": "0xb1b7a50fb4bef8a126aa794286b047c2d51b7564c026cc6911c64602658f9e42",
+        "immutable_values": {},
+        "creation_transaction_hash": "0xab5d1c1d7e622b8eda3b1c4f6e2ec942177b478e19d63685902c25daeda02b91",
+        "creation_block": 304,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      },
+      {
+        "address": "0xBf67E1c518BF9ab50d84a754a5d1397B4a39f424",
+        "artifact_alias": "CodeManagerStrict",
+        "license_type": "apache_2_0",
+        "license_type_id": 12,
+        "metadata_cid": "QmYvDrmyXvqdF86gxRxMfyzXiZf1dLN7bwxdVnKD2CmNKs",
+        "runtime_keccak256": "0x4a52729b4f01d95feabc6522e1f78bc7be44112662002bfe0181d2e2beb24dba",
+        "immutable_values": {},
+        "creation_transaction_hash": "0x1eb688c9c3dee30fc1ccc105715e311bc4e2ddfec6bb11f934e44c4a99a5e8a2",
+        "creation_block": 334,
+        "trace_address": [],
+        "constructor_arguments": "",
+        "constructor_arguments_source": "actual public creation trace suffix",
+        "blockscout_before": {
+          "http_status": 200,
+          "is_verified": null,
+          "is_partially_verified": null,
+          "license_type": null,
+          "compiler_version": null,
+          "name": null,
+          "file_path": null
+        },
+        "license_mismatch": false
+      }
+    ],
+    "unmatched": []
+  },
+  "native_precompile_count": 18,
+  "private_contracts": [
+    {
+      "address": "0x84797ccb6d2072e3b829b88883a637881db3774b",
+      "artifact_alias": "PrivateComboStorage",
+      "group": "0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79",
+      "runtime_keccak256": "0x1a4bb6b47734ac52b09fbe52850545b20ca76d4964e1dc827c0099f0f3d512e7",
+      "license_type": "apache_2_0",
+      "public_blockscout_upload": false,
+      "reason": "Private Pente state is not public Besu contract code"
+    },
+    {
+      "address": "0x4a35f4517ad2e26b332854b1eb94a67092968400",
+      "artifact_alias": "ManagedProxyAdmin",
+      "group": "0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79",
+      "runtime_keccak256": "0x27c7a5a1eb33b99a8bfb5decc75b749cf1549455e0f117d1d56734795125e7c6",
+      "license_type": "mit",
+      "public_blockscout_upload": false,
+      "reason": "Private Pente state is not public Besu contract code"
+    },
+    {
+      "address": "0x7a3eacca11e28712ed6e0dfc464795b2a0c2a342",
+      "artifact_alias": "ManagedApplicationProxy",
+      "group": "0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79",
+      "runtime_keccak256": "0x2693bb5eb121a762d908058947869ce35630182832d42d7a82fbec9f8227f0c5",
+      "license_type": "mit",
+      "public_blockscout_upload": false,
+      "reason": "Private Pente state is not public Besu contract code"
+    },
+    {
+      "address": "0xfc101bb2c7ada0ce44251282171bae60e359ddeb",
+      "artifact_alias": "PrivateComboStorage",
+      "group": "0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79",
+      "runtime_keccak256": "0x1a4bb6b47734ac52b09fbe52850545b20ca76d4964e1dc827c0099f0f3d512e7",
+      "license_type": "apache_2_0",
+      "public_blockscout_upload": false,
+      "reason": "Private Pente state is not public Besu contract code"
+    },
+    {
+      "address": "0x477d914a7eaa6bf2c97601989d02a36cc2422734",
+      "artifact_alias": "PrivateComboStorageStrict",
+      "group": "0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79",
+      "runtime_keccak256": "0xc2b15b241ee76e99a329f7807751425830ce189701e5c7e64c40fba8884abff8",
+      "license_type": "apache_2_0",
+      "public_blockscout_upload": false,
+      "reason": "Private Pente state is not public Besu contract code"
+    }
+  ],
+  "delegated_accounts": [
+    {
+      "address": "0x991acc255761dEE0421Ccd3F436788C24425122E",
+      "designator": "0xef01005191d200046a732754dfc9126e5f5a43cd45de67",
+      "delegate_target": "0x5191d200046a732754dfc9126e5f5a43cd45de67",
+      "solidity_upload": false,
+      "reason": "EIP-7702 authorization designator; verify its target separately"
+    }
+  ],
+  "blockscout_config": {
+    "license_types": {
+      "none": 1,
+      "unlicense": 2,
+      "mit": 3,
+      "gnu_gpl_v2": 4,
+      "gnu_gpl_v3": 5,
+      "gnu_lgpl_v2_1": 6,
+      "gnu_lgpl_v3": 7,
+      "bsd_2_clause": 8,
+      "bsd_3_clause": 9,
+      "mpl_2_0": 10,
+      "osl_3_0": 11,
+      "apache_2_0": 12,
+      "gnu_agpl_v3": 13,
+      "bsl_1_1": 14
+    },
+    "verification_options": [
+      "multi-part",
+      "vyper-multi-part",
+      "vyper-standard-input",
+      "flattened-code",
+      "standard-input",
+      "vyper-code"
+    ],
+    "is_rust_verifier_microservice_enabled": true,
+    "required_compilers_available": [
+      "v0.8.19+commit.7dd6d404",
+      "v0.8.37+commit.f401782d"
+    ]
+  },
+  "coverage_passed": true
+}

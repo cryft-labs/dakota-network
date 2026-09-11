@@ -1,0 +1,34 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "source/Genesis/7702/DakotaDelegationBeaconDispatcher.sol": {
+      "content": "// SPDX-License-Identifier: Apache-2.0\n//\n// Copyright (c) 2023-2026 Cryft Labs. All rights reserved.\n// This software is part of a patented system. See LICENSE and PATENT NOTICE.\n// Licensed under the Apache License, Version 2.0.\n\npragma solidity >=0.8.20 <0.9.0;\n\n/*\nDakota direct delegation dispatcher, protocol v2 (immutable).\nUser EOA -> immutable dispatcher -> shared beacon -> DakotaDelegation.\nThe EIP-7702 authorization designates this deployed dispatcher directly. There is\nno per-account EIP-1967 link or initializer. Immutable configuration works in the\nEOA's execution context. delegationBeacon() and dispatcherProtocolId() expose\nthe route; other selectors delegate with the account's caller, value and storage.\nThe dispatcher validates beacon/implementation code and rejects direct cycles.\n*/\n\nimport \"../Upgradeable/Proxy/Beacon/IBeacon.sol\";\n\n/// @title DakotaDelegationBeaconDispatcher\n/// @notice Immutable route from an EIP-7702 account to its shared beacon.\n/// @dev Configuration getters read immutables; fallback resolves the shared logic\n///      and delegates in the original account context without account linking.\ncontract DakotaDelegationBeaconDispatcher {\n    error InvalidBeacon(address beacon);\n    error InvalidImplementation(address implementation);\n\n    address private immutable _beacon;\n    address private immutable _dispatcher;\n\n    constructor(address beacon_) {\n        if (beacon_ == address(0) || beacon_.code.length == 0) {\n            revert InvalidBeacon(beacon_);\n        }\n        _beacon = beacon_;\n        _dispatcher = address(this);\n        _implementation();\n    }\n\n    /// @notice Read immutable routing configuration on the dispatcher itself.\n    function delegationBeacon() external view returns (address) { return _beacon; }\n    function dispatcherProtocolId() external pure returns (bytes32) {\n        return keccak256(\"dakota.delegation.direct-beacon-dispatch.v2\");\n    }\n\n    fallback() external payable {\n        address implementation_ = _implementation();\n        assembly (\"memory-safe\") {\n            let pointer := mload(0x40)\n            calldatacopy(pointer, 0, calldatasize())\n            let result := delegatecall(\n                gas(),\n                implementation_,\n                pointer,\n                calldatasize(),\n                0,\n                0\n            )\n            returndatacopy(pointer, 0, returndatasize())\n            switch result\n            case 0 {\n                revert(pointer, returndatasize())\n            }\n            default {\n                return(pointer, returndatasize())\n            }\n        }\n    }\n\n    function _implementation() private view returns (address implementation_) {\n        (bool success, bytes memory result) = _beacon.staticcall(\n            abi.encodeCall(IBeacon.implementation, ())\n        );\n        if (!success || result.length != 32) {\n            revert InvalidBeacon(_beacon);\n        }\n        implementation_ = abi.decode(result, (address));\n        if (\n            implementation_ == address(0) ||\n            implementation_ == _beacon ||\n            implementation_ == _dispatcher ||\n            implementation_.code.length == 0\n        ) {\n            revert InvalidImplementation(implementation_);\n        }\n    }\n}\n"
+    },
+    "source/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": {
+      "content": "// SPDX-License-Identifier: MIT\n//\n// Based on OpenZeppelin Contracts v4.4.1 (proxy/beacon/IBeacon.sol).\n// Modified for the Dakota Network by Cryft Labs.\n//\n// WARNING: This is a modified version of the original OpenZeppelin contract.\n// Do not assume it is stock or unmodified \u2014 review all changes before use.\n\npragma solidity >=0.8.2 <0.9.0;\n\n/**\n * @dev This is the interface that {BeaconProxy} expects of its beacon.\n */\ninterface IBeacon {\n    /**\n     * @dev Must return an address that can be used as a delegate call target.\n     *\n     * {BeaconProxy} will check that this address is a contract.\n     */\n    function implementation() external view returns (address);\n}\n"
+    }
+  },
+  "settings": {
+    "evmVersion": "osaka",
+    "libraries": {},
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "remappings": [],
+    "outputSelection": {
+      "source/Genesis/7702/DakotaDelegationBeaconDispatcher.sol": {
+        "DakotaDelegationBeaconDispatcher": [
+          "abi",
+          "metadata",
+          "storageLayout",
+          "evm.bytecode",
+          "evm.deployedBytecode"
+        ]
+      }
+    }
+  }
+}

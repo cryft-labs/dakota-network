@@ -1,0 +1,31 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "source/Paladin/DeliveryFailureProbe.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\n/// @notice Development-only target for verifying committed-recipient delivery recovery.\n/// @dev Never leave this implementation linked after the bounded acceptance test.\ncontract DeliveryFailureProbe {\n    fallback() external { revert(\"Development delivery failure\"); }\n}\n"
+    }
+  },
+  "settings": {
+    "evmVersion": "osaka",
+    "libraries": {},
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "remappings": [],
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "metadata",
+          "storageLayout",
+          "evm.bytecode",
+          "evm.deployedBytecode"
+        ]
+      }
+    }
+  }
+}

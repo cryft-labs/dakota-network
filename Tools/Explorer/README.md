@@ -93,8 +93,19 @@ Verify `/api/v2/stats`, latest blocks, a block detail, WebSocket subscriptions,
 the rendered UI, runtime public environment and service users/listeners. Confirm
 the indexed head catches up to Besu and that an API restart preserves indexed data.
 
-Charts/stats microservice, self-hosted compiler verification, account authentication,
+Charts/stats microservice, account authentication,
 Reown wallet writes, public Cloudflare hostnames and genesis allocation import are
 separate features. They must not be reported as enabled merely because the explorer
 home page is reachable. The existing 1.25 GB genesis must not be blindly loaded into
 the indexer as a small chain-spec configuration file.
+
+### Source verification checkpoint — 2026-09-11
+
+The live verification config now reports the Rust verifier enabled, Standard JSON
+support and both deployed compiler versions available. This supersedes the initial
+deployment checkpoint where verification was pending. No contract upload is implied:
+the artifact audit performed read-only checks, and some genesis address records are
+still absent. Use [the verification runbook](../BlockscoutVerification/README.md)
+and [handoff prompt](../BlockscoutVerification/HANDOFF_PROMPT.md) to upload with
+explicit per-target licenses and confirm full matches. Preserve the current verifier
+installation; inspect health and configuration before proposing any changes.

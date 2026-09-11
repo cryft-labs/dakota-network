@@ -1,6 +1,6 @@
 # Kota full-system development deployment prompt
 
-Revision 4, 2026-09-11. Copy this entire document into the deployment task.
+Revision 5, 2026-09-11. Copy this entire document into the deployment task.
 
 Resume checkpoint: the development chain and Nebula explorer are running, and the
 four named genesis services have been linked and initialized. Public governance,
@@ -23,8 +23,14 @@ CodeManager/Combo strict upgrades are already applied; do not replay older first
 or application setup scripts. Their existing proxy addresses and private group remain.
 Public Osaka and private Shanghai are the verified targets. Private EIP-7702 processing
 is not established; no MetaTx fallback is needed for verified public sponsorship.
-Public Cloudflare gateway, explorer source-verifier, Kota Router/application deployment
-and final owner handover remain pending. Use
+The explorer Rust verifier is now enabled with the required compilers; contract
+uploads and missing genesis address indexing remain pending. Use
+`Tools/BlockscoutVerification/HANDOFF_PROMPT.md` and the complete deployed package
+`Contracts/Verification/20260911` for exact Standard JSON input/output, metadata,
+constructor data and explicit Apache/MIT license mapping. Native precompiles and
+private state are catalogued separately, not fabricated as public Solidity uploads.
+Public Cloudflare gateway, Kota Router/application deployment and final owner
+handover remain pending. Use
 `Tools/LiveGenesis/FOLLOW_AND_HANDOFF_PROMPT.md` for concurrent read-only observation
 or an explicit transfer of execution; never run two signers against the same nonce.
 
@@ -43,9 +49,13 @@ Do not substitute legacy implementations or claim a scaffold is live settlement.
 The owner has authorized compatible upgrades, branch publication, compressed-genesis
 updates and autonomous development deployment/testing. Before any live test, commit
 and push every current code/configuration change to the existing review branches,
-verify remote SHAs, and preserve the original main branches. Deploy only recorded
+verify remote SHAs. The owner subsequently authorized merging completed contract
+changes and verification artifacts into `dakota-network/main`; this supersedes the
+earlier main-preservation rule for that contract release. Resolve its actual remote
+SHA and preserve unrelated unfinished API/site work on their review branches.
+Deploy only recorded
 commits and pinned dependencies/images. Publish subsequent fixes before applying
-them to hosts. Production promotion/merge still requires extensive testing and owner
+them to hosts. Production deployment still requires extensive testing and owner
 approval. Ask only for details actually missing or a material new decision; continue
 independent work while awaiting those details.
 
