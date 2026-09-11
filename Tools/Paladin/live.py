@@ -58,6 +58,26 @@ class Live(Deployment):
         self.save(); print('PRIVATE PASS '+label,flush=True)
         return receipt
 
+    def private_request(self,name,method,address=None,inputs=None):
+        abi=next(x for x in self.artifacts[name]['abi'] if x.get('name')==method) if method else next((x for x in self.artifacts[name]['abi'] if x['type']=='constructor'),{'type':'constructor','inputs':[]})
+        request={'domain':'pente','group':self.journal['group']['id'],'from':'operator@paladin01','gas':12000000,'function':abi,'input':inputs or []}
+        if address: request['to']=address
+        else: request['bytecode']=self.artifacts[name]['creation_bytecode']
+        return request
+
+    def private_deploy(self,name,args=None,label=None):
+        label=label or name
+        receipt=self.private('deploy:'+label,self.private_request(name,None,inputs=args))
+        address=receipt['domainReceipt']['receipt']['contractAddress']; assert address
+        self.journal.setdefault('private_deployments',{})[label]={'address':address,'artifact':self.lock[name]}; self.save()
+        return address
+
+    def private_call(self,name,method,address,inputs=None):
+        return self.rpc('pgroup_call',self.private_request(name,method,address,inputs))
+
+    def private_send(self,label,name,method,address,inputs=None):
+        return self.private(label,dict(self.private_request(name,method,address,inputs),publicTxOptions={'gas':2000000}))
+
 def infrastructure(d):
     factory=d.deploy('PenteFactory')
     initializer=bytes.fromhex(factory.functions.initialize()._encode_transaction_data()[2:])
@@ -84,11 +104,40 @@ def group(d):
     d.check('pente:group_on_chain',len(d.w3.eth.get_code(g['contractAddress']))>0)
     print(json.dumps({'group':g,'settlement':address}))
 
+def application(d):
+    metadata=json.loads((d.out/'ipfs-verification.json').read_text()); assert metadata['passed']
+    base=metadata['card_metadata']['base_uri']
+    logic=d.deploy('CryftGreetingCards')
+    admin=d.deploy('ManagedProxyAdmin',DEPLOYER,label='CardProxyAdmin')
+    init=bytes.fromhex(logic.functions.initializeWithOwner('moment.cards Development','MOMENTDEV',base,ADDR['CodeManager'],'112311',DEPLOYER)._encode_transaction_data()[2:])
+    shell=d.deploy('ManagedApplicationProxy',logic.address,admin.address,init,label='CardProxy')
+    card=d.at('CryftGreetingCards',shell.address)
+    d.check('cards:atomic_owner',card.functions.owner().call()==DEPLOYER)
+    d.reject('cards:reinitialization_blocked',card.functions.initialize('x','x',base,ADDR['CodeManager'],'112311'))
+    cm=d.at('CodeManager')
+    d.tx('cards:register_four_uids',card.functions.setMaxSaleSupply(4),value=cm.functions.registrationFee().call()*4)
+    d.tx('cards:buy_four_into_vault',card.functions.buy(TESTER,4,base))
+    d.tx('codes:scope_group_to_card',cm.functions.voteToSetPrivacyGroupGift(d.w3.to_checksum_address(d.journal['group']['contractAddress']),card.address,True))
+    d.check('codes:tenant_scoped',cm.functions.isScopedPrivacyGroup(d.w3.to_checksum_address(d.journal['group']['contractAddress'])).call())
+    operator=d.w3.to_checksum_address(d.rpc('keymgr_resolveEthAddress','operator'))
+    d.journal['operator_address']=operator; d.save()
+    private_logic=d.private_deploy('PrivateComboStorage')
+    private_admin=d.private_deploy('ManagedProxyAdmin',[operator],label='ComboProxyAdmin')
+    private_init=bytes.fromhex(d.at('PrivateComboStorage',d.w3.to_checksum_address(private_logic)).functions.initialize(operator,operator,ZERO)._encode_transaction_data()[2:])
+    private_proxy=d.private_deploy('ManagedApplicationProxy',[private_logic,private_admin,hx(private_init)],label='ComboProxy')
+    d.check('private:atomic_admin',str(d.private_call('PrivateComboStorage','ADMIN',private_proxy)).lower().find(operator.lower())>=0)
+    identifier,counter=cm.functions.getIdentifierCounter(card.address,'112311').call()
+    d.private_send('private:whitelist_card','PrivateComboStorage','setContractIdentifierWhitelist',private_proxy,[[identifier],[True]])
+    d.private_send('private:sync_registered_count','PrivateComboStorage','syncRegisteredCodeCountBatch',private_proxy,[[identifier],[counter]])
+    d.check('cards:vault_holds_unredeemed',card.functions.ownerOf(1).call()==card.address)
+    print(json.dumps({'card':card.address,'private_combo':private_proxy,'operator':operator,'registered':counter}))
+
 def main():
-    p=argparse.ArgumentParser(); p.add_argument('--workspace',required=True); p.add_argument('--execute',action='store_true'); p.add_argument('stage',choices=['infrastructure','group','inspect']); a=p.parse_args()
+    p=argparse.ArgumentParser(); p.add_argument('--workspace',required=True); p.add_argument('--execute',action='store_true'); p.add_argument('stage',choices=['infrastructure','group','application','inspect']); a=p.parse_args()
     d=Live(a.workspace,a.execute)
     if a.stage=='infrastructure': infrastructure(d)
     elif a.stage=='group': group(d)
-    else: print(json.dumps({'head':d.w3.eth.block_number,'wallets':d.rpc('keymgr_wallets'),'domains':d.rpc('ptx_listDomains')}))
+    elif a.stage=='application': application(d)
+    else: print(json.dumps({'head':d.w3.eth.block_number,'wallets':d.rpc('keymgr_wallets'),'domains':d.rpc('domain_listDomains')}))
 
 if __name__=='__main__': main()
