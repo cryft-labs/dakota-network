@@ -72,7 +72,7 @@ The genesis file (`Contracts/Genesis/besuGenesis.7z`, compressed) contains the f
 | **Gas limit**           | 64,000,000 (`0x3D09000`)                                                   |
 | **Block reward**        | 3.2 ETH per block (sent to `miningBeneficiary`)                            |
 | **Contract size limit** | 32,768 bytes (32 KiB)                                                      |
-| **EVM fork**            | Osaka + BPO2 (all forks through Osaka plus BPO1/BPO2 enabled from genesis) |
+| **EVM fork**            | Osaka + BPO5 (Osaka execution rules, BPO1–BPO5 at timestamp 0)               |
 
 The development genesis uses **`config.contractSizeLimit: 32768`**. The compiler and
 runtime receipts identify its exact bytecodes. Besu 26.8.1 requires the supported
@@ -82,13 +82,60 @@ acceptance test; historical `compiled_output/` files are not current release inp
 
 #### Ethereum Fork Activation
 
-All Ethereum hard forks through Osaka are activated from genesis (block 0 / timestamp 0), along with BPO1 and BPO2 Blob Parameter Only upgrades. Pre-Merge forks use block-number activation; post-Merge forks use timestamp-based activation per Besu convention. BPO upgrades adjust blob-related parameters (target and maximum blobs per block) without requiring a full hard fork, enabling incremental Layer 2 data throughput scaling.
+The applicable execution rules through Osaka are active from genesis. Earlier
+forks use block-number fields; Shanghai and later use timestamp fields. Setting
+these timestamps to `0` makes them active from genesis, even though the genesis
+header has its own nonzero creation timestamp. QBFT remains the consensus engine;
+mainnet-only DAO recovery, difficulty-bomb and PoS transition settings are not
+required to obtain the Osaka EVM on this chain.
 
 The archive enables Homestead, EIP-150, EIP-155/158, Byzantium,
 Constantinople, Petersburg, Istanbul, Muir Glacier, Berlin and London at block 0;
-Shanghai, Cancun, Prague, Osaka, BPO1 and BPO2 at timestamp 0. The archive is the
+Shanghai, Cancun, Prague, Osaka and BPO1–BPO5 at timestamp 0. The archive is the
 source of truth for exact field names and values. Besu compatibility must be
 verified against the pinned binary; do not substitute a generic development genesis.
+
+**Milestone review — 2026-09-11, Besu 26.8.1:** the pinned release recognizes
+`bpo3Time`, `bpo4Time`, `bpo5Time` and `amsterdamTime` beyond the former BPO2
+configuration. The existing README is updated here to distinguish supported
+configuration fields from finished EVM upgrades.
+
+| Milestone | Decision for this genesis | Effect |
+|---|---|---|
+| Osaka | `osakaTime: 0` | Current finalized EVM; public compiler target remains Osaka. |
+| BPO1–BPO5 | All five `bpoNTime` fields are `0` | Finalized parameter-only milestones; no new opcodes. |
+| Amsterdam | Omitted | Besu 26.8.1 explicitly marks it unfinalized and warns against production use. Changes include gas accounting, transfer logs, block access lists and header requirements; evaluate separately. |
+| Future/experimental EIPs | Omitted | Development definitions, not an automatic way to enable supported production features. |
+| Bogota, Polis, Bangkok | Not configured | Names exist in the EVM library, but this release's genesis timestamp schedule does not register corresponding activation fields. |
+
+**BPO parameters are not implied by the milestone name.** This custom genesis
+does not define `blobSchedule`. Besu 26.8.1 therefore inherits the existing Prague
+defaults: target **6**, maximum **9** blobs per block, base-fee update fraction
+**5,007,716**. Adding BPO3–BPO5 preserves those values; it does not automatically
+adopt Ethereum mainnet's larger BPO settings. This is not a blob-capacity upgrade
+or evidence that QBFT blob transactions have passed application acceptance.
+
+A read-only probe against the installed Besu 26.8.1 libraries compared the old
+BPO2 and new BPO5 QBFT schedules using the live genesis state root. Both produced
+genesis block hash `0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8`,
+Osaka execution, the **32,768-byte** code limit, the **49,152-byte** initcode limit,
+the same blob/gas settings and QBFT reward. The archive changes only three
+timestamp fields; all allocation bytecodes, storage, balances and header values
+are byte-preserved. No contract recompilation or IPFS metadata republishing is
+needed for this parameter-only update. Validator compilation remains London and
+its `getValidators()` ABI is unchanged.
+
+See [the controlled update procedure](Tools/Deployment/README.md) and
+`Contracts/Genesis/development-release.json` for archive hashes. Deployment receipts
+must separately confirm each host restarted with `[BPO5:0]`; the source archive
+alone is not proof of live rollout. Never generalize this compatible update to a
+retroactive Amsterdam activation or any other change to executed rules.
+
+Sources: [26.8.1 release notes](https://github.com/besu-eth/besu/releases/tag/26.8.1),
+[pinned fork finalization flags](https://github.com/besu-eth/besu/blob/26.8.1/datatypes/src/main/java/org/hyperledger/besu/datatypes/HardforkId.java),
+[pinned timestamp schedule](https://github.com/besu-eth/besu/blob/26.8.1/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/milestones/MilestoneDefinitions.java),
+[BPO parameter inheritance](https://github.com/besu-eth/besu/blob/26.8.1/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/MainnetProtocolSpecs.java),
+[genesis configuration reference](https://docs.besu-eth.org/public-networks/reference/genesis-items).
 
 #### Alloc Entries (32,436 total)
 

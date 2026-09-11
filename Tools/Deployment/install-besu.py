@@ -19,7 +19,7 @@ import tomllib
 
 VERSION = '26.8.1'
 ARCHIVE_SHA = '0e0ed9cc0d8fa9091081b6c5d4646f15bbf7e33a6eb1e9f7bfb2ef831fe9aaf4'
-GENESIS_SHA = '95b4b05f4dea051a6f6cbf3babc164456044d55369d28548aa8026787a75e0ee'
+GENESIS_SHA = '29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217'
 URL = 'https://github.com/besu-eth/besu/releases/download/26.8.1/besu-26.8.1.tar.gz'
 ETC = Path('/etc/cryft/besu')
 DATA = Path('/var/lib/cryft/besu')

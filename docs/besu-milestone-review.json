@@ -1,0 +1,83 @@
+{
+  "checked_at": "2026-09-11T03:56:19.566319+00:00",
+  "besu": "26.8.1",
+  "source_commit": "d97cbd61976a52bb109e637196fef9a8ebf2b617",
+  "results": [
+    {
+      "blobGasLimit": 1179648,
+      "blockAccessListEnabled": false,
+      "blockReward": "0x0000000000000000000000000000000000000000000000002c68af0bb1400000",
+      "evm": "OSAKA",
+      "file": "before.json",
+      "finalized": true,
+      "genesisBlockHash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+      "getBlockBodyValidator": "org.hyperledger.besu.ethereum.mainnet.MainnetBlockBodyValidator",
+      "getBlockGasAccountingStrategy": "org.hyperledger.besu.ethereum.mainnet.BlockGasAccountingStrategy$$Lambda/0x000000004d399648",
+      "getBlockGasUsedValidator": "org.hyperledger.besu.ethereum.mainnet.BlockGasUsedValidator$$Lambda/0x000000004d39aa70",
+      "getBlockProcessor": "org.hyperledger.besu.ethereum.mainnet.MainnetBlockProcessor",
+      "getFeeMarket": "org.hyperledger.besu.ethereum.mainnet.feemarket.BlobFeeMarket",
+      "getGasCalculator": "org.hyperledger.besu.evm.gascalculator.OsakaGasCalculator",
+      "getGasLimitCalculator": "org.hyperledger.besu.ethereum.mainnet.OsakaTargetingGasLimitCalculator",
+      "getTransactionProcessor": "org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor",
+      "getWithdrawalsValidator": "org.hyperledger.besu.ethereum.mainnet.WithdrawalsValidator$NotApplicableWithdrawals",
+      "hardfork": "BPO2",
+      "isPoS": false,
+      "maxCodeSize": 32768,
+      "maxInitcodeSize": 49152,
+      "milestones": "[BPO2:0]",
+      "slotNumberRequired": false,
+      "targetBlobGasPerBlock": 786432
+    },
+    {
+      "blobGasLimit": 1179648,
+      "blockAccessListEnabled": false,
+      "blockReward": "0x0000000000000000000000000000000000000000000000002c68af0bb1400000",
+      "evm": "OSAKA",
+      "file": "after.json",
+      "finalized": true,
+      "genesisBlockHash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+      "getBlockBodyValidator": "org.hyperledger.besu.ethereum.mainnet.MainnetBlockBodyValidator",
+      "getBlockGasAccountingStrategy": "org.hyperledger.besu.ethereum.mainnet.BlockGasAccountingStrategy$$Lambda/0x000000004d399648",
+      "getBlockGasUsedValidator": "org.hyperledger.besu.ethereum.mainnet.BlockGasUsedValidator$$Lambda/0x000000004d39aa70",
+      "getBlockProcessor": "org.hyperledger.besu.ethereum.mainnet.MainnetBlockProcessor",
+      "getFeeMarket": "org.hyperledger.besu.ethereum.mainnet.feemarket.BlobFeeMarket",
+      "getGasCalculator": "org.hyperledger.besu.evm.gascalculator.OsakaGasCalculator",
+      "getGasLimitCalculator": "org.hyperledger.besu.ethereum.mainnet.OsakaTargetingGasLimitCalculator",
+      "getTransactionProcessor": "org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor",
+      "getWithdrawalsValidator": "org.hyperledger.besu.ethereum.mainnet.WithdrawalsValidator$NotApplicableWithdrawals",
+      "hardfork": "BPO5",
+      "isPoS": false,
+      "maxCodeSize": 32768,
+      "maxInitcodeSize": 49152,
+      "milestones": "[BPO5:0]",
+      "slotNumberRequired": false,
+      "targetBlobGasPerBlock": 786432
+    }
+  ],
+  "genesis_hash_matches_live": true,
+  "live_genesis_modified": false,
+  "scope": "QBFT schedule/header comparison using the live genesis state root; no chain writes or transactions",
+  "genesis_update": {
+    "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+    "genesis_bytes": 1244949762,
+    "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+    "archive_bytes": 283426,
+    "milestone_update": {
+      "fields": {
+        "bpo3Time": 0,
+        "bpo4Time": 0,
+        "bpo5Time": 0
+      },
+      "besu": "26.8.1",
+      "genesis_block_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+      "evm": "osaka",
+      "blob_target": 6,
+      "blob_max": 9,
+      "blob_parameters_changed": false,
+      "all_other_genesis_bytes_preserved": true,
+      "qbft_binary_probe_passed": true,
+      "live_rollout_verified": false,
+      "amsterdam_enabled": false
+    }
+  }
+}

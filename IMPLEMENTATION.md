@@ -111,7 +111,11 @@ from authenticated/trusted ingress and overwrite spoofable forwarding headers.
 
 The existing archive defines chain ID 112311, 64,000,000 block gas, 32,768-byte
 contract limit, the fork schedule, QBFT timing and system addresses. Preserve it.
-Only normalize removed option aliases for the pinned Besu version with a recorded diff.
+The reviewed archive enables BPO1–BPO5 at timestamp 0 with Osaka execution rules.
+It preserves the inherited blob target/max of 6/9; no new blob capacity is implied.
+Amsterdam is unfinalized in Besu 26.8.1 and remains disabled. See the existing
+README's milestone review for pinned source evidence and compatibility limits.
+Beyond these reviewed changes, preserve the schedule and record any proposed diff.
 Public builds use Solidity 0.8.37/Osaka; the validator stays 0.8.19/London with the
 same `getValidators()` ABI encoding. Besu is pinned to 26.8.1, requiring Java 25.
 
@@ -122,6 +126,16 @@ the extracted JSON checksum, then atomically install the same file at the config
 `--genesis-file` path. Include validators, the archive/RPC node, and Paladin-connected
 Besu nodes. Never start nodes with different genesis hashes or upload the 1.2 GB
 uncompressed JSON to Git. Do not reset an existing chain database automatically.
+
+The specific BPO2-to-BPO5 transition is covered by the deployment helper's
+`--allow-compatible-bpo-update` option. It requires the exact previous genesis
+hash and a stopped local Besu service, and verifies that removing only the three
+new fields reconstructs the old file byte for byte. It retains the old genesis
+as a hash-named backup and never changes keys or chain data. Restart/check the
+archive first, then Paladin's Besu, then one validator at a time while the other
+three remain healthy. Verify `[BPO5:0]`, the same genesis block hash, validator
+list, peers, synchronization and continued block production. This exception is
+not a general permission to change a live chain's past execution rules.
 
 | Validator | Public address |
 |---|---|

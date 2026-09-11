@@ -256,7 +256,11 @@ EXPLORER_START_EARLY=true
    public contracts with 0.8.37/Osaka and private contracts for the newest target
    supported by the tested Paladin runtime. Use pinned current Besu 26.8.1/Java 25 and
    Paladin v1.0.0 images, verifying actual image provenance. Normalize only required
-   removed Besu aliases with an explicit recorded diff.
+   removed Besu aliases with an explicit recorded diff. The reviewed genesis has
+   Osaka plus BPO1–BPO5 at timestamp 0, preserving inherited blob parameters.
+   Do not enable unfinalized Amsterdam/future/experimental forks. Check the pinned
+   release's actual genesis schedule rather than treating EVM-library names as
+   supported activation fields. Preserve the validator's London target.
 5. Update every embedded genesis runtime from verified current artifacts. Preserve
    the four existing generated validator identities, 32 tokens for the management
    account and 1 token for each of the deployment and delegation-testing accounts.
@@ -269,6 +273,11 @@ EXPLORER_START_EARLY=true
    verify the JSON, then install it at each service's configured genesis path. Include
    validators, archive/RPC and Paladin-connected Besu nodes. Confirm identical hashes
    before any startup. Do not reset an existing chain/data directory automatically.
+   For an existing deployment of the exact prior BPO2 archive, use only the
+   documented compatible BPO update procedure: preserve backups/data, verify
+   header/protocol equivalence, update non-validators first, and restart/check
+   validators individually while retaining quorum. Other retroactive fork changes
+   require a separate migration decision.
 7. Start four validators with Nebula-only peering. Verify chain ID/genesis, validator
    list, quorum, block production, gas/size behavior and synchronization. Frontend-01
    hosts the main archival RPC and web interfaces. Backend-01 hosts Blockscout backend,

@@ -21,6 +21,19 @@ extracts only BesuGenesis.json and atomically installs the verified file at
 existing genesis and refuses a different one; it never resets chain data or starts
 a node. Runtime units must explicitly use this installed genesis path.
 
+The optional `--allow-compatible-bpo-update` flag permits **only** the reviewed
+2026-09-11 transition from the exact BPO2 genesis hash in the helper to the BPO5
+archive. The local Besu service must be stopped. The helper verifies the entire
+candidate equals the old genesis after removing the three BPO timestamp fields,
+keeps a hash-named backup, and preserves all chain data and keys. Stage the pinned
+release first; update the archive and Paladin-connected Besu before restarting
+one validator at a time. After each restart, check `[BPO5:0]`, the unchanged genesis
+block hash, four-validator list, peer connectivity and synchronization. Retain
+three healthy validators throughout. Record the new genesis receipt separately
+from the historical runtime installation receipt. If a check fails, stop the
+rollout and restore the retained prior genesis for that host. Never use this flag
+for Amsterdam, blob-limit changes, allocations, bytecodes or storage changes.
+
 For an explicit address/enrollment replacement, send `replace_existing: true` to
 the enrollment helper over pinned bootstrap SSH. It enrolls in place, restarts the
 client on success, and reports the assigned address. Verify a new private SSH

@@ -2,12 +2,12 @@
   "status": "compiled_archive_ready_for_development_deployment",
   "production_approved": false,
   "live_transactions_sent": false,
-  "genesis_sha256": "95b4b05f4dea051a6f6cbf3babc164456044d55369d28548aa8026787a75e0ee",
-  "genesis_bytes": 1244949693,
-  "archive_sha256": "7e114986e59908933ca4ee835d125b050650b24827c7518428f1d93845bc410c",
-  "archive_bytes": 283399,
-  "previous_genesis_sha256": "ac53b0da6a81c00467215eac88f4209e2f706b40613979b94db37d38fdd82ce8",
-  "previous_archive_sha256": "9a7c96a22c9738d4cbffd7acc312070e45a33b1e10486f45e86c64fc438baa44",
+  "genesis_sha256": "29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217",
+  "genesis_bytes": 1244949762,
+  "archive_sha256": "11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f",
+  "archive_bytes": 283426,
+  "previous_genesis_sha256": "95b4b05f4dea051a6f6cbf3babc164456044d55369d28548aa8026787a75e0ee",
+  "previous_archive_sha256": "7e114986e59908933ca4ee835d125b050650b24827c7518428f1d93845bc410c",
   "counts": {
     "allocations": 32436,
     "ValidatorSmartContractAllowList": 1,
@@ -80,7 +80,10 @@
         "miningBeneficiary": "0x000000000000000000000000000000000000cafE",
         "emptyBlockPeriodSeconds": 64
       },
-      "contractSizeLimit": 32768
+      "contractSizeLimit": 32768,
+      "bpo3Time": 0,
+      "bpo4Time": 0,
+      "bpo5Time": 0
     }
   },
   "validators": [
@@ -105,5 +108,22 @@
     "previous": "xemptyBlockPeriodSeconds",
     "current": "emptyBlockPeriodSeconds",
     "value": 64
+  },
+  "milestone_update": {
+    "fields": {
+      "bpo3Time": 0,
+      "bpo4Time": 0,
+      "bpo5Time": 0
+    },
+    "besu": "26.8.1",
+    "genesis_block_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+    "evm": "osaka",
+    "blob_target": 6,
+    "blob_max": 9,
+    "blob_parameters_changed": false,
+    "all_other_genesis_bytes_preserved": true,
+    "qbft_binary_probe_passed": true,
+    "live_rollout_verified": false,
+    "amsterdam_enabled": false
   }
 }
