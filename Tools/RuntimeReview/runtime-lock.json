@@ -1,0 +1,25 @@
+{
+  "verified_at": "2026-09-10",
+  "scope": "isolated runtime acceptance, not production approval",
+  "besu": {
+    "version": "26.8.1",
+    "commit": "d97cbd61976a52bb109e637196fef9a8ebf2b617",
+    "java_major": 25,
+    "image": "docker.io/hyperledger/besu@sha256:c674f62b76c33af56e4817c4b091181558ae81d62646599f99fe63df8f886825"
+  },
+  "paladin": {
+    "version": "v1.0.0",
+    "source_tag_commit": "6d4b91343426d17d713a0d61dfbcb2e262cb346d",
+    "image_commit_label": "ad0c206b2baf2866acb23220feb48eedc482848a",
+    "image": "ghcr.io/lfdt-paladin/paladin@sha256:b7d9b4ab98c5330a2515e8c2c97d0b5f4460278ded824bee0a10ad6008984357"
+  },
+  "compiler": {
+    "public_private": "0.8.37",
+    "validator": "0.8.19",
+    "validator_evm": "london",
+    "public_evm": "osaka",
+    "private_source_supported_evm": "shanghai"
+  },
+  "native_private_delegation": "must_test",
+  "metatx_enabled": false
+}
