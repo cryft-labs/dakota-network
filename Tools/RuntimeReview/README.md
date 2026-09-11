@@ -2,7 +2,12 @@
 
 This directory prepares an isolated development chain on Paladin-01. It does not
 start the Dakota genesis, use its validator identities, or use funded owner keys.
-All runtime endpoints and single-node P2P listeners bind to loopback. Containers
+The test copies chain settings from the existing genesis, including chain ID
+112311, fork schedule, QBFT timing/rewards/contract-validator mode, gas limit and
+32 KiB contract-size limit. The removed Besu `xemptyBlockPeriodSeconds` alias is
+normalized to `emptyBlockPeriodSeconds` with the same value. Four isolated test
+validators are used. Test allocations/keys are recorded separately; this is not
+the production genesis deployment. All endpoints and P2P bind to loopback. Containers
 run under an unprivileged host account and systemd supervision, using immutable
 image digests. MetaTx is disabled throughout this test.
 
