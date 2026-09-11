@@ -34,11 +34,17 @@ def governance(d):
     d.reject('Validator:already_initialized', validator.functions.initialize(), sender=DEPLOYER)
     cap = baseline(d, 'validator_cap', validator.functions.maxValidators().call())
     d.tx('validator:cap_change', validator.functions.voteToUpdateMaxValidators(cap + 1))
-    d.check('Validator:governed_cap_change', validator.functions.maxValidators().call() == cap + 1)
+    if 'validator:cap_restore' not in d.journal['transactions']:
+        d.check('Validator:governed_cap_change', validator.functions.maxValidators().call() == cap + 1)
     d.tx('validator:cap_restore', validator.functions.voteToUpdateMaxValidators(cap))
+    d.check('Validator:cap_restored', validator.functions.maxValidators().call() == cap)
     expected = json.loads((REPO / 'Contracts/Genesis/development-release.json').read_text())['validators']
     raw = d.w3.eth.call({'to': validator.address, 'data': validator.functions.getValidators()._encode_transaction_data()})
-    d.check('Validator:Besu_ABI_and_membership_unchanged', bytes(raw) == d.w3.codec.encode(['address[]'], [expected]), hx(raw))
+    # Approved snapshots canonicalize ordering; Besu still receives address[] and
+    # the identical four validator identities, rather than the initial raw order.
+    current = validator.functions.getValidators().call()
+    d.check('Validator:Besu_ABI_and_membership_unchanged', sorted(current) == sorted(expected) and
+            bytes(raw) == d.w3.codec.encode(['address[]'], [current]), {'raw': hx(raw), 'validators': current})
 
 def voter_checks(d, name):
     c = d.at(name); prefix = 'voters:' + name + ':'

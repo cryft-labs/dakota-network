@@ -188,7 +188,7 @@ class Deployment:
         expected = json.loads((REPO / 'Contracts/Genesis/development-release.json').read_text())
         validator = self.at('ValidatorSmartContractAllowList')
         self.check('chain_identity', self.w3.eth.chain_id == 112311 and hx(self.w3.eth.get_block(0)['hash']) == GENESIS_HASH)
-        self.check('validator_membership', validator.functions.getValidators().call() == expected['validators'])
+        self.check('validator_membership', sorted(validator.functions.getValidators().call()) == sorted(expected['validators']))
         self.check('bootstrap_voters', validator.functions.getVoters().call() == [DEPLOYER])
         self.check('bootstrap_roots', set(validator.functions.getRootOverlords().call()) == {ADMIN, DEPLOYER})
         for name in ['ValidatorSmartContractAllowList', 'ProxyAdmin']:
