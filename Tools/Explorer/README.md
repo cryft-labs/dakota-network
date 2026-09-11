@@ -5,6 +5,12 @@ from the Blockscout API/indexer, PostgreSQL and Redis on Backend-01. Its intende
 entry point is `http://100.111.69.1:8080` over Nebula. Check live acceptance records
 before treating an installation as available.
 
+Development acceptance on 2026-09-11 verified the live browser home/block detail,
+API head matching Besu at block 76, indexing complete, WebSocket subscription,
+same-origin validator RPC, and a controlled API restart retaining indexed data.
+See `../../docs/explorer-nebula-acceptance.json`. This does not imply production
+approval or completion of the later features below.
+
 ## Source and configuration history
 
 Frontend source: cryft-labs/dakota-explorer review/nebula-development-deployment,

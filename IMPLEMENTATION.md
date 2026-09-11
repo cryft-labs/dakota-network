@@ -10,9 +10,9 @@ Besu public ledger and Paladin privacy state supply the underlying settlement.
 This manual describes the development release under review. Source changes and
 local checks do not establish a deployed service. Record each completed installation
 in the deployment inventory with its exact commit, image digest, genesis checksum,
-service unit, addresses, ports and health evidence. The explorer URL below remains
-planned until checked from the administrator's computer. Production promotion is
-separate and leaves `main` unchanged until owner approval.
+service unit, addresses, ports and health evidence. The explorer is verified at
+`http://100.111.69.1:8080` from the administrator's computer over Nebula.
+Production promotion is separate and leaves `main` unchanged until owner approval.
 
 ## 2. Source and release ownership
 
@@ -126,8 +126,17 @@ artifacts as 164 verified IPFS objects. The release bundle is
 `QmSuawtJhsHhAJNS2VtPx4UHTEPvQgDbJD7vKmkV7smMaf`. Pins and readback are verified
 on Backend; public gateway access and offhost pin redundancy are not yet configured.
 
-The explorer UI/API, Paladin privacy service and Kota application deployment are
-still pending. Full reboot/restore/load acceptance, public SSH/root-login lockdown,
+The explorer UI on Frontend-01 and API/indexer/database on Backend-01 are running
+as persistent rootless services behind the unprivileged Nginx proxies. The browser
+home page and block 72 detail were verified; the API subsequently matched Besu at
+block 76 and reported indexing complete. Same-origin RPC, validator list, WebSocket
+subscription, runtime KOTA branding, closed raw origins and a controlled API restart
+were verified. See [explorer acceptance](docs/explorer-nebula-acceptance.json) and
+[the runbook](Tools/Explorer/README.md). Genesis allocation import, self-hosted
+contract verification and wallet-write/account UI configuration remain pending.
+
+Paladin privacy service and Kota application deployment are still pending.
+Full reboot/restore/load acceptance, public SSH/root-login lockdown,
 Cloudflare tunnels and final ownership handover are not completed. The owner has
 temporarily broadened Defined Networking rules for development; production must
 replace that policy with tested role-specific access. Enabled services and these

@@ -1,0 +1,182 @@
+{
+  "checked_at": "2026-09-11T04:43:36.589999+00:00",
+  "url": "http://100.111.69.1:8080",
+  "hosts": {
+    "Backend-01": {
+      "installation": {
+        "source_commit": "ffbbea8a5a52f1ed1d433815c804a9f3d5f1ad7b",
+        "host": "Backend-01",
+        "component": "backend",
+        "runtime_user": "cryft-explorer",
+        "image_id": "sha256:bc51df9e024e400305f2434fcb355a657cc5f0d6ae5c4bd5880b0ff4d32a5c39",
+        "build": {
+          "host": "Backend-01",
+          "source_commit": "43af7ea84797e2f3a55ac1191d9cbe67436eb3e8",
+          "deployment_commit": "ad00ee80dbc0cd6bcea8c6175471f19c6dcd2d27",
+          "runtime_user": "cryft-explorer",
+          "runtime_uid": 1000,
+          "component": "backend",
+          "image_tag": "localhost/cryft-explorer-backend:43af7ea84797e2f3a55ac1191d9cbe67436eb3e8",
+          "image_id_file": "/var/lib/cryft-explorer/backend-image.id"
+        },
+        "units": [
+          "cryft-explorer-db",
+          "cryft-explorer-redis",
+          "cryft-explorer-migrate",
+          "cryft-explorer-api"
+        ],
+        "rootless": true,
+        "public_listener_configured": false,
+        "ui_url": "http://100.111.69.1:8080",
+        "backend_url": "http://100.111.67.1:4002",
+        "env_sha256": "d352f6e108d3c154616332df7a584d82daae4081213d1240d1ef2d3b0736bbe0"
+      },
+      "services": {
+        "cryft-nginx": {
+          "ActiveState": "active",
+          "SubState": "running",
+          "UnitFileState": "enabled",
+          "NRestarts": "0",
+          "MemoryCurrent": "3690496",
+          "User": "cryft-proxy"
+        },
+        "cryft-explorer-db": {
+          "ActiveState": "active",
+          "SubState": "running",
+          "UnitFileState": "enabled",
+          "NRestarts": "0",
+          "MemoryCurrent": "219533312",
+          "User": "cryft-explorer"
+        },
+        "cryft-explorer-redis": {
+          "ActiveState": "active",
+          "SubState": "running",
+          "UnitFileState": "enabled",
+          "NRestarts": "0",
+          "MemoryCurrent": "36630528",
+          "User": "cryft-explorer"
+        },
+        "cryft-explorer-api": {
+          "ActiveState": "active",
+          "SubState": "running",
+          "UnitFileState": "enabled",
+          "NRestarts": "0",
+          "MemoryCurrent": "414150656",
+          "User": "cryft-explorer"
+        }
+      },
+      "listeners": "Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                                                                               \nudp   UNCONN 0      0         127.0.0.54:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=440,fd=18))                                            \nudp   UNCONN 0      0      127.0.0.53%lo:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=440,fd=16))                                            \nudp   UNCONN 0      0       100.111.67.1:4001       0.0.0.0:*    users:((\"ipfs\",pid=20464,fd=14))                                                     \nudp   UNCONN 0      0                  *:55162            *:*    users:((\"dnclient\",pid=18001,fd=11))                                                 \ntcp   LISTEN 0      4096         0.0.0.0:22         0.0.0.0:*    users:((\"sshd\",pid=1004,fd=3),(\"systemd\",pid=1,fd=137))                              \ntcp   LISTEN 0      511     100.111.67.1:4002       0.0.0.0:*    users:((\"nginx\",pid=33384,fd=10),(\"nginx\",pid=33383,fd=10),(\"nginx\",pid=21318,fd=10))\ntcp   LISTEN 0      4096    100.111.67.1:4001       0.0.0.0:*    users:((\"ipfs\",pid=20464,fd=12))                                                     \ntcp   LISTEN 0      4096      127.0.0.54:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=440,fd=19))                                            \ntcp   LISTEN 0      511        127.0.0.1:8080       0.0.0.0:*    users:((\"nginx\",pid=33384,fd=4),(\"nginx\",pid=33383,fd=4),(\"nginx\",pid=21318,fd=4))   \ntcp   LISTEN 0      4096       127.0.0.1:8081       0.0.0.0:*    users:((\"ipfs\",pid=20464,fd=16))                                                     \ntcp   LISTEN 0      4096       127.0.0.1:5001       0.0.0.0:*    users:((\"ipfs\",pid=20464,fd=15))                                                     \ntcp   LISTEN 0      4096   127.0.0.53%lo:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=440,fd=17))                                            \ntcp   LISTEN 0      4096       127.0.0.1:4000       0.0.0.0:*    users:((\"rootlessport\",pid=34316,fd=10))                                             \ntcp   LISTEN 0      511        127.0.0.1:4002       0.0.0.0:*    users:((\"nginx\",pid=33384,fd=11),(\"nginx\",pid=33383,fd=11),(\"nginx\",pid=21318,fd=11))\ntcp   LISTEN 0      4096            [::]:22            [::]:*    users:((\"sshd\",pid=1004,fd=4),(\"systemd\",pid=1,fd=138))                              \n"
+    },
+    "Frontend-01": {
+      "installation": {
+        "source_commit": "8cef97caaa829d8a1864ebe2b4c073fd4e242966",
+        "host": "Frontend-01",
+        "component": "frontend",
+        "runtime_user": "cryft-explorer",
+        "image_id": "sha256:5258d75a6add50ac6fe45664fa1d4c376e1f1e0067e018974effce2d101ba96b",
+        "build": {
+          "host": "Frontend-01",
+          "source_commit": "ca603ae5656665ce9a1b21da0a5f47aaf033cb70",
+          "deployment_commit": "ad00ee80dbc0cd6bcea8c6175471f19c6dcd2d27",
+          "runtime_user": "cryft-explorer",
+          "runtime_uid": 1000,
+          "component": "frontend",
+          "image_tag": "localhost/cryft-explorer-frontend:ca603ae5656665ce9a1b21da0a5f47aaf033cb70",
+          "image_id_file": "/var/lib/cryft-explorer/frontend-image.id"
+        },
+        "units": [
+          "cryft-explorer-frontend"
+        ],
+        "rootless": true,
+        "public_listener_configured": false,
+        "ui_url": "http://100.111.69.1:8080",
+        "backend_url": "http://100.111.67.1:4002",
+        "env_sha256": "f44dc7af95113788df5df7a56d5e1b9aef34f0be25edcb4797b2d20b704fe7d7"
+      },
+      "services": {
+        "cryft-nginx": {
+          "ActiveState": "active",
+          "SubState": "running",
+          "UnitFileState": "enabled",
+          "NRestarts": "0",
+          "MemoryCurrent": "5177344",
+          "User": "cryft-proxy"
+        },
+        "cryft-explorer-frontend": {
+          "ActiveState": "active",
+          "SubState": "running",
+          "UnitFileState": "enabled",
+          "NRestarts": "0",
+          "MemoryCurrent": "227381248",
+          "User": "cryft-explorer"
+        }
+      },
+      "listeners": "Netid State  Recv-Q Send-Q         Local Address:Port  Peer Address:PortProcess                                                                               \nudp   UNCONN 0      0                 127.0.0.54:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=434,fd=18))                                            \nudp   UNCONN 0      0              127.0.0.53%lo:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=434,fd=16))                                            \nudp   UNCONN 0      0                          *:36534            *:*    users:((\"dnclient\",pid=41249,fd=10))                                                 \ntcp   LISTEN 0      511             100.111.69.1:8547       0.0.0.0:*    users:((\"nginx\",pid=61264,fd=5),(\"nginx\",pid=61263,fd=5),(\"nginx\",pid=45435,fd=5))   \ntcp   LISTEN 0      511                127.0.0.1:8547       0.0.0.0:*    users:((\"nginx\",pid=61264,fd=6),(\"nginx\",pid=61263,fd=6),(\"nginx\",pid=45435,fd=6))   \ntcp   LISTEN 0      4096                 0.0.0.0:22         0.0.0.0:*    users:((\"sshd\",pid=995,fd=3),(\"systemd\",pid=1,fd=167))                               \ntcp   LISTEN 0      4096               127.0.0.1:3001       0.0.0.0:*    users:((\"rootlessport\",pid=61309,fd=10))                                             \ntcp   LISTEN 0      4096           127.0.0.53%lo:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=434,fd=17))                                            \ntcp   LISTEN 0      511                127.0.0.1:8080       0.0.0.0:*    users:((\"nginx\",pid=61264,fd=4),(\"nginx\",pid=61263,fd=4),(\"nginx\",pid=45435,fd=4))   \ntcp   LISTEN 0      4096              127.0.0.54:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=434,fd=19))                                            \ntcp   LISTEN 0      511             100.111.69.1:8080       0.0.0.0:*    users:((\"nginx\",pid=61264,fd=12),(\"nginx\",pid=61263,fd=12),(\"nginx\",pid=45435,fd=12))\ntcp   LISTEN 0      4096      [::ffff:127.0.0.1]:8546             *:*    users:((\"java\",pid=46680,fd=349))                                                    \ntcp   LISTEN 0      4096      [::ffff:127.0.0.1]:8545             *:*    users:((\"java\",pid=46680,fd=348))                                                    \ntcp   LISTEN 0      3         [::ffff:127.0.0.1]:9545             *:*    users:((\"java\",pid=46680,fd=345))                                                    \ntcp   LISTEN 0      4096   [::ffff:100.111.69.1]:30303            *:*    users:((\"java\",pid=46680,fd=350))                                                    \ntcp   LISTEN 0      4096                    [::]:22            [::]:*    users:((\"sshd\",pid=995,fd=4),(\"systemd\",pid=1,fd=168))                               \n"
+    }
+  },
+  "http_html_status": 200,
+  "stats": {
+    "average_block_time": 0.0,
+    "coin_image": null,
+    "coin_price": null,
+    "coin_price_change_percentage": null,
+    "gas_price_updated_at": "2026-09-11T04:43:27.794131Z",
+    "gas_prices": {
+      "slow": 0.01,
+      "average": 0.01,
+      "fast": 0.01
+    },
+    "gas_prices_update_in": 20487,
+    "gas_used_today": null,
+    "market_cap": "0",
+    "network_utilization_percentage": 0.0,
+    "secondary_coin_image": null,
+    "secondary_coin_price": null,
+    "static_gas_price": null,
+    "total_addresses": "6",
+    "total_blocks": "77",
+    "total_transactions": "0",
+    "transactions_today": "0",
+    "tvl": null
+  },
+  "indexing_status": {
+    "finished_indexing": true,
+    "finished_indexing_blocks": true,
+    "indexed_blocks_ratio": "1.00",
+    "indexed_internal_transactions_ratio": "1.00"
+  },
+  "block_verified": {
+    "height": 76,
+    "hash": "0x7b896fd787d47947d55a1e6e1ca8a2a22d477d2c9a78ff40080c1ce13965e24b",
+    "transactions_count": 0,
+    "timestamp": "2026-09-11T04:43:07.000000Z"
+  },
+  "node_head": 76,
+  "same_origin_rpc_chain_and_validator_list_verified": true,
+  "admin_rpc_balance_tokens": 32,
+  "runtime_environment_verified": true,
+  "websocket_subscription_verified": true,
+  "raw_origins_rejected_from_admin": {
+    "100.111.69.1:3001": true,
+    "100.111.69.1:8545": true,
+    "100.111.69.1:8546": true,
+    "100.111.67.1:4000": true,
+    "100.111.67.1:5432": true,
+    "100.111.67.1:6379": true
+  },
+  "browser_verified": true,
+  "controlled_restart_verified": true,
+  "full_host_reboot_verified": false,
+  "contract_verifier_running": false,
+  "genesis_allocations_imported": false,
+  "wallet_write_ui_configured": false,
+  "browser_evidence": {
+    "home_title": "Dakota Cards | Blockchain and Network Explorer",
+    "block_detail_height": 72,
+    "block_detail_validator": "0x4E84562aCD2A3846C6dA115F00127EBf8279457d",
+    "home_head_after_api_restart": 76,
+    "currency_symbol": "KOTA",
+    "layout": "horizontal",
+    "indexing_banner_cleared_after_reload": true
+  }
+}
