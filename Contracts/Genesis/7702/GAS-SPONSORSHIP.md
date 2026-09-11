@@ -112,6 +112,16 @@ and chain receipts before retrying uncertain submissions.
 
 ## 5. Private-state gas delegation
 
+September 11 live checkpoint: native EIP-7702 sponsored public settlement of a real
+prepared Pente redemption passed. The relayer was reimbursed and the recipient paid
+no public gas. Private computation used Shanghai and no native balance. Ordinary
+private proxy DELEGATECALL passed; private authorization-list processing is not
+established. MetaTx remains disabled. See the [acceptance evidence](../../../docs/paladin-acceptance-20260911.md)
+and [funding/maintenance runbook](../../../Tools/Paladin/README.md). Existing public
+and private proxies now use strict settlement to preserve private codes on rejected
+public preconditions. The remaining guidance describes requirements for any future
+private-interpreter upgrade, not unfinished work needed for this proven gas route.
+
 The owner requests live testing against the newest pinned Paladin release before
 choosing a fallback. Test private EIP-7702 authorization processing, account code
 read-back and actual execution. Separately test private DELEGATECALL and Paladin's

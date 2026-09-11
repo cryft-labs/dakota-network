@@ -1,0 +1,831 @@
+{
+  "checked_at": "2026-09-11T06:50:26.180511+00:00",
+  "source_commit": "955b116cb0d0cf4c9a4755ed374421b80535c53f",
+  "chain_id": 112311,
+  "public_runtimes": {
+    "PenteFactory": {
+      "address": "0x9E2ab1B3A9dB5308BEc62b14C64822157F41b5fb",
+      "artifact": "PenteFactory",
+      "metadata_cid": "QmVghBNv3fFf2gKz1EN3m6kPRuNcm8xsT65LndRoruimuk",
+      "runtime_matches": true
+    },
+    "PenteFactoryProxy": {
+      "address": "0x120052f8392c4a3b88b48d82e585138B6df80376",
+      "artifact": "ERC1967Proxy",
+      "metadata_cid": "QmR86vfJ3Wt6sfqjPgNwst6z1PvQRdfiM9PAqDzhDwB9TT",
+      "runtime_matches": true
+    },
+    "CryftGreetingCards": {
+      "address": "0xf4DD94337a44E474bbAB986b095702f90367baD5",
+      "artifact": "CryftGreetingCards",
+      "metadata_cid": "QmRMrNbavWwQi6wYardyX9872ZYXDD5JsYzkmEN7W8KkA6",
+      "runtime_matches": true
+    },
+    "CardProxyAdmin": {
+      "address": "0x3571242a64Ac7166b36aAD18a1407853cCe52f71",
+      "artifact": "ManagedProxyAdmin",
+      "metadata_cid": "QmaZEZ4cxk5gPCH6y17A9xZCDn1Q4Sk6dQVCDK3BbGyDL5",
+      "runtime_matches": true
+    },
+    "CardProxy": {
+      "address": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+      "artifact": "ManagedApplicationProxy",
+      "metadata_cid": "QmSp3zFQkU1ejpDwfNaCVtagQ9cSrHZBxEC4yBm2Gs9Pbx",
+      "runtime_matches": true
+    },
+    "DeliveryFailureProbe": {
+      "address": "0x005F92A576F3bE202990b319d2eaac3538bb0F15",
+      "artifact": "DeliveryFailureProbe",
+      "metadata_cid": "QmauneX4v6d1xira2XwYDt5TgjVHQ6d4kYyMJg4HzBAYQS",
+      "runtime_matches": true
+    },
+    "CodeManagerStrict": {
+      "address": "0xBf67E1c518BF9ab50d84a754a5d1397B4a39f424",
+      "artifact": "CodeManagerStrict",
+      "metadata_cid": "QmYvDrmyXvqdF86gxRxMfyzXiZf1dLN7bwxdVnKD2CmNKs",
+      "runtime_matches": true
+    }
+  },
+  "private_runtimes": {
+    "PrivateComboStorage": {
+      "address": "0x84797ccb6d2072e3b829b88883a637881db3774b",
+      "artifact": "PrivateComboStorage",
+      "runtime_keccak256": "0x1a4bb6b47734ac52b09fbe52850545b20ca76d4964e1dc827c0099f0f3d512e7",
+      "metadata_cid": "Qmcx3Zm2KxuKJ8i2g2JKQMa7WNvzapz5fDsJ3Y5A5k9oT6",
+      "runtime_matches": true
+    },
+    "ComboProxyAdmin": {
+      "address": "0x4a35f4517ad2e26b332854b1eb94a67092968400",
+      "artifact": "ManagedProxyAdmin",
+      "runtime_keccak256": "0x27c7a5a1eb33b99a8bfb5decc75b749cf1549455e0f117d1d56734795125e7c6",
+      "metadata_cid": "QmaZEZ4cxk5gPCH6y17A9xZCDn1Q4Sk6dQVCDK3BbGyDL5",
+      "runtime_matches": true
+    },
+    "ComboProxy": {
+      "address": "0x7a3eacca11e28712ed6e0dfc464795b2a0c2a342",
+      "artifact": "ManagedApplicationProxy",
+      "runtime_keccak256": "0x2693bb5eb121a762d908058947869ce35630182832d42d7a82fbec9f8227f0c5",
+      "metadata_cid": "QmSp3zFQkU1ejpDwfNaCVtagQ9cSrHZBxEC4yBm2Gs9Pbx",
+      "runtime_matches": true
+    },
+    "ComboUpgradeCanary": {
+      "address": "0xfc101bb2c7ada0ce44251282171bae60e359ddeb",
+      "artifact": "PrivateComboStorage",
+      "runtime_keccak256": "0x1a4bb6b47734ac52b09fbe52850545b20ca76d4964e1dc827c0099f0f3d512e7",
+      "metadata_cid": "Qmcx3Zm2KxuKJ8i2g2JKQMa7WNvzapz5fDsJ3Y5A5k9oT6",
+      "runtime_matches": true
+    },
+    "PrivateComboStorageStrict": {
+      "address": "0x477d914a7eaa6bf2c97601989d02a36cc2422734",
+      "artifact": "PrivateComboStorageStrict",
+      "runtime_keccak256": "0xc2b15b241ee76e99a329f7807751425830ce189701e5c7e64c40fba8884abff8",
+      "metadata_cid": "QmSAb4hForuwzfbFPj5n7LwbXQeyK3fzAsyAwxb2zNnPW4",
+      "runtime_matches": true
+    }
+  },
+  "checks": {
+    "compiled_runtime_and_pinned_metadata_match": true,
+    "five_nfts_delivered": true,
+    "active_implementations": true,
+    "development_authority_intact": true,
+    "sponsor_test_cleanup": true,
+    "temporary_public_group_authority_removed": true,
+    "all_journaled_transactions_resolved": true,
+    "database_and_paladin_restart_preserves_state": true,
+    "services_enabled_and_active": true,
+    "raw_origins_on_loopback": true,
+    "low_privilege_users": true,
+    "explorer_indexes_nested_redemption_calls": true
+  },
+  "secret_policy": "Keep recovery secrets on Paladin-01; no off-server export authorized",
+  "full_host_reboot_tested": false,
+  "backup_restore_tested": false,
+  "router_integration_tested": false,
+  "journal_counts": {
+    "public": 34,
+    "private": 30,
+    "checks": 52,
+    "deliberate_public_reverts": 1
+  },
+  "service_inspection": "Id=cryft-paladin.service\nActiveState=active\nUnitFileState=enabled\nCPUQuotaPerSecUSec=3s\nMemoryMax=4294967296\nUser=cryft-paladin\n\nId=cryft-paladin-db.service\nActiveState=active\nUnitFileState=enabled\nCPUQuotaPerSecUSec=1s\nMemoryMax=2147483648\nUser=cryft-paladin\n\nId=cryft-nginx.service\nActiveState=active\nUnitFileState=enabled\nCPUQuotaPerSecUSec=2s\nMemoryMax=536870912\nUser=cryft-proxy\nNetid State  Recv-Q Send-Q           Local Address:Port  Peer Address:PortProcess                                                                               \nudp   UNCONN 0      0                   127.0.0.54:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=25467,fd=19))                                          \nudp   UNCONN 0      0                127.0.0.53%lo:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=25467,fd=17))                                          \nudp   UNCONN 0      0                    127.0.0.1:323        0.0.0.0:*    users:((\"chronyd\",pid=16771,fd=4))                                                   \nudp   UNCONN 0      0                            *:56845            *:*    users:((\"dnclient\",pid=54601,fd=11))                                                 \nudp   UNCONN 0      0                        [::1]:323           [::]:*    users:((\"chronyd\",pid=16771,fd=5))                                                   \ntcp   LISTEN 0      4096                 127.0.0.1:8548       0.0.0.0:*    users:((\"java\",pid=71047,fd=12))                                                     \ntcp   LISTEN 0      4096                 127.0.0.1:8549       0.0.0.0:*    users:((\"java\",pid=71047,fd=13))                                                     \ntcp   LISTEN 0      511                  127.0.0.1:8550       0.0.0.0:*    users:((\"nginx\",pid=69055,fd=11),(\"nginx\",pid=69054,fd=11),(\"nginx\",pid=65441,fd=11))\ntcp   LISTEN 0      511                  127.0.0.1:8552       0.0.0.0:*    users:((\"nginx\",pid=69055,fd=12),(\"nginx\",pid=69054,fd=12),(\"nginx\",pid=65441,fd=12))\ntcp   LISTEN 0      4096             127.0.0.53%lo:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=25467,fd=18))                                          \ntcp   LISTEN 0      4096                 127.0.0.1:6100       0.0.0.0:*    users:((\"java\",pid=71047,fd=14))                                                     \ntcp   LISTEN 0      4096                   0.0.0.0:22         0.0.0.0:*    users:((\"sshd\",pid=28196,fd=3),(\"systemd\",pid=1,fd=304))                             \ntcp   LISTEN 0      4096                 127.0.0.1:5433       0.0.0.0:*    users:((\"rootlessport\",pid=71021,fd=10))                                             \ntcp   LISTEN 0      511                  127.0.0.1:8080       0.0.0.0:*    users:((\"nginx\",pid=69055,fd=4),(\"nginx\",pid=69054,fd=4),(\"nginx\",pid=65441,fd=4))   \ntcp   LISTEN 0      4096                127.0.0.54:53         0.0.0.0:*    users:((\"systemd-resolve\",pid=25467,fd=20))                                          \ntcp   LISTEN 0      511             100.111.32.201:8550       0.0.0.0:*    users:((\"nginx\",pid=69055,fd=10),(\"nginx\",pid=69054,fd=10),(\"nginx\",pid=65441,fd=10))\ntcp   LISTEN 0      3           [::ffff:127.0.0.1]:9545             *:*    users:((\"java\",pid=60057,fd=353))                                                    \ntcp   LISTEN 0      4096        [::ffff:127.0.0.1]:8545             *:*    users:((\"java\",pid=60057,fd=356))                                                    \ntcp   LISTEN 0      4096        [::ffff:127.0.0.1]:8546             *:*    users:((\"java\",pid=60057,fd=357))                                                    \ntcp   LISTEN 0      4096   [::ffff:100.111.32.201]:30303            *:*    users:((\"java\",pid=60057,fd=358))                                                    \ntcp   LISTEN 0      4096                      [::]:22            [::]:*    users:((\"sshd\",pid=28196,fd=4),(\"systemd\",pid=1,fd=306))                             \n",
+  "installation": {
+    "source_commit": "a2c820960892467053088fca431566a1d640ca62",
+    "factory": "0x120052f8392c4a3b88b48d82e585138B6df80376",
+    "from_block": 245,
+    "paladin_image": "ghcr.io/lfdt-paladin/paladin@sha256:b7d9b4ab98c5330a2515e8c2c97d0b5f4460278ded824bee0a10ad6008984357",
+    "postgres_image": "docker.io/library/postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675",
+    "runtime_user": "cryft-paladin",
+    "rpc": "http://100.111.32.201:8550",
+    "rpc_raw": "127.0.0.1:8548",
+    "database": "127.0.0.1:5433",
+    "public_listeners": false
+  },
+  "state": {
+    "group_id": "0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79",
+    "group_address": "0x533e526f095407490bb0089d3fc38e73484523b0",
+    "settlement": "0x08bb45a62993dc2bdeb0b5aeba28a191b9cc4549",
+    "operator": "0xe7850ecede5d6f7d0b2d2ccabfc2f29d2c345125",
+    "private_admin": "0xe7850ecede5d6f7d0b2d2ccabfc2f29d2c345125",
+    "authorized": "0xe7850ecede5d6f7d0b2d2ccabfc2f29d2c345125",
+    "forwarder": "0x0000000000000000000000000000000000000000",
+    "private_implementation": "0x477d914a7eaa6bf2c97601989d02a36cc2422734",
+    "private_proxy_owner": "0xe7850ecede5d6f7d0b2d2ccabfc2f29d2c345125",
+    "public_implementation": "0xbf67e1c518bf9ab50d84a754a5d1397b4a39f424",
+    "owners": [
+      "0x991acc255761dEE0421Ccd3F436788C24425122E",
+      "0x991acc255761dEE0421Ccd3F436788C24425122E",
+      "0x991acc255761dEE0421Ccd3F436788C24425122E",
+      "0x991acc255761dEE0421Ccd3F436788C24425122E",
+      "0x991acc255761dEE0421Ccd3F436788C24425122E"
+    ],
+    "deliveries": [
+      [
+        "0x991acc255761dEE0421Ccd3F436788C24425122E",
+        true,
+        1
+      ],
+      [
+        "0x991acc255761dEE0421Ccd3F436788C24425122E",
+        true,
+        1
+      ],
+      [
+        "0x991acc255761dEE0421Ccd3F436788C24425122E",
+        true,
+        2
+      ],
+      [
+        "0x991acc255761dEE0421Ccd3F436788C24425122E",
+        true,
+        1
+      ],
+      [
+        "0x991acc255761dEE0421Ccd3F436788C24425122E",
+        true,
+        1
+      ]
+    ],
+    "token_uris": [
+      "ipfs://QmeCdJ3uwNspKHnL9oK8hz4vE3aY77YYn48m6EMUK5d5Kz/1.json",
+      "ipfs://QmeCdJ3uwNspKHnL9oK8hz4vE3aY77YYn48m6EMUK5d5Kz/2.json",
+      "ipfs://QmeCdJ3uwNspKHnL9oK8hz4vE3aY77YYn48m6EMUK5d5Kz/3.json",
+      "ipfs://QmeCdJ3uwNspKHnL9oK8hz4vE3aY77YYn48m6EMUK5d5Kz/4.json",
+      "ipfs://QmdqZ72P2SjJLTS1NiB2hbqxQ3sycHg7cXyaCEuagboDo2/5.json"
+    ]
+  },
+  "explorer": {
+    "first_redemption": {
+      "transaction_hash": "0xae72012955d5ea681897f0431302c4acd123bbd98f5a19479b607d6f819ce49c",
+      "internal_calls_on_first_page": 5,
+      "url": "http://100.111.69.1:8080/tx/0xae72012955d5ea681897f0431302c4acd123bbd98f5a19479b607d6f819ce49c"
+    },
+    "sponsored_redemption": {
+      "transaction_hash": "0xf290137349159f8e5baf85b0bfe18c87f84b2a67b3d0b3fddcd08bdd7cd072b1",
+      "internal_calls_on_first_page": 14,
+      "url": "http://100.111.69.1:8080/tx/0xf290137349159f8e5baf85b0bfe18c87f84b2a67b3d0b3fddcd08bdd7cd072b1"
+    },
+    "strict_settlement": {
+      "transaction_hash": "0x06be97ae4800f24d7c90f8427122f488e60a2090ceeb6548b5a4691e19f4ff58",
+      "internal_calls_on_first_page": 5,
+      "url": "http://100.111.69.1:8080/tx/0x06be97ae4800f24d7c90f8427122f488e60a2090ceeb6548b5a4691e19f4ff58"
+    }
+  },
+  "ipfs_contracts": {
+    "PrivateComboStorage": {
+      "metadata_cid": "Qmcx3Zm2KxuKJ8i2g2JKQMa7WNvzapz5fDsJ3Y5A5k9oT6",
+      "standard_input_cid": "QmQ2PzqSAi8HocjCneguiKo98TJhrYUuvF8csjSkvJKjsL",
+      "evm": "shanghai"
+    },
+    "CryftGreetingCards": {
+      "metadata_cid": "QmRMrNbavWwQi6wYardyX9872ZYXDD5JsYzkmEN7W8KkA6",
+      "standard_input_cid": "QmQMHfcsX46dfKj1Peiyt8vvR98fpKpJrSkjM28syMU4b6",
+      "evm": "osaka"
+    },
+    "DeliveryFailureProbe": {
+      "metadata_cid": "QmauneX4v6d1xira2XwYDt5TgjVHQ6d4kYyMJg4HzBAYQS",
+      "standard_input_cid": "QmYGfys27bmQD2z4zThbVPoPMvXyYLmBc6aEaLU7eodBwJ",
+      "evm": "osaka"
+    },
+    "ManagedProxyAdmin": {
+      "metadata_cid": "QmaZEZ4cxk5gPCH6y17A9xZCDn1Q4Sk6dQVCDK3BbGyDL5",
+      "standard_input_cid": "QmTAA2bgmJf3ZNx9Hys6ZWfuwLSgrYmUNkWHE19UibRLaj",
+      "evm": "shanghai"
+    },
+    "ManagedApplicationProxy": {
+      "metadata_cid": "QmSp3zFQkU1ejpDwfNaCVtagQ9cSrHZBxEC4yBm2Gs9Pbx",
+      "standard_input_cid": "QmTAA2bgmJf3ZNx9Hys6ZWfuwLSgrYmUNkWHE19UibRLaj",
+      "evm": "shanghai"
+    },
+    "PenteFactory": {
+      "metadata_cid": "QmVghBNv3fFf2gKz1EN3m6kPRuNcm8xsT65LndRoruimuk",
+      "standard_input_cid": "QmcbPj19y6T7E1aJBnXRESfTwQ5KPf4K1ASmpwsX8CAGWr",
+      "evm": "osaka"
+    },
+    "PentePrivacyGroup": {
+      "metadata_cid": "QmcfxYrvgPbeqYgW6ZHFQsqrwCeNNvD5RD8jRCc9Kd6oJG",
+      "standard_input_cid": "QmcbPj19y6T7E1aJBnXRESfTwQ5KPf4K1ASmpwsX8CAGWr",
+      "evm": "osaka"
+    },
+    "ERC1967Proxy": {
+      "metadata_cid": "QmR86vfJ3Wt6sfqjPgNwst6z1PvQRdfiM9PAqDzhDwB9TT",
+      "standard_input_cid": "QmcbPj19y6T7E1aJBnXRESfTwQ5KPf4K1ASmpwsX8CAGWr",
+      "evm": "osaka"
+    },
+    "CodeManagerStrict": {
+      "metadata_cid": "QmYvDrmyXvqdF86gxRxMfyzXiZf1dLN7bwxdVnKD2CmNKs",
+      "standard_input_cid": "QmYPc5rwDUJaDzj4atcwzuiyKm2u5E7qmSGy3yKsjQHDQh",
+      "evm": "osaka"
+    },
+    "PrivateComboStorageStrict": {
+      "metadata_cid": "QmSAb4hForuwzfbFPj5n7LwbXQeyK3fzAsyAwxb2zNnPW4",
+      "standard_input_cid": "Qmbk8eGGKhyBAYUoMUdNGjmz1d6yHNnsqZfB5UUEKS9Unh",
+      "evm": "shanghai"
+    }
+  },
+  "ipfs_unique_compiler_objects": 88,
+  "card_metadata": {
+    "directory_cid": "QmdqZ72P2SjJLTS1NiB2hbqxQ3sycHg7cXyaCEuagboDo2",
+    "base_uri": "ipfs://QmdqZ72P2SjJLTS1NiB2hbqxQ3sycHg7cXyaCEuagboDo2/",
+    "files": [
+      "1.json",
+      "2.json",
+      "3.json",
+      "4.json",
+      "5.json"
+    ],
+    "pinned": true,
+    "gateway_readback": true
+  },
+  "historical_card_metadata": [
+    {
+      "directory_cid": "QmeCdJ3uwNspKHnL9oK8hz4vE3aY77YYn48m6EMUK5d5Kz",
+      "base_uri": "ipfs://QmeCdJ3uwNspKHnL9oK8hz4vE3aY77YYn48m6EMUK5d5Kz/",
+      "files": [
+        "1.json",
+        "2.json",
+        "3.json",
+        "4.json"
+      ],
+      "pinned": true,
+      "gateway_readback": true
+    }
+  ],
+  "passed": true,
+  "transactions": {
+    "deploy:PenteFactory": {
+      "hash": "0xc68467adf31a070573f9ee2aa8d41ee00b6d14cc17f79a460fa39feaedd77709",
+      "status": 1,
+      "block_number": 245,
+      "source_commit": "92b95346069451d3defc8fca936ef687ecc15935"
+    },
+    "deploy:PenteFactoryProxy": {
+      "hash": "0x24b00463f2a3c669598e17044b6e43f9caf0bf3e4a9060f2a9b047f52101a45e",
+      "status": 1,
+      "block_number": 246,
+      "source_commit": "92b95346069451d3defc8fca936ef687ecc15935"
+    },
+    "fund:paladin-settlement": {
+      "hash": "0x3c00af4521967031b549bfe16170cec3ad4bd1d947eca311d3ceeaaa69be9267",
+      "status": 1,
+      "block_number": 259,
+      "source_commit": "87e2d0d1d58ae124f2149be0f8fa2f45ba841e9d"
+    },
+    "deploy:CryftGreetingCards": {
+      "hash": "0xc57cfef9ee49f9e7c6ad8fdd7d776500fadc2949f5f3550dc8e25940565a72e1",
+      "status": 1,
+      "block_number": 261,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "deploy:CardProxyAdmin": {
+      "hash": "0x05f838f84d0a0cbfeee326b4f067e969ba4c3b8627057a8c9bf94d83bd6f1f5a",
+      "status": 1,
+      "block_number": 262,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "deploy:CardProxy": {
+      "hash": "0xcff1f6546621aaf586ef8bafe35141d497c59d07b03a2b0ebfdac284913aa656",
+      "status": 1,
+      "block_number": 263,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "cards:register_four_uids": {
+      "hash": "0xa534000f1c29f0c85a4715937b081d7db9746fdebd69a9fa649d24d777ccdd9a",
+      "status": 1,
+      "block_number": 264,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "cards:buy_four_into_vault": {
+      "hash": "0x48423f29171a3415de38b6ac5899b8087d1ae26cc5fb892a103eea1e600207f8",
+      "status": 1,
+      "block_number": 265,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "codes:scope_group_to_card": {
+      "hash": "0xb2d3d6957d704fa772df13965cc15d8792e5cff6f2b34cffafdd4651aef86640",
+      "status": 1,
+      "block_number": 266,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "pente-sponsor:configure": {
+      "hash": "0x1d9b5ed30b204dc0b58bf59aae16911e103ee7a714b0b25e75fa23f41f772843",
+      "status": 1,
+      "block_number": 288,
+      "source_commit": "3fc7960549f09ebfae0cc7123facc9dde9d74ae8"
+    },
+    "pente-sponsor:deposit": {
+      "hash": "0x4250d585f05b1794cafe31c3a0018e86f8d7c8d39d821311c630e53e7c9a34f3",
+      "status": 1,
+      "block_number": 289,
+      "source_commit": "3fc7960549f09ebfae0cc7123facc9dde9d74ae8"
+    },
+    "pente-sponsor:enable_relayer": {
+      "hash": "0x7ce996196dc9ea2e553553ddda22659d7b2dde498c620be01b598cdd91ec19da",
+      "status": 1,
+      "block_number": 290,
+      "source_commit": "3fc7960549f09ebfae0cc7123facc9dde9d74ae8"
+    },
+    "pente-sponsor:unpause": {
+      "hash": "0x9e07a8ac0eb94237ee655cca3f44d7cd96a1bc87dcbf99d8b4d1ea75f1bc8f07",
+      "status": 1,
+      "block_number": 291,
+      "source_commit": "3fc7960549f09ebfae0cc7123facc9dde9d74ae8"
+    },
+    "pente-sponsor:settle_redemption": {
+      "hash": "0xf290137349159f8e5baf85b0bfe18c87f84b2a67b3d0b3fddcd08bdd7cd072b1",
+      "status": 1,
+      "block_number": 292,
+      "source_commit": "3fc7960549f09ebfae0cc7123facc9dde9d74ae8"
+    },
+    "pente-sponsor:pause_after_acceptance": {
+      "hash": "0xcd05ba3af16a14ef1b3eb70debd53b5e9b2ba006f1eae6ee43d762843c384613",
+      "status": 1,
+      "block_number": 293,
+      "source_commit": "3fc7960549f09ebfae0cc7123facc9dde9d74ae8"
+    },
+    "pente-sponsor:disable_relayer": {
+      "hash": "0xb042c55228c3a643ae09756df101f08653ff9513dd6779d55a11b85d21d839f5",
+      "status": 1,
+      "block_number": 294,
+      "source_commit": "3fc7960549f09ebfae0cc7123facc9dde9d74ae8"
+    },
+    "pente-sponsor:disable_tenant": {
+      "hash": "0xa48d8a4857ba686cb25a40722b9b07809009f0cabb2f5c0fe0a3b2505538b8b9",
+      "status": 1,
+      "block_number": 295,
+      "source_commit": "3fc7960549f09ebfae0cc7123facc9dde9d74ae8"
+    },
+    "pente-sponsor:return_unspent_test_deposit": {
+      "hash": "0xc926179b549ff23053f908a2eb556d57b7407645de90ae41e88367b7a884e40a",
+      "status": 1,
+      "block_number": 296,
+      "source_commit": "3fc7960549f09ebfae0cc7123facc9dde9d74ae8"
+    },
+    "deploy:DeliveryFailureProbe": {
+      "hash": "0xab5d1c1d7e622b8eda3b1c4f6e2ec942177b478e19d63685902c25daeda02b91",
+      "status": 1,
+      "block_number": 304,
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "recovery:temporarily_reject_delivery": {
+      "hash": "0x080d608d39eb69d44f4f0536890e582a3b1de1dfdf6670cd09c594a479afec2a",
+      "status": 1,
+      "block_number": 305,
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "recovery:restore_card_implementation": {
+      "hash": "0xdfd82f39d8e2304cbad457a6412f3a6711379a03c2e4dbeba68e7ab4429847ed",
+      "status": 1,
+      "block_number": 307,
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "recovery:retry_committed_delivery": {
+      "hash": "0xcfd6786661d99f84688cbadf898eb71a3aba4b269f76594530224a3ef9e24704",
+      "status": 1,
+      "block_number": 308,
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "recovery:repeat_retry_is_safe": {
+      "hash": "0x86adeebb7a14ebf088201fc1a19b54d6a5badaba6eb1353b0c464e30a5d55d88",
+      "status": 1,
+      "block_number": 309,
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "deploy:CodeManagerStrict": {
+      "hash": "0x1eb688c9c3dee30fc1ccc105715e311bc4e2ddfec6bb11f934e44c4a99a5e8a2",
+      "status": 1,
+      "block_number": 334,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:upgrade_public_router": {
+      "hash": "0xb710b6ff9b4afb22e5fbe1597b0aece7906f05012d45e954348e3e48b970a093",
+      "status": 1,
+      "block_number": 335,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:register_fifth_uid": {
+      "hash": "0xcc54998e08a9563f2bde676f26b2abf97583d8c11c4385a448ff4c558cc85236",
+      "status": 1,
+      "block_number": 338,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:buy_fifth_into_vault": {
+      "hash": "0x56519948a565d4bbf22dc2823c8afd064345d93fd312026b24c2533c0010d715",
+      "status": 1,
+      "block_number": 339,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:grant_temporary_freeze_scope": {
+      "hash": "0xe240d3de54d2c370a54912628a8ad10eb3ed8742e854d26d4de3a47d7c574783",
+      "status": 1,
+      "block_number": 342,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:public_only_freeze": {
+      "hash": "0x6b74a03bdcdd294d9ecbb63c147bdde234d8cbb2dfc6667a9d646a9b61049015",
+      "status": 1,
+      "block_number": 343,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:reject_public_precondition": {
+      "hash": "0x9a9846b09043429e2eb89bed838acc4e5ac1dc0e52d3619ea558dac46063d02d",
+      "status": 0,
+      "block_number": 344,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:restore_public_active": {
+      "hash": "0xffef09dba8463105f5a91a0319f198fcf1daa1da66c7125810852c8a56769de1",
+      "status": 1,
+      "block_number": 345,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:remove_temporary_gift_scope": {
+      "hash": "0x531cfd2ed4674a44a41222dafb658dbf166cd9c2f2bfe14b508e934e43b40ec5",
+      "status": 1,
+      "block_number": 346,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:remove_temporary_authority": {
+      "hash": "0x2ee37ca48883e71fbe467e126a99daf00f532a890e1c5403c77a26d823880d44",
+      "status": 1,
+      "block_number": 347,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:retry_same_prepared_transition": {
+      "hash": "0x06be97ae4800f24d7c90f8427122f488e60a2090ceeb6548b5a4691e19f4ff58",
+      "status": 1,
+      "block_number": 348,
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    }
+  },
+  "private_transactions": {
+    "deploy:PrivateComboStorage": {
+      "id": "0f6a0fdc-ad54-4e5c-aac3-f1173d4c746d",
+      "success": true,
+      "public_receipt": null,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "deploy:ComboProxyAdmin": {
+      "id": "4eec1746-06d5-4d3a-8bbc-0c28e0092547",
+      "success": true,
+      "public_receipt": null,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "deploy:ComboProxy": {
+      "id": "045c8be1-2bdb-418a-a920-4b119514f097",
+      "success": true,
+      "public_receipt": null,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "private:whitelist_card": {
+      "id": "9891a7a1-b01c-4bcb-934b-ee0a60bd67f7",
+      "success": true,
+      "public_receipt": null,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "private:sync_registered_count": {
+      "id": "d166dbcd-d23c-4142-b3c6-e76c30c9d78a",
+      "success": true,
+      "public_receipt": null,
+      "source_commit": "8975f001e795fdca5660f7a03abf4a3399613498"
+    },
+    "codes:store_four": {
+      "id": "bab63c8c-7e20-4314-b180-8d4bc960ae02",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x0a3bb1d5947e3b1340b0479d5a6c32cfec68c896e59fa776955a63697a5b99b3",
+        "blockNumber": 275,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "codes:wrong_pin": {
+      "id": "d5eac082-e6ee-4136-96f7-ab59e5de4c55",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0xc66347af56e7ee59dc9708160988b2f00f17e0c2da924621e61ca949e018d466",
+        "blockNumber": 276,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "codes:wrong_code": {
+      "id": "fd62ba2c-0748-4b34-b6e2-95ccf654eb63",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x7030abead77482d1a8796f5c0c461e266729238fa5ecf70c20580a88727c1421",
+        "blockNumber": 277,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "deploy:ComboUpgradeCanary": {
+      "id": "fc8b02a0-eab4-4aad-b20e-496899b4fd4a",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x12482cba3c0346cc487104d83535afa4fa28e600425a76a5768c7829b8d6e9d5",
+        "blockNumber": 278,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "private:upgrade_with_stored_codes": {
+      "id": "f3582cec-1431-418c-bf0e-96ee0b07e3d6",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x7d2f9e525a426b87c9dc9973a7cd68a36e212f32cb84f0ab13b20b7765f11509",
+        "blockNumber": 279,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "private:restore_original_logic": {
+      "id": "8d44d28c-e8ad-4982-a14b-105389e540ae",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x4d6a15ee3a5edf70266a063acb91597be9380b9071fceef83eeeddfbc20b0e72",
+        "blockNumber": 280,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "codes:freeze_second": {
+      "id": "1d940e9f-6da6-4e57-adc6-6442b7fce1c8",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x384bc405679a7514c1ee2b4262dbf82ac66c911a084bea4f37b338a809586d94",
+        "blockNumber": 281,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "codes:reject_frozen": {
+      "id": "e3f93bff-ef26-4dc4-acff-d48d16800d1e",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x547e096ea650ec0e6f8d696987630dc07501d90272e6f6c939587f0e4ead594f",
+        "blockNumber": 282,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "codes:unfreeze_second": {
+      "id": "52e0e688-e9cc-4ef2-bfc0-fa2f5aaafdd9",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0xa8cc3453de6ed6132870202aed31f411ea79c6fea560f10c0eb10e172d075d1a",
+        "blockNumber": 283,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "codes:first_card_redemption": {
+      "id": "a45b3176-e6cd-43ab-8221-ab3e4f4a6504",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0xae72012955d5ea681897f0431302c4acd123bbd98f5a19479b607d6f819ce49c",
+        "blockNumber": 284,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "codes:first_card_replay": {
+      "id": "add1becd-0a1f-4332-89a8-0161c40b6137",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x6784046994c255cece7c58964b384d0d8f3df88cd8685b6fe6c67ae6fb261eb0",
+        "blockNumber": 285,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "366864ff1cce0beb9d080189cfdceaa7a2479d08"
+    },
+    "codes:third_card_pending_delivery": {
+      "id": "19d2f18a-8a77-43e8-b502-11fb0c23c814",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0xdf2e937889c96ede58fa49637c0597234e5af6a84fb7d3be9bb7214c83f44740",
+        "blockNumber": 306,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "handover:propose_private_admin": {
+      "id": "1c56fdae-188d-49dc-902d-0aa95705540f",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x588182316aa7cab0d10309c49e87030927fc5e55d70cbc88cb09b61d3f3cbf30",
+        "blockNumber": 311,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "handover:accept_private_admin": {
+      "id": "92854269-6d57-4e14-a2c4-e5ef28e6904b",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0xac91f28d57706b3c67aa98a965fba108b34cb212e8c11e76fd46971f10f4c5c4",
+        "blockNumber": 312,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "handover:propose_proxy_admin": {
+      "id": "62270bf0-e705-482c-90d9-cf2a03fffee4",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x3a49b86060b575cb6193d2884e0d828a7e1e039bdc96bd527e51c7c8ee1c5e2b",
+        "blockNumber": 313,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "handover:accept_proxy_admin": {
+      "id": "8e736b37-17ad-46d4-9570-22d3705f0f8c",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0xac042f0bba05d95013aa9a4df4171761b0daa0c09b22bb9c722212825b9525dc",
+        "blockNumber": 314,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "handover:propose_restore_private_admin": {
+      "id": "712abb95-3841-48cf-8c9f-2f259fd9aee5",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x40b40971cdb98f869f448cfd31aa5e91946a1215fd97c40167a5eee76735663f",
+        "blockNumber": 315,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "handover:accept_restore_private_admin": {
+      "id": "9f87f8b7-3c49-4b87-99d7-4f877188873e",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x61e7b68ecc0a4dba728d055d6cb9bfc04c16c63e00acfd733db8651c3697feb4",
+        "blockNumber": 316,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "handover:propose_restore_proxy_admin": {
+      "id": "108ca1fe-d32e-4c33-9450-a9df42aa6e06",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0xe426a07563fd1031233004b80013a9074ddc8e81c861cff177f355402eaaf9b3",
+        "blockNumber": 317,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "handover:accept_restore_proxy_admin": {
+      "id": "40cb4a70-e67a-461d-8fff-ad7fe1547614",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x3b76619588eb0e99d0a4d27b1c04245dd929b9ae5730aa4566969b1d138e61d2",
+        "blockNumber": 318,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "handover:restore_development_service": {
+      "id": "e5d3c77c-e373-4687-b0e2-e2bfac622e4e",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x57235fab509e282d757d0bb8cb2d1e91d0fea07ad5daeffafe885060f3c7a9d0",
+        "blockNumber": 319,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "a0ae3bccc3b6986aaabb2e393f17eff6ae178c80"
+    },
+    "deploy:PrivateComboStorageStrict": {
+      "id": "65db76b5-eaf3-4f24-ba85-f35ae4e5d931",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x2f15c0f3bab92a12b5e5032d6ef43631a5fe7fa47299d9b0b81c97dd2c22d323",
+        "blockNumber": 336,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:upgrade_private_combo": {
+      "id": "ee85d694-68da-41a0-87f4-0f639a9e11eb",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x824dfac384a78381a745430111a16efdc8387300d14976adadc94997a2d305fa",
+        "blockNumber": 337,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:sync_fifth_uid": {
+      "id": "9529b405-a3d9-4ce3-bd9c-5edad3a77316",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0xe82d062d4afe7f15b5fef9d0905dd327cd6da27118fb97aee26cd9bc3ceaf762",
+        "blockNumber": 340,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    },
+    "strict:store_fifth_code": {
+      "id": "08bda021-b32f-4b79-afe5-eeeca05d3249",
+      "success": true,
+      "public_receipt": {
+        "transactionHash": "0x85253cc506b6fe6bcc884824447803df3a1bc4ac45ca139af71d9389254f954a",
+        "blockNumber": 341,
+        "source": "0x533e526f095407490bb0089d3fc38e73484523b0"
+      },
+      "source_commit": "e0074210758e5d3493d16f6066d9c49a740a8717"
+    }
+  },
+  "first_redemption": {
+    "uid": "0x16e74ac4dd655d408aac7e5143c08d66f57db87ab1aa99bb46723858c6145163-1",
+    "token_id": 1,
+    "nft": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+    "recipient": "0x991acc255761dEE0421Ccd3F436788C24425122E",
+    "public_transaction_hash": "0xae72012955d5ea681897f0431302c4acd123bbd98f5a19479b607d6f819ce49c",
+    "block_number": 284
+  },
+  "sponsored_redemption": {
+    "uid": "0x16e74ac4dd655d408aac7e5143c08d66f57db87ab1aa99bb46723858c6145163-2",
+    "token_id": 2,
+    "nft": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+    "recipient": "0x991acc255761dEE0421Ccd3F436788C24425122E",
+    "public_transaction_hash": "0xf290137349159f8e5baf85b0bfe18c87f84b2a67b3d0b3fddcd08bdd7cd072b1",
+    "block_number": 292,
+    "private_transaction_id": "209fe76c-7a92-4941-9844-f4eeab71fe02",
+    "public_sender": "0x633309d1155fD658a717e4f5E4FA853615400867",
+    "metatx_used": false,
+    "private_evm": "shanghai",
+    "public_evm": "osaka",
+    "reimbursement_wei": 629485000000000
+  },
+  "concurrent_redemptions": {
+    "ids": [
+      "7cba66fd-be7d-4886-90d6-1ee3a12486bd",
+      "43448a71-f248-4e11-aa13-985b067bf310"
+    ],
+    "public_transactions": [
+      "0x4e447b39ec8da4129e0be4adfbb38c5fefe8d887cb03abe3933e4969bbda120c",
+      "0x30a446cfd99d433cad756d982d53ae79ee0e2a738727ce2270d159c015198f53"
+    ]
+  },
+  "private_handover_test": {
+    "successor": "0x4a131723715C58CD2C275f75879bc393F8559046",
+    "restored_to": "0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125",
+    "external_management_handover_complete": false
+  },
+  "strict_settlement": {
+    "public_implementation": "0xBf67E1c518BF9ab50d84a754a5d1397B4a39f424",
+    "private_implementation": "0x477d914a7eaa6bf2c97601989d02a36cc2422734",
+    "upgraded": true,
+    "issued": true,
+    "idempotency_key": "dakota-live-20260911:strict-fifth-prepared",
+    "private_transaction_id": "01410851-ddd6-4cca-b8ab-9c60a9bcc991",
+    "prepared": true,
+    "public_calldata_keccak256": "0x7cd356325393d2e387e990269cf150043040d3ac4e3ac442c525d322bbd98eb0",
+    "temporary_scope_before": {
+      "authorized": false
+    },
+    "rejected_public_transaction": "0x9a9846b09043429e2eb89bed838acc4e5ac1dc0e52d3619ea558dac46063d02d",
+    "rejection_verified": true,
+    "public_transaction_hash": "0x06be97ae4800f24d7c90f8427122f488e60a2090ceeb6548b5a4691e19f4ff58",
+    "token_id": 5,
+    "recipient": "0x991acc255761dEE0421Ccd3F436788C24425122E",
+    "nft": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+    "accepted": true
+  },
+  "local_regression": {
+    "governance_and_hardening_passed": 58,
+    "private_proxy_passed": 1,
+    "public_contract_size_limit": 32768
+  },
+  "pente_group_runtime": {
+    "proxy": "0x533E526f095407490BB0089D3fc38e73484523B0",
+    "implementation": "0x15d20F07e21210B36Ec16c9da6EFA97429A10D75",
+    "factory": "0x120052f8392c4a3b88b48d82e585138B6df80376",
+    "runtime_matches": true,
+    "metadata_cid": "QmcfxYrvgPbeqYgW6ZHFQsqrwCeNNvD5RD8jRCc9Kd6oJG"
+  }
+}

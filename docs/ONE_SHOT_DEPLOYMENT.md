@@ -1,6 +1,6 @@
 # Kota full-system development deployment prompt
 
-Revision 3, 2026-09-11. Copy this entire document into the deployment task.
+Revision 4, 2026-09-11. Copy this entire document into the deployment task.
 
 Resume checkpoint: the development chain and Nebula explorer are running, and the
 four named genesis services have been linked and initialized. Public governance,
@@ -14,8 +14,17 @@ Sponsorship is paused after testing; temporary canary roles/funding are cleaned 
 The supplied admin is nominated for GasSponsor and registry acceptance, while
 bootstrap authority remains for full application deployment. Exact runtime metadata
 and source pins/readback were verified on Backend-01's private IPFS API/gateway.
-Public Cloudflare gateway, explorer source-verifier, private Paladin delegation,
-Kota Router/application deployment and final owner handover remain pending. Use
+Paladin/Pente now runs persistently on Paladin-01. Five real private code redemptions
+delivered public card NFTs. Native public EIP-7702 sponsorship, rejected-settlement
+rollback/retry, delivery recovery, concurrent redemption and service restart passed.
+Read `docs/paladin-acceptance-20260911.md`, `Tools/Paladin/README.md`, and
+`outputs/paladin-live-20260911/{transactions.json,acceptance-report.json}` next.
+CodeManager/Combo strict upgrades are already applied; do not replay older first-link
+or application setup scripts. Their existing proxy addresses and private group remain.
+Public Osaka and private Shanghai are the verified targets. Private EIP-7702 processing
+is not established; no MetaTx fallback is needed for verified public sponsorship.
+Public Cloudflare gateway, explorer source-verifier, Kota Router/application deployment
+and final owner handover remain pending. Use
 `Tools/LiveGenesis/FOLLOW_AND_HANDOFF_PROMPT.md` for concurrent read-only observation
 or an explicit transfer of execution; never run two signers against the same nonce.
 
@@ -50,7 +59,7 @@ never the credentials themselves. Do not commit keys, codes, PINs or secret stat
 PROJECT_NAME=cryft-kota
 EXAMPLE_HOST_SITE_DOMAIN=moment.cards
 KOTA_PUBLIC_BASE_URL=
-DEPLOYMENT_MODE=fresh
+DEPLOYMENT_MODE=resume
 GENESIS_DEPLOYMENT_APPROVED=true
 PRODUCTION_PROMOTION_APPROVED=false
 DEPLOYMENT_ENVIRONMENT=development
@@ -58,12 +67,13 @@ NETWORK_REVIEW_BRANCH=review/compiler-standard-json
 API_REVIEW_BRANCH=review/primary-api-lmstudio
 PUSH_BEFORE_LIVE_TESTS=true
 GENESIS_ARCHIVE_PATH=Contracts/Genesis/besuGenesis.7z
-GENESIS_ARCHIVE_SHA256=7e114986e59908933ca4ee835d125b050650b24827c7518428f1d93845bc410c
+GENESIS_ARCHIVE_SHA256=11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f
 GENESIS_REMOTE_PATH=/etc/cryft/besu/BesuGenesis.json
 BESU_VERSION=26.8.1
 SOLC_VERSION=0.8.37
 PALADIN_VERSION=v1.0.0
-PRIVATE_NATIVE_DELEGATION_TEST_REQUIRED=true
+PRIVATE_NATIVE_DELEGATION_ESTABLISHED=false
+PUBLIC_SPONSORED_PENTE_SETTLEMENT_VERIFIED=true
 METATX_ENABLED=false
 CONTRACT_ADDRESS_APPROVAL_RECORD=
 APPROVED_CONTRACT_MANIFEST_SHA256=
@@ -117,7 +127,7 @@ WIDGET_SOURCE_REF=
 WIDGET_SOURCE_DIRECTORY=
 SERVICE_API_NAME="Kota Router"
 SERVICE_API_REPOSITORY=CryftCreator/KotaRouter
-SERVICE_API_SOURCE_REF=67be819ec854bd7771a6d4ad17d63dc821c9fb86
+SERVICE_API_SOURCE_REF=194aa2c0da5782e65c6ea157dec6c8f780e686dd
 SERVICE_API_SOURCE_DIRECTORY=router_v4/rust_core
 LOCAL_DEVELOPMENT_FIRST=true
 DEV_LLM_PROVIDER=lmstudio
@@ -133,12 +143,14 @@ PUBLIC_CONTRACT_EVM=osaka
 VALIDATOR_CONTRACT_EVM=london
 VALIDATOR_SOLC_VERSION=0.8.19
 PRIVATE_CONTRACT_EVM=shanghai
-PRIVATE_EVM_UPGRADE_DECISION=
+PRIVATE_EVM_UPGRADE_DECISION=retain_verified_shanghai_until_private_runtime_supports_newer_target
 STANDARD_JSON_EXPORT_REQUIRED=true
 CONTRACT_METADATA_IPFS_REQUIRED=true
 IPFS_AUTO_PUBLISH=true
 IPFS_HOST=Backend-01
-IPFS_API_URL=https://100.111.67.1:8444
+IPFS_TRANSPORT=nebula_ssh_forward
+IPFS_REMOTE_API_URL=http://127.0.0.1:5001
+IPFS_API_URL=
 IPFS_API_AUTH_FILE=
 IPFS_TLS_CA_FILE=
 IPFS_TLS_CLIENT_CERT_FILE=
@@ -167,10 +179,24 @@ RELEASE_APPROVAL_RECORD=
 CHAIN_ID=112311
 CHAIN_NETWORK_ID=112311
 GENESIS_SHA256=29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217
-CONTRACT_ADDRESS_MANIFEST_FILE=docs/live-genesis-addresses-20260911.json
+CONTRACT_ADDRESS_MANIFEST_FILE=docs/current-contract-addresses.json
 GENESIS_ALLOCATION_POLICY=admin_32_deployer_1_tester_1
 DELEGATION_ROUTE_POLICY=direct_beacon_dispatch_v2
-PRIVATE_GROUP_DEPLOYMENT_DOMAIN=
+PRIVATE_GROUP_DEPLOYMENT_DOMAIN=pente
+PALADIN_RPC_URL=http://100.111.32.201:8550/
+PALADIN_NODE_NAME=paladin01
+PALADIN_GROUP_ID=0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79
+PALADIN_GROUP_ADDRESS=0x533E526f095407490BB0089D3fc38e73484523B0
+PALADIN_FACTORY_ADDRESS=0x120052f8392c4a3b88b48d82e585138B6df80376
+PRIVATE_COMBO_PROXY_ADDRESS=0x7a3eacca11e28712ed6e0dfc464795b2a0c2a342
+DEVELOPMENT_CARD_PROXY_ADDRESS=0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410
+PALADIN_SETTLEMENT_ADDRESS=0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549
+PALADIN_PRIVATE_OPERATOR_ADDRESS=0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125
+PALADIN_RECOVERY_SECRET_POLICY=keep_on_paladin_01
+PALADIN_OFFHOST_SECRET_EXPORT_AUTHORIZED=false
+PALADIN_SETTLEMENT_LOW_BALANCE_WEI=10000000000000000
+PALADIN_SETTLEMENT_TARGET_BALANCE_WEI=30000000000000000
+PALADIN_AUTOMATIC_TOPUP_ENABLED=false
 VALIDATOR_KEY_SECRET_STORE=
 PALADIN_KEY_SECRET_STORE=
 RELAYER_KEY_SECRET_STORE=
@@ -255,7 +281,8 @@ EXPLORER_START_EARLY=true
    compiler exports/regressions and secret exclusions, commit/push to review branches,
    then record full remote SHAs and unchanged main SHAs. Update the technical manual
    as each fact is verified. A published test checkpoint is not production certification.
-2. Bootstrap using the supplied root SSH identity and pinned host keys. Enroll each
+2. The seven hosts are already enrolled; use their existing Nebula identities. Only
+   for an explicitly new host, bootstrap using the root SSH identity and pinned keys. Enroll that
    host in Defined Networking using its assigned enrollment key/IP. Verify operator
    SSH over Nebula before removing public SSH/root access. Configure Nebula peer and
    host firewall rules by role while preserving its required UDP underlay. All P2P,
@@ -274,17 +301,20 @@ EXPLORER_START_EARLY=true
    supported by the tested Paladin runtime. Use pinned current Besu 26.8.1/Java 25 and
    Paladin v1.0.0 images, verifying actual image provenance. Normalize only required
    removed Besu aliases with an explicit recorded diff. The reviewed genesis has
-   Osaka plus BPO1–BPO5 at timestamp 0, preserving inherited blob parameters.
+   Osaka plus BPO1Ã¢â‚¬â€œBPO5 at timestamp 0, preserving inherited blob parameters.
    Do not enable unfinalized Amsterdam/future/experimental forks. Check the pinned
    release's actual genesis schedule rather than treating EVM-library names as
    supported activation fields. Preserve the validator's London target.
-5. Update every embedded genesis runtime from verified current artifacts. Preserve
+5. For this resume, verify the existing genesis and occupied proxy slots; do not edit
+   historical allocation/runtime state. Only for a separately authorized fresh network,
+   update every embedded genesis runtime from verified current artifacts. Preserve
    the four existing generated validator identities, 32 tokens for the management
    account and 1 token for each of the deployment and delegation-testing accounts.
    Keep temporary bootstrap authority only for autonomous setup/testing; record its
    removal plan. Reserved proxies remain uninitialized until separate implementation
    deployment and atomic first-link initialization. Do not regenerate node keys.
-6. Compress the updated genesis as besuGenesis.7z containing BesuGenesis.json. Publish
+6. The current compressed genesis is already installed and verified. For a separately
+   approved genesis update/new node, use besuGenesis.7z containing BesuGenesis.json. Publish
    the archive, never the uncompressed large JSON, with SHA-256 checksums for both.
    Pull the exact release onto every Besu node, verify the archive, extract to staging,
    verify the JSON, then install it at each service's configured genesis path. Include
@@ -306,25 +336,33 @@ EXPLORER_START_EARLY=true
    working URL so the owner can watch. Do not announce a planned URL as running.
    Use the pinned rootless services and recovered Dakota settings documented in
    Tools/Explorer/README.md. Publish configuration changes before running its installer.
-9. Install Backend IPFS as a persistent nonroot service with Nebula-only peers,
-   loopback origins, protected mTLS publishing API and read-only Cloudflare gateway.
+9. Preserve Backend's existing persistent nonroot IPFS service and Nebula-only peers.
+   Publishing currently uses pinned-host-key Nebula SSH to its loopback API; the
+   publisher selects an available local forwarded port. Protected mTLS publishing
+   and the read-only Cloudflare gateway are planned and require their missing inputs.
    Do not enable public swarm discovery/peering now. Configure automatic compiler
    publication of exact metadata, referenced sources, standard JSON, ABI and bytecode.
    Verify embedded CIDs, pins and read-back bytes and record the release-bundle CID.
    Gateway access does not imply public peering. Never upload private runtime data.
-10. Deploy/link/initialize public implementations using the reserved addresses.
+10. The named public implementations are already linked/initialized. Read current
+    targets and upgrade only when required; do not repeat first-link initialization.
     Follow the current direct dispatcher sponsorship route: EOA -> immutable v2
     dispatcher -> shared beacon -> delegation logic. The registry and GasSponsor
     remain upgradeable at their reserved proxies. No EOA proxy initialization is
     needed. Use gas-only treasury credits, signed bounded vouchers, tenant caps,
     persistent nonces/idempotency and receipt reconciliation. Start sponsorship paused.
-11. Test the owner's requested private delegation against the actual latest runtime:
-    private authorization processing and code read-back/execution, private DELEGATECALL,
-    and approved delegated public settlement of prepared private transitions. Record
-    each result separately, including public payer/gas and private/public state.
-    Test newer EVM support explicitly; unsupported requests or successful no-op calls
-    are not proof. Use native delegation where verified. Only use MetaTx if tests
-    establish necessity, and harden/test that fallback before enabling it.
+11. Preserve the verified Paladin deployment described in Tools/Paladin/README.md.
+    Use the existing group/proxies and `recordRedemptionStrict` for private code
+    consumption. Public precondition rejection must roll back the private spend;
+    accepted delivery failure must retain its recipient and support retry. Native
+    EIP-7702 sponsored settlement is already proven through `ptx_prepareTransaction`
+    and the exact endorsed public `transition` payload. Integrate that flow into
+    Router with durable IDs/nonces/receipts. Do not infer private authorization-list
+    support from public Besu or replace proven sponsorship with MetaTx. Compile the
+    private implementation for tested Shanghai until a newer interpreter passes
+    actual opcode and authorization tests. Keep all recovery secrets on Paladin-01;
+    no off-server seed/database credential export is authorized. Document/monitor
+    the settlement wallet balance and separate sponsor ledger funding.
 12. Complete Kota V4 authorization, durable PostgreSQL operations/outbox, atomic
     tenant/principal/action idempotency, job ownership, body/domain/nonce-bound admin
     signatures, real Paladin/chain adapters, account registration contracts, and

@@ -1,0 +1,74 @@
+{
+  "checked_at": "2026-09-11T07:01:38.099798+00:00",
+  "block": 362,
+  "chain_id": 112311,
+  "symbol": "KOTA",
+  "decimals": 18,
+  "wallets": {
+    "paladin_public_settlement": {
+      "address": "0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549",
+      "balance_wei": "24371939000000000",
+      "balance_kota": "0.024371939"
+    },
+    "deployer_and_test_relayer": {
+      "address": "0x633309d1155fD658a717e4f5E4FA853615400867",
+      "balance_wei": "909362996000000000",
+      "balance_kota": "0.909362996"
+    },
+    "delegated_test_recipient": {
+      "address": "0x991acc255761dEE0421Ccd3F436788C24425122E",
+      "balance_wei": "997995562000000000",
+      "balance_kota": "0.997995562"
+    },
+    "final_management": {
+      "address": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+      "balance_wei": "32000000000000000000",
+      "balance_kota": "32"
+    },
+    "private_operator_no_gas_needed": {
+      "address": "0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125",
+      "balance_wei": "0",
+      "balance_kota": "0"
+    }
+  },
+  "transactions_sent": 0,
+  "sponsor": {
+    "address": "0x000000000000000000000000000000000000FEeD",
+    "tenant": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+    "paused": true,
+    "funding_wei": [
+      "0",
+      "0"
+    ]
+  },
+  "registration_fee_wei": "1000000000000000",
+  "current_core_implementations": {
+    "GasManager": {
+      "proxy": "0x000000000000000000000000000000000000cafE",
+      "implementation": "0x2537E8005d9f5f3eC0e843A878fb53F658FA00f3",
+      "runtime_keccak256": "0x78790a488f04674251071356bf9506fbe72501df774f6fb61827049296a19858"
+    },
+    "CodeManager": {
+      "proxy": "0x000000000000000000000000000000000000c0DE",
+      "implementation": "0xBf67E1c518BF9ab50d84a754a5d1397B4a39f424",
+      "runtime_keccak256": "0x4a52729b4f01d95feabc6522e1f78bc7be44112662002bfe0181d2e2beb24dba"
+    },
+    "GasSponsor": {
+      "proxy": "0x000000000000000000000000000000000000FEeD",
+      "implementation": "0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E",
+      "runtime_keccak256": "0x4b2e44ef33127497273c5e4dd0380a4ee61587a06e0410857a8e2c9061dfb30b"
+    },
+    "DakotaDelegationRegistry": {
+      "proxy": "0x00000000000000000000000000000000de1E6A7E",
+      "implementation": "0x56ff7f6A7b2e37f6C619910ABa775B8De3D06aB8",
+      "runtime_keccak256": "0x78d9d2e1315a38c5200b1538abb5c7b0892df18c5e44c7f10a80b7f300dab5b5"
+    }
+  },
+  "pente_group": {
+    "proxy": "0x533E526f095407490BB0089D3fc38e73484523B0",
+    "implementation": "0x15d20F07e21210B36Ec16c9da6EFA97429A10D75",
+    "factory": "0x120052f8392c4a3b88b48d82e585138B6df80376",
+    "runtime_matches": true,
+    "metadata_cid": "QmcfxYrvgPbeqYgW6ZHFQsqrwCeNNvD5RD8jRCc9Kd6oJG"
+  }
+}

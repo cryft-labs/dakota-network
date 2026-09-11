@@ -28,6 +28,15 @@ keystores and Windows CurrentUser DPAPI mechanism when EXECUTOR mode requires th
 
 ## 2. Environment and primary records
 
+Updated September 11 after Paladin acceptance: read Tools/Paladin/README.md and
+docs/paladin-acceptance-20260911.{md,json}, plus the separate
+outputs/paladin-live-20260911/transactions.json. The CodeManager implementation is
+now 0xBf67E1c518BF9ab50d84a754a5d1397B4a39f424. Five private redemptions, native
+public sponsorship, strict rollback/retry and service recovery have passed.
+Earlier public-genesis addresses below are historical deployment records.
+Do not replay the private application's completed stages. Recovery secrets must
+stay on Paladin-01 per the owner's explicit instruction; do not export them.
+
 Workspace: C:\Users\ChadS\Documents\Codex\2026-09-08\a
 Network checkout: work/source/dakota-network
 GitHub: https://github.com/cryft-labs/dakota-network
@@ -268,7 +277,8 @@ units. Update the existing technical manual and one-shot deployment prompt with
 actual state, addresses, source commits, tests, recovery steps and remaining work.
 Moment.cards is the initial client application; Kota Router is the primary service
 API, and the widget is an optional UI. Public genesis acceptance does not mean
-those applications, Paladin private flows or production handover are complete.
+those applications or production handover are complete. Paladin private flows have
+their own completed direct-chain development acceptance, linked above.
 
 ## 8. Deliverables
 

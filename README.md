@@ -33,8 +33,13 @@ sponsorship checks. All 100 submitted receipts were reconfirmed, and nested call
 are indexed by the Nebula explorer. Metadata/source CIDs were read back from
 Backend-01's IPFS pins and private gateway. See [live acceptance](docs/live-genesis-acceptance-20260911.md)
 and [the observer/handoff prompt](Tools/LiveGenesis/FOLLOW_AND_HANDOFF_PROMPT.md).
-Sponsorship is paused after canary cleanup. Final admin acceptance, private Paladin
-flows, application integration and production acceptance remain outstanding.
+Paladin/Pente is also running: five private code redemptions delivered public card
+NFTs, including native EIP-7702 sponsored settlement, delivery recovery and concurrent
+redemption checks. The strict settlement upgrade prevents public rejection from
+consuming a private code. See [Paladin acceptance](docs/paladin-acceptance-20260911.md)
+and the [maintenance/funding runbook](Tools/Paladin/README.md). Sponsorship is paused
+after cleanup. Final admin acceptance, Router/application integration and production
+acceptance remain outstanding.
 
 The management address is `0x9247524040D91D5dd1521A25f2e7711d4a0fe921`.
 Bootstrap authority is temporary: final handover must remove deployment-account
@@ -48,12 +53,12 @@ roles only after the new controller has accepted and demonstrated control.
 | **solc**                 | 0.8.37  | All contracts except validator contracts                     |
 | **solc**                 | 0.8.19  | Validator contracts only (pragma `<0.8.20`)                  |
 | **EVM target**           | Osaka   | Public contracts compiled with solc 0.8.37                   |
-| **Private EVM target**   | Shanghai | Compatible target pending the Pente runtime upgrade decision |
+| **Private EVM target**   | Shanghai | Newest execution target selected by installed Pente v1.0.0; live opcode checks passed |
 | **EVM target**           | London  | Validator contracts (solc 0.8.19 maximum)                    |
 | **Paladin**              | v1.0.0  | Pente privacy domain (replaces Tessera)                      |
 | **Native sponsorship**   | 1.0.0   | EIP-7702; no ERC-4337, bundler, EntryPoint, or paymaster     |
 
-> **Full installation instructions** — Besu setup, Paladin deployment (Docker / build-from-source / k3s+Helm), genesis configuration, security notes, and documentation references — are in the **[Implementation Guide](IMPLEMENTATION.md)**.
+> **System maintenance:** the existing **[Implementation Guide](IMPLEMENTATION.md)** covers Besu, genesis, networking, services and handover; its **[Paladin runbook](Tools/Paladin/README.md)** records the deployed rootless services, funding addresses and private-state recovery procedures.
 
 ---
 
@@ -505,7 +510,7 @@ CodeManager (independent)
 
 Gift-authorized unique ID registry with an independent voter pool. All governance actions require **2/3 supermajority quorum**: `(totalVoterCount * 2 + 2) / 3`. The approved voter pool is the unique union of local and explicitly adopted external members. It uses the same snapshot, refresh, atomic recovery, and last-voter protections as the validator registry. Membership ballots can finish while other ballots are pending; approval invalidates the other pending ballots.
 
-Also serves as the public mirror and Pente router. Authorized privacy groups call `recordRedemption`, which resolves the UID to its gift contract, marks the UID terminally redeemed, and forwards to the gift contract with bounded gas and return data. Application rejections and gift delivery failures are recorded in events; accepted redemptions retain their committed recipient for permissionless retry. Authorization, reentrancy and resource checks may still revert; test the complete private/public transition path. Active/inactive state is mirrored publicly from the private contract using sparse per-UID overrides over a default active state.
+Also serves as the public mirror and Pente router. Private code consumption uses `recordRedemptionStrict`, which reverts rejected public preconditions so the enclosing Pente transition leaves its private code unspent. The legacy `recordRedemption` ABI remains best-effort. Accepted redemptions mark the UID terminally redeemed and record its recipient before bounded gift delivery; delivery failure supports permissionless retry to that same recipient. Active/inactive state is mirrored publicly with sparse overrides. The strict implementation is 24,784 bytes, within this chain’s existing 32,768-byte limit, with unchanged storage layout.
 
 #### Governance Actions (all require voter supermajority)
 
@@ -527,7 +532,8 @@ Also serves as the public mirror and Pente router. Authorized privacy groups cal
 
 | Function                                          | Description                                                                                                                                                                                                          |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `recordRedemption(uniqueId, redeemer)`            | Resolves UID → gift contract, marks REDEEMED, calls `IRedeemable.recordRedemption()` with bounded delivery and a committed-recipient retry record. Inspect application and delivery status separately. |
+| `recordRedemptionStrict(uniqueId, redeemer)` | Private/public atomic boundary: reverts public precondition rejection; accepted delivery failures retain the recipient for retry. |
+| `recordRedemption(uniqueId, redeemer)`            | Legacy best-effort boundary. Resolves UID → gift contract, marks REDEEMED, calls `IRedeemable.recordRedemption()` with bounded delivery and a committed-recipient retry record. Inspect application and delivery status separately. |
 | `setUniqueIdActiveBatch(uniqueIds, activeStates)` | Mirrors sparse UID active-state changes from an authorized privacy group. Redeemed UIDs are rejected and left terminal.                                                                                              |
 
 #### Registration (gift-authorized)
@@ -575,7 +581,9 @@ Admin transfer is proposed, accepted by the recipient, or cancelled. Rotate the
 service/forwarder and audit per-UID managers during handover. Batch operations are
 bounded to 100 entries. PIN/hash reservations within a batch prevent duplicate
 allocation; canonical identifiers prevent ambiguous registration/redemption routes.
-Public delivery retries retain the original committed redemption recipient.
+The current implementation emits `recordRedemptionStrict` so public rejection cannot
+silently consume a private code. Public delivery retries retain the original committed
+recipient. See the live [upgrade and lifecycle evidence](docs/paladin-acceptance-20260911.md).
 
 ### PrivateMetaTxRelay (legacy fallback, disabled)
 
@@ -983,7 +991,9 @@ dakota-network/
 
 ## License
 
-All project-owned smart contracts and tools are licensed under the **Apache License, Version 2.0**.
+Project-owned contracts and tools generally use the **Apache License, Version 2.0**.
+The new `Contracts/Paladin/ManagedProxyAdmin.sol` and `DeliveryFailureProbe.sol`
+declare **MIT**; preserve each source file's actual SPDX notice and deployed metadata.
 
 This software is part of a patented system. See the [LICENSE](LICENSE) file for the full license text and patent notice, and <https://cryftlabs.org/licenses> for additional details.
 

@@ -1,0 +1,92 @@
+{
+  "chain_id": 112311,
+  "genesis_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+  "checked_at": "2026-09-11T07:01:38.099798+00:00",
+  "block": 362,
+  "fixed": {
+    "ValidatorSmartContractAllowList": "0x0000000000000000000000000000000000001111",
+    "ProxyAdmin": "0x0000000000000000000000000000000000FacAdE",
+    "GasManager": "0x000000000000000000000000000000000000cafE",
+    "CodeManager": "0x000000000000000000000000000000000000c0DE",
+    "GasSponsor": "0x000000000000000000000000000000000000FEeD",
+    "DakotaDelegationRegistry": "0x00000000000000000000000000000000de1E6A7E",
+    "ReservedAgentRegistry": "0x000000000000000000000000000000000000Face"
+  },
+  "active_core_implementations": {
+    "GasManager": {
+      "proxy": "0x000000000000000000000000000000000000cafE",
+      "implementation": "0x2537E8005d9f5f3eC0e843A878fb53F658FA00f3",
+      "runtime_keccak256": "0x78790a488f04674251071356bf9506fbe72501df774f6fb61827049296a19858"
+    },
+    "CodeManager": {
+      "proxy": "0x000000000000000000000000000000000000c0DE",
+      "implementation": "0xBf67E1c518BF9ab50d84a754a5d1397B4a39f424",
+      "runtime_keccak256": "0x4a52729b4f01d95feabc6522e1f78bc7be44112662002bfe0181d2e2beb24dba"
+    },
+    "GasSponsor": {
+      "proxy": "0x000000000000000000000000000000000000FEeD",
+      "implementation": "0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E",
+      "runtime_keccak256": "0x4b2e44ef33127497273c5e4dd0380a4ee61587a06e0410857a8e2c9061dfb30b"
+    },
+    "DakotaDelegationRegistry": {
+      "proxy": "0x00000000000000000000000000000000de1E6A7E",
+      "implementation": "0x56ff7f6A7b2e37f6C619910ABa775B8De3D06aB8",
+      "runtime_keccak256": "0x78d9d2e1315a38c5200b1538abb5c7b0892df18c5e44c7f10a80b7f300dab5b5"
+    }
+  },
+  "public_application_addresses": {
+    "PenteFactory": "0x9E2ab1B3A9dB5308BEc62b14C64822157F41b5fb",
+    "PenteFactoryProxy": "0x120052f8392c4a3b88b48d82e585138B6df80376",
+    "CryftGreetingCards": "0xf4DD94337a44E474bbAB986b095702f90367baD5",
+    "CardProxyAdmin": "0x3571242a64Ac7166b36aAD18a1407853cCe52f71",
+    "CardProxy": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+    "CodeManagerStrict": "0xBf67E1c518BF9ab50d84a754a5d1397B4a39f424"
+  },
+  "pente_group": {
+    "proxy": "0x533E526f095407490BB0089D3fc38e73484523B0",
+    "implementation": "0x15d20F07e21210B36Ec16c9da6EFA97429A10D75",
+    "factory": "0x120052f8392c4a3b88b48d82e585138B6df80376",
+    "runtime_matches": true,
+    "metadata_cid": "QmcfxYrvgPbeqYgW6ZHFQsqrwCeNNvD5RD8jRCc9Kd6oJG"
+  },
+  "private_group_id": "0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79",
+  "private_application": {
+    "proxy": "0x7a3eacca11e28712ed6e0dfc464795b2a0c2a342",
+    "implementation": "0x477d914a7eaa6bf2c97601989d02a36cc2422734",
+    "proxy_admin": "0x4a35f4517ad2e26b332854b1eb94a67092968400",
+    "admin": "0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125",
+    "authorized": "0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125",
+    "trusted_forwarder": "0x0000000000000000000000000000000000000000"
+  },
+  "wallets": {
+    "paladin_public_settlement": {
+      "address": "0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549",
+      "balance_wei": "24371939000000000",
+      "balance_kota": "0.024371939"
+    },
+    "deployer_and_test_relayer": {
+      "address": "0x633309d1155fD658a717e4f5E4FA853615400867",
+      "balance_wei": "909362996000000000",
+      "balance_kota": "0.909362996"
+    },
+    "delegated_test_recipient": {
+      "address": "0x991acc255761dEE0421Ccd3F436788C24425122E",
+      "balance_wei": "997995562000000000",
+      "balance_kota": "0.997995562"
+    },
+    "final_management": {
+      "address": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+      "balance_wei": "32000000000000000000",
+      "balance_kota": "32"
+    },
+    "private_operator_no_gas_needed": {
+      "address": "0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125",
+      "balance_wei": "0",
+      "balance_kota": "0"
+    }
+  },
+  "historical_genesis_deployment_manifest": "live-genesis-addresses-20260911.json",
+  "current_acceptance": "paladin-acceptance-20260911.json",
+  "handover_complete": false,
+  "production_approved": false
+}

@@ -5,8 +5,16 @@
 This deployment is authorized for the existing development chain 112311, genesis
 `0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8`.
 It neither replaces genesis nor changes the four live validator identities.
-The implementation artifacts in `artifact-lock.json` reproduce from current source
-and match the September 11 IPFS publication. Do not use older compiler output.
+The implementation artifacts in `artifact-lock.json` preserve the initial September
+11 build and IPFS publication. CodeManager was subsequently upgraded during Paladin
+acceptance; current source does not reproduce its original artifact. Replay its
+exact Standard JSON for historical verification. The current address inventory is
+`docs/current-contract-addresses.json`; read `Tools/Paladin/README.md` and use its
+audit for the current strict implementation and private application. The original
+`verify_chain.py` checks the original implementation links and will reject the
+later CodeManager target; that mismatch requires the documented upgrade record,
+not reverting the live proxy. Do not rerun initialization or validation stages as
+routine maintenance. Never replace the historical artifact lock or journal.
 
 Run with Python, web3, eth-account, Windows DPAPI access to the existing project
 keystores, and the Nebula Nginx RPC at `100.111.69.1:8547`. Supply the workspace

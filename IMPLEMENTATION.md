@@ -98,8 +98,10 @@ Install persistent systemd units with explicit User/Group, WorkingDirectory,
 ExecStart, restart/backoff, resource limits and required network/storage dependencies.
 Enable units only after configuration validation. Containers also require pinned
 digests, nonroot runtime identity, writable-data mounts and supervised persistence.
-Rootless Podman preparation on Paladin-01 is not a running network. The isolated
-`Tools/RuntimeReview` harness is a test tool and must not conflict with final services.
+Paladin and its PostgreSQL database now run persistently as `cryft-paladin` with
+rootless Podman. See chapter 8 and `Tools/Paladin/README.md` for exact units, paths
+and budgets. The isolated `Tools/RuntimeReview` harness remains disabled and must
+not conflict with the deployed services.
 
 Nginx listens on unprivileged ports as its own runtime user. Validate syntax before
 reload. Configure request-body limits, per-IP/per-principal rates, connection caps,
@@ -135,7 +137,10 @@ were verified. See [explorer acceptance](docs/explorer-nebula-acceptance.json) a
 [the runbook](Tools/Explorer/README.md). Genesis allocation import, self-hosted
 contract verification and wallet-write/account UI configuration remain pending.
 
-Paladin privacy service and Kota application deployment are still pending.
+Paladin/Pente deployment and direct private-code-to-public-NFT acceptance are
+complete for the development group. Five NFTs were delivered, native public gas
+sponsorship passed and database/Paladin restart preserved state. Kota application
+deployment and Router adapter integration are still pending.
 Full reboot/restore/load acceptance, public SSH/root-login lockdown,
 Cloudflare tunnels and final ownership handover are not completed. The owner has
 temporarily broadened Defined Networking rules for development; production must
@@ -146,7 +151,7 @@ network checks do not constitute production approval.
 
 The existing archive defines chain ID 112311, 64,000,000 block gas, 32,768-byte
 contract limit, the fork schedule, QBFT timing and system addresses. Preserve it.
-The reviewed archive enables BPO1–BPO5 at timestamp 0 with Osaka execution rules.
+The reviewed archive enables BPO1â€“BPO5 at timestamp 0 with Osaka execution rules.
 It preserves the inherited blob target/max of 6/9; no new blob capacity is implied.
 Amsterdam is unfinalized in Besu 26.8.1 and remains disabled. See the existing
 README's milestone review for pinned source evidence and compatibility limits.
@@ -213,8 +218,8 @@ acceptance; it has not accepted, and final ownership handover is not complete.
 
 Face remains an unlinked reserved agent-registry proxy because an approved
 implementation is unavailable. The development canary is not a production gift
-or account-registration service. Paladin private execution and Router integration
-remain separate acceptance work. The retained validator initializer exception in
+or account-registration service. Paladin private execution has a separate completed
+development acceptance record; Router integration remains unfinished. The retained validator initializer exception in
 GOVERNANCE.md must be revisited before any external-only voter configuration.
 
 Reserved proxies initially have zero implementation and unset initialization.
@@ -237,20 +242,58 @@ governance choice. Canonical UIDs and bounded batches prevent aliasing and resou
 abuse. Redemption delivery records a recipient and supports retry to that same
 recipient. The API must inspect delivery state and cannot replace it with a client flag.
 
-## 8. Paladin and private delegation acceptance
+## 8. Paladin operation, funding and private settlement
 
-Use the pinned latest stable Paladin v1.0.0 image in `Tools/RuntimeReview/runtime-lock.json`.
-Record both tag source and image commit label. Test actual private EIP-7702 processing,
-private code designation/execution, ordinary private DELEGATECALL, and prepared
-transition approval/delegated public settlement separately. Track the public payer,
-gas reimbursement, private state and public side effects in one lifecycle record.
+The deployed single-member Pente group runs on Paladin-01 (`100.111.32.201`) with
+Paladin v1.0.0, PostgreSQL 17.11 and the existing connected Besu. The enabled units
+`cryft-paladin` and `cryft-paladin-db` run as the non-login `cryft-paladin` user;
+Nginx runs as `cryft-proxy`. Raw RPC, database and metrics bind loopback. The
+privileged signing endpoint `http://100.111.32.201:8550/` permits only the admin
+workstation, Backend-01 and loopback through Nginx. It is not a browser API.
 
-Use the latest target actually proven supported. Stock source selects Shanghai as
-its newest private target; a public Osaka chain does not by itself prove private
-Osaka/7702. Test the requested newer path against the actual binary. MetaTx remains
-disabled unless those results establish that it is needed; the legacy relay is not
-automatically a production-safe fallback. Use durable PostgreSQL for final Paladin
-state and back up its keys, domain/group definitions, schemas and state together.
+The [Paladin maintenance runbook](Tools/Paladin/README.md) is part of this manual.
+It includes exact service units, ports, images, data/secret paths, contract addresses,
+funding, receipt reconciliation, restart, recovery, IPFS, upgrade and handover steps.
+Read the [acceptance evidence](docs/paladin-acceptance-20260911.md) and
+[dated funding snapshot](docs/paladin-funding-20260911.json) before changes.
+
+| Funding role | Address | Rule |
+|---|---|---|
+| Automatic Paladin public settlement | `0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549` | Fund native KOTA on chain 112311; 0.024371939 KOTA at block 362 |
+| Deployment/development public relayer | `0x633309d1155fD658a717e4f5E4FA853615400867` | Needs native transaction-fee reserve even when later reimbursed |
+| Private operator | `0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125` | Private execution does not require native balance |
+| GasSponsor tenant | Card `0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410` | Deposit through FEeD ledger methods; separate from wallet funding |
+
+Use `Tools/Paladin/funding.py` for a fresh read-only balance snapshot. The runbook
+explains direct transfers and GasManager proposal/vote/execute funding. A suggested
+development settlement reserve alerts below 0.01 KOTA and refills toward 0.03;
+neither alert nor refill is automated. Registration currently costs 0.001 KOTA per UID.
+
+Current private Combo proxy: `0x7a3eacca11e28712ed6e0dfc464795b2a0c2a342`.
+Public group: `0x533E526f095407490BB0089D3fc38e73484523B0`.
+Private group ID: `0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79`.
+The public CodeManager and private Combo were upgraded without storage changes to
+use `recordRedemptionStrict`: rejected public preconditions roll back the private
+spend, while accepted redemptions with failed delivery retain the recipient for retry.
+Five private redemptions delivered five public card NFTs. A public-only freeze and
+retry of the exact same prepared transition proved the rejection recovery path.
+
+Private contracts use Solidity 0.8.37/Shanghai, the installed interpreter's newest
+supported execution target. Public contracts use Osaka; the validator remains London.
+Private PUSH0 passed and MCOPY failed, while Besu accepted both. Ordinary private
+proxy DELEGATECALL and native **public** EIP-7702 sponsorship of prepared Pente
+settlement passed. Private EIP-7702 authorization processing is not established.
+MetaTx and the trusted forwarder remain disabled. Sponsorship was paused and all
+temporary sponsor funding/roles were cleaned up after acceptance.
+
+A controlled PostgreSQL/Paladin restart preserved the same identities, group,
+private roles, implementations and NFT ownership. An actual host reboot, independent
+restore and multiparty/load acceptance remain separate work. **The owner instructed
+that recovery secrets stay on Paladin-01; no off-server Paladin secret copy was made.**
+Do not export its signing seed or database credentials without a new explicit decision.
+The full recovery plan must preserve the seed, database and group/runtime configuration
+together. Public admin possession is not automatically private signing access;
+private identity and public/private ownership handover remain to be completed.
 
 ## 9. Explorer before application testing
 
@@ -311,7 +354,11 @@ checked against Backend-01 recursive pins, API readback and private gateway read
 The core 90-artifact bundle remains
 `QmSuawtJhsHhAJNS2VtPx4UHTEPvQgDbJD7vKmkV7smMaf`; the development fixture has its
 own metadata CID. `Tools/LiveGenesis/verify_ipfs.py` records per-address CIDs and
-source hashes. Explorer source-verification status is a separate pending capability.
+source hashes. The additional Paladin/application artifacts are tracked separately
+in `docs/paladin-acceptance-20260911.json`: ten builds, 88 compiler objects, and two
+preserved NFT metadata directories. Deployed public runtime bytes and private code
+hashes match those pinned artifacts. Explorer source-verification status remains a
+separate pending capability.
 
 The compiler automatically publishes when configured, verifies metadata/source CIDs
 against embedded bytecode references, pins each object, reads back bytes, and records
