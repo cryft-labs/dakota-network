@@ -109,7 +109,7 @@ WantedBy=multi-user.target
     write(Path('/etc/cryft/nginx/conf.d/paladin.conf'),(release/'Tools/Paladin/nginx.conf').read_text(),proxy.pw_gid,0o640)
     run('runuser','-u','cryft-proxy','--','/usr/sbin/nginx','-t','-c','/etc/cryft/nginx/nginx.conf'); run('systemctl','reload','cryft-nginx')
     service('cryft-paladin',['--network=host','--userns=keep-id:uid=1001,gid=1001','--user=1001:1001','--read-only',
-          '--tmpfs','/tmp:rw,size=256m,mode=1777','--tmpfs','/app/jna:rw,exec,size=256m,uid=1001,gid=1001,mode=0700',
+          '--tmpfs','/tmp:rw,size=256m,mode=1777','--tmpfs','/app/jna:rw,exec,size=256m,mode=1777',
           '--volume',f'{CONFIG}:/config:ro','--env','JAVA_TOOL_OPTIONS=-Xms256m -Xmx2g',PALADIN,'/config/paladin.json'],'4G',300,'cryft-paladin-db.service cryft-besu.service cryft-nginx.service')
     run('systemctl','daemon-reload'); run('systemctl','enable','cryft-paladin'); run('systemctl','restart','cryft-paladin')
     receipt={'source_commit':a.commit,'factory':a.factory,'from_block':cfg['blockIndexer']['fromBlock'],'paladin_image':PALADIN,'postgres_image':POSTGRES,
