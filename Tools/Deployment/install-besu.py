@@ -121,13 +121,16 @@ def main():
         atomic(key_path,key+'\n',0o640,user.pw_gid,preserve=True)
     os.chmod(key_path,0o640)
     os.chown(key_path,0,user.pw_gid)
-    address_file = ETC/'node-address.txt'
-    if not address_file.exists():
-        run(str(RUNTIME/'bin/besu'),'--node-private-key-file='+str(key_path),'public-key','export-address','--to='+str(address_file),env=java_env)
-    node_address = address_file.read_text().strip()
-    assert re.fullmatch(r'0x[0-9a-fA-F]{40}',node_address)
+    # This subcommand defines its own key option; a parent-level option is not
+    # inherited. Always derive afresh from the actual protected node key.
+    exported = subprocess.check_output([str(RUNTIME/'bin/besu'),'public-key','export-address',
+        '--node-private-key-file='+str(key_path)],env=java_env,text=True)
+    derived = [line.strip() for line in exported.splitlines() if re.fullmatch(r'0x[0-9a-fA-F]{40}',line.strip())]
+    assert len(derived) == 1, 'Expected one derived node address'
+    node_address = derived[0]
     if validator:
         assert node_address.lower() == expected['address'].lower(), 'Validator key must match the genesis identity'
+    atomic(ETC/'node-address.txt',node_address+'\n',0o644)
 
     static = [p['enode'] for p in peers if p['name'] != host['name']]
     atomic(ETC/'static-nodes.json',json.dumps(static,indent=2)+'\n',0o640,user.pw_gid,preserve=True)
