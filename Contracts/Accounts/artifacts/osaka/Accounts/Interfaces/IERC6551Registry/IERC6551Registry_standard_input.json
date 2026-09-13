@@ -1,0 +1,31 @@
+{
+  "language": "Solidity",
+  "settings": {
+    "evmVersion": "osaka",
+    "libraries": {},
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "source/Accounts/Interfaces/IERC6551Registry.sol": {
+        "IERC6551Registry": [
+          "abi",
+          "metadata",
+          "storageLayout",
+          "evm.bytecode",
+          "evm.deployedBytecode"
+        ]
+      }
+    },
+    "remappings": []
+  },
+  "sources": {
+    "source/Accounts/Interfaces/IERC6551Registry.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\n/// @dev ERC-6551 v0.3.1 registry interface.\ninterface IERC6551Registry {\n    /**\n     * @dev The registry MUST emit the ERC6551AccountCreated event upon successful account creation.\n     */\n    event ERC6551AccountCreated(\n        address account,\n        address indexed implementation,\n        bytes32 salt,\n        uint256 chainId,\n        address indexed tokenContract,\n        uint256 indexed tokenId\n    );\n\n    /**\n     * @dev The registry MUST revert with AccountCreationFailed error if the create2 operation fails.\n     */\n    error AccountCreationFailed();\n\n    /**\n     * @dev Creates a token bound account for a non-fungible token.\n     *\n     * If account has already been created, returns the account address without calling create2.\n     *\n     * Emits ERC6551AccountCreated event.\n     *\n     * @return account The address of the token bound account\n     */\n    function createAccount(\n        address implementation,\n        bytes32 salt,\n        uint256 chainId,\n        address tokenContract,\n        uint256 tokenId\n    ) external returns (address account);\n\n    /**\n     * @dev Returns the computed token bound account address for a non-fungible token.\n     *\n     * @return account The address of the token bound account\n     */\n    function account(\n        address implementation,\n        bytes32 salt,\n        uint256 chainId,\n        address tokenContract,\n        uint256 tokenId\n    ) external view returns (address account);\n}\n"
+    }
+  }
+}

@@ -1,0 +1,173 @@
+{
+  "runtime_bytecode": "",
+  "creation_bytecode": "",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "AccountCreationFailed",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "implementation",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "salt",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "chainId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "tokenContract",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "ERC6551AccountCreated",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "implementation",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "salt",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "chainId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "tokenContract",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "account",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "implementation",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "salt",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "chainId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "tokenContract",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "createAccount",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "opcodes": "",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.37+commit.f401782d\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"AccountCreationFailed\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"salt\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"chainId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"tokenContract\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC6551AccountCreated\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"salt\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"chainId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"tokenContract\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"account\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"salt\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"chainId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"tokenContract\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"createAccount\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"ERC-6551 v0.3.1 registry interface.\",\"errors\":{\"AccountCreationFailed()\":[{\"details\":\"The registry MUST revert with AccountCreationFailed error if the create2 operation fails.\"}]},\"events\":{\"ERC6551AccountCreated(address,address,bytes32,uint256,address,uint256)\":{\"details\":\"The registry MUST emit the ERC6551AccountCreated event upon successful account creation.\"}},\"kind\":\"dev\",\"methods\":{\"account(address,bytes32,uint256,address,uint256)\":{\"details\":\"Returns the computed token bound account address for a non-fungible token.\",\"returns\":{\"account\":\"The address of the token bound account\"}},\"createAccount(address,bytes32,uint256,address,uint256)\":{\"details\":\"Creates a token bound account for a non-fungible token. If account has already been created, returns the account address without calling create2. Emits ERC6551AccountCreated event.\",\"returns\":{\"account\":\"The address of the token bound account\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"source/Accounts/Interfaces/IERC6551Registry.sol\":\"IERC6551Registry\"},\"evmVersion\":\"osaka\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"source/Accounts/Interfaces/IERC6551Registry.sol\":{\"keccak256\":\"0x5769a82a98a7c02e7aefeacefda30933a74192eb4675edf57f2f6941c0476516\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://94124a79ebd876398e1babc6e16c116b430a823590361fd2964d6e1ecc70c3f3\",\"dweb:/ipfs/QmQTMeiHqHotCYtKRtrWipS2YAdanMEWUgUVpKoXzCX96W\"]}},\"version\":1}",
+  "runtime_size_bytes": 0,
+  "creation_size_bytes": 0,
+  "source_rel_path": "Accounts/Interfaces/IERC6551Registry.sol",
+  "fully_qualified_name": "source/Accounts/Interfaces/IERC6551Registry.sol:IERC6551Registry",
+  "compiler_version": "0.8.37",
+  "evm_version": "osaka",
+  "deployable": false,
+  "standard_json_input": {
+    "language": "Solidity",
+    "sources": {
+      "source/Accounts/Interfaces/IERC6551Registry.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\n/// @dev ERC-6551 v0.3.1 registry interface.\ninterface IERC6551Registry {\n    /**\n     * @dev The registry MUST emit the ERC6551AccountCreated event upon successful account creation.\n     */\n    event ERC6551AccountCreated(\n        address account,\n        address indexed implementation,\n        bytes32 salt,\n        uint256 chainId,\n        address indexed tokenContract,\n        uint256 indexed tokenId\n    );\n\n    /**\n     * @dev The registry MUST revert with AccountCreationFailed error if the create2 operation fails.\n     */\n    error AccountCreationFailed();\n\n    /**\n     * @dev Creates a token bound account for a non-fungible token.\n     *\n     * If account has already been created, returns the account address without calling create2.\n     *\n     * Emits ERC6551AccountCreated event.\n     *\n     * @return account The address of the token bound account\n     */\n    function createAccount(\n        address implementation,\n        bytes32 salt,\n        uint256 chainId,\n        address tokenContract,\n        uint256 tokenId\n    ) external returns (address account);\n\n    /**\n     * @dev Returns the computed token bound account address for a non-fungible token.\n     *\n     * @return account The address of the token bound account\n     */\n    function account(\n        address implementation,\n        bytes32 salt,\n        uint256 chainId,\n        address tokenContract,\n        uint256 tokenId\n    ) external view returns (address account);\n}\n"
+      }
+    },
+    "settings": {
+      "evmVersion": "osaka",
+      "libraries": {},
+      "metadata": {
+        "bytecodeHash": "ipfs"
+      },
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "remappings": [],
+      "outputSelection": {
+        "source/Accounts/Interfaces/IERC6551Registry.sol": {
+          "IERC6551Registry": [
+            "abi",
+            "metadata",
+            "storageLayout",
+            "evm.bytecode",
+            "evm.deployedBytecode"
+          ]
+        }
+      }
+    }
+  },
+  "standard_input_sha256": "56e4fcbac108462509e933c119e0bf37dde27452e36c6954465aa959bb2b5edd"
+}

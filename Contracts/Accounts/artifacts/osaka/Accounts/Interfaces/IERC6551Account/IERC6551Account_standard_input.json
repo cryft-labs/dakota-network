@@ -1,0 +1,31 @@
+{
+  "language": "Solidity",
+  "settings": {
+    "evmVersion": "osaka",
+    "libraries": {},
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "source/Accounts/Interfaces/IERC6551Account.sol": {
+        "IERC6551Account": [
+          "abi",
+          "metadata",
+          "storageLayout",
+          "evm.bytecode",
+          "evm.deployedBytecode"
+        ]
+      }
+    },
+    "remappings": []
+  },
+  "sources": {
+    "source/Accounts/Interfaces/IERC6551Account.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\n/// @dev the ERC-165 identifier for this interface is `0x6faff5f1`\ninterface IERC6551Account {\n    /**\n     * @dev Allows the account to receive Ether.\n     *\n     * Accounts MUST implement a `receive` function.\n     *\n     * Accounts MAY perform arbitrary logic to restrict conditions\n     * under which Ether can be received.\n     */\n    receive() external payable;\n\n    /**\n     * @dev Returns the identifier of the non-fungible token which owns the account.\n     *\n     * The return value of this function MUST be constant - it MUST NOT change over time.\n     *\n     * @return chainId       The EIP-155 ID of the chain the token exists on\n     * @return tokenContract The contract address of the token\n     * @return tokenId       The ID of the token\n     */\n    function token()\n        external\n        view\n        returns (uint256 chainId, address tokenContract, uint256 tokenId);\n\n    /**\n     * @dev Returns a value that SHOULD be modified each time the account changes state.\n     *\n     * @return The current account state\n     */\n    function state() external view returns (uint256);\n\n    /**\n     * @dev Returns a magic value indicating whether a given signer is authorized to act on behalf\n     * of the account.\n     *\n     * MUST return the bytes4 magic value 0x523e3260 if the given signer is valid.\n     *\n     * By default, the holder of the non-fungible token the account is bound to MUST be considered\n     * a valid signer.\n     *\n     * Accounts MAY implement additional authorization logic which invalidates the holder as a\n     * signer or grants signing permissions to other non-holder accounts.\n     *\n     * @param  signer     The address to check signing authorization for\n     * @param  context    Additional data used to determine whether the signer is valid\n     * @return magicValue Magic value indicating whether the signer is valid\n     */\n    function isValidSigner(address signer, bytes calldata context)\n        external\n        view\n        returns (bytes4 magicValue);\n}\n"
+    }
+  }
+}

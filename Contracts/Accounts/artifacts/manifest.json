@@ -1,0 +1,68 @@
+[
+  {
+    "source": "Accounts/ERC6551Registry.sol",
+    "contract": "ERC6551Registry",
+    "runtime_bytes": 551,
+    "creation_bytes": 579,
+    "output": "\\\\?\\C:\\Users\\ChadS\\OneDrive\\Documents\\dakota-network\\Contracts\\Accounts\\artifacts\\osaka\\Accounts\\ERC6551Registry",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "9b5dcf88508bf75c96671c747941f709456689d497a79f8e43966b9cccfc9369"
+  },
+  {
+    "source": "Accounts/Interfaces/IERC6551Registry.sol",
+    "contract": "IERC6551Registry",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\OneDrive\\Documents\\dakota-network\\Contracts\\Accounts\\artifacts\\osaka\\Accounts\\Interfaces\\IERC6551Registry",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "56e4fcbac108462509e933c119e0bf37dde27452e36c6954465aa959bb2b5edd"
+  },
+  {
+    "source": "Accounts/Interfaces/IERC6551Account.sol",
+    "contract": "IERC6551Account",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\OneDrive\\Documents\\dakota-network\\Contracts\\Accounts\\artifacts\\osaka\\Accounts\\Interfaces\\IERC6551Account",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "ce031cc3c213e1eee01624c9fa145b2ea503ae7f5b2a10f9c12c6e94b9f9313e"
+  },
+  {
+    "source": "Accounts/Interfaces/IERC6551Executable.sol",
+    "contract": "IERC6551Executable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\OneDrive\\Documents\\dakota-network\\Contracts\\Accounts\\artifacts\\osaka\\Accounts\\Interfaces\\IERC6551Executable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "df3dfbfc8730e3c8e26ec8314a29ac4ba5b0a90760813d5481a8f901c1c3b352"
+  },
+  {
+    "source": "Accounts/MomentCardAccount.sol",
+    "contract": "IERC721Owner",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\OneDrive\\Documents\\dakota-network\\Contracts\\Accounts\\artifacts\\osaka\\Accounts\\IERC721Owner",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "74b5765f21b8c6d6d1c335c6b7d8cb83cf830b9787f5f111a1f22c97cfed4ce9"
+  },
+  {
+    "source": "Accounts/MomentCardAccount.sol",
+    "contract": "MomentCardAccount",
+    "runtime_bytes": 5092,
+    "creation_bytes": 5191,
+    "output": "\\\\?\\C:\\Users\\ChadS\\OneDrive\\Documents\\dakota-network\\Contracts\\Accounts\\artifacts\\osaka\\Accounts\\MomentCardAccount",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "c10a1f56c3bf4bd25de0798e55d7d6bd414b90e91ff2bf26d70ee12d4f661b6c"
+  }
+]

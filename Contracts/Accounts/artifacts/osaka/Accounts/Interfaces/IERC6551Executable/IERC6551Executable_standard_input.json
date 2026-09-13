@@ -1,0 +1,31 @@
+{
+  "language": "Solidity",
+  "settings": {
+    "evmVersion": "osaka",
+    "libraries": {},
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "source/Accounts/Interfaces/IERC6551Executable.sol": {
+        "IERC6551Executable": [
+          "abi",
+          "metadata",
+          "storageLayout",
+          "evm.bytecode",
+          "evm.deployedBytecode"
+        ]
+      }
+    },
+    "remappings": []
+  },
+  "sources": {
+    "source/Accounts/Interfaces/IERC6551Executable.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\n/// @dev the ERC-165 identifier for this interface is `0x51945447`\ninterface IERC6551Executable {\n    /**\n     * @dev Executes a low-level operation if the caller is a valid signer on the account.\n     *\n     * Reverts and bubbles up error if operation fails.\n     *\n     * Accounts implementing this interface MUST accept the following operation parameter values:\n     * - 0 = CALL\n     * - 1 = DELEGATECALL\n     * - 2 = CREATE\n     * - 3 = CREATE2\n     *\n     * Accounts implementing this interface MAY support additional operations or restrict a signer's\n     * ability to execute certain operations.\n     *\n     * @param to        The target address of the operation\n     * @param value     The Ether value to be sent to the target\n     * @param data      The encoded operation calldata\n     * @param operation A value indicating the type of operation to perform\n     * @return The result of the operation\n     */\n    function execute(address to, uint256 value, bytes calldata data, uint8 operation)\n        external\n        payable\n        returns (bytes memory);\n}\n"
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "runtime_bytecode": "",
+  "creation_bytecode": "",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "signer",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "context",
+          "type": "bytes"
+        }
+      ],
+      "name": "isValidSigner",
+      "outputs": [
+        {
+          "internalType": "bytes4",
+          "name": "magicValue",
+          "type": "bytes4"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "state",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "token",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "chainId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "tokenContract",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "opcodes": "",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.37+commit.f401782d\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"signer\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"context\",\"type\":\"bytes\"}],\"name\":\"isValidSigner\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"magicValue\",\"type\":\"bytes4\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"state\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"token\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"chainId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"tokenContract\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}],\"devdoc\":{\"details\":\"the ERC-165 identifier for this interface is `0x6faff5f1`\",\"kind\":\"dev\",\"methods\":{\"isValidSigner(address,bytes)\":{\"details\":\"Returns a magic value indicating whether a given signer is authorized to act on behalf of the account. MUST return the bytes4 magic value 0x523e3260 if the given signer is valid. By default, the holder of the non-fungible token the account is bound to MUST be considered a valid signer. Accounts MAY implement additional authorization logic which invalidates the holder as a signer or grants signing permissions to other non-holder accounts.\",\"params\":{\"context\":\"Additional data used to determine whether the signer is valid\",\"signer\":\"The address to check signing authorization for\"},\"returns\":{\"magicValue\":\"Magic value indicating whether the signer is valid\"}},\"state()\":{\"details\":\"Returns a value that SHOULD be modified each time the account changes state.\",\"returns\":{\"_0\":\"The current account state\"}},\"token()\":{\"details\":\"Returns the identifier of the non-fungible token which owns the account. The return value of this function MUST be constant - it MUST NOT change over time.\",\"returns\":{\"chainId\":\"      The EIP-155 ID of the chain the token exists on\",\"tokenContract\":\"The contract address of the token\",\"tokenId\":\"      The ID of the token\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"source/Accounts/Interfaces/IERC6551Account.sol\":\"IERC6551Account\"},\"evmVersion\":\"osaka\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"source/Accounts/Interfaces/IERC6551Account.sol\":{\"keccak256\":\"0xda097894cc052f451ad669c5a07a9eda3f53a948f8080714850dc68cc1040b42\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://8ca48dd1eff4f9eee3699a6800c09c4d208d103862f2a55d66286e8eb4b7771e\",\"dweb:/ipfs/QmX2KX2fmUV5rbVoJSAq6BTVVwxK1Jy169dRJN2h8UCNLz\"]}},\"version\":1}",
+  "runtime_size_bytes": 0,
+  "creation_size_bytes": 0,
+  "source_rel_path": "Accounts/Interfaces/IERC6551Account.sol",
+  "fully_qualified_name": "source/Accounts/Interfaces/IERC6551Account.sol:IERC6551Account",
+  "compiler_version": "0.8.37",
+  "evm_version": "osaka",
+  "deployable": false,
+  "standard_json_input": {
+    "language": "Solidity",
+    "sources": {
+      "source/Accounts/Interfaces/IERC6551Account.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\n/// @dev the ERC-165 identifier for this interface is `0x6faff5f1`\ninterface IERC6551Account {\n    /**\n     * @dev Allows the account to receive Ether.\n     *\n     * Accounts MUST implement a `receive` function.\n     *\n     * Accounts MAY perform arbitrary logic to restrict conditions\n     * under which Ether can be received.\n     */\n    receive() external payable;\n\n    /**\n     * @dev Returns the identifier of the non-fungible token which owns the account.\n     *\n     * The return value of this function MUST be constant - it MUST NOT change over time.\n     *\n     * @return chainId       The EIP-155 ID of the chain the token exists on\n     * @return tokenContract The contract address of the token\n     * @return tokenId       The ID of the token\n     */\n    function token()\n        external\n        view\n        returns (uint256 chainId, address tokenContract, uint256 tokenId);\n\n    /**\n     * @dev Returns a value that SHOULD be modified each time the account changes state.\n     *\n     * @return The current account state\n     */\n    function state() external view returns (uint256);\n\n    /**\n     * @dev Returns a magic value indicating whether a given signer is authorized to act on behalf\n     * of the account.\n     *\n     * MUST return the bytes4 magic value 0x523e3260 if the given signer is valid.\n     *\n     * By default, the holder of the non-fungible token the account is bound to MUST be considered\n     * a valid signer.\n     *\n     * Accounts MAY implement additional authorization logic which invalidates the holder as a\n     * signer or grants signing permissions to other non-holder accounts.\n     *\n     * @param  signer     The address to check signing authorization for\n     * @param  context    Additional data used to determine whether the signer is valid\n     * @return magicValue Magic value indicating whether the signer is valid\n     */\n    function isValidSigner(address signer, bytes calldata context)\n        external\n        view\n        returns (bytes4 magicValue);\n}\n"
+      }
+    },
+    "settings": {
+      "evmVersion": "osaka",
+      "libraries": {},
+      "metadata": {
+        "bytecodeHash": "ipfs"
+      },
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "remappings": [],
+      "outputSelection": {
+        "source/Accounts/Interfaces/IERC6551Account.sol": {
+          "IERC6551Account": [
+            "abi",
+            "metadata",
+            "storageLayout",
+            "evm.bytecode",
+            "evm.deployedBytecode"
+          ]
+        }
+      }
+    }
+  },
+  "standard_input_sha256": "ce031cc3c213e1eee01624c9fa145b2ea503ae7f5b2a10f9c12c6e94b9f9313e"
+}

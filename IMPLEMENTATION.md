@@ -536,3 +536,20 @@ owner account. Confirm launch inventory and finish the recorded owner handover
 before production. The supplied root remains the tenant operator; test wallets
 were not given tenant-owner authority. See the KotaRouter tenant service manual
 and sanitized acceptance reports for API operations, encryption and restore rules.
+
+## 18. Token-bound accounts — review only, not deployed
+
+An ERC-6551 v0.3.1 compatible registry and `MomentCardAccount` implementation are
+in `Contracts/Accounts/` for moment.cards inventories. They are not on chain
+112311. Canonical registry `0x000000006551c19487814612e58FE06813775758` and
+Nick's CREATE2 factory `0x4e59b44847b379578588920cA78FbF26c0B4956C` have no
+bytecode on this genesis. Occupying the canonical registry address requires the
+factory first, then the original v0.3.1 bytecode — the 0.8.37 Osaka review build
+cannot land there. If the factory's pre-EIP-155 transaction is rejected, accept a
+non-canonical registry after review.
+
+Application salt is `keccak256("moment.cards:tba:v1")`. Bind the first resolved
+account per card; a later implementation address is a different TBA and must not
+be switched silently. Nested CARD NFTs from the parent collection
+`0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410` are rejected. See
+`Contracts/Accounts/README.md` and `docs/current-contract-addresses.json` `tba`.

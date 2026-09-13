@@ -175,5 +175,61 @@
   "handover_scope": {
     "kota_tenants_complete": true,
     "core_network_card_private_complete": false
+  },
+  "tba": {
+    "schema": "dakota.tba.review.v1",
+    "deployed": false,
+    "chain_id": 112311,
+    "genesis_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+    "reviewed_at": "2026-09-12",
+    "standard": "ERC-6551 v0.3.1",
+    "compiler": "0.8.37",
+    "evm_version": "osaka",
+    "application_salt": {
+      "preimage": "moment.cards:tba:v1",
+      "bytes32": "0xc703e65710c369e0504d47ee2c367d054e87cfa61ca9cb41ab58cbdead0bec54"
+    },
+    "parent_card_nft": {
+      "proxy": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+      "implementation": "0xf4DD94337a44E474bbAB986b095702f90367baD5",
+      "name": "CryftGreetingCards"
+    },
+    "canonical_registry": {
+      "address": "0x000000006551c19487814612e58FE06813775758",
+      "present": false,
+      "bytecode": "none"
+    },
+    "create2_factory": {
+      "name": "Nick's factory",
+      "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+      "present": false,
+      "bytecode": "none",
+      "immutable_singleton": true
+    },
+    "review_sources": {
+      "registry": "Contracts/Accounts/ERC6551Registry.sol",
+      "account": "Contracts/Accounts/MomentCardAccount.sol",
+      "interfaces": "Contracts/Accounts/Interfaces/",
+      "deployment_template": "Contracts/Accounts/deployment/TEMPLATE.json"
+    },
+    "addresses": {
+      "registry": null,
+      "account_implementation": null
+    },
+    "runtime_keccak256": {
+      "registry": "0x9ecbe0ac39b0968049029773bbbb8023ba3f913c86420f70b43de4652c18405a",
+      "account_implementation": "0xa71e4f66ddfdfdf4a3dbdb7b6d4bd9e0f3f4ef2adbaa05ba8e58712ed70dbae1",
+      "note": "Review bytecode hashes from 0.8.37/osaka artifacts. Not deployed."
+    },
+    "required_owner_actions": [
+      "Review Contracts/Accounts; this package is not live and must not be copied as deployed addresses.",
+      "Do not reset genesis or replace existing contracts.",
+      "Canonical registry 0x000000006551c19487814612e58FE06813775758 requires Nick's CREATE2 factory 0x4e59b44847b379578588920cA78FbF26c0B4956C, which also has no bytecode.",
+      "If choosing the canonical address: fund 0x3fab184622dc19b6109349b94811493bf2a45362, broadcast the factory signed transaction, then deploy the original ERC-6551 v0.3.1 init code with salt 0x0000000000000000000000000000000000000000fd8eb4e1dca713016c518e31. The 0.8.37 Osaka review bytecode cannot occupy that address.",
+      "If the factory's pre-EIP-155 transaction is rejected, or canonical deployment is declined, deploy the reviewed ERC6551Registry and accept a non-canonical registry address after review.",
+      "Deploy MomentCardAccount from the 0.8.37 Osaka artifacts.",
+      "Record actual registry and implementation addresses, runtime keccak256, and application salt keccak256(\"moment.cards:tba:v1\").",
+      "Bind moment.cards to the first resolved account per card. A later implementation is a different TBA and must not be switched silently."
+    ]
   }
 }
