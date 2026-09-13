@@ -43,6 +43,15 @@ def main():
         user=pwd.getpwnam('cryft-proxy')
     base=Path('/etc/cryft/nginx')
     run('install','-d','-o','root','-g','cryft-proxy','-m','0750',str(base),str(base/'conf.d'))
+    # The unprivileged master cannot create or chown its spool directories. If they are
+    # first created by a root-run `nginx -t` they belong to `nobody` and the cryft-proxy
+    # workers then fail with "Permission denied" while spooling large upstream responses,
+    # which truncates explorer bundles and API pages. Create them for the runtime user.
+    cache=Path('/var/cache/cryft-nginx')
+    run('install','-d','-o','cryft-proxy','-g','cryft-proxy','-m','0750',str(cache))
+    for spool in ('client_temp','proxy_temp','fastcgi_temp','uwsgi_temp','scgi_temp'):
+        run('install','-d','-o','cryft-proxy','-g','cryft-proxy','-m','0700',str(cache/spool))
+    run('chown','-R','cryft-proxy:cryft-proxy',str(cache))
     files=release/'Tools/SolcCompiler/deploy/backend-ipfs'
     copy_once(files/'nginx.conf',base/'nginx.conf',user.pw_gid,0o640)
     copy_once(files/'cryft-nginx.service',Path('/etc/systemd/system/cryft-nginx.service'))

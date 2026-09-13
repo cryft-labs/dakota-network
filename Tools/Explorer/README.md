@@ -112,3 +112,35 @@ Kota tenant release added ten full matches, including the moment.cards beacon
 proxy and its verified implementation. Use [current status](../../docs/CURRENT_STATUS.md)
 for the separate deployment records. Revalidate an existing match before submitting
 anything; do not recreate the historical upload backlog or alter verifier flags.
+
+## Wallet connection and NFT metadata (2026-09-12)
+
+The explorer UI runs with `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` set to the platform's public
+Thirdweb client ID, which enables the fork's Thirdweb connect-wallet and contract-write
+flow (see the fork's `docs/THIRDWEB_WALLET_AND_CONTRACT_WRITING.md`). The deployed image
+already contained the Thirdweb build, so this was a runtime env change plus a frontend
+restart. Backups of the previous env and nginx files are under `/srv/backups/` on each host.
+
+NFT metadata is fetched by Blockscout through a private read-only nginx listener on
+Backend-01 (`100.111.67.1:8082`, `nginx-ipfs-gateway.conf`) in front of the local Kubo
+gateway, and media links are rewritten to the explorer's same-origin `/ipfs/` path on
+Frontend-01. Both listeners stay Nebula-only; nothing public was exposed.
+
+### Nginx spool ownership (fixed 2026-09-12)
+
+`/var/cache/cryft-nginx/*_temp` on Frontend-01 and Backend-01 were owned by `nobody`
+(created by a root-run `nginx -t`), so the `cryft-proxy` workers could not spool
+responses larger than the in-memory proxy buffers and browsers received truncated
+JavaScript bundles (`ERR_INCOMPLETE_CHUNKED_ENCODING`). Ownership was corrected on both
+hosts and `Tools/Deployment/install-nginx.py` now creates the spool directories for the
+runtime user. Apply the same `chown -R cryft-proxy:cryft-proxy /var/cache/cryft-nginx`
+on Paladin-01 during its next maintenance window.
+
+### Tenant integration hardening on the review branch
+
+The path gateway must serve uploaded HTML/SVG with a restrictive CSP sandbox,
+so an IPFS object cannot execute script as the wallet-enabled explorer origin.
+The September 12 review configuration adds this policy and nosniff to each IPFS
+location. Only successful immutable-object responses receive long cache lifetimes;
+missing pins and gateway errors use no-store. Validate Nginx before reloading.
+These additional headers are prepared source changes until rollout is recorded.

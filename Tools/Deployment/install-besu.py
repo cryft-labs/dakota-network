@@ -155,6 +155,13 @@ def main():
         'metrics-enabled':True, 'metrics-host':'127.0.0.1', 'metrics-port':9545,
         'min-gas-price':1000000000, 'revert-reason-enabled':True, 'logging':'INFO',
     }
+    if archive:
+        # Fee policy for the RPC node only: eth_maxPriorityFeePerGas returns min-priority-fee
+        # whenever recent blocks are empty, so wallet libraries propose fees that clear the
+        # validators' min-gas-price floor. Never set this on validators: there it becomes a
+        # block-selection tip floor that rejects transactions priced at exactly 1 gwei, which
+        # is how MetaMask's network suggestion and Paladin's fixed settlements are priced.
+        config['min-priority-fee'] = 1000000000
     # JSON scalar/array syntax is also valid TOML for these primitive values.
     toml = ''.join(k+'='+json.dumps(v)+'\n' for k,v in config.items())
     config_path = ETC/'config.toml'

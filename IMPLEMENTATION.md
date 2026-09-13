@@ -204,6 +204,26 @@ accounts receives 1. The deployment account is a temporary root/sole bootstrap
 voter; the supplied management root remains recognized. Handover must remove the
 temporary rights after replacement control succeeds. See `development-release.json`.
 
+### Fee policy (applied 2026-09-12)
+
+Inclusion floor: every Besu node keeps `min-gas-price=1000000000` (1 gwei effective gas
+price). Validators keep `min-priority-fee` at its default of 0; setting a tip floor there
+would reject transactions priced at exactly 1 gwei, which is how MetaMask's network
+suggestion and Paladin's fixed-price settlements are built, because the EIP-1559 base fee
+rests at 7 wei on an idle chain.
+
+Suggestion floor: the archive/RPC node on Frontend-01 sets `min-priority-fee=1000000000`.
+On a non-validator this changes no inclusion rule; it makes `eth_maxPriorityFeePerGas`
+return 1 gwei whenever recent blocks are empty, so wallet libraries that build EIP-1559
+fees from base fee plus the suggested tip clear the validators' floor. `eth_gasPrice`
+already returns 1 gwei (Besu floors it at `min-gas-price`), and the explorer's gas tracker
+reports 1 gwei. `eth_feeHistory` rewards remain zero for empty blocks in Besu 26.8.1; the
+bounding options for that endpoint are not exposed in this build.
+
+`Tools/Deployment/install-besu.py` applies the archive-only setting; the live edit is
+backed up under `/srv/backups/besu-fee-policy-*` on Frontend-01. Symptom that this fixes:
+a wallet transaction accepted by the archive pool at a few wei that never leaves pending.
+
 ## 7. Contract deployment and governance
 
 ### Live initialization and functional acceptance: 2026-09-11
@@ -491,3 +511,28 @@ the deployed registry's ID is exactly `moment.cards`. Reconcile identities,
 registration and on-chain authorization before connecting it to the widget or
 direct API clients. A public profile key and an Origin header are not credentials.
 Source promotion does not resolve these integration gaps or authorize a live cutover.
+
+## September 12 tenant API lifecycle acceptance
+
+The published KotaRouter review branch completed a service-created postcard and
+private-code redemption to development wallet
+`0x35f9a01bc437c998175E56eD78F77C808FC64c18` (public card NFT token 6).
+Delivery transaction: `0x1613fed4e6f9a3a01a030b5af446b0800a40d91c140ae5c170bdf01e456ab01c`.
+The recipient spent no native gas. API/database acceptance does not imply that
+Kota application services have already been installed on the droplets.
+
+Monitor **both** public gas accounts on Paladin-01:
+
+- `0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549`: Pente public settlement.
+- `0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125`: operator for direct public mint submissions.
+
+The operator was separately funded with 0.03 KOTA for the acceptance test. Funding
+settlement alone had left its mint pending. The original Paladin transaction ID
+was resumed after funding; a second mint was not submitted. Paladin keys remain on
+Paladin-01. Public sponsorship deposits do not replace these account balances.
+
+The test raised bounded card sale inventory from 5 to 8 with the existing card
+owner account. Confirm launch inventory and finish the recorded owner handover
+before production. The supplied root remains the tenant operator; test wallets
+were not given tenant-owner authority. See the KotaRouter tenant service manual
+and sanitized acceptance reports for API operations, encryption and restore rules.
