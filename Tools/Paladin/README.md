@@ -336,3 +336,44 @@ and widget/admin UI; final management acceptance and private identity handover;
 public Cloudflare/IPFS gateway; production SSH/network
 lockdown; full reboot/backup-restore/multiparty/load tests. This runbook documents
 working development settlement, not production approval.
+
+## Dakota dashboard maintenance update — September 12, 2026
+
+The website/router review branch `review/tenant-widget-production-20260912` adds
+`/dashboard/paladin`: verified node/indexing and gas diagnostics, all-tenant queue
+visibility, persistent pause/resume, and a read-only approved contract binding
+check. These application changes have not been rolled out. Current chain and
+Paladin addresses, pinned images, secrets policy and existing group remain intact.
+
+Only the live platform administrator can use these controls; a tenant admin grant
+does not grant Paladin administration. Pause blocks new worker claims but permits
+reconciliation of already-claimed transactions. It is not a Paladin restart or an
+emergency stop. Upgrade all workers before relying on the control; stop older
+worker services during a mixed-version rollout. Preserve database/encryption keys.
+
+Retained Next.js private editors now handle current Paladin UUID results,
+`genesisTransaction`, explicit successful deployment receipts, and compiled EVM
+matching the selected live group (currently Shanghai). They preserve known
+accepted IDs if auxiliary diagnostics fail. Public Besu Osaka does not imply
+private Osaka or private EIP-7702 authorization-list support. No group recreation,
+private contract redeployment or new node release was performed for this review.
+
+Backend-01 is the approved privileged RPC client. Production must route retained
+admin handlers through an authorized backend with their own session/Prisma needs;
+do not add raw Paladin browser access or Frontend-01 RPC permission as a shortcut.
+The new page does not supply host CPU/RAM metrics, process restarts or a shell.
+Root-wallet browser flows and the final production routing remain acceptance work.
+
+See the website repository's `docs/paladin-admin-operator-guide.md` and KotaRouter's
+`router_v4/services/platform/README.md` for endpoint contracts, funding addresses,
+tenant context, pinned source templates and current limitations. Existing runbook
+restart/backup commands remain the maintenance procedure for the actual host.
+
+The Dakota website now includes `/documentation/integration` and downloadable
+`/docs/kota-integration.md` plus `/docs/platform-openapi.json`, covering the full
+tenant/host integration contract. The incoming `Contracts/Accounts` sources are
+review material, not a deployed TBA release. KotaRouter rejects unsigned inventory
+`execute` submissions because the account requires the current parent NFT owner's
+signature. Keep the account/registry configuration disabled until deployment and
+owner-signed settlement have been reviewed and tested; current card codes must
+not deliver parent NFTs into another parent-card inventory.
