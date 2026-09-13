@@ -369,7 +369,11 @@ See the website repository's `docs/paladin-admin-operator-guide.md` and KotaRout
 tenant context, pinned source templates and current limitations. Existing runbook
 restart/backup commands remain the maintenance procedure for the actual host.
 
-The Dakota website now includes `/documentation/integration` and downloadable
+The owner authorized source promotion to `main` on September 12, 2026, retaining
+`review/tenant-widget-production-20260912` for provenance. This does not redeploy
+Paladin, publish a new application service or deploy the account contracts.
+
+The main Dakota application currently includes `/documentation/integration` and downloadable
 `/docs/kota-integration.md` plus `/docs/platform-openapi.json`, covering the full
 tenant/host integration contract. The incoming `Contracts/Accounts` sources are
 review material, not a deployed TBA release. KotaRouter rejects unsigned inventory
@@ -377,3 +381,9 @@ review material, not a deployed TBA release. KotaRouter rejects unsigned invento
 signature. Keep the account/registry configuration disabled until deployment and
 owner-signed settlement have been reviewed and tested; current card codes must
 not deliver parent NFTs into another parent-card inventory.
+
+The dedicated `docs.dakota.cards` and `dashboard.dakota.cards` applications still
+need their independent build configuration completed in the website repository.
+Current `/admin/contracts`, `/admin/paladin` and `/dashboard/paladin` routes share
+the main Dakota application. Preserve these existing tools when separating the
+dashboard; do not interpret the subdomain names as verified deployed endpoints.
