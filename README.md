@@ -1,5 +1,8 @@
 # Dakota Network
 
+> Current sponsorship policy: **open contract calls with signed vouchers and tenant spending controls**.
+> See the [reviewed restoration](Releases/OpenSponsorship/20260914/README.md). The 1.2.0 global allowlist release below is historical.
+
 Smart contracts, tools, and node configuration for the **Dakota Network** — an enterprise QBFT blockchain built on Hyperledger Besu with [Paladin](https://github.com/LFDT-Paladin/paladin) privacy, designed for permissioned environments where a fully public and decentralized network is not required.
 
 All project-owned contracts are licensed under **Apache 2.0**. This software is part of a patented system — see the [LICENSE](LICENSE) file and <https://cryftlabs.org/licenses> for details.

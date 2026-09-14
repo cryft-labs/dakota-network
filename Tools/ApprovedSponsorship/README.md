@@ -1,3 +1,6 @@
+> Historical restricted-policy release. The selected policy is now open sponsorship.
+> See [the restoration release](../../Releases/OpenSponsorship/20260914/README.md); do not rerun the old activation tool.
+
 # Public registration and fee governance
 
 The canonical public CodeManager on Dakota chain 112311 is
@@ -127,7 +130,7 @@ for activation status; source publication alone is not on-chain activation.
 
 ## Development activation — September 14, 2026
 
-The development chain now runs ApprovedGasSponsor **1.2.0**, implementation
+At block 5171, the development chain began running ApprovedGasSponsor **1.2.0**, implementation
 `0x788e77a7f7e6d1E65a9C4b19D1C36ac93E749FB0`, behind the existing FEeD proxy. The upgrade and initial
 approval table were applied atomically in block 5171. Account balances, managers,
 allowance policies, signer, pause state, fee and fee vault were verified unchanged.
