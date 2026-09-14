@@ -216,7 +216,8 @@ def publish_manifest(output_dir, manifest, client):
         if not manifest or any(row.get("error") for row in manifest):
             raise PublicationError("A complete successful compilation manifest is required")
         for row in manifest:
-            folder = Path(row["output"]).resolve()
+            folder = Path(row["output"])
+            folder = (folder if folder.is_absolute() else directory / folder).resolve()
             if os.name == "nt" and not str(folder).startswith("\\\\?\\"):
                 absolute = str(folder)
                 folder = Path("\\\\?\\UNC\\" + absolute[2:] if absolute.startswith("\\\\") else "\\\\?\\" + absolute)

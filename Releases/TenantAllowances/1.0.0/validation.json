@@ -1,0 +1,59 @@
+{
+  "baseline_commit": "3a2a67e4a5b18443c6a4873162e68d4864d997cb",
+  "contracts": {
+    "GasSponsor": {
+      "artifact_sha256": "03b38b978e4b778b7816bc1f2a0d14ef516bdf2e216b0a4b435b0382b73d4dd1",
+      "runtime_bytes": 16095,
+      "immutable_references": {}
+    },
+    "TenantAllowancePolicy": {
+      "artifact_sha256": "5c3f59d10830f180d5b5caf8a7bcad6dfc73a0ee2b047ba58e40104dc8a8910b",
+      "runtime_bytes": 5805,
+      "immutable_references": {
+        "57": [
+          {
+            "length": 32,
+            "start": 646
+          },
+          {
+            "length": 32,
+            "start": 2376
+          },
+          {
+            "length": 32,
+            "start": 2876
+          }
+        ],
+        "59": [
+          {
+            "length": 32,
+            "start": 709
+          }
+        ],
+        "61": [
+          {
+            "length": 32,
+            "start": 914
+          },
+          {
+            "length": 32,
+            "start": 1302
+          },
+          {
+            "length": 32,
+            "start": 3959
+          },
+          {
+            "length": 32,
+            "start": 3999
+          },
+          {
+            "length": 32,
+            "start": 4287
+          }
+        ]
+      }
+    }
+  },
+  "storage_append_only": true
+}

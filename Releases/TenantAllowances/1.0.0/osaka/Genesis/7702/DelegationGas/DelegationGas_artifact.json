@@ -1,0 +1,46 @@
+{
+  "runtime_bytecode": "0x730000000000000000000000000000000000000000301460806040525f5ffdfea26469706673582212202d6ae26258e960ae2ec96bbf2a29af2282cb29965eba7fbb87b9e9ed1162ae4164736f6c63430008250033",
+  "creation_bytecode": "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea26469706673582212202d6ae26258e960ae2ec96bbf2a29af2282cb29965eba7fbb87b9e9ed1162ae4164736f6c63430008250033",
+  "abi": [],
+  "opcodes": "PUSH1 0x55 PUSH1 0x32 PUSH1 0xB DUP3 DUP3 DUP3 CODECOPY DUP1 MLOAD PUSH0 BYTE PUSH1 0x73 EQ PUSH1 0x26 JUMPI PUSH4 0x4E487B71 PUSH1 0xE0 SHL PUSH0 MSTORE PUSH0 PUSH1 0x4 MSTORE PUSH1 0x24 PUSH0 REVERT JUMPDEST ADDRESS PUSH0 MSTORE PUSH1 0x73 DUP2 MSTORE8 DUP3 DUP2 RETURN INVALID PUSH20 0x0 ADDRESS EQ PUSH1 0x80 PUSH1 0x40 MSTORE PUSH0 PUSH0 REVERT INVALID LOG2 PUSH5 0x6970667358 0x22 SLT KECCAK256 0x2D PUSH11 0xE26258E960AE2EC96BBF2A 0x29 0xAF 0x22 DUP3 0xCB 0x29 SWAP7 MCOPY 0xBA PUSH32 0xBB87B9E9ED1162AE4164736F6C63430008250033000000000000000000000000 ",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.37+commit.f401782d\"},\"language\":\"Solidity\",\"output\":{\"abi\":[],\"devdoc\":{\"details\":\"Conservative bounds shared by the execution logic and sponsor. Clients should query minimumCallGas on the deployed sponsor before signing vouchers.\",\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"source/Genesis/7702/DelegationGas.sol\":\"DelegationGas\"},\"evmVersion\":\"osaka\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"source/Genesis/7702/DelegationGas.sol\":{\"keccak256\":\"0xf19e9e2154635fb29a804f5a28a917996cf71e31f2bc8f9cf426122605cf03a3\",\"license\":\"Apache-2.0\",\"urls\":[\"bzz-raw://87825e319b5123d6b12e94dfd5a4d6ec7b4ffeddf827a912d840fe5945ebe096\",\"dweb:/ipfs/QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh\"]}},\"version\":1}",
+  "runtime_size_bytes": 85,
+  "creation_size_bytes": 135,
+  "source_rel_path": "Genesis/7702/DelegationGas.sol",
+  "fully_qualified_name": "source/Genesis/7702/DelegationGas.sol:DelegationGas",
+  "compiler_version": "0.8.37",
+  "evm_version": "osaka",
+  "deployable": true,
+  "standard_json_input": {
+    "language": "Solidity",
+    "sources": {
+      "source/Genesis/7702/DelegationGas.sol": {
+        "content": "// SPDX-License-Identifier: Apache-2.0\npragma solidity >=0.8.20 <0.9.0;\n\n/// @dev Conservative bounds shared by the execution logic and sponsor. Clients\n/// should query minimumCallGas on the deployed sponsor before signing vouchers.\nlibrary DelegationGas {\n    uint256 internal constant MAX_EXECUTION_GAS = 5000000;\n    uint256 internal constant MAX_INPUT_BYTES = 65536;\n    uint256 internal constant POST_EXECUTION = 30000;\n\n    function executionReserve(uint256 budget) internal pure returns (uint256) {\n        return budget + (budget + 62) / 63 + POST_EXECUTION;\n    }\n\n    function minimumCallGas(uint256 budget, uint256 inputBytes) internal pure returns (uint256) {\n        require(budget > 0 && budget <= MAX_EXECUTION_GAS && inputBytes <= MAX_INPUT_BYTES, \"Invalid execution budget\");\n        // Reserve signature, storage, calldata hashing/copy and beacon lookup\n        // before the execution check, then account for dispatcher DELEGATECALL.\n        uint256 entry = executionReserve(budget) + 200000 + 16 * inputBytes;\n        return entry + (entry + 62) / 63 + 10000;\n    }\n}\n"
+      }
+    },
+    "settings": {
+      "evmVersion": "osaka",
+      "libraries": {},
+      "metadata": {
+        "bytecodeHash": "ipfs"
+      },
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "remappings": [],
+      "outputSelection": {
+        "source/Genesis/7702/DelegationGas.sol": {
+          "DelegationGas": [
+            "abi",
+            "metadata",
+            "storageLayout",
+            "evm.bytecode",
+            "evm.deployedBytecode"
+          ]
+        }
+      }
+    }
+  },
+  "standard_input_sha256": "1649736f8028b0a5c5840509814223a03ae07d70f413c2405489d4e4a24f75e2"
+}

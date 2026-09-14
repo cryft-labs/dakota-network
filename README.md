@@ -4,6 +4,15 @@ Smart contracts, tools, and node configuration for the **Dakota Network** — an
 
 All project-owned contracts are licensed under **Apache 2.0**. This software is part of a patented system — see the [LICENSE](LICENSE) file and <https://cryftlabs.org/licenses> for details.
 
+The [tenant allowance release](Tools/TenantAllowances/README.md) adds GasSponsor
+1.1.0 and an optional tenant-owned allowance template. It preserves existing
+storage and genesis, supports sponsored member and admin wallets, and provides
+per-operation/day rules with atomic reimbursement accounting. Reproducible
+Standard JSON inputs, metadata and validation records are under
+`Releases/TenantAllowances/1.0.0`; code compiles with Solidity 0.8.37 for Osaka.
+Validator contracts retain London. Account management and template ownership are
+separate authorities; adding sponsorship permission grants neither.
+
 > **PATENT NOTICE — U.S. Patent Application Serial No. 18/930,857**
 >
 > Portions of this software implement methods and systems described in [U.S. Patent Application Serial No. 18/930,857: *"Card System Utilizing On-Chain Managed Redeemable Gift Code"*](https://patents.google.com/patent/US20250139608A1/en), held by Cryft Labs.

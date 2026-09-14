@@ -1,0 +1,117 @@
+{
+  "runtime_bytecode": "",
+  "creation_bytecode": "",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "registryLocked",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint32",
+          "name": "tier",
+          "type": "uint32"
+        }
+      ],
+      "name": "tierActive",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "wallet",
+          "type": "address"
+        }
+      ],
+      "name": "tierOf",
+      "outputs": [
+        {
+          "internalType": "uint32",
+          "name": "",
+          "type": "uint32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "wallet",
+          "type": "address"
+        }
+      ],
+      "name": "tokenOf",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "opcodes": "",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.37+commit.f401782d\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"registryLocked\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"tier\",\"type\":\"uint32\"}],\"name\":\"tierActive\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"wallet\",\"type\":\"address\"}],\"name\":\"tierOf\",\"outputs\":[{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"wallet\",\"type\":\"address\"}],\"name\":\"tokenOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"notice\":\"Optional tier source. The tenant may instead use explicit wallet limits.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"source/Templates/TenantAllowancePolicy.sol\":\"IAllowanceMembership\"},\"evmVersion\":\"osaka\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"source/Templates/TenantAllowancePolicy.sol\":{\"keccak256\":\"0x48cc498e919b521c0b3f38d86a6507b4efde4f2e32a65874b9672ae251d32de0\",\"license\":\"Apache-2.0\",\"urls\":[\"bzz-raw://d191f56265811f0d68f071d20ba5aaccbae06110c41ef66904e8676ff2e659c0\",\"dweb:/ipfs/QmYbXsAHuL7sG6V5frHvMKngGQ1UaZNL9Wnb2yjNABsFrG\"]}},\"version\":1}",
+  "runtime_size_bytes": 0,
+  "creation_size_bytes": 0,
+  "source_rel_path": "Templates/TenantAllowancePolicy.sol",
+  "fully_qualified_name": "source/Templates/TenantAllowancePolicy.sol:IAllowanceMembership",
+  "compiler_version": "0.8.37",
+  "evm_version": "osaka",
+  "deployable": false,
+  "standard_json_input": {
+    "language": "Solidity",
+    "sources": {
+      "source/Templates/TenantAllowancePolicy.sol": {
+        "content": "// SPDX-License-Identifier: Apache-2.0\npragma solidity ^0.8.34;\n\n/// @notice Optional tier source. The tenant may instead use explicit wallet limits.\ninterface IAllowanceMembership {\n    function tokenOf(address wallet) external view returns (uint256);\n    function tierOf(address wallet) external view returns (uint32);\n    function tierActive(uint32 tier) external view returns (bool);\n    function registryLocked() external view returns (bool);\n}\n\n/// @title TenantAllowancePolicy\n/// @notice Tenant-owned spending permissions, denominated in native-token wei.\n/// @dev GasSponsor v1.1+ must bind this policy before it can enforce allowances.\n/// No deposits, withdrawals, delegatecalls, arbitrary execution or ownership renounce.\n/// Daily limits are per user; tier settings are defaults, not a shared tier pool.\ncontract TenantAllowancePolicy {\n    struct Limit { bool configured; bool enabled; uint256 perOperation; uint256 daily; }\n    struct Usage { uint256 day; uint256 spent; uint256 reserved; }\n    struct Reservation { address wallet; bytes32 credential; uint256 maximum; uint256 day; }\n\n    address public immutable gasSponsor;\n    address public immutable sponsor;\n    address public immutable membership;\n    address public owner;\n    address public pendingOwner;\n    bool public paused;\n    Limit public defaultLimit;\n    mapping(uint32 => Limit) public tierLimits;\n    mapping(address => Limit) public walletLimits;\n    mapping(address => Usage) private _walletUsage;\n    mapping(bytes32 => Usage) private _credentialUsage;\n    mapping(bytes32 => Reservation) private _reservations;\n    mapping(bytes32 => bool) public consumed;\n    uint256 public pendingReservations;\n\n    error Unauthorized();\n    error InvalidConfiguration();\n    error AllowanceUnavailable();\n    error OperationAlreadyUsed();\n    error InvalidSettlement();\n\n\n    event OwnershipProposed(address indexed owner, address indexed pendingOwner);\n    event OwnershipTransferred(address indexed previousOwner, address indexed owner);\n    event PolicyPaused(bool paused);\n    event DefaultLimitSet(bool enabled, uint256 perOperation, uint256 daily);\n    event TierLimitSet(uint32 indexed tier, bool configured, bool enabled, uint256 perOperation, uint256 daily);\n    event WalletLimitSet(address indexed wallet, bool configured, bool enabled, uint256 perOperation, uint256 daily);\n    event AllowanceReserved(bytes32 indexed operationId, address indexed wallet, bytes32 indexed credential, uint256 maximumCost, uint256 day);\n    event AllowanceCharged(bytes32 indexed operationId, address indexed wallet, bytes32 indexed credential, uint256 cost, uint256 day);\n\n    constructor(address sponsorContract, address tenantAccount, address tenantOwner, address membershipRegistry,\n        uint256 initialPerOperation, uint256 initialDaily, address[] memory initialAdminWallets) {\n        if (sponsorContract.code.length == 0 || tenantAccount == address(0) || tenantOwner == address(0)\n            || (membershipRegistry != address(0) && membershipRegistry.code.length == 0)) revert InvalidConfiguration();\n        gasSponsor = sponsorContract;\n        sponsor = tenantAccount;\n        owner = tenantOwner;\n        membership = membershipRegistry;\n        bool initiallyEnabled = initialPerOperation != 0 || initialDaily != 0;\n        defaultLimit = _limit(true, initiallyEnabled, initialPerOperation, initialDaily);\n        // The owner can be sponsored without first minting an end-user credential.\n        walletLimits[tenantOwner] = defaultLimit;\n        if (initialAdminWallets.length > 32) revert InvalidConfiguration();\n        for (uint256 i; i < initialAdminWallets.length; ++i) {\n            address wallet = initialAdminWallets[i];\n            if (wallet == address(0) || walletLimits[wallet].configured) revert InvalidConfiguration();\n            walletLimits[wallet] = defaultLimit;\n            emit WalletLimitSet(wallet, true, initiallyEnabled, initialPerOperation, initialDaily);\n        }\n        emit DefaultLimitSet(initiallyEnabled, initialPerOperation, initialDaily);\n        emit WalletLimitSet(tenantOwner, true, initiallyEnabled, initialPerOperation, initialDaily);\n        emit OwnershipTransferred(address(0), tenantOwner);\n    }\n\n    modifier onlyOwner() { if (msg.sender != owner) revert Unauthorized(); _; }\n    modifier onlySponsor() { if (msg.sender != gasSponsor) revert Unauthorized(); _; }\n\n\n    function proposeOwner(address next) external onlyOwner {\n        if (next == address(0) || next == owner) revert InvalidConfiguration();\n        pendingOwner = next; emit OwnershipProposed(owner, next);\n    }\n    function cancelOwnerTransfer() external onlyOwner {\n        pendingOwner = address(0); emit OwnershipProposed(owner, address(0));\n    }\n    function acceptOwnership() external {\n        if (msg.sender != pendingOwner) revert Unauthorized();\n        address previous = owner; owner = msg.sender; pendingOwner = address(0);\n        emit OwnershipTransferred(previous, owner);\n    }\n    function setPaused(bool value) external onlyOwner { paused = value; emit PolicyPaused(value); }\n    function setDefaultLimit(bool enabled, uint256 perOperation, uint256 daily) external onlyOwner {\n        defaultLimit = _limit(true, enabled, perOperation, daily);\n        emit DefaultLimitSet(enabled, perOperation, daily);\n    }\n    function setTierLimit(uint32 tier, bool configured, bool enabled, uint256 perOperation, uint256 daily) external onlyOwner {\n        if (membership == address(0)) revert InvalidConfiguration();\n        tierLimits[tier] = _limit(configured, enabled, perOperation, daily);\n        emit TierLimitSet(tier, configured, enabled, perOperation, daily);\n    }\n    /// @notice An explicit disabled override revokes spending even when a default allows it.\n    /// Removing the override restores tier/default rules; it never resets usage.\n    function setWalletLimit(address wallet, bool configured, bool enabled, uint256 perOperation, uint256 daily) external onlyOwner {\n        if (wallet == address(0)) revert InvalidConfiguration();\n        walletLimits[wallet] = _limit(configured, enabled, perOperation, daily);\n        emit WalletLimitSet(wallet, configured, enabled, perOperation, daily);\n    }\n    function _limit(bool configured, bool enabled, uint256 perOperation, uint256 daily) private pure returns (Limit memory) {\n        if ((!configured && (enabled || perOperation != 0 || daily != 0))\n            || (enabled && (perOperation == 0 || daily < perOperation))\n            || (!enabled && (perOperation != 0 || daily != 0))) revert InvalidConfiguration();\n        return Limit(configured, enabled, perOperation, daily);\n    }\n\n    function _resolve(address wallet) private view returns (Limit memory limit, bytes32 credential) {\n        limit = walletLimits[wallet];\n        if (membership != address(0)) {\n            // Registry outages/suspension fail closed, including for explicit admin overrides.\n            IAllowanceMembership registry = IAllowanceMembership(membership);\n            if (registry.registryLocked()) revert AllowanceUnavailable();\n            uint256 token = registry.tokenOf(wallet);\n            if (token != 0) {\n                credential = keccak256(abi.encode(membership, token));\n                uint32 tier = registry.tierOf(wallet);\n                if (tier != 0 && !registry.tierActive(tier)) revert AllowanceUnavailable();\n                if (!limit.configured) limit = tierLimits[tier];\n            } else if (!limit.configured) {\n                // Non-member admins/service wallets require an explicit allowance.\n                return (limit, bytes32(0));\n            }\n        }\n        if (!limit.configured) limit = defaultLimit;\n    }\n\n    function _remaining(Usage storage usage, uint256 daily) private view returns (uint256) {\n        uint256 used = usage.day == block.timestamp / 1 days ? usage.spent + usage.reserved : 0;\n        return used >= daily ? 0 : daily - used;\n    }\n    function allowance(address wallet) external view returns (bool enabled, uint256 perOperation, uint256 daily, uint256 available, uint256 spent, uint256 reserved, bytes32 credential) {\n        Limit memory limit;\n        (limit, credential) = _resolve(wallet);\n        enabled = limit.configured && limit.enabled && !paused;\n        perOperation = limit.perOperation; daily = limit.daily;\n        Usage storage usage = _walletUsage[wallet];\n        if (usage.day == block.timestamp / 1 days) { spent = usage.spent; reserved = usage.reserved; }\n        available = enabled ? _remaining(usage, daily) : 0;\n        if (credential != bytes32(0)) {\n            uint256 other = _remaining(_credentialUsage[credential], daily);\n            if (other < available) available = other;\n        }\n    }\n\n    function reserve(bytes32 operationId, address wallet, uint256 maximumCost) external onlySponsor returns (bytes4) {\n        if (consumed[operationId] || _reservations[operationId].wallet != address(0)) revert OperationAlreadyUsed();\n        if (operationId == bytes32(0) || wallet == address(0) || maximumCost == 0 || paused) revert AllowanceUnavailable();\n        (Limit memory limit, bytes32 credential) = _resolve(wallet);\n        if (!limit.configured || !limit.enabled || maximumCost > limit.perOperation) revert AllowanceUnavailable();\n        _reserveUsage(_walletUsage[wallet], maximumCost, limit.daily);\n        // Both counters are enforced: wallet rotation and credential re-issuance do not reset a day's spend.\n        if (credential != bytes32(0)) _reserveUsage(_credentialUsage[credential], maximumCost, limit.daily);\n        uint256 day = block.timestamp / 1 days;\n        _reservations[operationId] = Reservation(wallet, credential, maximumCost, day);\n        ++pendingReservations;\n        emit AllowanceReserved(operationId, wallet, credential, maximumCost, day);\n        return this.reserve.selector;\n    }\n    function _reserveUsage(Usage storage usage, uint256 maximum, uint256 daily) private {\n        uint256 day = block.timestamp / 1 days;\n        if (usage.day != day) { usage.day = day; usage.spent = 0; usage.reserved = 0; }\n        if (usage.spent > daily || usage.reserved > daily - usage.spent || maximum > daily - usage.spent - usage.reserved) revert AllowanceUnavailable();\n        usage.reserved += maximum;\n    }\n    function settle(bytes32 operationId, uint256 chargedCost) external onlySponsor returns (bytes4) {\n        Reservation memory reservation = _reservations[operationId];\n        if (reservation.wallet == address(0) || chargedCost > reservation.maximum || reservation.day != block.timestamp / 1 days) revert InvalidSettlement();\n        consumed[operationId] = true;\n        delete _reservations[operationId];\n        --pendingReservations;\n        _settleUsage(_walletUsage[reservation.wallet], reservation.maximum, chargedCost);\n        if (reservation.credential != bytes32(0)) _settleUsage(_credentialUsage[reservation.credential], reservation.maximum, chargedCost);\n        emit AllowanceCharged(operationId, reservation.wallet, reservation.credential, chargedCost, reservation.day);\n        return this.settle.selector;\n    }\n    function _settleUsage(Usage storage usage, uint256 maximum, uint256 charged) private {\n        usage.reserved -= maximum;\n        usage.spent += charged;\n    }\n}\n"
+      }
+    },
+    "settings": {
+      "evmVersion": "osaka",
+      "libraries": {},
+      "metadata": {
+        "bytecodeHash": "ipfs"
+      },
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "remappings": [],
+      "outputSelection": {
+        "source/Templates/TenantAllowancePolicy.sol": {
+          "IAllowanceMembership": [
+            "abi",
+            "metadata",
+            "storageLayout",
+            "evm.bytecode",
+            "evm.deployedBytecode"
+          ]
+        }
+      }
+    }
+  },
+  "standard_input_sha256": "4b9976ec214c54f30ae9ab56dbacc706dbb4a14f8d531db768c33f43a2f2e518"
+}

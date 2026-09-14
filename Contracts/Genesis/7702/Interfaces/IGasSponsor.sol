@@ -218,4 +218,13 @@ interface IGasSponsor {
 
     function implementationVersion() external pure returns (string memory);
     function depositGasCredit(address sponsor) external payable;
+
+    /// @notice Optional, tenant-bound allowance enforcement and wallet permissions.
+    function setSponsorPolicy(address sponsor, address policy) external;
+    function setWalletApprovalRequired(address sponsor, bool required) external;
+    function setSponsoredWallet(address sponsor, address wallet, uint8 permission) external;
+    function getSponsorPolicy(address sponsor) external view returns (address policy, bool approvalRequired);
+    function sponsoredWalletPermission(address sponsor, address wallet) external view returns (uint8);
+    function isWalletSponsored(address sponsor, address wallet) external view returns (bool);
+    function costOverheadGas(address sponsor) external view returns (uint256);
 }

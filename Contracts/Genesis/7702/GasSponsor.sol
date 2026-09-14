@@ -13,7 +13,7 @@ pragma solidity >=0.8.20 <0.9.0;
   \___\__,_/__/ |___/ .__/\___/_||_/__/\___/_|
                     |_|                 By: CryftCreator
 
-  Version 1.0.0 — Production Gas Sponsor  [UPGRADEABLE]
+  Version 1.1.0 — Native Gas Sponsor with tenant allowance policies [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ─────────────────────────────┐
   │                                                                    │
@@ -68,6 +68,7 @@ import "../Upgradeable/Initializable.sol";
 
 import "./Interfaces/IDakotaDelegation.sol";
 import "./Interfaces/IGasSponsor.sol";
+import "./Interfaces/ITenantAllowancePolicy.sol";
 import "./Libraries/DakotaECDSA.sol";
 
 interface IERC1271VoucherSigner {
@@ -82,7 +83,7 @@ interface IRootOverlordRegistry {
 }
 
 /// @title GasSponsor
-/// @notice Initial native EIP-7702 gas-sponsorship implementation.
+/// @notice Native EIP-7702 sponsorship with optional tenant-owned allowance enforcement.
 /// @dev All sponsor state lives under one ERC-7201 namespace. The uninitialized
 ///      genesis proxy first-links through proxy_linkLogicAdmin; later upgrades
 ///      use the fixed ProxyAdmin.
@@ -149,7 +150,22 @@ contract GasSponsor is
         mapping(address => SponsorState) sponsors;
         bytes32 approvedDelegateCodeHash;
         mapping(address => uint256) restrictedGasCredit;
+        // Append-only: existing balances, authorities and voucher nonces are preserved.
+        mapping(address => address) allowancePolicies;
+        mapping(address => bool) walletApprovalRequired;
+        mapping(address => mapping(address => uint8)) sponsoredWallets;
     }
+
+    error WalletNotSponsored(address sponsor, address wallet);
+    error InvalidAllowancePolicy();
+    struct PolicyContext { address policy; uint256 overhead; }
+    error AllowancePolicyFailed(address policy, bytes4 action);
+    event SponsorPolicyUpdated(address indexed sponsor, address indexed policy);
+    event WalletApprovalRequired(address indexed sponsor, bool required);
+    event SponsoredWalletUpdated(address indexed sponsor, address indexed wallet, uint8 permission);
+
+    uint256 private constant _POLICY_CALL_GAS = 350_000;
+    uint256 private constant _POLICY_SETTLEMENT_OVERHEAD = 150_000;
 
     bytes32 private constant _GAS_SPONSOR_STORAGE_LOCATION =
         0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100;
@@ -503,6 +519,65 @@ contract GasSponsor is
         emit Withdrawn(sponsor, recipient, amount);
     }
 
+    /// @notice Optional policy is scoped to exactly this tenant and sponsor engine.
+    /// Removing a broken policy does not call it, so its code cannot trap account management.
+    function setSponsorPolicy(address sponsor, address policy) external override onlySponsorManager(sponsor) {
+        if (policy != address(0)) {
+            if (policy.code.length == 0) revert InvalidAllowancePolicy();
+            if (ITenantAllowancePolicy(policy).gasSponsor() != address(this)
+                || ITenantAllowancePolicy(policy).sponsor() != sponsor) revert InvalidAllowancePolicy();
+        }
+        _sponsorStorage().allowancePolicies[sponsor] = policy;
+        emit SponsorPolicyUpdated(sponsor, policy);
+    }
+
+    /// @notice Explicit denies always apply. Requiring approval is opt-in for legacy accounts.
+    function setWalletApprovalRequired(address sponsor, bool required) external override onlySponsorManager(sponsor) {
+        _sponsorStorage().walletApprovalRequired[sponsor] = required;
+        emit WalletApprovalRequired(sponsor, required);
+    }
+
+    /// @param permission 0 = inherit account rules, 1 = approved, 2 = denied.
+    /// Approval only permits sponsorship: it does not grant budget or target-contract authority.
+    function setSponsoredWallet(address sponsor, address wallet, uint8 permission) external override onlySponsorManager(sponsor) {
+        if (wallet == address(0) || permission > 2) revert InvalidAllowancePolicy();
+        _sponsorStorage().sponsoredWallets[sponsor][wallet] = permission;
+        emit SponsoredWalletUpdated(sponsor, wallet, permission);
+    }
+
+    function getSponsorPolicy(address sponsor) external view override returns (address policy, bool approvalRequired) {
+        return (_sponsorStorage().allowancePolicies[sponsor], _sponsorStorage().walletApprovalRequired[sponsor]);
+    }
+    function sponsoredWalletPermission(address sponsor, address wallet) external view override returns (uint8) {
+        return _sponsorStorage().sponsoredWallets[sponsor][wallet];
+    }
+    function isWalletSponsored(address sponsor, address wallet) public view override returns (bool) {
+        GasSponsorStorage storage state = _sponsorStorage();
+        uint8 permission = state.sponsoredWallets[sponsor][wallet];
+        return wallet != address(0) && permission != 2 && (permission == 1 || !state.walletApprovalRequired[sponsor]);
+    }
+    /// @notice The documented reimbursement model includes bounded bookkeeping overhead.
+    /// This is not an exact reproduction of the full transaction receipt's gas charge.
+    function costOverheadGas(address sponsor) public view override returns (uint256) {
+        return _sponsorStorage().fixedOverheadGas
+            + (_sponsorStorage().allowancePolicies[sponsor] == address(0) ? 0 : _POLICY_SETTLEMENT_OVERHEAD);
+    }
+
+    function _callPolicy(address policy, bytes memory input, bytes4 expected) private {
+        bool ok;
+        uint256 size;
+        bytes32 response;
+        uint256 budget = _POLICY_CALL_GAS;
+        assembly ("memory-safe") {
+            let output := mload(0x40)
+            mstore(output, 0)
+            ok := call(budget, policy, 0, add(input, 32), mload(input), output, 32)
+            size := returndatasize()
+            response := mload(output)
+        }
+        if (!ok || size != 32 || bytes4(response) != expected) revert AllowancePolicyFailed(policy, expected);
+    }
+
     /// @inheritdoc IGasSponsor
     function executeSponsored(
         SponsorshipVoucher calldata voucher,
@@ -527,13 +602,19 @@ contract GasSponsor is
             voucherSignature
         );
 
+        PolicyContext memory context = PolicyContext(_sponsorStorage().allowancePolicies[voucher.sponsor], costOverheadGas(voucher.sponsor));
+        if (context.policy != address(0)) {
+            _callPolicy(context.policy, abi.encodeCall(ITenantAllowancePolicy.reserve,
+                (voucher.operationId, voucher.account, voucher.maxCost)), ITenantAllowancePolicy.reserve.selector);
+        }
+
         GasSponsorStorage storage state = _sponsorStorage();
         state.consumedOperations[voucher.operationId] = true;
 
         uint256 requiredGas =
             voucher.callGasLimit +
             (voucher.callGasLimit / 63) +
-            _POST_CALL_GAS_RESERVE;
+            _POST_CALL_GAS_RESERVE + (context.policy == address(0) ? 0 : _POLICY_CALL_GAS + 20_000);
         if (gasleft() < requiredGas) {
             revert InsufficientExecutionGas(
                 gasleft(),
@@ -553,7 +634,8 @@ contract GasSponsor is
             gasStart,
             success,
             returnDataSize,
-            boundedReturnData
+            boundedReturnData,
+            context
         );
     }
 
@@ -686,7 +768,7 @@ contract GasSponsor is
         override
         returns (string memory)
     {
-        return "1.0.0";
+        return "1.1.0";
     }
 
     receive() external payable {
@@ -769,7 +851,7 @@ contract GasSponsor is
         }
 
         uint256 expectedCostCap =
-            (voucher.callGasLimit + state.fixedOverheadGas) *
+            (voucher.callGasLimit + costOverheadGas(voucher.sponsor)) *
             voucher.maxFeePerGas;
         if (voucher.maxCost != expectedCostCap) {
             revert CostEnvelopeMismatch(
@@ -795,6 +877,10 @@ contract GasSponsor is
                 sponsorState.tenantId,
                 voucher.tenantId
             );
+        }
+
+        if (!isWalletSponsored(voucher.sponsor, voucher.account)) {
+            revert WalletNotSponsored(voucher.sponsor, voucher.account);
         }
 
         uint256 effectivePerOperation = _min(
@@ -866,10 +952,11 @@ contract GasSponsor is
         uint256 gasStart,
         bool success,
         uint256 returnDataSize,
-        bytes memory boundedReturnData
+        bytes memory boundedReturnData,
+        PolicyContext memory context
     ) private returns (uint256 reimbursement) {
         uint256 measuredGas =
-            gasStart - gasleft() + _sponsorStorage().fixedOverheadGas;
+            gasStart - gasleft() + context.overhead;
         uint256 measuredCost = measuredGas * tx.gasprice;
         bool reimbursementCapped = measuredCost > voucher.maxCost;
         reimbursement = reimbursementCapped
@@ -883,6 +970,13 @@ contract GasSponsor is
         sponsorState.balance -= reimbursement;
         sponsorState.dailySpent += reimbursement;
 
+        {
+            if (context.policy != address(0)) {
+                _callPolicy(context.policy, abi.encodeCall(ITenantAllowancePolicy.settle,
+                    (voucher.operationId, reimbursement)), ITenantAllowancePolicy.settle.selector);
+            }
+        }
+
         if (reimbursement != 0) {
             (bool sent, ) = payable(msg.sender).call{
                 value: reimbursement
@@ -890,14 +984,7 @@ contract GasSponsor is
             if (!sent) revert NativeTransferFailed();
         }
 
-        emit SponsoredOperation(
-            voucher.operationId,
-            voucher.tenantId,
-            voucher.account,
-            voucher.sponsor,
-            voucher.campaignId,
-            success
-        );
+        _emitOperation(voucher, success);
         emit RelayerReimbursed(
             voucher.operationId,
             msg.sender,
@@ -910,6 +997,11 @@ contract GasSponsor is
             returnDataSize,
             keccak256(boundedReturnData)
         );
+    }
+
+    function _emitOperation(SponsorshipVoucher calldata voucher, bool success) private {
+        emit SponsoredOperation(voucher.operationId, voucher.tenantId, voucher.account,
+            voucher.sponsor, voucher.campaignId, success);
     }
 
     function _validateExecutionEnvelope(

@@ -139,6 +139,15 @@ def test_auto_publish_real_kubo_and_idempotent_retry(kubo, artifacts):
     assert not first["public_availability_verified"]
 
 
+def test_portable_manifest_resolves_paths_from_release_root(kubo, artifacts):
+    folder, manifest = artifacts
+    for row in manifest:
+        row['output'] = Path(row['output']).relative_to(folder).as_posix()
+    receipt = publishing.publish_manifest(folder, manifest, publishing.KuboClient(kubo))
+    assert receipt['status'] == 'published'
+    assert all(row['recursive_pin_verified'] and row['read_back_verified'] for row in receipt['objects'])
+
+
 def test_metadata_cid_mismatch_fails_before_pins(kubo, artifacts):
     folder, manifest = artifacts
     artifact_path = folder / "Example/Example_artifact.json"
