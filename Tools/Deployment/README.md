@@ -76,6 +76,31 @@ not a public Cloudflare target. Record real HTTP/WS, denial and runtime UID chec
 The raw RPC ports 8545/8546 and metrics 9545 remain loopback-only. The explorer
 browser URL is a separate frontend service at Nebula port 8080.
 
+Browser wallet RPC requests also require CORS on this proxy. The review template
+permits exact HTTP origins for moment.cards, the widget and dashboard on ports
+3033, 3034 and 3035 at localhost, 127.0.0.1 and 100.111.1.4. POST responses include
+the matching origin; OPTIONS preflight returns 204. Unknown browser origins get
+403, while server clients without an Origin header continue to work. No cookies
+or credentials are required for this private RPC. WebSocket browser origins use
+the same list. Production HTTPS origins must be explicitly added before launch.
+
+The source-IP list is enforced with `geo` before any early preflight response;
+it retains the existing five allowed addresses. CORS approval does not admit a
+new Nebula peer. An external operator computer that calls this RPC directly must
+also have its exact Nebula IP approved here and in Defined Networking. Do not
+expand the source list or Windows firewall to diagnose a browser-origin error.
+The dashboard's Kota API calls use its same-origin `/api/platform` adapter, with
+the local review Router at 127.0.0.1:4251; external clients do not use that port.
+
+For verification, send OPTIONS with Origin `http://100.111.1.4:3035`, requested
+method POST and requested header Content-Type, then a read-only `eth_chainId`
+POST with the same origin. Expect 204 and 200 respectively, matching origin
+headers and chain 112311. Confirm an unapproved origin returns 403, GET returns
+405, and both POST and OPTIONS from an unapproved source return 403. Validate the
+candidate with `nginx -t` as `cryft-proxy`, save the current config, reload
+`cryft-nginx.service` gracefully and verify its active state. Keep the previous
+config for rollback; do not restart Besu or alter genesis for a CORS change.
+
 `install-ipfs.py --commit <full-review-commit>` installs and starts Backend-01's
 SHA-pinned Kubo service under `cryft-ipfs`, preserving the node identity and actual
 peer list. It uses the reviewed IPFS configuration/service templates and does not
