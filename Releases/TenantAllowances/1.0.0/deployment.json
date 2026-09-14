@@ -1,0 +1,154 @@
+{
+  "checked_at": "2026-09-14T04:07:00.234492+00:00",
+  "chain_id": 112311,
+  "tenant": "moment.cards",
+  "source_commit": "cf288eef3823a32a6d64719fd9a4899984515f89",
+  "gas_sponsor_proxy": "0x000000000000000000000000000000000000FEeD",
+  "deployments": {
+    "GasSponsor": {
+      "address": "0x83AaF0a9d4FE1748e1fCFFd5a3adfd60a16E86dF",
+      "constructor_args": [],
+      "runtime_keccak256": "0x3317b05f5e2f76f8a1ac850565cda3b143440cc64771d7139af92e23d0848af7",
+      "artifact_sha256": "03b38b978e4b778b7816bc1f2a0d14ef516bdf2e216b0a4b435b0382b73d4dd1"
+    },
+    "TenantAllowancePolicy": {
+      "address": "0x1D205B1d531422f615101FE93622D65AB54943D2",
+      "constructor_args": [
+        "0x000000000000000000000000000000000000FEeD",
+        "0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340",
+        "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+        "0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340",
+        5000000000000000,
+        10000000000000000,
+        [
+          "0xB2a458984b9dbaD55F1c70B59c22d7A1Fe931fd9"
+        ]
+      ],
+      "runtime_keccak256": "0xab69e25a08b2977aa6ea2043bdf347ab25c7f469c683790311bc9dbbdb26546f",
+      "artifact_sha256": "5c3f59d10830f180d5b5caf8a7bcad6dfc73a0ee2b047ba58e40104dc8a8910b"
+    }
+  },
+  "policy_owner": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+  "account": {
+    "tenant_hash": "0x35a5cca9e94621f672df42883f97f9c00e052e14cef6b9ff4937fcdd643a9d87",
+    "manager": "0xb2a458984b9dbad55f1c70b59c22d7a1fe931fd9",
+    "balance_wei": "298231838000000000",
+    "platform_per_operation_wei": "5000000000000000",
+    "tenant_per_operation_wei": "5000000000000000",
+    "effective_per_operation_wei": "5000000000000000",
+    "platform_daily_wei": "100000000000000000",
+    "tenant_daily_wei": "100000000000000000",
+    "effective_daily_wei": "100000000000000000",
+    "spent_today_wei": "1239474000000000",
+    "platform_enabled": true,
+    "tenant_enabled": true,
+    "refundable_wei": "0",
+    "gas_credit_wei": "298231838000000000",
+    "daily_remaining_wei": "98760526000000000",
+    "available_today_wei": "98760526000000000",
+    "configured": true,
+    "sponsor_address": "0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340",
+    "funding_contract": "0x000000000000000000000000000000000000FEeD",
+    "chain_id": 112311,
+    "block_number": 4312,
+    "global_paused": false,
+    "platform_admin": "0x9247524040d91d5dd1521a25f2e7711d4a0fe921",
+    "tenant_id": "moment.cards",
+    "expected_tenant_hash": "0x35a5cca9e94621f672df42883f97f9c00e052e14cef6b9ff4937fcdd643a9d87",
+    "operator": "0x9247524040d91d5dd1521a25f2e7711d4a0fe921",
+    "manager_matches_operator": false,
+    "account_enabled": true,
+    "funding_model": "contract_ledger",
+    "direct_transfer_supported": false,
+    "tenant_withdrawals": false,
+    "funding_type": "non_withdrawable_gas_credit",
+    "sponsorship_version": "1.1.0",
+    "allowance_policy": "0x1D205B1d531422f615101FE93622D65AB54943D2",
+    "wallet_approval_required": false,
+    "wallet_controls_available": true,
+    "coverage": {
+      "delegated_vouchers": true,
+      "paladin_worker": false,
+      "tier_gas_budgets": true
+    }
+  },
+  "live_tests": [
+    {
+      "case": "member-usage",
+      "transaction_hash": "0xb143037cb9cd6746253d830d5648777f83d89d2059a2d8f0516dc49529101fce",
+      "block": 4303,
+      "reimbursement_wei": "655271000000000",
+      "accounting_and_replay_passed": true
+    },
+    {
+      "case": "admin-management",
+      "transaction_hash": "0x7e5b3bd1a474265ad1c3d9071e214a5b7ac3660f0241701d1d5dcae6910d3609",
+      "block": 4305,
+      "reimbursement_wei": "584203000000000",
+      "accounting_and_replay_passed": true
+    }
+  ],
+  "verification": [
+    {
+      "address": "0x83AaF0a9d4FE1748e1fCFFd5a3adfd60a16E86dF",
+      "verified": true,
+      "name": "GasSponsor",
+      "source_path": "source/Genesis/7702/GasSponsor.sol",
+      "compiler": "v0.8.37+commit.f401782d",
+      "license": "Apache-2.0",
+      "runtime_keccak256": "0x3317b05f5e2f76f8a1ac850565cda3b143440cc64771d7139af92e23d0848af7"
+    },
+    {
+      "address": "0x1D205B1d531422f615101FE93622D65AB54943D2",
+      "verified": true,
+      "name": "TenantAllowancePolicy",
+      "source_path": "source/Templates/TenantAllowancePolicy.sol",
+      "compiler": "v0.8.37+commit.f401782d",
+      "license": "Apache-2.0",
+      "runtime_keccak256": "0xab69e25a08b2977aa6ea2043bdf347ab25c7f469c683790311bc9dbbdb26546f"
+    }
+  ],
+  "ipfs": {
+    "bundle_cid": "QmPjK4RW1ZV9YbrJMUr28f5BNPJjGgVsna51yn4vytRkyo",
+    "metadata": [
+      {
+        "contract": "GasSponsor",
+        "metadata_cid": "QmXmzUauBwzMgRPRFSMcgPcjRXUaqA2SbD72yXEfNvqvtG",
+        "gateway_bytes_verified": true
+      },
+      {
+        "contract": "TenantAllowancePolicy",
+        "metadata_cid": "QmTSBNSST7Wu23W2u3mq9MZA9aASemD1zocSHxeMJShjxk",
+        "gateway_bytes_verified": true
+      }
+    ]
+  },
+  "remaining_owner_transaction": {
+    "chain_id": 112311,
+    "from": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "to": "0x000000000000000000000000000000000000FEeD",
+    "value": "0x0",
+    "data": "0x19544538000000000000000000000000a6b1dfa510b2854b8fa33ab3865535bb41cc23400000000000000000000000009247524040d91d5dd1521a25f2e7711d4a0fe921",
+    "purpose": "Assign moment.cards Account management to its current tenant operator",
+    "submitted": false,
+    "observed_block": 4312
+  },
+  "limitations": [
+    "Account manager handoff needs the supplied admin wallet signature",
+    "Dashboard management sends wallet-paid transactions; automatic sponsored dashboard relay is not activated",
+    "Paladin service-worker public legs are not billed to per-member allowances",
+    "Stripe and USDC checkout remain disabled pending provider configuration"
+  ],
+  "tests": {
+    "contract_and_compiler_passed": 44,
+    "contract_and_compiler_skipped": 6,
+    "platform_passed": 167,
+    "platform_skipped": 5,
+    "final_allowance_api_passed": 28
+  },
+  "previews": {
+    "dashboard": "http://100.111.1.4:3035/dashboard/gas",
+    "pricing": "http://100.111.1.4:3036/pricing",
+    "docs": "http://100.111.1.4:3037/docs/tenant-gas-accounts"
+  }
+}

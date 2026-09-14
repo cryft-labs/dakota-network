@@ -48,3 +48,43 @@ to call `setSponsorManager`. Keep the development signer out of new policy
 ownership. Review existing root-overlord membership separately; this feature does
 not change it. Historical ordinary deposits remain refundable under existing
 contract rules; gas-only funding remains non-withdrawable by tenants.
+
+## Live activation and maintenance — 2026-09-14
+
+| Role | Address |
+| --- | --- |
+| GasSponsor proxy | `0x000000000000000000000000000000000000FEeD` |
+| GasSponsor 1.1.0 implementation | `0x83AaF0a9d4FE1748e1fCFFd5a3adfd60a16E86dF` |
+| moment.cards Account | `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340` |
+| TenantAllowancePolicy | `0x1D205B1d531422f615101FE93622D65AB54943D2` |
+| Policy owner / tenant operator | `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` |
+| Existing Account manager / service voucher signer | `0xb2a458984b9dbad55f1c70b59c22d7a1fe931fd9` |
+
+The policy is connected with membership integration, automatic default-member
+allowances and optional explicit wallet approval switched off. Explicit denials
+still apply. Initial allowances are **0.005 KOTA per operation and 0.01 KOTA per
+wallet/member per UTC day**. The owner and development admin wallet have explicit
+initial allowances. Account ceilings remain 0.005 per operation and 0.1 per day.
+Available funds are live state; do not treat a recorded balance as a current quote.
+
+The live member and admin-management transactions passed inner-success,
+reimbursement/allowance reconciliation and replay checks. Both deployed contracts
+are fully verified in the Nebula explorer under Apache-2.0. Exact metadata and
+sources are pinned on Backend-01; bundle CID: `QmPjK4RW1ZV9YbrJMUr28f5BNPJjGgVsna51yn4vytRkyo`.
+The deployment record contains transaction hashes, bytecode hashes and metadata CIDs.
+
+**Remaining owner action:** sign in with the supplied admin wallet at
+`/dashboard/gas` and choose **Assign management to current tenant operator**.
+This calls `setSponsorManager(Account, operator)` on GasSponsor with zero value.
+The transaction was simulated successfully but cannot be signed by the development
+wallet. It changes Account control, not balances or the global voucher signer.
+The new policy already belongs to the supplied admin; no policy handover is needed.
+The development gas-manager role does not grant tenant dashboard admin access.
+
+The connected management wallet currently pays dashboard control/deployment fees.
+Native delegated admin sponsorship is proven on chain, but an automatic dashboard
+relay remains separate work. Paladin service-worker charges also remain separate.
+Keep the service relayer funded for transaction fees; it is reimbursed after a
+successful outer sponsored operation. Do not fund the allowance policy itself.
+Payment checkout remains disabled. The updated sites are local Nebula-accessible
+production builds for review, not a new public-domain/Droplet deployment.
