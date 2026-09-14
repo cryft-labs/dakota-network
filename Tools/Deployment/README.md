@@ -85,8 +85,9 @@ or credentials are required for this private RPC. WebSocket browser origins use
 the same list. Production HTTPS origins must be explicitly added before launch.
 
 The source-IP list is enforced with `geo` before any early preflight response;
-it retains the existing five allowed addresses. CORS approval does not admit a
-new Nebula peer. An external operator computer that calls this RPC directly must
+it includes the existing service/operator addresses and the external operator
+computer at 100.111.1.3. CORS approval does not admit a new Nebula peer. An external
+operator computer that calls this RPC directly must
 also have its exact Nebula IP approved here and in Defined Networking. Do not
 expand the source list or Windows firewall to diagnose a browser-origin error.
 The dashboard's Kota API calls use its same-origin `/api/platform` adapter, with
