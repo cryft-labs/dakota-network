@@ -1,0 +1,55 @@
+{
+  "status": "awaiting_exact_upgrade_approval",
+  "chain_id": 112311,
+  "proxy": "0x000000000000000000000000000000000000FEeD",
+  "current_implementation": "0x788e77a7f7e6d1E65a9C4b19D1C36ac93E749FB0",
+  "proposed_implementation": "0x83AaF0a9d4FE1748e1fCFFd5a3adfd60a16E86dF",
+  "proposed_version": "1.1.0",
+  "policy": "open_contract_sponsorship",
+  "transaction_submitted": false,
+  "registration_fee_wei": "1000000000000000",
+  "registration_fee_changed": false,
+  "funds_moved": false,
+  "tests": {
+    "exact_bytecode_transition_security": 13,
+    "router_fee_gas_allowances": 41,
+    "dashboard_build": true,
+    "docs_build": true
+  },
+  "verification": {
+    "address": "0x83AaF0a9d4FE1748e1fCFFd5a3adfd60a16E86dF",
+    "verified": true,
+    "name": "GasSponsor",
+    "source_path": "source/Genesis/7702/GasSponsor.sol",
+    "compiler": "v0.8.37+commit.f401782d",
+    "license": "Apache-2.0",
+    "runtime_keccak256": "0x3317b05f5e2f76f8a1ac850565cda3b143440cc64771d7139af92e23d0848af7"
+  },
+  "ipfs": {
+    "status": "verified",
+    "host": "Backend-01",
+    "nebula_ip": "100.111.67.1",
+    "objects": 24,
+    "release_bundle_cid": "QmPjK4RW1ZV9YbrJMUr28f5BNPJjGgVsna51yn4vytRkyo",
+    "read_only": true,
+    "all_pins_and_bytes_verified": true
+  },
+  "source_commits": [
+    {
+      "repository": "dakota-network",
+      "branch": "review/tenant-widget-production-20260912",
+      "commit": "b1b6bcea15d02d6a13876415a72c5be224c3224a"
+    },
+    {
+      "repository": "kota-docs-main",
+      "branch": "review/moment-final-experience-20260913",
+      "commit": "d3d0225f48792d84b6a43504c17d840c3722871c"
+    },
+    {
+      "repository": "cryft-site-docs-main",
+      "branch": "review/moment-final-experience-20260913",
+      "commit": "c76c28aee53efbe4a16e79353d828340970c5ba6"
+    }
+  ],
+  "approval_scope": "Restore only FEeD implementation; remove the global contract allowlist; preserve signed vouchers, user signatures, replay markers, relayers, limits, wallet permissions and gas-only allocations."
+}
