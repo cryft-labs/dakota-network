@@ -1,0 +1,25 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "InventoryTestAssets.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\n// Development acceptance fixtures only. Never advertised as customer collections.\ninterface IInventoryReceiver {\n    function onERC721Received(address,address,uint256,bytes calldata) external returns(bytes4);\n    function onERC1155Received(address,address,uint256,uint256,bytes calldata) external returns(bytes4);\n}\ncontract InventoryTestNFT {\n    string public constant name=\"Dakota inventory acceptance\";\n    string public constant symbol=\"DEVINV\";\n    address public minter=msg.sender;\n    mapping(uint256=>address) private owners;\n    mapping(uint256=>string) public tokenURI;\n    event Transfer(address indexed from,address indexed to,uint256 indexed tokenId);\n    function supportsInterface(bytes4 id) external pure returns(bool){return id==0x01ffc9a7||id==0x80ac58cd||id==0x5b5e139f;}\n    function ownerOf(uint256 id) external view returns(address){require(owners[id]!=address(0));return owners[id];}\n    function balanceOf(address account) external view returns(uint256){return owners[1]==account?1:0;}\n    function mint(address to,uint256 id,string calldata uri) external {require(msg.sender==minter&&to!=address(0)&&owners[id]==address(0));owners[id]=to;tokenURI[id]=uri;emit Transfer(address(0),to,id);}\n    function transferFrom(address from,address to,uint256 id) public {require(msg.sender==from&&owners[id]==from&&to!=address(0));owners[id]=to;emit Transfer(from,to,id);}\n    function safeTransferFrom(address from,address to,uint256 id) external {transferFrom(from,to,id);if(to.code.length!=0)require(IInventoryReceiver(to).onERC721Received(msg.sender,from,id,\"\")==0x150b7a02);}\n}\ncontract InventoryTestEdition {\n    address public minter=msg.sender;\n    mapping(address=>mapping(uint256=>uint256)) private balances;\n    string private _uri;\n    event TransferSingle(address indexed operator,address indexed from,address indexed to,uint256 id,uint256 value);\n    constructor(string memory metadata){_uri=metadata;}\n    function uri(uint256) external view returns(string memory){return _uri;}\n    function supportsInterface(bytes4 id) external pure returns(bool){return id==0x01ffc9a7||id==0xd9b67a26;}\n    function balanceOf(address account,uint256 id) external view returns(uint256){return balances[account][id];}\n    function mint(address to,uint256 id,uint256 quantity) external {require(msg.sender==minter&&to!=address(0));balances[to][id]+=quantity;emit TransferSingle(msg.sender,address(0),to,id,quantity);}\n    function safeTransferFrom(address from,address to,uint256 id,uint256 quantity,bytes calldata data) external {require(msg.sender==from&&to!=address(0)&&balances[from][id]>=quantity);balances[from][id]-=quantity;balances[to][id]+=quantity;emit TransferSingle(msg.sender,from,to,id,quantity);if(to.code.length!=0)require(IInventoryReceiver(to).onERC1155Received(msg.sender,from,id,quantity,data)==0xf23a6e61);}\n}\n"
+    }
+  },
+  "settings": {
+    "evmVersion": "osaka",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "metadata",
+          "evm.bytecode.object",
+          "evm.deployedBytecode.object"
+        ]
+      }
+    }
+  }
+}
