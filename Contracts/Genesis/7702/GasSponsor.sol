@@ -611,6 +611,9 @@ contract GasSponsor is
         GasSponsorStorage storage state = _sponsorStorage();
         state.consumedOperations[voucher.operationId] = true;
 
+        // Validate after optional policy callbacks, before checking the gas reserve.
+        _validateSponsoredTargets(executionData);
+
         uint256 requiredGas =
             voucher.callGasLimit +
             (voucher.callGasLimit / 63) +
@@ -765,6 +768,7 @@ contract GasSponsor is
     function implementationVersion()
         external
         pure
+        virtual
         override
         returns (string memory)
     {
@@ -1003,6 +1007,8 @@ contract GasSponsor is
         emit SponsoredOperation(voucher.operationId, voucher.tenantId, voucher.account,
             voucher.sponsor, voucher.campaignId, success);
     }
+
+    function _validateSponsoredTargets(bytes calldata) internal view virtual {}
 
     function _validateExecutionEnvelope(
         bytes calldata executionData,

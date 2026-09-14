@@ -1,0 +1,134 @@
+[
+  {
+    "source": "Genesis/7702/ApprovedGasSponsor.sol",
+    "contract": "ApprovedGasSponsor",
+    "runtime_bytes": 20508,
+    "creation_bytes": 20732,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\7702\\ApprovedGasSponsor",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "47ad97f089ac130f4f48fbad532103b5fefffc9edf325a72f7576221249e4916"
+  },
+  {
+    "source": "Genesis/7702/DelegationGas.sol",
+    "contract": "DelegationGas",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\7702\\DelegationGas",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "1649736f8028b0a5c5840509814223a03ae07d70f413c2405489d4e4a24f75e2"
+  },
+  {
+    "source": "Genesis/7702/GasSponsor.sol",
+    "contract": "GasSponsor",
+    "runtime_bytes": 16095,
+    "creation_bytes": 16319,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\7702\\GasSponsor",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "194029b68cbc3127a7f55f60dc964d7300582b538f0cc36d978d932991ce4b55"
+  },
+  {
+    "source": "Genesis/7702/GasSponsor.sol",
+    "contract": "IERC1271VoucherSigner",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\7702\\IERC1271VoucherSigner",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "2c27f6077619c047906eb38ba505fd2ec88d60254ea06335ff22b1bc4668f6d7"
+  },
+  {
+    "source": "Genesis/7702/GasSponsor.sol",
+    "contract": "IRootOverlordRegistry",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\7702\\IRootOverlordRegistry",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "612ac1498b51308b9d5aa0d8cc9b3995d79f9702d76f3fd8a88fa442ee971aa4"
+  },
+  {
+    "source": "Genesis/7702/Interfaces/IDakotaDelegation.sol",
+    "contract": "IDakotaDelegation",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\7702\\Interfaces\\IDakotaDelegation",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "4cbe17ba8a969a5bb1bcf396aafde920cb551b475223a86732bd93c52c430dba"
+  },
+  {
+    "source": "Genesis/7702/Interfaces/IGasSponsor.sol",
+    "contract": "IGasSponsor",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\7702\\Interfaces\\IGasSponsor",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "9100a18a425f04def8188c0ee699dcb5e900daeb6f1e7f6ccd06458ce82d6c12"
+  },
+  {
+    "source": "Genesis/7702/Interfaces/ITenantAllowancePolicy.sol",
+    "contract": "ITenantAllowancePolicy",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\7702\\Interfaces\\ITenantAllowancePolicy",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "1cf06be0987b6915184398505718b147302c9644b508d5ae48ec321a78c1d9d3"
+  },
+  {
+    "source": "Genesis/7702/Libraries/DakotaECDSA.sol",
+    "contract": "DakotaECDSA",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\7702\\Libraries\\DakotaECDSA",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "dda0d74216156bc3d8ca662bf55c28969f554e25e827e7da2083256b2f2f69bd"
+  },
+  {
+    "source": "Genesis/Upgradeable/AddressUpgradeable.sol",
+    "contract": "AddressUpgradeable",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\Upgradeable\\AddressUpgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "bf7ad0cf17926452af45ff7b60b33b8870a30faabbaf0a5b538d0efee5b6bf9a"
+  },
+  {
+    "source": "Genesis/Upgradeable/Initializable.sol",
+    "contract": "Initializable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\Upgradeable\\Initializable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "2883f6129f7aace386ad5caefbc67207882ada72f41e342763b75b4a3d07609c"
+  },
+  {
+    "source": "Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol",
+    "contract": "ReentrancyGuardUpgradeable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Releases\\ApprovedSponsorship\\1.2.0\\osaka\\Genesis\\Upgradeable\\ReentrancyGuardUpgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "3472bb426843b1d1826c13887793678d18812533293fa032538e1ee722721f8b"
+  }
+]

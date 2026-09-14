@@ -1,0 +1,31 @@
+{
+  "language": "Solidity",
+  "settings": {
+    "evmVersion": "osaka",
+    "libraries": {},
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": {
+        "IDakotaDelegation": [
+          "abi",
+          "metadata",
+          "storageLayout",
+          "evm.bytecode",
+          "evm.deployedBytecode"
+        ]
+      }
+    },
+    "remappings": []
+  },
+  "sources": {
+    "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": {
+      "content": "// SPDX-License-Identifier: Apache-2.0\n//\n// Copyright (c) 2023-2026 Cryft Labs. All rights reserved.\n// This software is part of a patented system. See LICENSE and PATENT NOTICE.\n// Licensed under the Apache License, Version 2.0.\n\npragma solidity >=0.8.20 <0.9.0;\n\n/// @title IDakotaDelegation\n/// @notice Minimal native EIP-7702 execution surface used by Dakota widgets.\ninterface IDakotaDelegation {\n    struct Call {\n        address target;\n        uint256 value;\n        bytes data;\n    }\n\n    struct SponsoredExecutionRequest {\n        bytes32 operationId;\n        address executor;\n        Call[] calls;\n        uint256 nonce;\n        uint256 deadline;\n        uint256 executionGasLimit;\n    }\n\n    event SponsoredExecution(\n        bytes32 indexed operationId,\n        address indexed executor,\n        uint256 indexed nonce,\n        bytes32 callsHash,\n        uint256 callCount\n    );\n\n    event CallExecuted(\n        bytes32 indexed operationId,\n        uint256 indexed callIndex,\n        address indexed target,\n        uint256 value,\n        bytes32 resultHash\n    );\n\n    function executeSponsored(\n        SponsoredExecutionRequest calldata execution,\n        bytes calldata ownerSignature\n    ) external payable returns (bytes[] memory results);\n\n    function getNonce() external view returns (uint256);\n\n    function hashCalls(Call[] calldata calls) external pure returns (bytes32);\n\n    function getExecutionDigest(\n        bytes32 operationId,\n        address executor,\n        Call[] calldata calls,\n        uint256 nonce,\n        uint256 deadline,\n        uint256 executionGasLimit\n    ) external view returns (bytes32);\n\n    function domainSeparator() external view returns (bytes32);\n\n    function isValidSignature(\n        bytes32 digest,\n        bytes calldata signature\n    ) external view returns (bytes4);\n\n    function delegationStorageLocation() external pure returns (bytes32);\n\n    function delegationProtocolId() external pure returns (bytes32);\n\n    /// @notice Capability bitmap implemented by the current account logic.\n    /// @dev Bits are stable within a protocol generation:\n    ///      0 sponsored execution, 1 batched calls, 2 EIP-1271,\n    ///      3 native-token receive, 4 ERC-721 receive, 5 ERC-1155 receive,\n    ///      6 typed-data digest helpers, 7 replay-protected account nonce.\n    function delegationCapabilities() external pure returns (uint256);\n\n    function implementationVersion() external pure returns (string memory);\n\n    /// @notice ERC-165 style introspection for account and receiver surfaces.\n    function supportsInterface(\n        bytes4 interfaceId\n    ) external pure returns (bool);\n}\n"
+    }
+  }
+}

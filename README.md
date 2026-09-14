@@ -13,6 +13,12 @@ Standard JSON inputs, metadata and validation records are under
 Validator contracts retain London. Account management and template ownership are
 separate authorities; adding sponsorship permission grants neither.
 
+The [approved sponsorship release](Tools/ApprovedSponsorship/README.md) adds a
+mandatory address/function approval table in GasSponsor 1.2.0. Its canonical
+registration manager is `0x000000000000000000000000000000000000c0DE`.
+Registration fees remain governed by the existing voter quorum. Standard JSON,
+metadata and release evidence are under `Releases/ApprovedSponsorship/1.2.0`.
+
 > **PATENT NOTICE — U.S. Patent Application Serial No. 18/930,857**
 >
 > Portions of this software implement methods and systems described in [U.S. Patent Application Serial No. 18/930,857: *"Card System Utilizing On-Chain Managed Redeemable Gift Code"*](https://patents.google.com/patent/US20250139608A1/en), held by Cryft Labs.
