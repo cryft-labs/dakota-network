@@ -58,7 +58,8 @@ contract rules; gas-only funding remains non-withdrawable by tenants.
 | moment.cards Account | `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340` |
 | TenantAllowancePolicy | `0x1D205B1d531422f615101FE93622D65AB54943D2` |
 | Policy owner / tenant operator | `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` |
-| Existing Account manager / service voucher signer | `0xb2a458984b9dbad55f1c70b59c22d7a1fe931fd9` |
+| Account manager | `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` |
+| Service voucher signer | `0xB2a458984b9dbaD55F1c70B59c22d7A1Fe931fd9` |
 
 The policy is connected with membership integration, automatic default-member
 allowances and optional explicit wallet approval switched off. Explicit denials
@@ -73,13 +74,17 @@ are fully verified in the Nebula explorer under Apache-2.0. Exact metadata and
 sources are pinned on Backend-01; bundle CID: `QmPjK4RW1ZV9YbrJMUr28f5BNPJjGgVsna51yn4vytRkyo`.
 The deployment record contains transaction hashes, bytecode hashes and metadata CIDs.
 
-**Remaining owner action:** sign in with the supplied admin wallet at
-`/dashboard/gas` and choose **Assign management to current tenant operator**.
-This calls `setSponsorManager(Account, operator)` on GasSponsor with zero value.
-The transaction was simulated successfully but cannot be signed by the development
-wallet. It changes Account control, not balances or the global voucher signer.
-The new policy already belongs to the supplied admin; no policy handover is needed.
-The development gas-manager role does not grant tenant dashboard admin access.
+**Account handoff confirmed:** the supplied admin wallet signed
+`setSponsorManager(Account, operator)` with zero value in block 4390.
+[View the confirmed transaction](http://100.111.69.1:8080/tx/0xd16513b2a8c3b10d8228d8c5860a7d876f0424bdb624c58fea62aca2ee962728).
+The Account manager and allowance-policy owner are now the tenant operator shown
+above. Read-only checks at block 4395 confirmed that the operator can set
+Account limits and the previous manager receives `NotSponsorManager` for that call.
+The handoff changed only the Account manager; its balance, limits and enabled state
+were preserved. The service voucher signer remains `0xB2a458984b9dbaD55F1c70B59c22d7A1Fe931fd9`.
+This Account handoff does not change other chain governance or deployment roles.
+No further Account-manager or policy-owner handoff is pending. The development
+service wallet does not receive tenant dashboard admin access through sponsorship.
 
 The connected management wallet currently pays dashboard control/deployment fees.
 Native delegated admin sponsorship is proven on chain, but an automatic dashboard

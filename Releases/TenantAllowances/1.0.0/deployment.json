@@ -31,7 +31,7 @@
   "policy_owner": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
   "account": {
     "tenant_hash": "0x35a5cca9e94621f672df42883f97f9c00e052e14cef6b9ff4937fcdd643a9d87",
-    "manager": "0xb2a458984b9dbad55f1c70b59c22d7a1fe931fd9",
+    "manager": "0x9247524040d91d5dd1521a25f2e7711d4a0fe921",
     "balance_wei": "298231838000000000",
     "platform_per_operation_wei": "5000000000000000",
     "tenant_per_operation_wei": "5000000000000000",
@@ -50,13 +50,13 @@
     "sponsor_address": "0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340",
     "funding_contract": "0x000000000000000000000000000000000000FEeD",
     "chain_id": 112311,
-    "block_number": 4312,
+    "block_number": 4395,
     "global_paused": false,
     "platform_admin": "0x9247524040d91d5dd1521a25f2e7711d4a0fe921",
     "tenant_id": "moment.cards",
     "expected_tenant_hash": "0x35a5cca9e94621f672df42883f97f9c00e052e14cef6b9ff4937fcdd643a9d87",
     "operator": "0x9247524040d91d5dd1521a25f2e7711d4a0fe921",
-    "manager_matches_operator": false,
+    "manager_matches_operator": true,
     "account_enabled": true,
     "funding_model": "contract_ledger",
     "direct_transfer_supported": false,
@@ -123,18 +123,8 @@
       }
     ]
   },
-  "remaining_owner_transaction": {
-    "chain_id": 112311,
-    "from": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
-    "to": "0x000000000000000000000000000000000000FEeD",
-    "value": "0x0",
-    "data": "0x19544538000000000000000000000000a6b1dfa510b2854b8fa33ab3865535bb41cc23400000000000000000000000009247524040d91d5dd1521a25f2e7711d4a0fe921",
-    "purpose": "Assign moment.cards Account management to its current tenant operator",
-    "submitted": false,
-    "observed_block": 4312
-  },
+  "remaining_owner_transaction": null,
   "limitations": [
-    "Account manager handoff needs the supplied admin wallet signature",
     "Dashboard management sends wallet-paid transactions; automatic sponsored dashboard relay is not activated",
     "Paladin service-worker public legs are not billed to per-member allowances",
     "Stripe and USDC checkout remain disabled pending provider configuration"
@@ -150,5 +140,27 @@
     "dashboard": "http://100.111.1.4:3035/dashboard/gas",
     "pricing": "http://100.111.1.4:3036/pricing",
     "docs": "http://100.111.1.4:3037/docs/tenant-gas-accounts"
+  },
+  "account_checked_at": "2026-09-14T05:35:04.785509+00:00",
+  "owner_handoff": {
+    "checked_at": "2026-09-14T05:35:04.785509+00:00",
+    "chain_id": 112311,
+    "confirmed": true,
+    "transaction_hash": "0xd16513b2a8c3b10d8228d8c5860a7d876f0424bdb624c58fea62aca2ee962728",
+    "block": 4390,
+    "block_hash": "0xad703f3d91f7e440063a7e3b6aa104adc0dbf51a25e6120e3acfa76ee8cacbb3",
+    "sender": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "to": "0x000000000000000000000000000000000000FEeD",
+    "value_wei": "0",
+    "previous_manager": "0xB2a458984b9dbaD55F1c70B59c22d7A1Fe931fd9",
+    "new_manager": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "changed_account_fields": [
+      "manager"
+    ],
+    "policy_owner": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "voucher_signer": "0xB2a458984b9dbaD55F1c70B59c22d7A1Fe931fd9",
+    "owner_management_simulation_passed": true,
+    "previous_manager_management_rejected": true,
+    "explorer_url": "http://100.111.69.1:8080/tx/0xd16513b2a8c3b10d8228d8c5860a7d876f0424bdb624c58fea62aca2ee962728"
   }
 }
