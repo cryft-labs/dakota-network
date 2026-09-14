@@ -1,0 +1,138 @@
+{
+  "chain_id": 112311,
+  "genesis_hash": "0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8",
+  "canonical_registry": false,
+  "transactions": {
+    "deploy:ERC6551Registry": {
+      "hash": "0x8f84d7e647783df09119f16fb6f887e432e1b35d216f5e344ac4bbbcfce2bc07",
+      "from": "0x633309d1155fD658a717e4f5E4FA853615400867",
+      "nonce": 160,
+      "to": "0x",
+      "value": 0,
+      "gas_limit": 1000000,
+      "source_commit": "33e69159a77a6cbd4bff61e4ed35d5b311d3163f",
+      "state": "mined",
+      "input_sha256": "c52f58fb4a7b15aa275c6b746caf227379a3c9a41d03fb8f0679e03e36d916ac",
+      "receipt": {
+        "blockHash": "0xed4829d6f940773f1f74cab8ec6216a56099df69d0f046effc39b28fec0cee3d",
+        "blockNumber": 5341,
+        "contractAddress": "0x7144D34A7cB2fDF9a0C008855Da6A9B15Cf266D7",
+        "cumulativeGasUsed": 172491,
+        "from": "0x633309d1155fD658a717e4f5E4FA853615400867",
+        "gasUsed": 172491,
+        "effectiveGasPrice": 1000000000,
+        "logs": [],
+        "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "status": 1,
+        "to": null,
+        "transactionHash": "0x8f84d7e647783df09119f16fb6f887e432e1b35d216f5e344ac4bbbcfce2bc07",
+        "transactionIndex": 0,
+        "type": 0
+      }
+    },
+    "deploy:MomentCardAccount": {
+      "hash": "0x4ffe3fc4f8c43d1b528dc2c9a0334ecd544c45e19649df3d017c668e4953c5af",
+      "from": "0x633309d1155fD658a717e4f5E4FA853615400867",
+      "nonce": 161,
+      "to": "0x",
+      "value": 0,
+      "gas_limit": 1503403,
+      "source_commit": "33e69159a77a6cbd4bff61e4ed35d5b311d3163f",
+      "state": "mined",
+      "input_sha256": "a12b4b6683fdc622b7b8747b12af1916f49be4b57e7a543289ce4d6292cea4e5",
+      "receipt": {
+        "blockHash": "0x357d71188cad663196cd44256e0e241ef80bdc765c983bfb6ebcfc1a6735634e",
+        "blockNumber": 5342,
+        "contractAddress": "0x492A6645D40Fb5896C0D53D08778D819bA5583F2",
+        "cumulativeGasUsed": 1152410,
+        "from": "0x633309d1155fD658a717e4f5E4FA853615400867",
+        "gasUsed": 1152410,
+        "effectiveGasPrice": 1000000000,
+        "logs": [],
+        "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "status": 1,
+        "to": null,
+        "transactionHash": "0x4ffe3fc4f8c43d1b528dc2c9a0334ecd544c45e19649df3d017c668e4953c5af",
+        "transactionIndex": 0,
+        "type": 0
+      }
+    }
+  },
+  "deployments": {
+    "ERC6551Registry": {
+      "address": "0x7144D34A7cB2fDF9a0C008855Da6A9B15Cf266D7",
+      "constructor_args": [],
+      "runtime_keccak256": "0x9ecbe0ac39b0968049029773bbbb8023ba3f913c86420f70b43de4652c18405a",
+      "immutable_values": {},
+      "artifact": {
+        "immutable_references": {},
+        "artifact_sha256": "1a315d3db38f41acf58a3a94231c26b5932e12c7a4d46683a649f3b6c39c6cf4"
+      },
+      "transaction_hash": "0x8f84d7e647783df09119f16fb6f887e432e1b35d216f5e344ac4bbbcfce2bc07"
+    },
+    "MomentCardAccount": {
+      "address": "0x492A6645D40Fb5896C0D53D08778D819bA5583F2",
+      "constructor_args": [],
+      "runtime_keccak256": "0x0da8a5054c63e523568f93e470ef72e885f299d339b14ad62ad0a9ccc1a51d81",
+      "immutable_values": {
+        "155": "0x492a6645d40fb5896c0d53d08778d819ba5583f2"
+      },
+      "artifact": {
+        "immutable_references": {
+          "155": [
+            {
+              "length": 32,
+              "start": 235
+            },
+            {
+              "length": 32,
+              "start": 994
+            },
+            {
+              "length": 32,
+              "start": 1096
+            },
+            {
+              "length": 32,
+              "start": 1274
+            },
+            {
+              "length": 32,
+              "start": 1591
+            },
+            {
+              "length": 32,
+              "start": 1770
+            },
+            {
+              "length": 32,
+              "start": 2033
+            },
+            {
+              "length": 32,
+              "start": 2156
+            },
+            {
+              "length": 32,
+              "start": 2265
+            }
+          ]
+        },
+        "artifact_sha256": "47a2f07ff2f57fbfe0e037b620492651c829a4ffd890adbea262c8c6793a3ce5"
+      },
+      "transaction_hash": "0x4ffe3fc4f8c43d1b528dc2c9a0334ecd544c45e19649df3d017c668e4953c5af"
+    }
+  },
+  "checks": {},
+  "updated_at": "2026-09-14T22:16:29.771641+00:00",
+  "configuration": {
+    "chain_id": 112311,
+    "registry": "0x7144D34A7cB2fDF9a0C008855Da6A9B15Cf266D7",
+    "implementation": "0x492A6645D40Fb5896C0D53D08778D819bA5583F2",
+    "salt": "0xc703e65710c369e0504d47ee2c367d054e87cfa61ca9cb41ab58cbdead0bec54",
+    "registry_runtime_hash": "0x9ecbe0ac39b0968049029773bbbb8023ba3f913c86420f70b43de4652c18405a",
+    "implementation_runtime_hash": "0x0da8a5054c63e523568f93e470ef72e885f299d339b14ad62ad0a9ccc1a51d81",
+    "canonical_registry": false,
+    "source_commit": "33e69159a77a6cbd4bff61e4ed35d5b311d3163f"
+  }
+}

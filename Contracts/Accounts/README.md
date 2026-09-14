@@ -1,9 +1,10 @@
 # Token-bound accounts for moment.cards
 
-Review package for ERC-6551 on Dakota chain `112311`. These contracts are **not
-deployed**. Canonical registry `0x000000006551c19487814612e58FE06813775758` and
-Nick's CREATE2 factory `0x4e59b44847b379578588920cA78FbF26c0B4956C` currently
-have no bytecode on this genesis.
+Deployed on Dakota chain `112311` on 14 September 2026. This deployment uses a
+Dakota-local registry at `0x7144D34A7cB2fDF9a0C008855Da6A9B15Cf266D7` and account
+implementation `0x492A6645D40Fb5896C0D53D08778D819bA5583F2`. The canonical registry
+address was not claimed or installed. See [deployment/20260914.json](deployment/20260914.json)
+for transaction hashes, runtime identities and the pinned source commit.
 
 Parent card NFT proxy: `0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410`.
 
