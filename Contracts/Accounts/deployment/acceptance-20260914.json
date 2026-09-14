@@ -1,0 +1,182 @@
+{
+  "date": "2026-09-14",
+  "chain_id": 112311,
+  "complete": true,
+  "tenant": "moment.cards",
+  "wallet": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+  "profile_url": "http://100.111.1.4:3033/cards/112311/0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410/10",
+  "checks": {
+    "live_tenant_user_authorized": true,
+    "user_cannot_manage_tenant": true,
+    "saved_request_recovers_same_operation": true,
+    "creation_retry_keeps_operation": true,
+    "card_created_through_tenant_api": true,
+    "registration_matches_local_code": true,
+    "no_server_cleartext_export": true,
+    "durable_service_contains_no_cleartext_code": true,
+    "inventory_filled_before_card_redemption": true,
+    "issuer_cannot_take_inventory_before_owning_card": true,
+    "wrong_pin_does_not_redeem": true,
+    "concurrent_redemption_is_one_operation": true,
+    "private_redemption_and_public_delivery": true,
+    "nft_in_development_wallet": true,
+    "second_redemption_cannot_reuse_code": true,
+    "redemption_transfers_inventory_control": true,
+    "withdrawal_delivered_exact_edition_quantity": true,
+    "inventory_transfer_delivered_exact_nft": true,
+    "card_transfer_changes_inventory_holder": true,
+    "inventory_old_holder_cannot_execute": true,
+    "new_card_holder_can_control_inventory": true,
+    "inventory_api_matches_live_remaining_balance": true,
+    "metadata_and_media_hosted_on_backend_ipfs": true,
+    "token_uri_matches_published_metadata": true,
+    "explorer_metadata_refresh_and_owner": true,
+    "collection_uses_live_ownership": true
+  },
+  "inventory": {
+    "token_id": 10,
+    "account": "0xF1b991555585717790876609Ea00c4De2efC4Fcf",
+    "registry": "0x7144d34a7cb2fdf9a0c008855da6a9b15cf266d7",
+    "implementation": "0x492a6645d40fb5896c0d53d08778d819ba5583f2",
+    "fixture_nft": "0xf8Bae95704F22dCAb055a06215134E8779507052",
+    "fixture_edition": "0x11882e99B43e113605A06d8Fb6962bc3Da5f4523",
+    "remaining_editions": "2",
+    "owner": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+    "native_funding_cap_wei": "10000000000000000",
+    "execution": "holder wallet transaction; no unsigned keeper bypass"
+  },
+  "creation": {
+    "metadata_uri": "ipfs://QmSuWVVebVzZsJzEhbJGiE7MpJv8jr8pE9Eq8pq6xvz3id/",
+    "token_ids": [
+      10
+    ],
+    "transaction_hash": "0x47559bcdcda885e448ace5a2327acdbddc729b84c9cd173db9ec76b1d501e030",
+    "storage_transaction_hash": "0x1803c1e0a1d6c368a6f56b158acb58bfdd238c447ad5cff4484858bc148e1509"
+  },
+  "redemption": {
+    "recipient": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+    "token_id": 10,
+    "transaction_hash": "0xd3234dd29677fc2b08c7ea95e7e565c8fa75d33d2caf2a6b96c96a5a33fc0d7f",
+    "delivery_transaction_hash": "0xd3234dd29677fc2b08c7ea95e7e565c8fa75d33d2caf2a6b96c96a5a33fc0d7f"
+  },
+  "inventory_transactions": {
+    "inventory:10:bounded-dev-gas": {
+      "hash": "0x2769a7c03ce755aa8760ef158cc50beaa685c32ded9b29cff68107ba0255537c",
+      "from": "0x633309d1155fD658a717e4f5E4FA853615400867",
+      "source_commit": "2ba3c1eed37bcca268fa8e549aafcf9bc76e9820",
+      "state": "mined"
+    },
+    "inventory:10:mint-nft": {
+      "hash": "0x99a713fecfac7c89ef892e062eaf0481b3bec0ce3797f9b52399e2e65fe39ac5",
+      "from": "0x633309d1155fD658a717e4f5E4FA853615400867",
+      "source_commit": "2ba3c1eed37bcca268fa8e549aafcf9bc76e9820",
+      "state": "mined"
+    },
+    "inventory:10:mint-editions": {
+      "hash": "0xf2dc9a54d329ff618eb30f7d9ef142324e2d572b37844697c4a3331edc61f70d",
+      "from": "0x633309d1155fD658a717e4f5E4FA853615400867",
+      "source_commit": "2ba3c1eed37bcca268fa8e549aafcf9bc76e9820",
+      "state": "mined"
+    },
+    "inventory:10:activate": {
+      "hash": "0x4844f56fa4d4a68ade4cc7ea76e2e5a60a4c2378559400e6f83f7a23f0498096",
+      "from": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+      "source_commit": "2ba3c1eed37bcca268fa8e549aafcf9bc76e9820",
+      "state": "mined"
+    },
+    "inventory:10:deposit-nft": {
+      "hash": "0x2c570de4234666a9a4740e1baeb8f71ff658cd9b8fa9f9ef9f49bbd8763dba2a",
+      "from": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+      "source_commit": "2ba3c1eed37bcca268fa8e549aafcf9bc76e9820",
+      "state": "mined"
+    },
+    "inventory:10:deposit-editions": {
+      "hash": "0x1f93ade1bdadc35f1e22713f2f375a995a6f3e5e0f244b7b01a0a2bcefc29990",
+      "from": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+      "source_commit": "2ba3c1eed37bcca268fa8e549aafcf9bc76e9820",
+      "state": "mined"
+    },
+    "inventory:10:withdraw-edition": {
+      "hash": "0x41195f7a543168796920a4a73054dc7bbc43b298dbf784f67f1d98420dfe0d35",
+      "from": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+      "source_commit": "2ba3c1eed37bcca268fa8e549aafcf9bc76e9820",
+      "state": "mined"
+    },
+    "inventory:10:transfer-nft": {
+      "hash": "0xe87f48d84f5a7ce0f99d3dc2b69ed80992acde1b17b1dff981acda56b04dcd87",
+      "from": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+      "source_commit": "2ba3c1eed37bcca268fa8e549aafcf9bc76e9820",
+      "state": "mined"
+    },
+    "inventory:10:transfer-parent": {
+      "hash": "0xefe56616e3223dd6d3ec285907eb8e20d46cfcfb6b8904429a6dbcc78b1dad5d",
+      "from": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+      "source_commit": "58209eb108f7d860c58642942419017e79585386",
+      "state": "mined"
+    },
+    "inventory:10:return-parent-to-dev": {
+      "hash": "0x71a03e1114de017417d09ebf1bc580614a4edcc67aa64dd9f4925487f765c477",
+      "from": "0x633309d1155fD658a717e4f5E4FA853615400867",
+      "source_commit": "58209eb108f7d860c58642942419017e79585386",
+      "state": "mined"
+    }
+  },
+  "verified_contracts": [
+    {
+      "address": "0x7144D34A7cB2fDF9a0C008855Da6A9B15Cf266D7",
+      "contract": "ERC6551Registry",
+      "license": "mit",
+      "accepted": true,
+      "http_status": 200,
+      "verified": true,
+      "compiler": "v0.8.37+commit.f401782d",
+      "runtime_keccak256": "0x9ecbe0ac39b0968049029773bbbb8023ba3f913c86420f70b43de4652c18405a"
+    },
+    {
+      "address": "0x492A6645D40Fb5896C0D53D08778D819bA5583F2",
+      "contract": "MomentCardAccount",
+      "license": "apache_2_0",
+      "accepted": true,
+      "http_status": 200,
+      "verified": true,
+      "compiler": "v0.8.37+commit.f401782d",
+      "runtime_keccak256": "0x0da8a5054c63e523568f93e470ef72e885f299d339b14ad62ad0a9ccc1a51d81"
+    },
+    {
+      "address": "0xf8Bae95704F22dCAb055a06215134E8779507052",
+      "contract": "InventoryTestNFT",
+      "license": "mit",
+      "accepted": true,
+      "http_status": 200,
+      "verified": true,
+      "compiler": "v0.8.37+commit.f401782d",
+      "runtime_keccak256": "0x06ba3213c4cf690ffb1de970c715985bfd87828a350f488ab49e8ae1aa41608a"
+    },
+    {
+      "address": "0x11882e99B43e113605A06d8Fb6962bc3Da5f4523",
+      "contract": "InventoryTestEdition",
+      "license": "mit",
+      "accepted": true,
+      "http_status": 200,
+      "verified": true,
+      "compiler": "v0.8.37+commit.f401782d",
+      "runtime_keccak256": "0x55b3f33bee3a46ebdd565a9a4a9e650261f8bc1b6c37c031e05034d54be5085f"
+    }
+  ],
+  "test_summary": {
+    "router_platform": "199 passed, 5 opt-in PostgreSQL tests skipped",
+    "account_contracts": "14 passed",
+    "moment_cards": "92 passed; TypeScript passed"
+  },
+  "acceptance_script_commit": "31205bd6a8212eb88711886cafb158955f20bcbe",
+  "limitations": [
+    "Dedicated thirdweb wallet-browser signing acceptance not performed; live transactions use authorized dev-wallet harness.",
+    "Inventory moves use connected-wallet gas, not tenant sponsorship billing.",
+    "Nested parent cards and native/ERC-20 inventory controls are unsupported.",
+    "Preview worker/customer creation remain disabled pending the separate rollout gates."
+  ],
+  "mirrored_preview": {
+    "public_records": 4,
+    "secrets_or_sessions_copied": false
+  }
+}
