@@ -1,5 +1,405 @@
 {
   "version": 1,
-  "status": "skipped",
-  "reason": "explicitly_disabled"
+  "status": "published",
+  "objects": [
+    {
+      "cid": "QmWgnA4TGSXksSxZKor9Wrfh4qGPTjQetxeRxgeYjiSoc6",
+      "sha256": "088b9c97aae781895189fd3045ecdc6daaf5a098805d62b768197ec3d012a4da",
+      "bytes": 31791,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmQyovTLYmKoPQcFJLtMWSUmKeRZehHLLo47viZvZuGvaL",
+      "sha256": "3cee0e4e0b49c7a22a19b3536a0082f5b4076e6d861f7e375e453b4f509e0bdc",
+      "bytes": 7348,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh",
+      "sha256": "3e4f2f107a3d130dad9a651baa0218d23e42aefc168dcff2cf1629930b21cef8",
+      "bytes": 1089,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmS9HtZ73s1z9P8xbh73oyV5Cf2Wqf355gVQWFPHPMG8SS",
+      "sha256": "5a458b63c4d958cf257a4959110a3c6cfb365ac5e32f963b57a51483b4b9893f",
+      "bytes": 46120,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw",
+      "sha256": "ae1c57ec6e7461323f2fea96e9d4a4879fd57d1f28e0cdaec105c2fccfa7bf6f",
+      "bytes": 2656,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "Qmd43WKkRhy8CqrxGagoWfCyifdHvs8886XLp2XVoUXQ2T",
+      "sha256": "8cb22ee718523a9b8107947be432b49a9c7c4e286b95f02b1ae73caae199036c",
+      "bytes": 7232,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmSGw8EEjk8EGoHpqBP4huK393RDgxqGHKsWgNoq6UyEeP",
+      "sha256": "d5b9d3bfbf8d3479d4f7560bd1d41e2b3f5e806adc0fc78968a0c8b017f3bf32",
+      "bytes": 506,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp",
+      "sha256": "98d13864457ce57c28c70de70867a30a20acd3933e4f52a20c5bf71741e5aae7",
+      "bytes": 1862,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+      "sha256": "30d84cbc514daf1a0f8b8fc10daa0f3cb1948e279ad57bed2a17dc6432a8f591",
+      "bytes": 9599,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv",
+      "sha256": "14038e68f1a79aa28f16560d82ed21840330d2aabaaf0e1a4dfdb30ac25e14c0",
+      "bytes": 6876,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng",
+      "sha256": "677c22c0f88df68408c82c5a9109cd0e91cff02ce75a97f8c2f85352ae5b7d54",
+      "bytes": 3927,
+      "roles": [
+        "source"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmRPwat5S3cF5Eut2wYBKnTgSWZ6LeGp7WXfW66HXtLH3e",
+      "sha256": "b08f5e28bc48fdb62abea2ce9eaa53f66d4cd8e32c0996ad3b1b539f78048c05",
+      "bytes": 885,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmQK8jmXNjXdoTJUtZ5vthf9YviHRA1GLZgnWVBo9CNacc",
+      "sha256": "7384097313f5c35424dac17c7f02533aba2f3f12f619dd6700ff7dd41437e9bd",
+      "bytes": 26807,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmZyhb4nkbsq51uUrVDrt27fs91VkkQKSAoiaJJU38Hw7P",
+      "sha256": "533e3f66af34c0dc3dbef7b736bf370d671b73380f9b314a99c7f29bff8b6f71",
+      "bytes": 3397,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmejT5ynnVfmtN7wxK3LcVmhd7fHpSiwz19XDQc7NE6j1D",
+      "sha256": "11d04045384666e4a69781e30499faa4c10b058e7a565a2f0f3863f5fab2d18e",
+      "bytes": 3333,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmPZGoWuXKjwFZHU3G6ad8UnPVyTCBBsNc2iC1urkWz39b",
+      "sha256": "a72d595fb7bf5928e97a01ff0d6eb3f5b6e4582d59593caf3f3a63de62840eca",
+      "bytes": 5725,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmeSZSiTGXFaV88aLFPHLYNTBmF891oML7VavfhYZYjhmQ",
+      "sha256": "44aa35f9b769007d4eca8007c675c145105db31a370ba4504bb6d449388e5e5a",
+      "bytes": 17435,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmQffFXTSfYXziztaHJf6c53Ug3gg2WKvhbfc23Me7Evw2",
+      "sha256": "eadca669cb361be4ece16066ba6b8401d8055640c2616f68666ad75c837c56ed",
+      "bytes": 1746,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmVpjsLvWTnq93yNQ7R54zn9jkmS5Lxbca7aL99CYqr7os",
+      "sha256": "0bbd651e34eee1297dc82ad06bea442858b7cb736de11291d5ed5fe90edd36a3",
+      "bytes": 812,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmSnM6CYgUvbLg9GTnnufqG9K471982MtuoG3PzFgVrpMK",
+      "sha256": "4b22bec893b23bc3eeba767c2e19dfd1a7582f39ad46e86199dd5f03e992b445",
+      "bytes": 811,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmT5Q4Bp98snTmu8b925dk637QFYVZC7GnJADfn8397epV",
+      "sha256": "db5c0417e400a43a36cb7c7740e78bfafd45308853ae9433b119b853517aef3e",
+      "bytes": 3581,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmNsNnk8FhZSdqUx7nx3us9GJYcmQ8bC7emtFoymLRjgt7",
+      "sha256": "3f2dca47d7b73b5eebe192cee63c3345d550b51af86f9c57528460a8adb66eb2",
+      "bytes": 2578,
+      "roles": [
+        "metadata"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    },
+    {
+      "cid": "QmdyALkNEQ6pfibbMoZncw6pH7z4zM48c7LogBtHDFDRbS",
+      "sha256": "2e8a8869b6595ced18f487082090ef23c8ec725d6543b8d7b6ee70fca7705efe",
+      "bytes": 227657,
+      "roles": [
+        "release_bundle"
+      ],
+      "recursive_pin_verified": true,
+      "read_back_verified": true
+    }
+  ],
+  "contracts": [
+    {
+      "contract": "source/Genesis/7702/ApprovedGasSponsor.sol:ApprovedGasSponsor",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "47ad97f089ac130f4f48fbad532103b5fefffc9edf325a72f7576221249e4916",
+      "sources": {
+        "source/Genesis/7702/ApprovedGasSponsor.sol": "QmQyovTLYmKoPQcFJLtMWSUmKeRZehHLLo47viZvZuGvaL",
+        "source/Genesis/7702/DelegationGas.sol": "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh",
+        "source/Genesis/7702/GasSponsor.sol": "QmS9HtZ73s1z9P8xbh73oyV5Cf2Wqf355gVQWFPHPMG8SS",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw",
+        "source/Genesis/7702/Interfaces/IGasSponsor.sol": "Qmd43WKkRhy8CqrxGagoWfCyifdHvs8886XLp2XVoUXQ2T",
+        "source/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol": "QmSGw8EEjk8EGoHpqBP4huK393RDgxqGHKsWgNoq6UyEeP",
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng"
+      },
+      "metadata_cid": "QmWgnA4TGSXksSxZKor9Wrfh4qGPTjQetxeRxgeYjiSoc6"
+    },
+    {
+      "contract": "source/Genesis/7702/DelegationGas.sol:DelegationGas",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "1649736f8028b0a5c5840509814223a03ae07d70f413c2405489d4e4a24f75e2",
+      "sources": {
+        "source/Genesis/7702/DelegationGas.sol": "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh"
+      },
+      "metadata_cid": "QmRPwat5S3cF5Eut2wYBKnTgSWZ6LeGp7WXfW66HXtLH3e"
+    },
+    {
+      "contract": "source/Genesis/7702/GasSponsor.sol:GasSponsor",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "194029b68cbc3127a7f55f60dc964d7300582b538f0cc36d978d932991ce4b55",
+      "sources": {
+        "source/Genesis/7702/DelegationGas.sol": "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh",
+        "source/Genesis/7702/GasSponsor.sol": "QmS9HtZ73s1z9P8xbh73oyV5Cf2Wqf355gVQWFPHPMG8SS",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw",
+        "source/Genesis/7702/Interfaces/IGasSponsor.sol": "Qmd43WKkRhy8CqrxGagoWfCyifdHvs8886XLp2XVoUXQ2T",
+        "source/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol": "QmSGw8EEjk8EGoHpqBP4huK393RDgxqGHKsWgNoq6UyEeP",
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng"
+      },
+      "metadata_cid": "QmQK8jmXNjXdoTJUtZ5vthf9YviHRA1GLZgnWVBo9CNacc"
+    },
+    {
+      "contract": "source/Genesis/7702/GasSponsor.sol:IERC1271VoucherSigner",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "2c27f6077619c047906eb38ba505fd2ec88d60254ea06335ff22b1bc4668f6d7",
+      "sources": {
+        "source/Genesis/7702/DelegationGas.sol": "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh",
+        "source/Genesis/7702/GasSponsor.sol": "QmS9HtZ73s1z9P8xbh73oyV5Cf2Wqf355gVQWFPHPMG8SS",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw",
+        "source/Genesis/7702/Interfaces/IGasSponsor.sol": "Qmd43WKkRhy8CqrxGagoWfCyifdHvs8886XLp2XVoUXQ2T",
+        "source/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol": "QmSGw8EEjk8EGoHpqBP4huK393RDgxqGHKsWgNoq6UyEeP",
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng"
+      },
+      "metadata_cid": "QmZyhb4nkbsq51uUrVDrt27fs91VkkQKSAoiaJJU38Hw7P"
+    },
+    {
+      "contract": "source/Genesis/7702/GasSponsor.sol:IRootOverlordRegistry",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "612ac1498b51308b9d5aa0d8cc9b3995d79f9702d76f3fd8a88fa442ee971aa4",
+      "sources": {
+        "source/Genesis/7702/DelegationGas.sol": "QmcuRQPNzWdLkGeMJfZH654SsbXJKv24mCegEP7BP2pfxh",
+        "source/Genesis/7702/GasSponsor.sol": "QmS9HtZ73s1z9P8xbh73oyV5Cf2Wqf355gVQWFPHPMG8SS",
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw",
+        "source/Genesis/7702/Interfaces/IGasSponsor.sol": "Qmd43WKkRhy8CqrxGagoWfCyifdHvs8886XLp2XVoUXQ2T",
+        "source/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol": "QmSGw8EEjk8EGoHpqBP4huK393RDgxqGHKsWgNoq6UyEeP",
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp",
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng"
+      },
+      "metadata_cid": "QmejT5ynnVfmtN7wxK3LcVmhd7fHpSiwz19XDQc7NE6j1D"
+    },
+    {
+      "contract": "source/Genesis/7702/Interfaces/IDakotaDelegation.sol:IDakotaDelegation",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "4cbe17ba8a969a5bb1bcf396aafde920cb551b475223a86732bd93c52c430dba",
+      "sources": {
+        "source/Genesis/7702/Interfaces/IDakotaDelegation.sol": "QmfNNJfqwa1eQRUJy8yU5Hpp94L65Z4MCmsMaP5Dnj6REw"
+      },
+      "metadata_cid": "QmPZGoWuXKjwFZHU3G6ad8UnPVyTCBBsNc2iC1urkWz39b"
+    },
+    {
+      "contract": "source/Genesis/7702/Interfaces/IGasSponsor.sol:IGasSponsor",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "9100a18a425f04def8188c0ee699dcb5e900daeb6f1e7f6ccd06458ce82d6c12",
+      "sources": {
+        "source/Genesis/7702/Interfaces/IGasSponsor.sol": "Qmd43WKkRhy8CqrxGagoWfCyifdHvs8886XLp2XVoUXQ2T"
+      },
+      "metadata_cid": "QmeSZSiTGXFaV88aLFPHLYNTBmF891oML7VavfhYZYjhmQ"
+    },
+    {
+      "contract": "source/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol:ITenantAllowancePolicy",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "1cf06be0987b6915184398505718b147302c9644b508d5ae48ec321a78c1d9d3",
+      "sources": {
+        "source/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol": "QmSGw8EEjk8EGoHpqBP4huK393RDgxqGHKsWgNoq6UyEeP"
+      },
+      "metadata_cid": "QmQffFXTSfYXziztaHJf6c53Ug3gg2WKvhbfc23Me7Evw2"
+    },
+    {
+      "contract": "source/Genesis/7702/Libraries/DakotaECDSA.sol:DakotaECDSA",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "dda0d74216156bc3d8ca662bf55c28969f554e25e827e7da2083256b2f2f69bd",
+      "sources": {
+        "source/Genesis/7702/Libraries/DakotaECDSA.sol": "Qmd99rSemHPP89BDbW4UaX1DX8LefJg17y2azaKkMj2rDp"
+      },
+      "metadata_cid": "QmVpjsLvWTnq93yNQ7R54zn9jkmS5Lxbca7aL99CYqr7os"
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/AddressUpgradeable.sol:AddressUpgradeable",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "bf7ad0cf17926452af45ff7b60b33b8870a30faabbaf0a5b538d0efee5b6bf9a",
+      "sources": {
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg"
+      },
+      "metadata_cid": "QmSnM6CYgUvbLg9GTnnufqG9K471982MtuoG3PzFgVrpMK"
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/Initializable.sol:Initializable",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "2883f6129f7aace386ad5caefbc67207882ada72f41e342763b75b4a3d07609c",
+      "sources": {
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv"
+      },
+      "metadata_cid": "QmT5Q4Bp98snTmu8b925dk637QFYVZC7GnJADfn8397epV"
+    },
+    {
+      "contract": "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol:ReentrancyGuardUpgradeable",
+      "compiler": "0.8.37",
+      "evm": "osaka",
+      "standard_input_sha256": "3472bb426843b1d1826c13887793678d18812533293fa032538e1ee722721f8b",
+      "sources": {
+        "source/Genesis/Upgradeable/AddressUpgradeable.sol": "QmYNFgMQpYjdNPFrPZqL21rD5bjKwZ6pcodbw4GVEtkMTg",
+        "source/Genesis/Upgradeable/Initializable.sol": "QmPeL6pqGnoydRCW1zWYQfoLkFvdPqijFBR9zWktrnUVxv",
+        "source/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": "QmUHXZSYCzgufgfNKRJ4KFsWdTjXDCaD6d6FFFnxDsugng"
+      },
+      "metadata_cid": "QmNsNnk8FhZSdqUx7nx3us9GJYcmQ8bC7emtFoymLRjgt7"
+    }
+  ],
+  "release_bundle_cid": "QmdyALkNEQ6pfibbMoZncw6pH7z4zM48c7LogBtHDFDRbS",
+  "public_availability_verified": false,
+  "secondary_pin_status": "not_implemented",
+  "deployment_approved": false,
+  "backend_verification": {
+    "host": "Backend-01",
+    "peer_id": "12D3KooWMdxg1ZLq8dBb3NggnqYLRHy9LxskqQBmd9QusFy6RCBt",
+    "nebula_ip": "100.111.67.1",
+    "release_commit": "7f7054165c4a4489146deefec4e4e0867cf56069",
+    "transport": "SSH over Nebula to loopback Kubo API"
+  }
 }

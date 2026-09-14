@@ -1,0 +1,212 @@
+{
+  "status": "development_chain_active",
+  "source_commit": "7f7054165c4a4489146deefec4e4e0867cf56069",
+  "chain_id": 112311,
+  "code_manager": "0x000000000000000000000000000000000000c0DE",
+  "sponsor_proxy": "0x000000000000000000000000000000000000FEeD",
+  "deployments": {
+    "ApprovedGasSponsor": {
+      "address": "0x788e77a7f7e6d1E65a9C4b19D1C36ac93E749FB0",
+      "constructor_args": [],
+      "runtime_keccak256": "0xca9d9ba32ff288ea98dbd58e33afcbac453bd02fd856a4d2fa61d20bfb7199d6",
+      "artifact_sha256": "c891dad77183aaad2b0babafbcd12040331e1246838ed36b935fd2421c0eef70"
+    }
+  },
+  "code_manager_voters": [
+    "0x9247524040D91D5dd1521A25f2e7711d4a0fe921"
+  ],
+  "fee_wei": "1000000000000000",
+  "fee_changed": false,
+  "transactions": {
+    "deploy:ApprovedGasSponsor": {
+      "hash": "0xe7881152fc68c33dee272cd6695e491b0d9df52289f8858732f6b3950988db4b",
+      "block": 5170,
+      "success": true
+    },
+    "upgrade-and-seed:GasSponsor": {
+      "hash": "0x1be91c7ffca40cf2aaebc020446759d9234fa2e795975023c2ea48a4bcec549a",
+      "block": 5171,
+      "success": true
+    },
+    "handoff:CodeManager": {
+      "hash": "0x57e5376c8615cc7ad87af20c500fdc8d4bc9a03ee02c766c89ce86120d4b8021",
+      "block": 5172,
+      "success": true
+    }
+  },
+  "checks": {
+    "balances_roles_policy_fee_preserved": {
+      "passed": true,
+      "evidence": null
+    },
+    "mandatory_approval_version": {
+      "passed": true,
+      "evidence": null
+    },
+    "approved:0x000000000000000000000000000000000000c0DE:0xcb6964b0": {
+      "passed": true,
+      "evidence": null
+    },
+    "approved:0x000000000000000000000000000000000000c0DE:0x14c44e09": {
+      "passed": true,
+      "evidence": null
+    },
+    "approved:0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410:0x4862ddc3": {
+      "passed": true,
+      "evidence": null
+    },
+    "approved:0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410:0xaa1906e7": {
+      "passed": true,
+      "evidence": null
+    },
+    "approved:0x1D205B1d531422f615101FE93622D65AB54943D2:0x2c185def": {
+      "passed": true,
+      "evidence": null
+    },
+    "approved:0x1D205B1d531422f615101FE93622D65AB54943D2:0x79609a43": {
+      "passed": true,
+      "evidence": null
+    },
+    "approved:0x1D205B1d531422f615101FE93622D65AB54943D2:0x198160c4": {
+      "passed": true,
+      "evidence": null
+    },
+    "unapproved_clone_rejected": {
+      "passed": true,
+      "evidence": null
+    },
+    "code_manager_voter_is_owner": {
+      "passed": true,
+      "evidence": null
+    },
+    "registration_fee_unchanged": {
+      "passed": true,
+      "evidence": null
+    },
+    "deployment_wallet_no_fee_vote": {
+      "passed": true,
+      "evidence": {
+        "read_only_revert": true,
+        "error": "('0x8760bd7b', '0x8760bd7b')"
+      }
+    },
+    "owner_fee_vote_simulated": {
+      "passed": true,
+      "evidence": {
+        "new_fee_simulated_only": "1000000000000001"
+      }
+    }
+  },
+  "approved_calls": [
+    {
+      "target": "0x000000000000000000000000000000000000c0DE",
+      "function": "registerUniqueIds(address,string,uint256)",
+      "selector": "0xcb6964b0",
+      "runtime_hash": "0x296f5dd491d5636dace06af3ec059d6ec043237c5eed680d41efb19f06e455f5",
+      "implementation": "0xBf67E1c518BF9ab50d84a754a5d1397B4a39f424",
+      "implementation_hash": "0x4a52729b4f01d95feabc6522e1f78bc7be44112662002bfe0181d2e2beb24dba",
+      "max_value_wei": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      "canonical_manager_required": false,
+      "proxy_reader": "0x0000000000000000000000000000000000FacAdE",
+      "proxy_reader_hash": "0xeba4bc4e1e0d7f50206a4a4717a01f38c461299d259a878a4fbdb25bd4f46dd2"
+    },
+    {
+      "target": "0x000000000000000000000000000000000000c0DE",
+      "function": "registrationFee()",
+      "selector": "0x14c44e09",
+      "runtime_hash": "0x296f5dd491d5636dace06af3ec059d6ec043237c5eed680d41efb19f06e455f5",
+      "implementation": "0xBf67E1c518BF9ab50d84a754a5d1397B4a39f424",
+      "implementation_hash": "0x4a52729b4f01d95feabc6522e1f78bc7be44112662002bfe0181d2e2beb24dba",
+      "max_value_wei": "0",
+      "canonical_manager_required": false,
+      "proxy_reader": "0x0000000000000000000000000000000000FacAdE",
+      "proxy_reader_hash": "0xeba4bc4e1e0d7f50206a4a4717a01f38c461299d259a878a4fbdb25bd4f46dd2"
+    },
+    {
+      "target": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+      "function": "buy(address,uint256,string)",
+      "selector": "0x4862ddc3",
+      "runtime_hash": "0x2693bb5eb121a762d908058947869ce35630182832d42d7a82fbec9f8227f0c5",
+      "implementation": "0xf4DD94337a44E474bbAB986b095702f90367baD5",
+      "implementation_hash": "0x834025845f46509f79c1b56e32d6391acb178ca13bf559e57d644c4ab8000caf",
+      "max_value_wei": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      "canonical_manager_required": true,
+      "proxy_reader": "0x3571242a64Ac7166b36aAD18a1407853cCe52f71",
+      "proxy_reader_hash": "0x27c7a5a1eb33b99a8bfb5decc75b749cf1549455e0f117d1d56734795125e7c6"
+    },
+    {
+      "target": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+      "function": "setMaxSaleSupply(uint256)",
+      "selector": "0xaa1906e7",
+      "runtime_hash": "0x2693bb5eb121a762d908058947869ce35630182832d42d7a82fbec9f8227f0c5",
+      "implementation": "0xf4DD94337a44E474bbAB986b095702f90367baD5",
+      "implementation_hash": "0x834025845f46509f79c1b56e32d6391acb178ca13bf559e57d644c4ab8000caf",
+      "max_value_wei": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      "canonical_manager_required": true,
+      "proxy_reader": "0x3571242a64Ac7166b36aAD18a1407853cCe52f71",
+      "proxy_reader_hash": "0x27c7a5a1eb33b99a8bfb5decc75b749cf1549455e0f117d1d56734795125e7c6"
+    },
+    {
+      "target": "0x1D205B1d531422f615101FE93622D65AB54943D2",
+      "function": "setDefaultLimit(bool,uint256,uint256)",
+      "selector": "0x2c185def",
+      "runtime_hash": "0xab69e25a08b2977aa6ea2043bdf347ab25c7f469c683790311bc9dbbdb26546f",
+      "implementation": "0x0000000000000000000000000000000000000000",
+      "implementation_hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "max_value_wei": "0",
+      "canonical_manager_required": false,
+      "proxy_reader": "0x0000000000000000000000000000000000000000",
+      "proxy_reader_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "target": "0x1D205B1d531422f615101FE93622D65AB54943D2",
+      "function": "setWalletLimit(address,bool,bool,uint256,uint256)",
+      "selector": "0x79609a43",
+      "runtime_hash": "0xab69e25a08b2977aa6ea2043bdf347ab25c7f469c683790311bc9dbbdb26546f",
+      "implementation": "0x0000000000000000000000000000000000000000",
+      "implementation_hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "max_value_wei": "0",
+      "canonical_manager_required": false,
+      "proxy_reader": "0x0000000000000000000000000000000000000000",
+      "proxy_reader_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "target": "0x1D205B1d531422f615101FE93622D65AB54943D2",
+      "function": "setTierLimit(uint32,bool,bool,uint256,uint256)",
+      "selector": "0x198160c4",
+      "runtime_hash": "0xab69e25a08b2977aa6ea2043bdf347ab25c7f469c683790311bc9dbbdb26546f",
+      "implementation": "0x0000000000000000000000000000000000000000",
+      "implementation_hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "max_value_wei": "0",
+      "canonical_manager_required": false,
+      "proxy_reader": "0x0000000000000000000000000000000000000000",
+      "proxy_reader_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "verification": {
+    "address": "0x788e77a7f7e6d1E65a9C4b19D1C36ac93E749FB0",
+    "verified": true,
+    "name": "ApprovedGasSponsor",
+    "source_path": "source/Genesis/7702/ApprovedGasSponsor.sol",
+    "compiler": "v0.8.37+commit.f401782d",
+    "license": "Apache-2.0",
+    "runtime_keccak256": "0xca9d9ba32ff288ea98dbd58e33afcbac453bd02fd856a4d2fa61d20bfb7199d6"
+  },
+  "ipfs_bundle": "QmdyALkNEQ6pfibbMoZncw6pH7z4zM48c7LogBtHDFDRbS",
+  "ipfs_all_pins_and_bytes_verified": true,
+  "policy_note": "Sponsorship approval is a platform spending policy, not necessary for canonical CodeManager fee collection. It does not prohibit self-funded alternative systems.",
+  "tests": {
+    "approval_evm": 7,
+    "router_fee_gas_allowance": 37,
+    "dashboard_build": true,
+    "docs_build": true
+  },
+  "limitations": [
+    "This is the development chain; no main-branch merge or production-domain deployment.",
+    "The dashboard inventory has been replaced; legacy server-issuance routes are retained and disabled in the review runtime.",
+    "Gift contract ownership is separate and remains with its existing deployment owner.",
+    "No real fee change was submitted; the owner vote was simulated and the former voter was rejected.",
+    "Approval controls delegated Account spending; Paladin worker public legs remain independently funded.",
+    "Approved targets and their downstream calls require source review; no generic internal EVM call tracing policy is claimed."
+  ]
+}

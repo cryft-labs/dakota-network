@@ -73,7 +73,7 @@ call in a delegated batch must match. Missing approval rejects the operation and
 rolls back accounting. Even a valid platform voucher cannot override this rule.
 Tenant managers can set budgets and user policies but cannot grant contract approval.
 
-Approval pins target runtime bytes and, for the supported governed genesis proxies,
+Approval pins target runtime bytes and, for supported genesis and managed application proxies,
 the implementation address and runtime hash. An upgrade invalidates approval until
 reviewed again. Gift-registration entry points also check `codeManagerAddress()`
 against c0DE. Changing that pointer stops sponsorship. A clone at a new address,
@@ -123,3 +123,31 @@ metadata and source bytes to Backend-01 IPFS and verify them by CID/read-back;
 verify the implementation in Blockscout using its Apache-2.0 license. Historical
 artifacts retain their original license and addresses. Read the release journal
 for activation status; source publication alone is not on-chain activation.
+
+
+## Development activation — September 14, 2026
+
+The development chain now runs ApprovedGasSponsor **1.2.0**, implementation
+`0x788e77a7f7e6d1E65a9C4b19D1C36ac93E749FB0`, behind the existing FEeD proxy. The upgrade and initial
+approval table were applied atomically in block 5171. Account balances, managers,
+allowance policies, signer, pause state, fee and fee vault were verified unchanged.
+
+CodeManager's voter configuration was atomically handed from the deployment wallet
+to `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` in block 5172. Its current quorum
+is one vote. This transfers CodeManager governance, not just a dashboard role.
+The old deployment wallet can no longer cast CodeManager fee votes. The supplied
+management wallet's fee vote was simulated successfully; **no fee change was sent**.
+The current fee remains **0.001 KOTA per identifier**. Gift ownership and other
+contracts' governance roles were not changed by this handoff.
+
+The implementation is fully verified in Blockscout under **Apache-2.0**.
+Metadata and source bytes were pinned and read back on Backend-01 IPFS;
+bundle CID: `QmdyALkNEQ6pfibbMoZncw6pH7z4zM48c7LogBtHDFDRbS`. See the release's `deployment.json`
+for addresses, exact approved function signatures and transaction hashes.
+
+The strict allowlist is a **platform spending policy**, not a prerequisite for
+c0DE to enforce registration fees. Official Dakota registrations already require
+payment at c0DE, and platform-signed vouchers already control reimbursement.
+Keep the extra restriction only if that matches the intended tenant gas offering.
+It adds review overhead for custom contracts and does not stop independently funded
+transactions. This policy decision remains separate from the fee-voting UI.
