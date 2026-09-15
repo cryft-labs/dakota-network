@@ -1,6 +1,6 @@
 # Local code generation and registration
 
-API 1.14.0 Â· 15 September 2026 Â· Review implementation. New contract activation and browser acceptance are pending; historical live tests below used the prior format.
+API 1.14.0 · 15 September 2026 · Review implementation. New contract activation and browser acceptance are pending; historical live tests below used the prior format.
 
 ## 1. Ownership of the credentials
 
@@ -51,7 +51,7 @@ origin-bound session of the creating member. Operator status does not grant acce
 to another issuer's registration receipt.
 
 `POST /cards` keeps the design fields; `POST /issues` keeps `campaign_id`. Both accept
-`quantity` (1â€“100, default 1), require an `Idempotency-Key`, and require this field:
+`quantity` (1–100, default 1), require an `Idempotency-Key`, and require this field:
 
 ```typescript
 registration: {
@@ -145,7 +145,7 @@ replay rejection, confirmed NFT ownership, explorer/IPFS details and printable Q
 handoff on HTTPS. Offline tests and production builds are necessary but do not
 substitute for this live acceptance or ownership handoff.
 
-## Verified development result â€” 14 September 2026
+## Verified development result — 14 September 2026
 
 The live run created and redeemed token **9** using API source commit
 `95e6b928ce7832c5a5dd21788da68e1345118461` and the real development member
@@ -168,7 +168,7 @@ payment configuration and final ownership/production review remain open gates.
 Open sponsorship restoration also remains pending exact approval.
 
 
-## Token-bound inventory update â€” 14 September 2026
+## Token-bound inventory update — 14 September 2026
 
 The earlier disabled-inventory notes describe the previous snapshot. Registry and
 account deployment are now live, with wallet-approved preparation and receipt
@@ -176,7 +176,7 @@ confirmation in API 1.13.0. See the [inventory guide](TOKEN_BOUND_INVENTORIES.md
 Parent-card nesting and native/ERC-20 inventory controls remain unsupported.
 
 
-## Concurrent issuance and gas accounting â€” 15 September review
+## Concurrent issuance and gas accounting — 15 September review
 
 Public pre-registration remains owner-controlled: `setMaxSaleSupply` pays the
 CodeManager fee for additional UID capacity. This is separate from membership gas
@@ -215,3 +215,8 @@ are not proof that this activation has happened. The three-digit configuration
 retains the existing 32-entries-per-component limit: at most 32,000 simultaneous
 active private codes in this shared contract. Monitor capacity and keep production
 volume below that limit until a separately reviewed scaling change is released.
+
+
+## 15 September deployment and owner activation
+
+The reviewed implementations are now deployed, metadata is pinned, and the public sources are verified in Blockscout. Browser publishing remains paused. Follow the [exact owner activation and browser acceptance instructions](../../docs/ISSUANCE_ACTIVATION.md). Earlier deployment snapshots above are historical.

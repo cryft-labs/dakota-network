@@ -1,0 +1,9 @@
+{
+  "address": "0xC9704dBD319480190494bceD8D93d2beA314477A",
+  "verified": true,
+  "name": "CryftGreetingCards",
+  "compiler": "v0.8.37+commit.f401782d",
+  "license": "Apache-2.0",
+  "source": "source/Tokens/GreetingCards.sol",
+  "runtime_sha256": "8b8ca8c52b8c604bbf8cdf6b1d92586ca160e6bf27945bc184d32a8a760b1b1b"
+}

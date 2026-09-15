@@ -105,3 +105,8 @@ database migrations and concurrency, load/restore acceptance, backup destination
 public Cloudflare routes, final network/SSH restrictions and the remaining authority
 handover. Historical local scopes and SDK examples remain references, not proof
 of those completed operational steps.
+
+
+## 15 September deployment and owner activation
+
+The reviewed implementations are now deployed, metadata is pinned, and the public sources are verified in Blockscout. Browser publishing remains paused. Follow the [exact owner activation and browser acceptance instructions](ISSUANCE_ACTIVATION.md). Earlier deployment snapshots above are historical.

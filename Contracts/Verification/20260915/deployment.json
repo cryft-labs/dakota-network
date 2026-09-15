@@ -1,0 +1,103 @@
+{
+  "source_commit": "9019cad324802c825d56117fd787c2a0f3ec1394",
+  "deployments": {
+    "WorkerGasSponsor": {
+      "address": "0x6692AE8609ba55773189BF53EB33A005c8da4e50",
+      "args": [],
+      "runtime_sha256": "5af145a827002c0554cd28594dd5fafe3e7df12012522f77bb8d1dd696ca9260"
+    },
+    "CryftGreetingCards": {
+      "address": "0xC9704dBD319480190494bceD8D93d2beA314477A",
+      "args": [],
+      "runtime_sha256": "8b8ca8c52b8c604bbf8cdf6b1d92586ca160e6bf27945bc184d32a8a760b1b1b"
+    },
+    "TenantAllowancePolicy": {
+      "address": "0xEE95c61E5fcbDAc780Ecfb9Bb2F8B94E7B0b97A3",
+      "args": [
+        "0x000000000000000000000000000000000000FEeD",
+        "0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340",
+        "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+        "0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340",
+        10000000000000000,
+        20000000000000000,
+        []
+      ],
+      "runtime_sha256": "17aaafbf13440cb9fa1bf65d48f2b2240285063a34fe9c27cc2fcaa0d865f894"
+    },
+    "PrivateComboStorage": {
+      "address": "0xef4be4eaf46ad4c0fffcf7e303e7a9b510fa02ae",
+      "runtime_keccak256": "0xf2b504deba9ce6936ba3caa8b11859515ba635aaabaa2737b3015959bd94c762"
+    }
+  },
+  "public_transactions": {
+    "deploy:WorkerGasSponsor": {
+      "hash": "0x08bad265a6fb564270e06df0946d984afa301e2b33017576316a36361fd1d24f",
+      "state": "mined",
+      "source_commit": "9019cad324802c825d56117fd787c2a0f3ec1394"
+    },
+    "deploy:CryftGreetingCards": {
+      "hash": "0x34d9a0cfef86ab970ee4606f8ffd0fed025c984a83e8b9abde768dafb6656a03",
+      "state": "mined",
+      "source_commit": "9019cad324802c825d56117fd787c2a0f3ec1394"
+    },
+    "deploy:TenantAllowancePolicy": {
+      "hash": "0xb925e69a38717896a56a49e57bb187cf7a90433dab637cbfd46df19415c001cc",
+      "state": "mined",
+      "source_commit": "9019cad324802c825d56117fd787c2a0f3ec1394"
+    },
+    "upgrade:WorkerGasSponsor": {
+      "hash": "0xceda2b870e6b64fb327985b067561313da0ea824a307497e07db5a737c9a15eb",
+      "state": "mined",
+      "source_commit": "9019cad324802c825d56117fd787c2a0f3ec1394"
+    },
+    "upgrade:CryftGreetingCards": {
+      "hash": "0x7ec0b374fa3492e2ca5e2ba88a3feee584e77cb63a933b919a424679321e57a1",
+      "state": "mined",
+      "source_commit": "9019cad324802c825d56117fd787c2a0f3ec1394"
+    },
+    "cards:issuer": {
+      "hash": "0x1d92dc6f3d9f25ea27d74291666f9f8d2c085d825550ae6c77ff174c69e19590",
+      "state": "mined",
+      "source_commit": "9019cad324802c825d56117fd787c2a0f3ec1394"
+    },
+    "cards:capacity": {
+      "hash": "0x77429872b7abecad3700d05bb8668dc855fd42b4e32dc8c4ee902b6b869bca95",
+      "state": "mined",
+      "source_commit": "9019cad324802c825d56117fd787c2a0f3ec1394"
+    }
+  },
+  "private_transactions": {
+    "deploy:PrivateComboStorage": {
+      "id": "d5c66b8c-804f-41ab-9b8b-713879efb012",
+      "transaction_hash": "0x78da86192b6dde8d81ba165135c29487a9263c3261deb018f25a639d0e822a88",
+      "address": "0xef4be4eaf46ad4c0fffcf7e303e7a9b510fa02ae",
+      "success": true
+    },
+    "upgrade:PrivateComboStorage": {
+      "id": "16114330-7a58-408e-8c51-f09aff1186a0",
+      "transaction_hash": "0x1aa45d5e50bc66c977c778072a11d1f97d510cd12098646661acdc2585cc49fc",
+      "address": "0x4a35f4517ad2e26b332854b1eb94a67092968400",
+      "success": true
+    }
+  },
+  "manual_activation": {
+    "tenant": "moment.cards",
+    "owner": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "account": "0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340",
+    "old_policy": "0x1D205B1d531422f615101FE93622D65AB54943D2",
+    "new_policy": "0xEE95c61E5fcbDAc780Ecfb9Bb2F8B94E7B0b97A3",
+    "policy_runtime_sha256": "17aaafbf13440cb9fa1bf65d48f2b2240285063a34fe9c27cc2fcaa0d865f894",
+    "old_policy_block": 0,
+    "new_policy_block": 5875,
+    "treasury": "0xe7850ecede5d6f7d0b2d2ccabfc2f29d2c345125",
+    "wallet_overrides": [
+      "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+      "0xB2a458984b9dbaD55F1c70B59c22d7A1Fe931fd9"
+    ],
+    "tier_overrides": [],
+    "account_per_operation_wei": "30000000000000000",
+    "account_daily_wei": "100000000000000000",
+    "source_commit": "9019cad324802c825d56117fd787c2a0f3ec1394"
+  },
+  "browser_publishing_enabled": false
+}

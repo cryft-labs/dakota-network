@@ -1,0 +1,9 @@
+{
+  "address": "0xEE95c61E5fcbDAc780Ecfb9Bb2F8B94E7B0b97A3",
+  "verified": true,
+  "name": "TenantAllowancePolicy",
+  "compiler": "v0.8.37+commit.f401782d",
+  "license": "Apache-2.0",
+  "source": "source/Templates/TenantAllowancePolicy.sol",
+  "runtime_sha256": "17aaafbf13440cb9fa1bf65d48f2b2240285063a34fe9c27cc2fcaa0d865f894"
+}

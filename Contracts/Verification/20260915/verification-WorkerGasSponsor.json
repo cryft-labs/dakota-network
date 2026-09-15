@@ -1,0 +1,9 @@
+{
+  "address": "0x6692AE8609ba55773189BF53EB33A005c8da4e50",
+  "verified": true,
+  "name": "WorkerGasSponsor",
+  "compiler": "v0.8.37+commit.f401782d",
+  "license": "Apache-2.0",
+  "source": "source/Genesis/7702/WorkerGasSponsor.sol",
+  "runtime_sha256": "5af145a827002c0554cd28594dd5fafe3e7df12012522f77bb8d1dd696ca9260"
+}
