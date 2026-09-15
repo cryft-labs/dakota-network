@@ -4,11 +4,11 @@ Updated 15 September 2026. This guide covers the development release, not public
 
 ## 1. Current state
 
-The public card implementation, WorkerGasSponsor 1.3.0 and private combo implementation are deployed and upgraded. The new allowance policy is deployed but is not connected until the owner approves this workflow. Standard JSON, source files and metadata for all four implementations are pinned on Backend-01 IPFS and were read back through its gateway. The three public implementations are fully verified in Blockscout with Apache-2.0 licenses. Private implementation verification uses Pente bytecode, not a public-chain explorer address.
+The public card implementation, WorkerGasSponsor 1.3.0 and private combo implementation are deployed and upgraded. The owner completed all nine activation steps; the new allowance policy is connected and worker sponsorship is active. Standard JSON, source files and metadata for all four implementations are pinned on Backend-01 IPFS and were read back through its gateway. The three public implementations are fully verified in Blockscout with Apache-2.0 licenses. Private implementation verification uses Pente bytecode, not a public-chain explorer address.
 
 The existing card contract now has a maximum supply of 64, with 54 unused slots at block 5889. The owner paid 0.052 KOTA for 52 additional registered slots. Existing tokens, UIDs and redemption state were preserved. Its direct purchase path is restricted to the configured Paladin issuer. Read live capacity before further tests.
 
-Browser publishing and the full issuance worker remain disabled until owner activation and the final operator preflight. Opening the preview is safe; a successful build does not mean that publishing is active.
+Owner activation was verified at block 5935. The development publishing API and full worker are now enabled with the existing database and session key. A live API check created and redeemed card 11, verified its 15-character artifact, confirmed NFT ownership and explorer metadata, and settled both operations against the default member allowance. Manual wallet/browser acceptance remains separate.
 
 ## 2. What the owner must do
 
@@ -21,7 +21,7 @@ On a Nebula-connected computer with MetaMask, open:
 3. Click the current action button and confirm its transaction in MetaMask. Wait for the receipt before clicking the next action. The page checks the connected wallet, exact release and current chain state, and simulates each transaction before asking for a signature.
 4. Continue until the panel reports **On-chain activation is complete**, then tell the operator it is complete. The operator will verify receipts and enable the worker; the page does not enable server processes.
 
-At the inspected block, nine transactions are required, in this order:
+The initial activation required nine transactions, now confirmed, in this order:
 
 | Order | Dashboard action | Effect |
 | --- | --- | --- |
@@ -70,3 +70,10 @@ The current three-digit private configuration allows at most **32,000 simultaneo
 `GET /v1/platform/tenants/{tenant}/gas/issuance-activation` returns the live ordered checklist. `POST .../issuance-activation/prepare` accepts only `step` and the displayed `release` digest and returns an unsigned transaction. Both require the tenant operator and gas platform administrator; neither accepts arbitrary calldata or submits a transaction.
 
 Network release evidence lives in `Contracts/Verification/20260915`: exact compiler inputs/outputs, deployment addresses, transaction hashes, IPFS publication receipts and explorer verification results. The source release commit is `9019cad324802c825d56117fd787c2a0f3ec1394`. The public implementations use solc 0.8.37/Osaka; the deployed private implementation retains the reviewed Pente-compatible Shanghai target. Opcode availability alone does not prove a private EIP-7702 transaction flow; this issuance release accounts for worker public-submission gas explicitly.
+
+
+## 7. Live default-member acceptance — 15 September
+
+The existing default member created and redeemed token **11**, UID `0x16e74ac4dd655d408aac7e5143c08d66f57db87ab1aa99bb46723858c6145163-11`. The combined on-chain policy charge was **0.002524106 KOTA**; its pending reservation returned to zero. The remaining default daily allowance was **0.017475894 KOTA** at the check. [Delivery transaction](http://100.111.69.1:8080/tx/0xdc7a46f4115e88c56c9ca828bbfd3949d561a18a35e0f98f338dc2f2b24eaf89). The code and returned numeric component are retained only in the encrypted local test recovery file, not this manual or GitHub.
+
+No custom membership tier was created or needed. Higher levels are optional and need separate owner-approved tier creation, gas rules and member assignment. The root wallet retains its lower historical explicit override; use a regular Member wallet for browser acceptance unless that override is deliberately increased. Exact public evidence is recorded in `Contracts/Verification/20260915/activation-acceptance.json`.

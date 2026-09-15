@@ -1,0 +1,112 @@
+{
+  "checked_at": "2026-09-15T08:33:21.794304+00:00",
+  "block_number": 5953,
+  "tenant": "moment.cards",
+  "worker_sponsorship_active": true,
+  "policy": "0xEE95c61E5fcbDAc780Ecfb9Bb2F8B94E7B0b97A3",
+  "card": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+  "token_id": 11,
+  "uid": "0x16e74ac4dd655d408aac7e5143c08d66f57db87ab1aa99bb46723858c6145163-11",
+  "recipient": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+  "operations": {
+    "create": "69f3e20020615cbf69c02c1725c24d2d",
+    "redeem": "ed06a341d51edd1ce4d8a07e1b1c9258"
+  },
+  "creation": {
+    "code_generation": "client",
+    "gas": {
+      "actual_receipt_wei": "1054549000000000",
+      "charged_wei": "1327905000000000",
+      "evidence_hash": "0xfc4a75aa0420032fac51be54c5a404e151e93b174034c9b84fdba9deabaf7b9e",
+      "reported_wei": "1054549000000000",
+      "settlement_receipt_wei": "196978000000000",
+      "transaction_hash": "0x7ae29481ccc4b8093a3ed5dae0b015a0befaa52c5a8868b42dbe465dd456f6e6"
+    },
+    "metadata_uri": "ipfs://QmSSpRjuJs6ajrrtDr6MMZX2SxXduVT8mX2Ggrzicyp8oi/card.json",
+    "storage_transaction_hash": "0xbcce626fb3767b52ec49af7057b939e063dba9e3bf43d9408790ca827e33bc63",
+    "title": "Live in the Moment",
+    "token_ids": [
+      11
+    ],
+    "transaction_hash": "0xda603fe2f87593f1b8caf7087d95cfc972cf2f38406aeba4e3187758391a624c",
+    "transactions": [
+      {
+        "hash": "0xfa3a710f7128dba246ab55f77af558b3a582469f730c595814c8b1d8b2ee7037",
+        "status": "confirmed",
+        "step": "gas-reserve"
+      },
+      {
+        "hash": "0xda603fe2f87593f1b8caf7087d95cfc972cf2f38406aeba4e3187758391a624c",
+        "status": "confirmed",
+        "step": "mint"
+      },
+      {
+        "hash": "0x9b11ed3bfdc2d1fce804142ca77ee8af8e5c55ba952b5dae48f0fdbb02b15ee7",
+        "status": "confirmed",
+        "step": "sync"
+      },
+      {
+        "hash": "0xbcce626fb3767b52ec49af7057b939e063dba9e3bf43d9408790ca827e33bc63",
+        "status": "confirmed",
+        "step": "store"
+      },
+      {
+        "hash": "0x7ae29481ccc4b8093a3ed5dae0b015a0befaa52c5a8868b42dbe465dd456f6e6",
+        "status": "confirmed",
+        "step": "gas-settle"
+      }
+    ]
+  },
+  "redemption": {
+    "contract_address": "0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410",
+    "delivered": true,
+    "delivery_transaction_hash": "0xdc7a46f4115e88c56c9ca828bbfd3949d561a18a35e0f98f338dc2f2b24eaf89",
+    "gas": {
+      "actual_receipt_wei": "922845000000000",
+      "charged_wei": "1196201000000000",
+      "evidence_hash": "0x12bce3ad2cec085f8bae1dc58e747aadb6bba74c0019106a019a4ea52b648755",
+      "reported_wei": "922845000000000",
+      "settlement_receipt_wei": "155938000000000",
+      "transaction_hash": "0x9c96203e8929f45e03b1a2bf6d3f4fa8e733d947e88265421c47332a855de69e"
+    },
+    "metadata_refresh_pending": false,
+    "recipient": "0x35f9a01bc437c998175E56eD78F77C808FC64c18",
+    "token_id": 11,
+    "transaction_hash": "0xdc7a46f4115e88c56c9ca828bbfd3949d561a18a35e0f98f338dc2f2b24eaf89",
+    "transactions": [
+      {
+        "hash": "0xb1714855037cfc23d0ccc5d5402345879111bcdb96324678fd877e93e29331fa",
+        "status": "confirmed",
+        "step": "gas-reserve"
+      },
+      {
+        "hash": "0xdc7a46f4115e88c56c9ca828bbfd3949d561a18a35e0f98f338dc2f2b24eaf89",
+        "status": "confirmed",
+        "step": "redeem"
+      },
+      {
+        "hash": "0x9c96203e8929f45e03b1a2bf6d3f4fa8e733d947e88265421c47332a855de69e",
+        "status": "confirmed",
+        "step": "gas-settle"
+      }
+    ],
+    "unique_id": "0x16e74ac4dd655d408aac7e5143c08d66f57db87ab1aa99bb46723858c6145163-11"
+  },
+  "checks": {
+    "default_member_access": true,
+    "worker_gas_coverage": true,
+    "same_request_one_operation": true,
+    "card_creation_complete": true,
+    "numeric_artifact_binding": true,
+    "uid_belongs_to_token": true,
+    "redemption_complete": true,
+    "nft_delivered_to_member": true,
+    "both_operations_settled": true
+  },
+  "policy_spent_wei": "2524106000000000",
+  "policy_reserved_wei": "0",
+  "explorer_metadata_and_owner_verified": true,
+  "manual_browser_acceptance_completed": false,
+  "custom_tiers_created": false,
+  "source_commit": "eeb2c543e65b881ee33979f10341c033386f88b0"
+}
