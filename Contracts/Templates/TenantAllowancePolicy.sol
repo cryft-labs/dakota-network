@@ -33,6 +33,7 @@ contract TenantAllowancePolicy {
     mapping(bytes32 => Reservation) private _reservations;
     mapping(bytes32 => bool) public consumed;
     uint256 public pendingReservations;
+    bool public usageStarted;
 
     error Unauthorized();
     error InvalidConfiguration();
@@ -49,6 +50,7 @@ contract TenantAllowancePolicy {
     event WalletLimitSet(address indexed wallet, bool configured, bool enabled, uint256 perOperation, uint256 daily);
     event AllowanceReserved(bytes32 indexed operationId, address indexed wallet, bytes32 indexed credential, uint256 maximumCost, uint256 day);
     event AllowanceCharged(bytes32 indexed operationId, address indexed wallet, bytes32 indexed credential, uint256 cost, uint256 day);
+    event UsageMigrated(address indexed wallet, bytes32 indexed credential, uint256 walletSpent, uint256 credentialSpent, uint256 day);
 
     constructor(address sponsorContract, address tenantAccount, address tenantOwner, address membershipRegistry,
         uint256 initialPerOperation, uint256 initialDaily, address[] memory initialAdminWallets) {
@@ -76,6 +78,30 @@ contract TenantAllowancePolicy {
 
     modifier onlyOwner() { if (msg.sender != owner) revert Unauthorized(); _; }
     modifier onlySponsor() { if (msg.sender != gasSponsor) revert Unauthorized(); _; }
+
+    /// @notice Asynchronous reservations survive UTC day boundaries.
+    function workerSettlementVersion() external pure returns (uint256) { return 1; }
+
+    /// @notice Seed audited same-day usage before connecting a replacement policy.
+    /// The migration can only increase usage and closes at its first reservation.
+    /// Pause the old engine, reconcile receipts and include every charged wallet /
+    /// credential from its event history before connecting this policy.
+    function seedUsageForMigration(uint256 day, address[] calldata wallets, bytes32[] calldata credentials, uint256[] calldata walletAmounts, uint256[] calldata credentialAmounts) external onlyOwner {
+        if (usageStarted || day != block.timestamp / 1 days || wallets.length == 0 || wallets.length > 100
+            || wallets.length != credentials.length || wallets.length != walletAmounts.length || wallets.length != credentialAmounts.length) revert InvalidConfiguration();
+        for (uint256 i; i < wallets.length; ++i) {
+            if (wallets[i] == address(0) || (credentials[i] == bytes32(0) && credentialAmounts[i] != 0)) revert InvalidConfiguration();
+            Usage storage w = _walletUsage[wallets[i]];
+            if (w.day != day) { w.day = day; w.spent = 0; }
+            if (walletAmounts[i] > w.spent) w.spent = walletAmounts[i];
+            if (credentials[i] != bytes32(0)) {
+                Usage storage c = _credentialUsage[credentials[i]];
+                if (c.day != day) { c.day = day; c.spent = 0; }
+                if (credentialAmounts[i] > c.spent) c.spent = credentialAmounts[i];
+            }
+            emit UsageMigrated(wallets[i], credentials[i], walletAmounts[i], credentialAmounts[i], day);
+        }
+    }
 
 
     function proposeOwner(address next) external onlyOwner {
@@ -135,7 +161,7 @@ contract TenantAllowancePolicy {
     }
 
     function _remaining(Usage storage usage, uint256 daily) private view returns (uint256) {
-        uint256 used = usage.day == block.timestamp / 1 days ? usage.spent + usage.reserved : 0;
+        uint256 used = (usage.day == block.timestamp / 1 days ? usage.spent : 0) + usage.reserved;
         return used >= daily ? 0 : daily - used;
     }
     function allowance(address wallet) external view returns (bool enabled, uint256 perOperation, uint256 daily, uint256 available, uint256 spent, uint256 reserved, bytes32 credential) {
@@ -144,7 +170,8 @@ contract TenantAllowancePolicy {
         enabled = limit.configured && limit.enabled && !paused;
         perOperation = limit.perOperation; daily = limit.daily;
         Usage storage usage = _walletUsage[wallet];
-        if (usage.day == block.timestamp / 1 days) { spent = usage.spent; reserved = usage.reserved; }
+        if (usage.day == block.timestamp / 1 days) spent = usage.spent;
+        reserved = usage.reserved;
         available = enabled ? _remaining(usage, daily) : 0;
         if (credential != bytes32(0)) {
             uint256 other = _remaining(_credentialUsage[credential], daily);
@@ -157,6 +184,7 @@ contract TenantAllowancePolicy {
         if (operationId == bytes32(0) || wallet == address(0) || maximumCost == 0 || paused) revert AllowanceUnavailable();
         (Limit memory limit, bytes32 credential) = _resolve(wallet);
         if (!limit.configured || !limit.enabled || maximumCost > limit.perOperation) revert AllowanceUnavailable();
+        usageStarted = true;
         _reserveUsage(_walletUsage[wallet], maximumCost, limit.daily);
         // Both counters are enforced: wallet rotation and credential re-issuance do not reset a day's spend.
         if (credential != bytes32(0)) _reserveUsage(_credentialUsage[credential], maximumCost, limit.daily);
@@ -168,22 +196,24 @@ contract TenantAllowancePolicy {
     }
     function _reserveUsage(Usage storage usage, uint256 maximum, uint256 daily) private {
         uint256 day = block.timestamp / 1 days;
-        if (usage.day != day) { usage.day = day; usage.spent = 0; usage.reserved = 0; }
+        if (usage.day != day) { usage.day = day; usage.spent = 0; }
         if (usage.spent > daily || usage.reserved > daily - usage.spent || maximum > daily - usage.spent - usage.reserved) revert AllowanceUnavailable();
         usage.reserved += maximum;
     }
     function settle(bytes32 operationId, uint256 chargedCost) external onlySponsor returns (bytes4) {
         Reservation memory reservation = _reservations[operationId];
-        if (reservation.wallet == address(0) || chargedCost > reservation.maximum || reservation.day != block.timestamp / 1 days) revert InvalidSettlement();
+        if (reservation.wallet == address(0) || chargedCost > reservation.maximum) revert InvalidSettlement();
         consumed[operationId] = true;
         delete _reservations[operationId];
         --pendingReservations;
         _settleUsage(_walletUsage[reservation.wallet], reservation.maximum, chargedCost);
         if (reservation.credential != bytes32(0)) _settleUsage(_credentialUsage[reservation.credential], reservation.maximum, chargedCost);
-        emit AllowanceCharged(operationId, reservation.wallet, reservation.credential, chargedCost, reservation.day);
+        emit AllowanceCharged(operationId, reservation.wallet, reservation.credential, chargedCost, block.timestamp / 1 days);
         return this.settle.selector;
     }
     function _settleUsage(Usage storage usage, uint256 maximum, uint256 charged) private {
+        uint256 day = block.timestamp / 1 days;
+        if (usage.day != day) { usage.day = day; usage.spent = 0; }
         usage.reserved -= maximum;
         usage.spent += charged;
     }

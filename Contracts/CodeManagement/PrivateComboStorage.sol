@@ -380,6 +380,23 @@ contract PrivateComboStorage {
         }
     }
 
+    /// @notice Merge verified public capacity observed by concurrent workers.
+    /// Older observations are harmless; the stored ceiling can never decrease.
+    function syncRegisteredCodeCountAtLeast(string[] calldata identifiers, uint256[] calldata counts) external onlyAuthorized {
+        require(identifiers.length == counts.length, "Array length mismatch");
+        require(identifiers.length > 0 && identifiers.length <= MAX_BATCH_SIZE, "Batch size must be 1-100");
+        for (uint256 i; i < identifiers.length; ++i) {
+            require(CanonicalUid.validIdentifier(identifiers[i]), "Invalid contract identifier");
+            bytes32 key = keccak256(bytes(identifiers[i]));
+            require(isWhitelistedContractIdentifier[key], "Contract identifier not whitelisted");
+            if (counts[i] > registeredCodeCount[key]) {
+                _contractIdentifierStrings[key] = identifiers[i];
+                registeredCodeCount[key] = counts[i];
+                emit RegisteredCodeCountSynced(identifiers[i], counts[i]);
+            }
+        }
+    }
+
     // ── Batch Code Storage ────────────────────────────────
     //
     //    Store multiple pre-computed hashes in one transaction.
@@ -436,6 +453,23 @@ contract PrivateComboStorage {
     function storeDataBatch(
         StoreBatchRequest calldata request
     ) external onlyAuthorized returns (string[] memory assignedPins) {
+        return _storeDataBatch(request, false);
+    }
+
+    /// @notice Store commitments using a three-digit numeric routing prefix.
+    /// @dev Keeps the legacy entry point and existing stored credentials unchanged.
+    ///      The prefix is assigned here, including collision retries and slot limits.
+    function storeDataBatchNumeric(
+        StoreBatchRequest calldata request
+    ) external onlyAuthorized returns (string[] memory assignedPins) {
+        require(request.pinLength == 3 && !request.useSpecialChars, "Numeric PIN must be 3 digits");
+        return _storeDataBatch(request, true);
+    }
+
+    function _storeDataBatch(
+        StoreBatchRequest calldata request,
+        bool numericPin
+    ) internal returns (string[] memory assignedPins) {
         uint256 len = request.codeHashes.length;
         require(
             len == request.counters.length
@@ -452,7 +486,7 @@ contract PrivateComboStorage {
         require(isWhitelistedContractIdentifier[contractIdHash], "Contract identifier not whitelisted");
         require(registeredCodeCount[contractIdHash] > 0, "Registered count not synced");
 
-        StorePreparation memory preparation = _prepareStoreBatch(request, contractIdHash);
+        StorePreparation memory preparation = _prepareStoreBatch(request, contractIdHash, numericPin);
 
         assignedPins = preparation.assignedPins;
 
@@ -470,7 +504,8 @@ contract PrivateComboStorage {
 
     function _prepareStoreBatch(
         StoreBatchRequest calldata request,
-        bytes32 contractIdHash
+        bytes32 contractIdHash,
+        bool numericPin
     ) internal returns (StorePreparation memory preparation) {
         (preparation.validIndexes, preparation.validCount) = _collectValidStoreIndexes(
             request.contractIdentifier,
@@ -479,6 +514,10 @@ contract PrivateComboStorage {
             request.entropies,
             registeredCodeCount[contractIdHash]
         );
+
+        // New issuance is all-or-nothing inside the privacy group. Legacy callers
+        // retain their documented per-entry skip behavior.
+        if (numericPin) require(preparation.validCount == request.codeHashes.length, "Incomplete numeric batch");
 
         preparation.computedUniqueIds = new string[](preparation.validCount);
         for (uint256 i = 0; i < preparation.validCount; ) {
@@ -494,7 +533,7 @@ contract PrivateComboStorage {
         for (uint256 i; i < preparation.validCount; ++i) {
             uint256 index = preparation.validIndexes[i];
             string memory pin = _assignPin(request.entropies[index], request.pinLength,
-                request.useSpecialChars, request.codeHashes[index]);
+                request.useSpecialChars, request.codeHashes[index], numericPin);
             preparation.assignedPins[index] = pin;
             pinToHash[pin][request.codeHashes[index]] = CodeMetadata({
                 contractIdHash: contractIdHash, counter: request.counters[index], exists: true
@@ -921,12 +960,13 @@ contract PrivateComboStorage {
         bytes32 entropy,
         uint256 pinLength,
         bool useSpecialChars,
-        bytes32 codeHash
+        bytes32 codeHash,
+        bool numericPin
     ) internal view returns (string memory pin) {
         bytes32 nextEntropy = entropy;
-        uint256 base = useSpecialChars ? CHARSET_FULL_SIZE : CHARSET_ALNUM_SIZE;
+        uint256 base = numericPin ? 10 : (useSpecialChars ? CHARSET_FULL_SIZE : CHARSET_ALNUM_SIZE);
         uint256 pinSpace = _powBase(base, pinLength);
-        bytes memory charset = useSpecialChars ? CHARSET_FULL : CHARSET_ALNUM;
+        bytes memory charset = numericPin ? bytes("0123456789") : (useSpecialChars ? CHARSET_FULL : CHARSET_ALNUM);
         uint256 retries;
         do {
             pin = _toPin(uint256(nextEntropy) % pinSpace, pinLength, charset, base);

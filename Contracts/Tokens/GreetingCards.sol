@@ -309,6 +309,11 @@ contract CryftGreetingCards is
     }
     PurchaseSegment[] private _purchaseSegments;
     address private _pendingCardOwner;
+    // Append-only: a shared document avoids predicting concurrently allocated IDs.
+    mapping(uint256 => bool) private _sharedPurchaseMetadata;
+    bool public restrictedIssuance;
+    mapping(address => bool) public authorizedIssuers;
+    event IssuanceAccessUpdated(bool restricted, address indexed issuer, bool authorized);
     event OwnershipTransferStarted(address indexed previousOwner, address indexed pendingOwner);
 
 
@@ -490,6 +495,17 @@ contract CryftGreetingCards is
     /// @param redeemedURI   IPFS base URI for redeemed metadata of this batch
     ///                      (e.g. birthday vs holiday cards).
     function buy(address buyer, uint256 quantity, string calldata redeemedURI) external payable whenNotPaused nonReentrant {
+        _buy(buyer, quantity, redeemedURI, false);
+    }
+
+    /// @notice Issue from registered capacity with one exact metadata URI per batch.
+    /// The confirmed BatchPurchased event is the authority for assigned token IDs.
+    function buyWithSharedMetadata(address buyer, uint256 quantity, string calldata redeemedURI) external payable whenNotPaused nonReentrant {
+        _buy(buyer, quantity, redeemedURI, true);
+    }
+
+    function _buy(address buyer, uint256 quantity, string calldata redeemedURI, bool sharedMetadata) internal {
+        require(!restrictedIssuance || authorizedIssuers[msg.sender], "Issuer not authorized");
         require(buyer != address(0), "Invalid buyer address");
         require(quantity > 0 && quantity <= MAX_BATCH_SIZE, "Batch: 1-100");
         require(bytes(redeemedURI).length > 0, "Redeemed URI required");
@@ -510,6 +526,7 @@ contract CryftGreetingCards is
         }
 
         // Record one purchase segment for the entire batch
+        if (sharedMetadata) _sharedPurchaseMetadata[_purchaseSegments.length] = true;
         _purchaseSegments.push(PurchaseSegment({
             endTokenId: uint96(endTokenId),
             buyer: buyer,
@@ -586,6 +603,7 @@ contract CryftGreetingCards is
         if (redeemed) {
             string memory baseURI = _redeemedBaseURIOf(tokenId);
             if (bytes(baseURI).length == 0) return "";
+            if (_sharedPurchaseMetadata[_segmentIndexOf(tokenId)]) return baseURI;
             return string(abi.encodePacked(baseURI, tokenId.toString(), ".json"));
         }
 
@@ -729,6 +747,16 @@ contract CryftGreetingCards is
 
     function setPaused(bool paused_) external onlyOwner {
         paused = paused_;
+    }
+
+    /// @notice Optional tenant control for free, API-issued campaigns. Prevents a
+    /// direct public caller consuming reserved supply without private registration.
+    /// This does not restrict sponsorship targets or other tenants' contracts.
+    function setIssuanceAccess(bool restricted, address issuer, bool authorized) external onlyOwner {
+        require(issuer != address(0), "Invalid issuer");
+        restrictedIssuance = restricted;
+        authorizedIssuers[issuer] = authorized;
+        emit IssuanceAccessUpdated(restricted, issuer, authorized);
     }
 
     /// @notice Sync a redemption that was marked REDEEMED on CodeManager but

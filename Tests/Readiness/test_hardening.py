@@ -235,3 +235,35 @@ def test_cards_safe_parser_owner_acceptance_and_supply_registration(chain):
     with pytest.raises(Exception): cm.functions.registerUniqueIds(card.address,'112311',1).call({'from':a[3],'value':fee})
     paid(c,card.functions.setMaxSaleSupply(3),fee,a[5])
     assert card.functions.maxSaleSupply().call()==3
+
+
+def test_shared_metadata_tracks_receipt_uids_across_users_and_capacity_growth(chain):
+    from web3.logs import DISCARD
+    c=chain;a=c['accounts'];cm=manager(c)
+    card=proxy_contract(c,'CryftGreetingCards',('Cards','CARD','ipfs://front/',cm.address,'112311',a[4]),'initializeWithOwner')
+    fee=cm.functions.registrationFee().call()
+    paid(c,card.functions.setMaxSaleSupply(4),4*fee,a[4])
+    tx(c,card.functions.buy(a[3],1,'ipfs://legacy/'),a[3])
+    tx(c,card.functions.setIssuanceAccess(True,a[1],True),a[4])
+    fails(c,card.functions.buy(a[7],1,'ipfs://unauthorized/'),a[7])
+    fails(c,card.functions.buyWithSharedMetadata(a[7],1,'ipfs://unauthorized.json'),a[7])
+    tx(c,cm.functions.voteToSetPrivacyGroupGift(a[6],card.address,True))
+    tx(c,cm.functions.recordRedemptionStrict(card.functions.getUniqueIdForToken(1).call(),a[3]),a[6])
+    assert card.functions.tokenURI(1).call()=='ipfs://legacy/1.json'
+    expected=2;seen=set()
+    # Submission order intentionally differs from the order users prepared designs.
+    for index in [3,1,0,2]:
+        if expected==4:paid(c,card.functions.setMaxSaleSupply(12),8*fee,a[4])
+        buyer=a[index+5];uri=f'ipfs://batch-{index}/card.json'
+        receipt=tx(c,card.functions.buyWithSharedMetadata(buyer,2,uri),a[1])
+        event=card.events.BatchPurchased().process_receipt(receipt,errors=DISCARD)[0]['args']
+        assert event['startTokenId']==expected and event['buyer']==buyer
+        for token in range(expected,expected+2):
+            uid=card.functions.getUniqueIdForToken(token).call()
+            assert uid not in seen;seen.add(uid)
+            assert card.functions.cardBuyer(token).call()==buyer
+            tx(c,cm.functions.recordRedemptionStrict(uid,buyer),a[6])
+            assert card.functions.ownerOf(token).call()==buyer
+            assert card.functions.tokenURI(token).call()==uri
+        expected+=2
+    assert len(seen)==8 and card.functions.availableSupply().call()==3

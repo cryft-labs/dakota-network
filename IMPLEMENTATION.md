@@ -553,3 +553,19 @@ account per card; a later implementation address is a different TBA and must not
 be switched silently. Nested CARD NFTs from the parent collection
 `0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410` are rejected. See
 `Contracts/Accounts/README.md` and `docs/current-contract-addresses.json` `tba`.
+
+
+## Issuance and concurrency review — 15 September 2026
+
+The review uses locally generated 12-character codes and private-state assigned
+three-digit prefixes, optional encrypted local backups, receipt-bound UID tracking
+and shared batch metadata. Membership spending uses gas allocations; max batch size
+and batches per minute are separate traffic safeguards. Card-per-hour quotas have
+been retired. API 1.14.0, the widget and moment.cards must deploy together after
+the matching public/private contract and allowance activation.
+
+Offline regression and PostgreSQL concurrency tests pass. This does not activate
+browser publishing. The root wallet must approve the reviewed public upgrades and
+gas configuration; private deployment, metadata publication, runtime pins and live
+browser creation/redemption must then be verified. Do not advertise this review as
+production-ready or merge main as a substitute for that acceptance.

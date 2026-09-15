@@ -1,0 +1,26 @@
+{
+  "PrivateComboStorage": {
+    "evm": "shanghai",
+    "append_only_layout": true,
+    "runtime_bytes": 18249,
+    "runtime_sha256": "37bae155d0a45cbb79896d1d589812607ef75661aeb62f30a3ef32a74f9139f9"
+  },
+  "CryftGreetingCards": {
+    "evm": "osaka",
+    "append_only_layout": true,
+    "runtime_bytes": 19045,
+    "runtime_sha256": "8b8ca8c52b8c604bbf8cdf6b1d92586ca160e6bf27945bc184d32a8a760b1b1b"
+  },
+  "WorkerGasSponsor": {
+    "evm": "osaka",
+    "append_only_layout": true,
+    "runtime_bytes": 21172,
+    "runtime_sha256": "5af145a827002c0554cd28594dd5fafe3e7df12012522f77bb8d1dd696ca9260"
+  },
+  "TenantAllowancePolicy": {
+    "evm": "osaka",
+    "append_only_layout": true,
+    "runtime_bytes": 7035,
+    "runtime_sha256": "61b4100109a0ab558c3a8a9a5ec5a5ddccae43558332758937cae0c39558c0df"
+  }
+}

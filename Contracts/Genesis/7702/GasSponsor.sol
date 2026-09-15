@@ -482,6 +482,7 @@ contract GasSponsor is
     function recoverGasCredit(address sponsor, address payable recipient, uint256 amount) external onlyPlatformAdmin nonReentrant {
         _requireNonZero(recipient);
         require(amount > 0 && amount <= _sponsorStorage().restrictedGasCredit[sponsor], "Insufficient gas credit");
+        require(amount <= _sponsorState(sponsor).balance - _pendingWorkerCost(sponsor), "Funds reserved for work");
         _sponsorStorage().restrictedGasCredit[sponsor] -= amount;
         _sponsorState(sponsor).balance -= amount;
         (bool sent,) = recipient.call{value: amount}("");
@@ -507,7 +508,8 @@ contract GasSponsor is
         _requireNonZero(recipient);
         if (amount == 0) revert ZeroValue();
         SponsorState storage sponsorState = _sponsorState(sponsor);
-        if (sponsorState.balance - _sponsorStorage().restrictedGasCredit[sponsor] < amount) {
+        if (sponsorState.balance - _sponsorStorage().restrictedGasCredit[sponsor] < amount
+            || sponsorState.balance - _pendingWorkerCost(sponsor) < amount) {
             revert InsufficientSponsorBalance(
                 sponsorState.balance - _sponsorStorage().restrictedGasCredit[sponsor],
                 amount
@@ -522,6 +524,7 @@ contract GasSponsor is
     /// @notice Optional policy is scoped to exactly this tenant and sponsor engine.
     /// Removing a broken policy does not call it, so its code cannot trap account management.
     function setSponsorPolicy(address sponsor, address policy) external override onlySponsorManager(sponsor) {
+        require(_pendingWorkerCost(sponsor) == 0, "Unsettled worker operations");
         if (policy != address(0)) {
             if (policy.code.length == 0) revert InvalidAllowancePolicy();
             if (ITenantAllowancePolicy(policy).gasSponsor() != address(this)
@@ -563,7 +566,7 @@ contract GasSponsor is
             + (_sponsorStorage().allowancePolicies[sponsor] == address(0) ? 0 : _POLICY_SETTLEMENT_OVERHEAD);
     }
 
-    function _callPolicy(address policy, bytes memory input, bytes4 expected) private {
+    function _callPolicy(address policy, bytes memory input, bytes4 expected) internal {
         bool ok;
         uint256 size;
         bytes32 response;
@@ -904,7 +907,7 @@ contract GasSponsor is
             sponsorState.tenantDailyLimit
         );
         uint256 reservedDailySpend =
-            sponsorState.dailySpent + voucher.maxCost;
+            sponsorState.dailySpent + _pendingWorkerCost(voucher.sponsor) + voucher.maxCost;
         if (reservedDailySpend > effectiveDailyLimit) {
             revert DailyLimitExceeded(
                 effectiveDailyLimit,
@@ -913,7 +916,7 @@ contract GasSponsor is
         }
 
         uint256 available = _min(
-            sponsorState.balance,
+            sponsorState.balance - _pendingWorkerCost(voucher.sponsor),
             address(this).balance
         );
         if (available < voucher.maxCost) {
@@ -1146,7 +1149,7 @@ contract GasSponsor is
 
     function _sponsorState(
         address sponsor
-    ) private view returns (SponsorState storage sponsorState) {
+    ) internal view returns (SponsorState storage sponsorState) {
         sponsorState = _sponsorStorage().sponsors[sponsor];
         if (sponsorState.manager == address(0)) {
             revert SponsorNotConfigured(sponsor);
@@ -1155,7 +1158,7 @@ contract GasSponsor is
 
     function _resetDailySpendIfNeeded(
         SponsorState storage sponsorState
-    ) private {
+    ) internal {
         uint256 currentDay = block.timestamp / 1 days;
         if (sponsorState.lastResetDay != currentDay) {
             sponsorState.lastResetDay = currentDay;
@@ -1238,8 +1241,10 @@ contract GasSponsor is
         }
     }
 
+    function _pendingWorkerCost(address) internal view virtual returns (uint256) { return 0; }
+
     function _sponsorStorage()
-        private
+        internal
         pure
         returns (GasSponsorStorage storage state)
     {

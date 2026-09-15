@@ -387,3 +387,6 @@ need their independent build configuration completed in the website repository.
 Current `/admin/contracts`, `/admin/paladin` and `/dashboard/paladin` routes share
 the main Dakota application. Preserve these existing tools when separating the
 dashboard; do not interpret the subdomain names as verified deployed endpoints.
+
+
+See [the September 15 issuance review](ISSUANCE_REVIEW.md) for the new registration, gas and recovery behavior. Activation remains pending.
