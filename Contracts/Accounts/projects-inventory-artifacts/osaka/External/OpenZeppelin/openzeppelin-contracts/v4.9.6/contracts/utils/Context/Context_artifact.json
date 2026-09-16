@@ -1,0 +1,46 @@
+{
+  "runtime_bytecode": "",
+  "creation_bytecode": "",
+  "abi": [],
+  "opcodes": "",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.37+commit.f401782d\"},\"language\":\"Solidity\",\"output\":{\"abi\":[],\"devdoc\":{\"details\":\"Provides information about the current execution context, including the sender of the transaction and its data. While these are generally available via msg.sender and msg.data, they should not be accessed in such a direct manner, since when dealing with meta-transactions the account sending and paying for execution may not be the actual sender (as far as an application is concerned). This contract is only required for intermediate, library-like contracts.\",\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Context.sol\":\"Context\"},\"evmVersion\":\"osaka\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Context.sol\":{\"keccak256\":\"0xa92e4fa126feb6907daa0513ddd816b2eb91f30a808de54f63c17d0e162c3439\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://a367861093b74443b137564d3f3c472f70bcf114739e62059c939f25e315706c\",\"dweb:/ipfs/Qmd7JMpcxD9RuQjK3uM3EzJUgSqdN8vzp8eytEiuwxQJ6h\"]}},\"version\":1}",
+  "runtime_size_bytes": 0,
+  "creation_size_bytes": 0,
+  "source_rel_path": "External/OpenZeppelin/openzeppelin-contracts/v4.9.6/contracts/utils/Context.sol",
+  "fully_qualified_name": "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Context.sol:Context",
+  "compiler_version": "0.8.37",
+  "evm_version": "osaka",
+  "deployable": false,
+  "standard_json_input": {
+    "language": "Solidity",
+    "sources": {
+      "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Context.sol": {
+        "content": "// SPDX-License-Identifier: MIT\n// OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)\n\npragma solidity ^0.8.0;\n\n/**\n * @dev Provides information about the current execution context, including the\n * sender of the transaction and its data. While these are generally available\n * via msg.sender and msg.data, they should not be accessed in such a direct\n * manner, since when dealing with meta-transactions the account sending and\n * paying for execution may not be the actual sender (as far as an application\n * is concerned).\n *\n * This contract is only required for intermediate, library-like contracts.\n */\nabstract contract Context {\n    function _msgSender() internal view virtual returns (address) {\n        return msg.sender;\n    }\n\n    function _msgData() internal view virtual returns (bytes calldata) {\n        return msg.data;\n    }\n\n    function _contextSuffixLength() internal view virtual returns (uint256) {\n        return 0;\n    }\n}\n"
+      }
+    },
+    "settings": {
+      "evmVersion": "osaka",
+      "libraries": {},
+      "metadata": {
+        "bytecodeHash": "ipfs"
+      },
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "remappings": [],
+      "outputSelection": {
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Context.sol": {
+          "Context": [
+            "abi",
+            "metadata",
+            "storageLayout",
+            "evm.bytecode",
+            "evm.deployedBytecode"
+          ]
+        }
+      }
+    }
+  },
+  "standard_input_sha256": "9483cfc76c087995ba74ab9068ed8bcbc4006a1fe31b71c7deb547e8bd54251e"
+}

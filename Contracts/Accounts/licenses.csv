@@ -5,3 +5,7 @@ IERC6551Registry,IERC6551Registry,MIT,mit,3,v0.8.37+commit.f401782d,osaka,false
 IERC6551Account,IERC6551Account,MIT,mit,3,v0.8.37+commit.f401782d,osaka,false
 IERC6551Executable,IERC6551Executable,MIT,mit,3,v0.8.37+commit.f401782d,osaka,false
 IERC721Owner,IERC721Owner,Apache-2.0,apache_2_0,12,v0.8.37+commit.f401782d,osaka,false
+MomentInventoryToken,MomentInventoryToken,Apache-2.0,apache_2_0,12,v0.8.37+commit.f401782d,osaka,true
+MomentProjectRegistry,MomentProjectRegistry,Apache-2.0,apache_2_0,12,v0.8.37+commit.f401782d,osaka,true
+MomentProjectProxy,MomentProjectProxy,Apache-2.0,apache_2_0,12,v0.8.37+commit.f401782d,osaka,true
+MomentProjectAdmin,MomentProjectAdmin,Apache-2.0,apache_2_0,12,v0.8.37+commit.f401782d,osaka,true

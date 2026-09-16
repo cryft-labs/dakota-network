@@ -114,3 +114,69 @@ python -m pytest Tests/Accounts/test_tba.py -q
 ```
 
 Local PyEVM tests do not deploy to chain 112311 and do not prove Besu acceptance.
+
+## Public saved projects and named inventory tokens
+
+The additive 16 September release introduces two **transparent upgradeable**
+applications. This does not change the fixed ERC-6551 implementations above.
+
+| Application | Purpose |
+| --- | --- |
+| `MomentProjectRegistry` | Append-only revisions of public reusable card designs, keyed by tenant, wallet and project ID. Each revision anchors a SHA-256 digest and IPFS URI. |
+| `MomentInventoryToken` | A shared ERC-1155 collection. Each new named type has its own fixed supply; units of that type are interchangeable. Creating a type requires no new contract. |
+
+Both proxies are initialized in their deployment transactions. Implementation
+initializers are locked. The existing dev signer pays deployment gas, while
+`0x9247524040D91D5dd1521A25f2e7711d4a0fe921` immediately owns both applications
+and their shared `MomentProjectAdmin`. Only the root can authorize upgrades or
+service relayers. The dev signer receives no privileged role. Ownership transfer
+requires acceptance by the proposed new owner; renunciation is unavailable.
+
+The initial application relayer is Paladin's existing public worker address,
+`0xe7850ecede5d6f7d0b2d2ccabfc2f29d2c345125`. It is a trusted authenticated
+service: it may save public designs or mint new types for users, but this release
+does not let it move holder balances, increase an existing type's supply or erase
+project revisions. Root-controlled upgrades can change application behavior;
+these guarantees describe the reviewed implementation, not an immutable system.
+
+### Data and recovery boundaries
+
+Projects contain title, message, sender name, card type and color. They never
+contain redeemable code secrets, PINs, recipient email lists or passwords. They
+are public, have no passphrase, and reusing one generates a fresh batch. The
+contract cannot classify arbitrary URI contents: the service enforces a strict
+public-design schema, and direct callers must follow the same boundary.
+
+Completed codes are separate: only after private registration supplies the final
+code may the browser offer an encrypted recovery JSON. Public projects cannot
+recover lost code secrets. The registry retains historical revisions even after
+a newer revision is saved. IPFS pinning and backups are required to preserve the
+referenced document bytes; a chain digest is not a backup of those bytes.
+
+### Deployment and upgrades
+
+Compile the three source files with `Tools/SolcCompiler/compile.py`, targeting
+Solidity 0.8.37 / Osaka and output directory `projects-inventory-artifacts`.
+The output includes standard JSON, metadata, storage layouts, ABI and bytecode.
+Publish the source and metadata to the configured Backend-01 Kubo API before
+deployment. All four top-level artifacts use **Apache-2.0**; bundled OpenZeppelin
+dependencies retain their MIT SPDX licenses. Use `apache_2_0` / ID `12` when
+verifying these top-level contracts in Blockscout.
+
+`Tools/LiveGenesis/deploy_moment_projects.py --workspace <workspace>` performs a
+read-only preflight. Add `--execute` only for the reviewed, committed and pushed
+release. The journal at `outputs/moment-projects-inventory-20260916/` records each
+signed transaction hash before broadcast and verifies exact runtime bytecode,
+EIP-1967 slots, initializer locks and owner permissions. An uncertain transaction
+must be reconciled by its recorded hash before another deployment attempt.
+
+To upgrade, compile and compare storage layouts; preserve inherited OpenZeppelin
+4.9.6 layout, existing field order/types and storage gaps. Test the upgrade against
+a populated local state. Root calls the shared admin's `upgrade` or
+`upgradeAndCall` for the relevant proxy. Publish/verify the new implementation
+and update the Router's implementation hash pin only after review. Router calls
+fail closed while an implementation differs from its configured release pin.
+
+```sh
+python -m pytest Tests/Accounts/test_moment_projects_inventory.py -q
+```

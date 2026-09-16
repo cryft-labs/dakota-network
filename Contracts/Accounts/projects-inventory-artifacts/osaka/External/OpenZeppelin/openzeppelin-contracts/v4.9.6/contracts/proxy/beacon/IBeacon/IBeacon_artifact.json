@@ -1,0 +1,60 @@
+{
+  "runtime_bytecode": "",
+  "creation_bytecode": "",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "implementation",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "opcodes": "",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.37+commit.f401782d\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"implementation\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"This is the interface that {BeaconProxy} expects of its beacon.\",\"kind\":\"dev\",\"methods\":{\"implementation()\":{\"details\":\"Must return an address that can be used as a delegate call target. {BeaconProxy} will check that this address is a contract.\"}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/beacon/IBeacon.sol\":\"IBeacon\"},\"evmVersion\":\"osaka\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/beacon/IBeacon.sol\":{\"keccak256\":\"0xd50a3421ac379ccb1be435fa646d66a65c986b4924f0849839f08692f39dde61\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://ada1e030c0231db8d143b44ce92b4d1158eedb087880cad6d8cc7bd7ebe7b354\",\"dweb:/ipfs/QmWZ2NHZweRpz1U9GF6R1h65ri76dnX7fNxLBeM2t5N5Ce\"]}},\"version\":1}",
+  "runtime_size_bytes": 0,
+  "creation_size_bytes": 0,
+  "source_rel_path": "External/OpenZeppelin/openzeppelin-contracts/v4.9.6/contracts/proxy/beacon/IBeacon.sol",
+  "fully_qualified_name": "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/beacon/IBeacon.sol:IBeacon",
+  "compiler_version": "0.8.37",
+  "evm_version": "osaka",
+  "deployable": false,
+  "standard_json_input": {
+    "language": "Solidity",
+    "sources": {
+      "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/beacon/IBeacon.sol": {
+        "content": "// SPDX-License-Identifier: MIT\n// OpenZeppelin Contracts v4.4.1 (proxy/beacon/IBeacon.sol)\n\npragma solidity ^0.8.0;\n\n/**\n * @dev This is the interface that {BeaconProxy} expects of its beacon.\n */\ninterface IBeacon {\n    /**\n     * @dev Must return an address that can be used as a delegate call target.\n     *\n     * {BeaconProxy} will check that this address is a contract.\n     */\n    function implementation() external view returns (address);\n}\n"
+      }
+    },
+    "settings": {
+      "evmVersion": "osaka",
+      "libraries": {},
+      "metadata": {
+        "bytecodeHash": "ipfs"
+      },
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "remappings": [],
+      "outputSelection": {
+        "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/beacon/IBeacon.sol": {
+          "IBeacon": [
+            "abi",
+            "metadata",
+            "storageLayout",
+            "evm.bytecode",
+            "evm.deployedBytecode"
+          ]
+        }
+      }
+    }
+  },
+  "standard_input_sha256": "cbac913844e15132c89e258bb3fca84c1b5f407fd91b502a21f41714d2579e65"
+}

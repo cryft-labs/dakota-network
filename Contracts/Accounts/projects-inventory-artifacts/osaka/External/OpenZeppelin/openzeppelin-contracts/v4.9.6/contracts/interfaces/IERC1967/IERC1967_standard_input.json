@@ -1,0 +1,31 @@
+{
+  "language": "Solidity",
+  "settings": {
+    "evmVersion": "osaka",
+    "libraries": {},
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/interfaces/IERC1967.sol": {
+        "IERC1967": [
+          "abi",
+          "metadata",
+          "storageLayout",
+          "evm.bytecode",
+          "evm.deployedBytecode"
+        ]
+      }
+    },
+    "remappings": []
+  },
+  "sources": {
+    "OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/interfaces/IERC1967.sol": {
+      "content": "// SPDX-License-Identifier: MIT\n// OpenZeppelin Contracts (last updated v4.9.0) (interfaces/IERC1967.sol)\n\npragma solidity ^0.8.0;\n\n/**\n * @dev ERC-1967: Proxy Storage Slots. This interface contains the events defined in the ERC.\n *\n * _Available since v4.8.3._\n */\ninterface IERC1967 {\n    /**\n     * @dev Emitted when the implementation is upgraded.\n     */\n    event Upgraded(address indexed implementation);\n\n    /**\n     * @dev Emitted when the admin account has changed.\n     */\n    event AdminChanged(address previousAdmin, address newAdmin);\n\n    /**\n     * @dev Emitted when the beacon is changed.\n     */\n    event BeaconUpgraded(address indexed beacon);\n}\n"
+    }
+  }
+}
