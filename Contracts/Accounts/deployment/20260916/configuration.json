@@ -1,0 +1,35 @@
+{
+  "chain_id": 112311,
+  "source_commit": "1a1295c629486d6b0e4c26ffeaff21f1ce8ae908",
+  "admin": "0xc551BC2A8c09c16daAE37a2288c672a42Ab3F8f5",
+  "owner": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+  "relayer": "0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125",
+  "contracts": {
+    "MomentInventoryToken": {
+      "proxy": "0xF1a8a53Ef5400F63B4E5cA9FCbeBed097f9b08C4",
+      "implementation": "0xD78a10d70d4fDeb4294521e8e2fD895Afa7f0b3b",
+      "license": "Apache-2.0",
+      "artifact": {
+        "immutable_references": {},
+        "artifact_sha256": "5879d83d3a597f265d9336b46f8ac101967504765bf33281b39befc08eca0905"
+      }
+    },
+    "MomentProjectRegistry": {
+      "proxy": "0xEE299c9a23117a626A27D500Da886Dff89b542F8",
+      "implementation": "0x577D197FD37fCecdeDE41cc4C21EDe6960c694f7",
+      "license": "Apache-2.0",
+      "artifact": {
+        "immutable_references": {},
+        "artifact_sha256": "c2c08893263cbbf9a7827510848d6d811c87532eb6624e789cf5a22584df33ae"
+      }
+    }
+  },
+  "environment": {
+    "PLATFORM_INVENTORY_TOKEN_ADDRESS": "0xF1a8a53Ef5400F63B4E5cA9FCbeBed097f9b08C4",
+    "PLATFORM_INVENTORY_TOKEN_RUNTIME_SHA256": "8de537699ac81df17f8cc9f6a963bfdd93c865efb1ead184e1ed3025d6844b27",
+    "PLATFORM_INVENTORY_TOKEN_PROXY_SHA256": "9a44ca382856cea1ac12570364e157be0c3ccf62d6534002f2513ef335be8eef",
+    "PLATFORM_PROJECT_REGISTRY_ADDRESS": "0xEE299c9a23117a626A27D500Da886Dff89b542F8",
+    "PLATFORM_PROJECT_REGISTRY_RUNTIME_SHA256": "762e88616de87f9f50b905e87c15d6b550ea339515731742f36c38ffc74adcef",
+    "PLATFORM_PROJECT_REGISTRY_PROXY_SHA256": "9a44ca382856cea1ac12570364e157be0c3ccf62d6534002f2513ef335be8eef"
+  }
+}

@@ -120,6 +120,30 @@ Local PyEVM tests do not deploy to chain 112311 and do not prove Besu acceptance
 The additive 16 September release introduces two **transparent upgradeable**
 applications. This does not change the fixed ERC-6551 implementations above.
 
+Deployment is complete on chain 112311. All five addresses are fully verified in
+Blockscout with their Apache-2.0 top-level licenses. See
+[deployment/20260916](deployment/20260916) for receipts, checks and configuration.
+
+| Role | Address |
+| --- | --- |
+| Inventory token proxy | `0xF1a8a53Ef5400F63B4E5cA9FCbeBed097f9b08C4` |
+| Inventory implementation | `0xD78a10d70d4fDeb4294521e8e2fD895Afa7f0b3b` |
+| Project registry proxy | `0xEE299c9a23117a626A27D500Da886Dff89b542F8` |
+| Project implementation | `0x577D197FD37fCecdeDE41cc4C21EDe6960c694f7` |
+| Shared proxy administrator | `0xc551BC2A8c09c16daAE37a2288c672a42Ab3F8f5` |
+
+Use proxy addresses in applications. The release bundle is pinned at
+`ipfs://QmQybJDSeakYMGYFZnnEBcRKPusnHc8PtPtoSSKdVgZ7KA`; all 55 compiler
+objects were read back and their recursive pins confirmed on Backend-01.
+This does not establish public IPFS peering or public gateway availability.
+
+Live dev-wallet tests saved two revisions, minted three interchangeable units
+of a named test type, and transferred one unit to the existing test wallet.
+Read-only negative checks rejected stale revisions, another wallet's write,
+repeated issuance and an administrator attempting to transfer a holder's tokens.
+No live upgrade was performed; populated-state upgrade preservation passed on
+the isolated test chain. Root ownership and worker permissions stayed unchanged.
+
 | Application | Purpose |
 | --- | --- |
 | `MomentProjectRegistry` | Append-only revisions of public reusable card designs, keyed by tenant, wallet and project ID. Each revision anchors a SHA-256 digest and IPFS URI. |

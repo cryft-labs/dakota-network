@@ -1,0 +1,13 @@
+{
+  "address": "0xD78a10d70d4fDeb4294521e8e2fD895Afa7f0b3b",
+  "accepted": true,
+  "status": "verified",
+  "fields": {
+    "name": "MomentInventoryToken",
+    "file_path": "source/Accounts/MomentInventoryToken.sol",
+    "compiler_version": "v0.8.37+commit.f401782d",
+    "license_type": "apache_2_0",
+    "is_verified": true,
+    "is_partially_verified": false
+  }
+}
