@@ -64,7 +64,8 @@ def main():
                 content=a['standard_json_input']['sources'][unit]['content'].encode()
                 assert '0x'+Web3.keccak(content).hex().removeprefix('0x')==source['keccak256']
                 expected=next(s.removeprefix('dweb:/ipfs/') for s in source['urls'] if s.startswith('dweb:/ipfs/'));pin(content,expected)
-            report[name]={'metadata_cid':cid,'license':json.loads(metadata)['sources'][a['source']]['license'],
+            unit=next(iter(json.loads(metadata)['settings']['compilationTarget']))
+            report[name]={'metadata_cid':cid,'license':json.loads(metadata)['sources'][unit]['license'],
                 'files':{f:pin((REPO/'Contracts/Verification/20260917'/name/f).read_bytes()) for f in ('standard-input.json','standard-output.json','artifact.json')}}
             print('Published and verified '+name,flush=True)
         journal['publication']=report;save()
