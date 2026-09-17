@@ -169,7 +169,7 @@ def test_collection_identity_upgrade_preserves_types_balances_and_authority(chai
     replacement=deploy('MomentInventoryToken')
     admin.functions.upgrade(proxy.address,replacement.address).transact({'from':a[0]})
     token=w3.eth.contract(address=proxy.address,abi=replacement.abi)
-    assert token.functions.name().call()=='Dakota Inventory' and token.functions.symbol().call()=='DKINV'
+    assert token.functions.name().call()=='Moment Inventory' and token.functions.symbol().call()=='MOMINV'
     assert token.functions.implementationVersion().call()=='1.1.1'
     assert token.functions.definition(1).call()==definition
     assert token.functions.uri(1).call()=='ipfs://coffee-wake/token.json'

@@ -234,14 +234,14 @@ in `outputs/inventory-allocation-20260917`. Apache-2.0 applies to this target.
 
 ### Shared collection identity v1.1.1
 
-The shared contract exposes `name() = "Dakota Inventory"` and
-`symbol() = "DKINV"` for explorer and wallet collection headings. These are
+The shared contract exposes `name() = "Moment Inventory"` and
+`symbol() = "MOMINV"` for explorer and wallet collection headings. These are
 storage-free getters, so existing proxy state and the gap are unchanged. Each
 fungible type still has its own immutable name, URI, supply and metadata symbol
-(for example, Coffee / WAKE). DKINV identifies the collection, not every type.
+(for example, Coffee / WAKE). MOMINV identifies the collection, not every type.
 
 Compile to `identity-artifacts`. The pinned release bundle is
-`QmQXdRxiGLsz78GpVWn9M8x3Rfd6XMFA8NHaVeRccMazom`. The source retains Apache-2.0.
+`QmdNEfUwA4pbCptEWXfk5EzQ29jknYFq4kM8cjKjU2bfT2`. The source retains Apache-2.0.
 `Tools/LiveGenesis/deploy_inventory_identity.py --workspace <workspace>` compares
 the layout with v1.1.0 and checks the active proxy; `--execute` deploys only the
 reviewed implementation after the branch is committed and pushed. Root still

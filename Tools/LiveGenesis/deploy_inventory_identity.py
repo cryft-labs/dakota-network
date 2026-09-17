@@ -69,8 +69,8 @@ class IdentityDeployment(Deployment):
         implementation=self.deploy(NAME,label='MomentInventoryTokenV111')
         self.reject('implementation_cannot_initialize',implementation.functions.initialize(DEPLOYER,DEPLOYER),sender=DEPLOYER)
         assert implementation.functions.implementationVersion().call()=='1.1.1'
-        assert implementation.functions.name().call()=='Dakota Inventory'
-        assert implementation.functions.symbol().call()=='DKINV'
+        assert implementation.functions.name().call()=='Moment Inventory'
+        assert implementation.functions.symbol().call()=='MOMINV'
         call=self.admin.functions.upgrade(PROXY,implementation.address)
         call.call({'from':ADMIN})
         self.reject('deployer_cannot_upgrade',call,sender=DEPLOYER)

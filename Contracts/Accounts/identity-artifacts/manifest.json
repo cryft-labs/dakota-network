@@ -107,17 +107,17 @@
     "over_limit": false,
     "evm_version": "osaka",
     "compiler_version": "0.8.37",
-    "standard_input_sha256": "48c0976fc4f6750d35494072196850a451d091344af8910c75de9e6d318bf8f3"
+    "standard_input_sha256": "668867b7a8b4e82237794c2e4049462698c9375d9eaf9b42dc10f9bc4cb6a83b"
   },
   {
     "source": "Accounts/MomentInventoryToken.sol",
     "contract": "MomentInventoryToken",
-    "runtime_bytes": 11655,
-    "creation_bytes": 11879,
+    "runtime_bytes": 11656,
+    "creation_bytes": 11880,
     "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\Accounts\\MomentInventoryToken",
     "over_limit": false,
     "evm_version": "osaka",
     "compiler_version": "0.8.37",
-    "standard_input_sha256": "db4ac6cab74132b950e45f27f28c8154fd5c558e72080a9f99acd58a9f17d57d"
+    "standard_input_sha256": "2e7710e8b0cf8470d67b67a138f08f7c90964411906ee17beb5733dc3fc11033"
   }
 ]

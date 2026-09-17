@@ -183,8 +183,8 @@
       "read_back_verified": true
     },
     {
-      "cid": "QmZWVz5L8rdF7iiB7wLze4AUNwRhizDL5PTconmGPZ9wKL",
-      "sha256": "4730ddc6ed0e502239ec57f91fb1457964f9b3bf9cd4ccdb3247967cd06bc24f",
+      "cid": "QmSy4jqxYmS4gQshLc9KrfLv27tJJAKTXMhQA5r9uwghzq",
+      "sha256": "cc9661201e0ecf92ca6452f25341966afd970b115748c60979e873f9b48890ad",
       "bytes": 4367,
       "roles": [
         "metadata"
@@ -193,9 +193,9 @@
       "read_back_verified": true
     },
     {
-      "cid": "Qmepx6fYMjyx3Wpo4uzPW2R8kKab5fmctR8VwZw6uTKGis",
-      "sha256": "0ca638bf702c1d7cac0dd4c532ba8cac284ebd242c6dbb11a760bdb970651cca",
-      "bytes": 7460,
+      "cid": "QmSWURUDwYKmP2mzXXMXLBVHmSNZR2qYvDdUZ6cVMx7XQB",
+      "sha256": "e6acce2d494106b7bf3b719e8e699bd56b4183444611890c789da29334800ad8",
+      "bytes": 7461,
       "roles": [
         "source"
       ],
@@ -203,8 +203,8 @@
       "read_back_verified": true
     },
     {
-      "cid": "QmagtkFMvTRv5oBieEVJmEU1HxtLm1ztkWSqHgepuqBnDE",
-      "sha256": "b2c641af51cd8b92a4948d05f878924492073565246710d2f9cda96ce3530ec3",
+      "cid": "QmcMDNPdxtwPfFC6hvLiSaaeftp4LjFKAuRDdEy7DxJ7r2",
+      "sha256": "2d06df730a360699ea17cf49c926741d59752f332e6b701aa88a2e231e3d9166",
       "bytes": 16565,
       "roles": [
         "metadata"
@@ -213,9 +213,9 @@
       "read_back_verified": true
     },
     {
-      "cid": "QmQXdRxiGLsz78GpVWn9M8x3Rfd6XMFA8NHaVeRccMazom",
-      "sha256": "9d53bcf75755d12d011d850b1937757c157c9e0ceb8fa77a592a924b7855bbfb",
-      "bytes": 161904,
+      "cid": "QmdNEfUwA4pbCptEWXfk5EzQ29jknYFq4kM8cjKjU2bfT2",
+      "sha256": "094b403f7d904e27f6a7f651ef1b4bdcc41c43642ccedb4374995a6b73847358",
+      "bytes": 161927,
       "roles": [
         "release_bundle"
       ],
@@ -336,7 +336,7 @@
       "contract": "source/Accounts/MomentInventoryToken.sol:IMomentAccountRegistry",
       "compiler": "0.8.37",
       "evm": "osaka",
-      "standard_input_sha256": "48c0976fc4f6750d35494072196850a451d091344af8910c75de9e6d318bf8f3",
+      "standard_input_sha256": "668867b7a8b4e82237794c2e4049462698c9375d9eaf9b42dc10f9bc4cb6a83b",
       "sources": {
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/proxy/utils/Initializable.sol": "QmRiNZLoJk5k3HPMYGPGjZFd2ke1ZxjhJZkM45Ec9GH9hv",
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/token/ERC1155/ERC1155Upgradeable.sol": "QmXfQ1RJvixiBmQs16s2hUR4TbwksSk1Sy6bQrhU4QWEM5",
@@ -347,15 +347,15 @@
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/ContextUpgradeable.sol": "QmdU5La1agcQvghnfMpWZGDPz2TUDTCxUwTLKmuMRXBpAx",
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/introspection/ERC165Upgradeable.sol": "QmRzJ2hZSwRtMejHUZAYTPRKgZsnfb112Fno9Jf3EiDfwA",
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/introspection/IERC165Upgradeable.sol": "QmcnbqX85tsWnUXPmtuPLE4SczME2sJaTfmqEFkuAJvWhy",
-        "source/Accounts/MomentInventoryToken.sol": "Qmepx6fYMjyx3Wpo4uzPW2R8kKab5fmctR8VwZw6uTKGis"
+        "source/Accounts/MomentInventoryToken.sol": "QmSWURUDwYKmP2mzXXMXLBVHmSNZR2qYvDdUZ6cVMx7XQB"
       },
-      "metadata_cid": "QmZWVz5L8rdF7iiB7wLze4AUNwRhizDL5PTconmGPZ9wKL"
+      "metadata_cid": "QmSy4jqxYmS4gQshLc9KrfLv27tJJAKTXMhQA5r9uwghzq"
     },
     {
       "contract": "source/Accounts/MomentInventoryToken.sol:MomentInventoryToken",
       "compiler": "0.8.37",
       "evm": "osaka",
-      "standard_input_sha256": "db4ac6cab74132b950e45f27f28c8154fd5c558e72080a9f99acd58a9f17d57d",
+      "standard_input_sha256": "2e7710e8b0cf8470d67b67a138f08f7c90964411906ee17beb5733dc3fc11033",
       "sources": {
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/proxy/utils/Initializable.sol": "QmRiNZLoJk5k3HPMYGPGjZFd2ke1ZxjhJZkM45Ec9GH9hv",
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/token/ERC1155/ERC1155Upgradeable.sol": "QmXfQ1RJvixiBmQs16s2hUR4TbwksSk1Sy6bQrhU4QWEM5",
@@ -366,12 +366,12 @@
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/ContextUpgradeable.sol": "QmdU5La1agcQvghnfMpWZGDPz2TUDTCxUwTLKmuMRXBpAx",
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/introspection/ERC165Upgradeable.sol": "QmRzJ2hZSwRtMejHUZAYTPRKgZsnfb112Fno9Jf3EiDfwA",
         "OpenZeppelin_openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/introspection/IERC165Upgradeable.sol": "QmcnbqX85tsWnUXPmtuPLE4SczME2sJaTfmqEFkuAJvWhy",
-        "source/Accounts/MomentInventoryToken.sol": "Qmepx6fYMjyx3Wpo4uzPW2R8kKab5fmctR8VwZw6uTKGis"
+        "source/Accounts/MomentInventoryToken.sol": "QmSWURUDwYKmP2mzXXMXLBVHmSNZR2qYvDdUZ6cVMx7XQB"
       },
-      "metadata_cid": "QmagtkFMvTRv5oBieEVJmEU1HxtLm1ztkWSqHgepuqBnDE"
+      "metadata_cid": "QmcMDNPdxtwPfFC6hvLiSaaeftp4LjFKAuRDdEy7DxJ7r2"
     }
   ],
-  "release_bundle_cid": "QmQXdRxiGLsz78GpVWn9M8x3Rfd6XMFA8NHaVeRccMazom",
+  "release_bundle_cid": "QmdNEfUwA4pbCptEWXfk5EzQ29jknYFq4kM8cjKjU2bfT2",
   "public_availability_verified": false,
   "secondary_pin_status": "not_implemented",
   "deployment_approved": false
