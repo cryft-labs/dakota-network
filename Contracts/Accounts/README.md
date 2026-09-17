@@ -204,3 +204,30 @@ fail closed while an implementation differs from its configured release pin.
 ```sh
 python -m pytest Tests/Accounts/test_moment_projects_inventory.py -q
 ```
+
+### Inventory allocation v1.1.0
+
+`MomentInventoryToken.createTypeAllocated` mints each selected card's allocation
+and the creator's remainder in one transaction. A receiver rejection rolls back
+the entire mint. Recipient accounts must be activated contracts, unique, and
+sorted numerically by address. Metadata names and symbols identify each ERC-1155
+type; a shared collection's explorer heading is not a per-type name/symbol.
+
+`activateAccounts` batches up to 100 deterministic ERC-6551 activations. It is
+permissionless and idempotent, confers no spending authority, and stores no
+configuration. The Router verifies registry, implementation, salt and card IDs.
+Registration waits for verified activation before releasing completed codes.
+
+No storage fields, inherited layouts or gaps change. Original minting and token
+balances remain compatible; the upgrade cannot withdraw existing wallet assets.
+Already-issued supplies require their holder's signature for distribution.
+Large automatic allocations must fit the network's per-transaction gas limit;
+the exact estimate rejects an oversized plan before submission.
+
+Compile to `allocation-artifacts` and publish via Backend-01 IPFS. Run
+`Tools/LiveGenesis/deploy_inventory_allocation.py --workspace <workspace>` for
+layout/chain checks. `--execute` deploys only the implementation, using the dev
+wallet after the review branch is committed and pushed. The recorded owner must
+call the shared ProxyAdmin's `upgrade(proxy, implementation)` to activate it.
+The exact call, original implementation, hashes and storage comparison are saved
+in `outputs/inventory-allocation-20260917`. Apache-2.0 applies to this target.

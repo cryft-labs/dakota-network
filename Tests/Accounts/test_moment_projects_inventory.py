@@ -1,5 +1,7 @@
 """Local chain tests for shared fixed-supply tokens and upgradeable public projects."""
 import importlib.util
+import json
+import solcx
 from pathlib import Path
 import pytest
 from eth_tester import EthereumTester,PyEVMBackend
@@ -13,9 +15,12 @@ def builds():
     spec=importlib.util.spec_from_file_location('moment_compiler',REPO/'Tools/SolcCompiler/compile.py')
     compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
     result={}
-    for name in ('MomentInventoryToken','MomentProjectRegistry','MomentProjectProxy'):
+    for name in ('MomentInventoryToken','MomentProjectRegistry','MomentProjectProxy','ERC6551Registry','MomentCardAccount'):
         output=compiler.compile_contract(REPO/'Contracts/Accounts'/(name+'.sol'),solc_version='0.8.37',evm_version='osaka')
         result.update({key.rsplit(':',1)[-1]:value for key,value in output.items()})
+    output=solcx.compile_source((REPO/'Tests/Accounts/AllocationTestReceivers.sol').read_text(),solc_version='0.8.37',evm_version='osaka',output_values=['abi','bin'])
+    result.update({key.rsplit(':',1)[-1]:dict(abi=value['abi'],creation_bytecode=value['bin']) for key,value in output.items()})
+    result['LegacyInventory']=json.loads((REPO/'Contracts/Accounts/projects-inventory-artifacts/osaka/Accounts/MomentInventoryToken/MomentInventoryToken_artifact.json').read_text())
     return result
 
 @pytest.fixture
@@ -87,3 +92,64 @@ def test_projects_isolate_owners_preserve_revisions_and_survive_upgrade(chain,bu
     with pytest.raises(TransactionFailed):registry.functions.acceptOwnership().transact({'from':a[3]})
     registry.functions.acceptOwnership().transact({'from':a[4]})
     assert registry.functions.owner().call()==a[4]
+
+
+def allocated_chain(chain):
+    w3,a,deploy=chain
+    legacy=deploy('LegacyInventory');admin=deploy('MomentProjectAdmin',a[0])
+    proxy=deploy('MomentProjectProxy',legacy.address,admin.address,bytes.fromhex(legacy.functions.initialize(a[0],a[1])._encode_transaction_data()[2:]))
+    old=w3.eth.contract(address=proxy.address,abi=legacy.abi)
+    old.functions.createType(a[2],w3.keccak(text='tenant'),w3.keccak(text='legacy'),'Coffee','ipfs://legacy/token.json',10000,a[2]).transact({'from':a[1]})
+    upgraded=deploy('MomentInventoryToken')
+    admin.functions.upgrade(proxy.address,upgraded.address).transact({'from':a[0]})
+    token=w3.eth.contract(address=proxy.address,abi=upgraded.abi)
+    assert token.functions.balanceOf(a[2],1).call()==10000
+    assert token.functions.definition(1).call()[3]=='Coffee'
+    assert token.functions.owner().call()==a[0] and token.functions.relayers(a[1]).call()
+    return w3,a,deploy,token
+
+
+def test_atomic_allocation_surplus_and_upgrade_preserve_existing_tokens(chain):
+    w3,a,deploy,token=allocated_chain(chain)
+    receivers=sorted([deploy('AllocationReceiver').address for _ in range(2)],key=lambda address:int(address,16))
+    args=(a[2],w3.keccak(text='tenant'),w3.keccak(text='allocation'),'Coffee','ipfs://coffee/token.json',10000,receivers,1500)
+    token.functions.createTypeAllocated(args).transact({'from':a[1]})
+    assert [token.functions.balanceOf(r,2).call() for r in receivers]==[1500,1500]
+    assert token.functions.balanceOf(a[2],2).call()==7000
+    assert token.functions.balanceOf(a[1],2).call()==0
+    assert token.functions.definition(2).call()[2:]==(10000,'Coffee','ipfs://coffee/token.json')
+    with pytest.raises(TransactionFailed):token.functions.createTypeAllocated(args).transact({'from':a[1]})
+    with pytest.raises(TransactionFailed):token.functions.safeTransferFrom(a[2],a[1],2,1,b'').transact({'from':a[1]})
+    with pytest.raises(TransactionFailed):token.functions.createTypeAllocated((a[2],*args[1:])).transact({'from':a[4]})
+
+
+def test_failed_receiver_rolls_back_whole_supply_and_rejects_bad_plans(chain):
+    w3,a,deploy,token=allocated_chain(chain)
+    receivers=sorted([deploy('AllocationReceiver'),deploy('AllocationReceiver')],key=lambda r:int(r.address,16))
+    receivers[1].functions.configure(True,b'').transact({'from':a[0]})
+    args=(a[2],w3.keccak(text='tenant'),w3.keccak(text='retryable'),'Coffee','ipfs://coffee/token.json',10000,[r.address for r in receivers],1500)
+    with pytest.raises(TransactionFailed):token.functions.createTypeAllocated(args).transact({'from':a[1]})
+    assert token.functions.nextId().call()==2 and token.functions.balanceOf(receivers[0].address,2).call()==0
+    assert token.functions.balanceOf(a[2],2).call()==0
+    receivers[1].functions.configure(False,b'').transact({'from':a[0]})
+    for recipients,amount in [([receivers[0].address]*2,1500),(list(reversed(args[6])),1500),([],1),(args[6],0),(args[6],6000),([a[5]],1)]:
+        with pytest.raises(TransactionFailed):token.functions.createTypeAllocated((*args[:6],recipients,amount)).transact({'from':a[1]})
+    token.functions.createTypeAllocated(args).transact({'from':a[1]})
+    assert token.functions.nextId().call()==3
+
+
+def test_activation_is_idempotent_and_receiver_cannot_reenter_creation(chain):
+    w3,a,deploy,token=allocated_chain(chain)
+    registry=deploy('ERC6551Registry');impl=deploy('MomentCardAccount');salt=w3.keccak(text='moment.cards:tba:v1')
+    args=(registry.address,impl.address,salt,w3.eth.chain_id,token.address,[36,37])
+    addresses=token.functions.activateAccounts(*args).call({'from':a[4]})
+    token.functions.activateAccounts(*args).transact({'from':a[4]})
+    assert all(w3.eth.get_code(address) for address in addresses)
+    token.functions.activateAccounts(*args).transact({'from':a[3]})
+    assert token.functions.activateAccounts(*args).call()==addresses
+    receiver=deploy('AllocationReceiver')
+    data=token.functions.createType(receiver.address,w3.keccak(text='tenant'),w3.keccak(text='attack'),'No','ipfs://test/no.json',1,receiver.address)._encode_transaction_data()
+    receiver.functions.configure(False,bytes.fromhex(data[2:])).transact({'from':a[0]})
+    token.functions.createTypeAllocated((a[2],w3.keccak(text='tenant'),w3.keccak(text='guard'),'Coffee','ipfs://test/token.json',1500,[receiver.address],1500)).transact({'from':a[1]})
+    assert receiver.functions.reentryBlocked().call() and token.functions.balanceOf(a[2],2).call()==0
+    assert token.functions.nextId().call()==3
