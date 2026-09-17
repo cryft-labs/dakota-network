@@ -1,0 +1,123 @@
+[
+  {
+    "source": "External/OpenZeppelin/openzeppelin-contracts-upgradeable/v4.9.6/contracts/proxy/utils/Initializable.sol",
+    "contract": "Initializable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\External\\OpenZeppelin\\openzeppelin-contracts-upgradeable\\v4.9.6\\contracts\\proxy\\utils\\Initializable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "f27b411f7378f9a92f431e17b20e5c0921e975d8fc04431bf5eb1ff731f66e6e"
+  },
+  {
+    "source": "External/OpenZeppelin/openzeppelin-contracts-upgradeable/v4.9.6/contracts/token/ERC1155/ERC1155Upgradeable.sol",
+    "contract": "ERC1155Upgradeable",
+    "runtime_bytes": 4841,
+    "creation_bytes": 4869,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\External\\OpenZeppelin\\openzeppelin-contracts-upgradeable\\v4.9.6\\contracts\\token\\ERC1155\\ERC1155Upgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "5f340364ce9229cfb277d4d441254e5fd0d6dc6c7e1fd05f16ef2621edbba3ea"
+  },
+  {
+    "source": "External/OpenZeppelin/openzeppelin-contracts-upgradeable/v4.9.6/contracts/token/ERC1155/IERC1155ReceiverUpgradeable.sol",
+    "contract": "IERC1155ReceiverUpgradeable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\External\\OpenZeppelin\\openzeppelin-contracts-upgradeable\\v4.9.6\\contracts\\token\\ERC1155\\IERC1155ReceiverUpgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "c23bdd886fd91efe2e6be7c00ababc4fb9d7ca994f5ff9f071df49ff8974c741"
+  },
+  {
+    "source": "External/OpenZeppelin/openzeppelin-contracts-upgradeable/v4.9.6/contracts/token/ERC1155/IERC1155Upgradeable.sol",
+    "contract": "IERC1155Upgradeable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\External\\OpenZeppelin\\openzeppelin-contracts-upgradeable\\v4.9.6\\contracts\\token\\ERC1155\\IERC1155Upgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "dd85c52c0de19af057de5c41f302d5eaeb957ebd426c2efa8eafec6278004817"
+  },
+  {
+    "source": "External/OpenZeppelin/openzeppelin-contracts-upgradeable/v4.9.6/contracts/token/ERC1155/extensions/IERC1155MetadataURIUpgradeable.sol",
+    "contract": "IERC1155MetadataURIUpgradeable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\External\\OpenZeppelin\\openzeppelin-contracts-upgradeable\\v4.9.6\\contracts\\token\\ERC1155\\extensions\\IERC1155MetadataURIUpgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "c39936c9a29caa95a08b36a9f94e62512de3d165bb9df78fb2b5927c9c88b572"
+  },
+  {
+    "source": "External/OpenZeppelin/openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/AddressUpgradeable.sol",
+    "contract": "AddressUpgradeable",
+    "runtime_bytes": 85,
+    "creation_bytes": 135,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\External\\OpenZeppelin\\openzeppelin-contracts-upgradeable\\v4.9.6\\contracts\\utils\\AddressUpgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "33b18d6534fc7ffc9009dc85b0dd2961c2cf9a3d584a9690848f6cdab36ee614"
+  },
+  {
+    "source": "External/OpenZeppelin/openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/ContextUpgradeable.sol",
+    "contract": "ContextUpgradeable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\External\\OpenZeppelin\\openzeppelin-contracts-upgradeable\\v4.9.6\\contracts\\utils\\ContextUpgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "d0db82fb199bc1dac0ce068d22e125f90402ec44a2d10eadb11226ce0fabbc5f"
+  },
+  {
+    "source": "External/OpenZeppelin/openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/introspection/ERC165Upgradeable.sol",
+    "contract": "ERC165Upgradeable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\External\\OpenZeppelin\\openzeppelin-contracts-upgradeable\\v4.9.6\\contracts\\utils\\introspection\\ERC165Upgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "3607b26c97102d737002d11a0b3d2eb18fe7fa80bbcde4f33318772196b4448f"
+  },
+  {
+    "source": "External/OpenZeppelin/openzeppelin-contracts-upgradeable/v4.9.6/contracts/utils/introspection/IERC165Upgradeable.sol",
+    "contract": "IERC165Upgradeable",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\External\\OpenZeppelin\\openzeppelin-contracts-upgradeable\\v4.9.6\\contracts\\utils\\introspection\\IERC165Upgradeable",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "66b60e397c1e0c111675d27bdad4b732299e50fc76fd17f3d19c9172cbe97b9f"
+  },
+  {
+    "source": "Accounts/MomentInventoryToken.sol",
+    "contract": "IMomentAccountRegistry",
+    "runtime_bytes": 0,
+    "creation_bytes": 0,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\Accounts\\IMomentAccountRegistry",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "48c0976fc4f6750d35494072196850a451d091344af8910c75de9e6d318bf8f3"
+  },
+  {
+    "source": "Accounts/MomentInventoryToken.sol",
+    "contract": "MomentInventoryToken",
+    "runtime_bytes": 11655,
+    "creation_bytes": 11879,
+    "output": "\\\\?\\C:\\Users\\ChadS\\Documents\\Codex\\2026-09-08\\a\\work\\source\\dakota-network\\Contracts\\Accounts\\identity-artifacts\\osaka\\Accounts\\MomentInventoryToken",
+    "over_limit": false,
+    "evm_version": "osaka",
+    "compiler_version": "0.8.37",
+    "standard_input_sha256": "db4ac6cab74132b950e45f27f28c8154fd5c558e72080a9f99acd58a9f17d57d"
+  }
+]

@@ -48,7 +48,10 @@ contract MomentInventoryToken is ERC1155Upgradeable {
     }
     function definition(uint256 id) external view returns (Definition memory) { require(_definitions[id].creator != address(0), "unknown type"); return _definitions[id]; }
     function uri(uint256 id) public view override returns (string memory) { return _definitions[id].metadataURI; }
-    function implementationVersion() external pure returns (string memory) { return "1.1.0"; }
+    /// @notice Collection identity for explorers; each type retains its own metadata.
+    function name() external pure returns (string memory) { return "Dakota Inventory"; }
+    function symbol() external pure returns (string memory) { return "DKINV"; }
+    function implementationVersion() external pure returns (string memory) { return "1.1.1"; }
 
     modifier nonReentrant() {
         require(!_entered, "reentrant"); _entered = true; _; _entered = false;

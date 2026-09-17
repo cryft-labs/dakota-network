@@ -231,3 +231,24 @@ wallet after the review branch is committed and pushed. The recorded owner must
 call the shared ProxyAdmin's `upgrade(proxy, implementation)` to activate it.
 The exact call, original implementation, hashes and storage comparison are saved
 in `outputs/inventory-allocation-20260917`. Apache-2.0 applies to this target.
+
+### Shared collection identity v1.1.1
+
+The shared contract exposes `name() = "Dakota Inventory"` and
+`symbol() = "DKINV"` for explorer and wallet collection headings. These are
+storage-free getters, so existing proxy state and the gap are unchanged. Each
+fungible type still has its own immutable name, URI, supply and metadata symbol
+(for example, Coffee / WAKE). DKINV identifies the collection, not every type.
+
+Compile to `identity-artifacts`. The pinned release bundle is
+`QmQXdRxiGLsz78GpVWn9M8x3Rfd6XMFA8NHaVeRccMazom`. The source retains Apache-2.0.
+`Tools/LiveGenesis/deploy_inventory_identity.py --workspace <workspace>` compares
+the layout with v1.1.0 and checks the active proxy; `--execute` deploys only the
+reviewed implementation after the branch is committed and pushed. Root still
+authorizes the ProxyAdmin upgrade, and the Router must accept the exact new
+implementation address/runtime hash before that approval is applied.
+
+After upgrade, query `name()` and `symbol()` through the proxy, then refresh its
+Blockscout collection metadata through the existing token cataloger. Do not
+rewrite per-type IPFS metadata or mint replacement tokens. Collection metadata
+and individual token metadata are separate explorer records.

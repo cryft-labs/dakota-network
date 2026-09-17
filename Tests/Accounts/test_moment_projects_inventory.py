@@ -21,6 +21,7 @@ def builds():
     output=solcx.compile_source((REPO/'Tests/Accounts/AllocationTestReceivers.sol').read_text(),solc_version='0.8.37',evm_version='osaka',output_values=['abi','bin'])
     result.update({key.rsplit(':',1)[-1]:dict(abi=value['abi'],creation_bytecode=value['bin']) for key,value in output.items()})
     result['LegacyInventory']=json.loads((REPO/'Contracts/Accounts/projects-inventory-artifacts/osaka/Accounts/MomentInventoryToken/MomentInventoryToken_artifact.json').read_text())
+    result['AllocationV110']=json.loads((REPO/'Contracts/Accounts/allocation-artifacts/osaka/Accounts/MomentInventoryToken/MomentInventoryToken_artifact.json').read_text())
     return result
 
 @pytest.fixture
@@ -153,3 +154,27 @@ def test_activation_is_idempotent_and_receiver_cannot_reenter_creation(chain):
     token.functions.createTypeAllocated((a[2],w3.keccak(text='tenant'),w3.keccak(text='guard'),'Coffee','ipfs://test/token.json',1500,[receiver.address],1500)).transact({'from':a[1]})
     assert receiver.functions.reentryBlocked().call() and token.functions.balanceOf(a[2],2).call()==0
     assert token.functions.nextId().call()==3
+
+
+def test_collection_identity_upgrade_preserves_types_balances_and_authority(chain):
+    w3,a,deploy=chain;old=deploy('AllocationV110');admin=deploy('MomentProjectAdmin',a[0])
+    proxy=deploy('MomentProjectProxy',old.address,admin.address,bytes.fromhex(old.functions.initialize(a[0],a[1])._encode_transaction_data()[2:]))
+    token=w3.eth.contract(address=proxy.address,abi=old.abi)
+    receiver=deploy('AllocationReceiver')
+    tenant,request=w3.keccak(text='tenant'),w3.keccak(text='coffee')
+    token.functions.createTypeAllocated((a[2],tenant,request,'Coffee','ipfs://coffee-wake/token.json',10000,[receiver.address],1500)).transact({'from':a[1]})
+    token.functions.setApprovalForAll(a[4],True).transact({'from':a[2]})
+    token.functions.transferOwnership(a[5]).transact({'from':a[0]})
+    definition=token.functions.definition(1).call();key=w3.keccak(w3.codec.encode(['bytes32','address','bytes32'],[tenant,a[2],request]))
+    replacement=deploy('MomentInventoryToken')
+    admin.functions.upgrade(proxy.address,replacement.address).transact({'from':a[0]})
+    token=w3.eth.contract(address=proxy.address,abi=replacement.abi)
+    assert token.functions.name().call()=='Dakota Inventory' and token.functions.symbol().call()=='DKINV'
+    assert token.functions.implementationVersion().call()=='1.1.1'
+    assert token.functions.definition(1).call()==definition
+    assert token.functions.uri(1).call()=='ipfs://coffee-wake/token.json'
+    assert token.functions.balanceOf(receiver.address,1).call()==1500 and token.functions.balanceOf(a[2],1).call()==8500
+    assert token.functions.owner().call()==a[0] and token.functions.pendingOwner().call()==a[5]
+    assert token.functions.relayers(a[1]).call() and token.functions.isApprovedForAll(a[2],a[4]).call()
+    assert token.functions.nextId().call()==2 and token.functions.requests(key).call()==1
+    with pytest.raises(TransactionFailed):token.functions.safeTransferFrom(a[2],a[1],1,1,b'').transact({'from':a[1]})
