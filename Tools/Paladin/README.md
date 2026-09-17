@@ -390,3 +390,29 @@ dashboard; do not interpret the subdomain names as verified deployed endpoints.
 
 
 See [the September 15 issuance review](ISSUANCE_REVIEW.md) for the new registration, gas and recovery behavior. Activation remains pending.
+
+## Optional encrypted Moment card contents (17 September 2026)
+
+`PrivateCardContentRegistry` is an additive Pente transparent proxy using the
+existing group and private ProxyAdmin. It stores immutable tenant/chain/card/UID
+key bindings, never NFTs. The public Moment card contract remains unchanged;
+its optional `private_metadata` link points to encrypted IPFS files. Roles follow
+ComboStorage ADMIN/AUTHORIZED dynamically. Source/standard JSON/metadata live in
+`Contracts/Verification/20260917`. The deployment helper is
+`Tools/Paladin/private-content-release.py --workspace <path> --execute`; it checks
+the committed review branch, publishes source artifacts, journals transactions
+and verifies runtime hashes. It does not expose private records to Blockscout.
+
+Router activation additionally requires the reviewed `private-content-release.json`,
+its ABI hash, and `PLATFORM_PRIVATE_CONTENT_ENABLED=true`. Back up this private
+registry alongside ComboStorage, the Paladin database/signing configuration, API
+database/encryption key and encrypted IPFS pins. Never reset or replace a registry
+without migrating and verifying existing key bindings. Ownership transfers do
+not erase keys or decrypted copies held by earlier viewers. Pente operators and
+the platform are trusted; getter restrictions are not node-operator encryption.
+
+For private cards `mirrorStatuses=false` hides subsequent active/frozen status
+updates. It does not obscure public redemption: CodeManager calldata/events and
+NFT transfers still link the UID, token and recipient. No unlinkability claim is
+made. A future private IPFS deployment restricts file distribution independently
+of this content encryption design; public gateways can still serve ciphertext.

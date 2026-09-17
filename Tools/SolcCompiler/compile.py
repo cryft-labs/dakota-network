@@ -355,6 +355,7 @@ DEFAULT_EVM_VERSION = "osaka"
 # The private target must be raised together with a reviewed Pente upgrade.
 DEFAULT_PRIVATE_EVM_VERSION = "shanghai"
 PRIVATE_ENTRYPOINTS = {
+    "codemanagement/privatecardcontentregistry.sol",
     "codemanagement/privatecombostorage.sol",
     "codemanagement/privatemetatxrelay.sol",
     "codemanagement/interfaces/iprivatemetatxrelay.sol",

@@ -1,0 +1,174 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "authority",
+    "outputs": [
+      {
+        "internalType": "contract IPrivateContentAuthority",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tenant",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "uid",
+        "type": "bytes32"
+      }
+    ],
+    "name": "binding",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "card",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "chainId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "tenant",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "uid",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getContent",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "key",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "context",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "string",
+            "name": "uri",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct PrivateCardContentRegistry.Content",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "authority_",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "chainId_",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "card_",
+        "type": "address"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "tenant",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "uid",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "key",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "context",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "string",
+            "name": "uri",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct PrivateCardContentRegistry.Entry[]",
+        "name": "entries",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "storeBatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

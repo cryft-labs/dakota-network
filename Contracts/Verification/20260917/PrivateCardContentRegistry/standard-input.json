@@ -1,0 +1,31 @@
+{
+  "language": "Solidity",
+  "settings": {
+    "evmVersion": "shanghai",
+    "libraries": {},
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "source/CodeManagement/PrivateCardContentRegistry.sol": {
+        "PrivateCardContentRegistry": [
+          "abi",
+          "metadata",
+          "storageLayout",
+          "evm.bytecode",
+          "evm.deployedBytecode"
+        ]
+      }
+    },
+    "remappings": []
+  },
+  "sources": {
+    "source/CodeManagement/PrivateCardContentRegistry.sol": {
+      "content": "// SPDX-License-Identifier: Apache-2.0\npragma solidity ^0.8.19;\n\ninterface IPrivateContentAuthority {\n    function ADMIN() external view returns (address);\n    function AUTHORIZED() external view returns (address);\n}\n\n/// @notice Confidential content bindings inside the same Pente group as ComboStorage.\n/// @dev Privacy-group operators can read this state. Solidity visibility is NOT\n/// a confidentiality boundary. Never expose the Pente RPC to wallet clients.\n/// The service must authenticate viewers and verify live public NFT ownership.\ncontract PrivateCardContentRegistry {\n    struct Entry {\n        bytes32 tenant;\n        bytes32 uid;\n        bytes32 key;\n        bytes32 context;\n        string uri;\n    }\n    struct Content {\n        bytes32 key;\n        bytes32 context;\n        string uri;\n    }\n    IPrivateContentAuthority public authority;\n    uint256 public chainId;\n    address public card;\n    bool private initialized;\n    mapping(bytes32 => Content) private contents;\n\n    constructor() { initialized = true; }\n\n    function initialize(address authority_, uint256 chainId_, address card_) external {\n        require(!initialized, \"Already initialized\");\n        require(authority_.code.length != 0 && chainId_ != 0 && card_ != address(0), \"Invalid configuration\");\n        require(IPrivateContentAuthority(authority_).ADMIN() != address(0), \"Invalid authority\");\n        initialized = true;\n        authority = IPrivateContentAuthority(authority_);\n        chainId = chainId_;\n        card = card_;\n    }\n\n    modifier onlyService() {\n        require(msg.sender == authority.ADMIN() || msg.sender == authority.AUTHORIZED(), \"Service required\");\n        _;\n    }\n\n    function binding(bytes32 tenant, bytes32 uid) public view returns (bytes32) {\n        return keccak256(abi.encode(tenant, chainId, card, uid));\n    }\n\n    /// @dev Immutable, idempotent bindings. No per-code delete on redemption.\n    /// The trusted writer verifies confirmed issuance/UID assignments first.\n    function storeBatch(Entry[] calldata entries) external onlyService {\n        require(entries.length > 0 && entries.length <= 25, \"Batch size must be 1-25\");\n        for (uint256 i; i < entries.length; ++i) {\n            Entry calldata e = entries[i];\n            require(e.tenant != bytes32(0) && e.uid != bytes32(0) && e.key != bytes32(0) && e.context != bytes32(0), \"Invalid binding\");\n            require(bytes(e.uri).length > 7 && bytes(e.uri).length <= 160, \"Invalid URI\");\n            Content storage previous = contents[binding(e.tenant, e.uid)];\n            if (previous.key != bytes32(0)) {\n                require(previous.key == e.key && previous.context == e.context && keccak256(bytes(previous.uri)) == keccak256(bytes(e.uri)), \"Content already bound\");\n            } else {\n                previous.key = e.key;\n                previous.context = e.context;\n                previous.uri = e.uri;\n            }\n        }\n    }\n\n    /// @dev RPC identity is service-controlled, not proof of an end user's wallet.\n    function getContent(bytes32 tenant, bytes32 uid) external view onlyService returns (Content memory) {\n        Content memory value = contents[binding(tenant, uid)];\n        require(value.key != bytes32(0), \"Content not found\");\n        return value;\n    }\n}\n"
+    }
+  }
+}
