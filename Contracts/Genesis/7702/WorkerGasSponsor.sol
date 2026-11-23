@@ -42,7 +42,7 @@ contract WorkerGasSponsor is GasSponsor {
     event WorkerRevenueDeferred(address indexed treasury, uint256 amount);
     event WorkerRevenueClaimed(address indexed treasury, address indexed recipient, uint256 amount);
 
-    function implementationVersion() external pure override returns (string memory) { return "1.3.0"; }
+    function implementationVersion() external pure virtual override returns (string memory) { return "1.3.0"; }
 
     function configureWorker(address worker, address treasury) external onlyPlatformAdmin {
         if (worker == address(0) || treasury == address(this)) revert InvalidWorkerOperation();
@@ -79,6 +79,7 @@ contract WorkerGasSponsor is GasSponsor {
         GasSponsorStorage storage base = _sponsorStorage();
         WorkerStorage storage s = _workers();
         if (base.paused) revert SponsorshipIsPaused();
+        _beforeWorkerReservation(sponsor);
         address treasury = s.treasuries[msg.sender];
         if (treasury == address(0) || !s.tenantWorkers[sponsor][msg.sender]) revert WorkerNotAuthorized();
         if (id == bytes32(0) || requestHash == bytes32(0) || maximum == 0 || wallet == address(0)
@@ -133,6 +134,8 @@ contract WorkerGasSponsor is GasSponsor {
     }
 
     function _pendingWorkerCost(address sponsor) internal view override returns (uint256) { return _workers().reserved[sponsor]; }
+    /// @dev A later implementation's own refusal of a reservation for `sponsor` (ProgramGasSponsor 1.4.0: none for a program sponsor).
+    function _beforeWorkerReservation(address sponsor) internal view virtual {}
     function _workers() private pure returns (WorkerStorage storage s) {
         bytes32 slot = WORKER_SLOT;
         assembly ("memory-safe") { s.slot := slot }

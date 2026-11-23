@@ -156,7 +156,7 @@ def test_target_returndata_is_bounded_and_reverts_target_effects(chain,size,succ
     c=chain; account,sponsor,_,dispatcher=setup(c)
     code='''pragma solidity ^0.8.19; contract ReturnData { uint public calls;
     function run(uint size) external { calls++; assembly { return(0,size) } } }'''
-    art=next(iter(solcx.compile_source(code,solc_version='0.8.19',output_values=['abi','bin']).values()))
+    art=next(iter(solcx.compile_source(code,solc_version=__import__('os').environ.get('DAKOTA_TEST_LEGACY_SOLC','0.8.19'),output_values=['abi','bin']).values()))
     r=tx(c,c['w3'].eth.contract(abi=art['abi'],bytecode=art['bin']).constructor())
     target=c['w3'].eth.contract(address=r.contractAddress,abi=art['abi'])
     calls=[(target.address,0,bytes.fromhex(target.functions.run(size)._encode_transaction_data()[2:]))]
