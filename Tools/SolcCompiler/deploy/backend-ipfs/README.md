@@ -15,7 +15,7 @@ Do not change that policy merely because Kubo supports hole punching.
 | Named Cloudflare Tunnel on Backend-01 | `cryft-tunnel` | Outbound tunnel; dedicated gateway hostname -> local Nginx |
 
 The gateway hostname is still required. Give it a separate hostname from Kota,
-moment.cards and login/admin sites. Only `/ipfs/` GET/HEAD routes are public.
+Cryft Cards and login/admin sites. Only `/ipfs/` GET/HEAD routes are public.
 Publishing exposes only `add`, `cat` and `pin/ls` through a separate private server
 with a dedicated publisher client CA. Clients require the server CA and their
 own certificate/key; the server certificate must include `100.111.67.1` as an IP

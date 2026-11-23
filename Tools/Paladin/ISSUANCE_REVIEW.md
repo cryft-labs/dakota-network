@@ -23,7 +23,7 @@ Kota completions, public metadata, analytics, request logs or error reporting.
 
 ## 2. Prepare, optionally back up, then publish
 
-The widget, dashboard creator and moment.cards use the same protocol:
+The widget, dashboard creator and Cryft Cards use the same protocol:
 
 1. Validate the design/campaign, current membership and batch allowance.
 2. Generate codes and entropy with `crypto.getRandomValues`. Keep them in memory.
@@ -193,7 +193,7 @@ resubmission of a reverted private step is not enabled in this release.
 New custom cards use `buyWithSharedMetadata` with one exact IPFS document per batch;
 metadata remains correct if capacity increases while other users mint. Legacy
 purchase segments keep their existing directory-plus-token-filename behavior.
-The moment.cards owner can restrict direct purchases to the authorized issuer so
+The Cryft Cards owner can restrict direct purchases to the authorized issuer so
 someone cannot drain free inventory outside its membership workflow. This is an
 optional campaign contract control, not a platform-wide sponsorship allowlist.
 

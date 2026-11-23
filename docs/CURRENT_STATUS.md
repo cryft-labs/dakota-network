@@ -27,7 +27,7 @@ rewriting earlier evidence to appear newer.
 | Original 32,451-address source audit | [Blockscout verification](blockscout-verification-20260911.md) |
 | Current Kota tenant artifacts/addresses/receipts | [Kota tenant manual](https://github.com/CryftCreator/KotaRouter/blob/main/router_v4/contracts/deployment/README.md) |
 | Router, widget and direct API integration gaps | [Kota current system](https://github.com/CryftCreator/KotaRouter/blob/main/router_v4/docs/CURRENT_SYSTEM.md) |
-| moment.cards branding, card types and retained site paths | [Site manual](https://github.com/CryftCreator/cryftcomingsoon-main/blob/main/docs/MOMENT_CARDS.md) |
+| Cryft Cards branding, card types and retained site paths | [Site manual](https://github.com/CryftCreator/cryftcomingsoon-main/blob/main/docs/MOMENT_CARDS.md) |
 
 ## 3. What is running and verified
 
@@ -86,7 +86,7 @@ recovery secrets on Paladin-01 under the owner's existing instruction.
 
 ## 5. Next implementation work
 
-moment.cards reuses the existing Greeting Cards application and adds business
+Cryft Cards reuses the existing Greeting Cards application and adds business
 cards and postcards. Dakota Cards is the platform/dashboard/docs application.
 The widget is optional; direct service clients must receive equivalent API functionality.
 

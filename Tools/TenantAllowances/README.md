@@ -55,7 +55,7 @@ contract rules; gas-only funding remains non-withdrawable by tenants.
 | --- | --- |
 | GasSponsor proxy | `0x000000000000000000000000000000000000FEeD` |
 | GasSponsor 1.1.0 implementation | `0x83AaF0a9d4FE1748e1fCFFd5a3adfd60a16E86dF` |
-| moment.cards Account | `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340` |
+| Cryft Cards Account | `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340` |
 | TenantAllowancePolicy | `0x1D205B1d531422f615101FE93622D65AB54943D2` |
 | Policy owner / tenant operator | `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` |
 | Account manager | `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` |

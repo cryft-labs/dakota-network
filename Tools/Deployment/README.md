@@ -77,7 +77,7 @@ The raw RPC ports 8545/8546 and metrics 9545 remain loopback-only. The explorer
 browser URL is a separate frontend service at Nebula port 8080.
 
 Browser wallet RPC requests also require CORS on this proxy. The review template
-permits exact HTTP origins for moment.cards, the widget and dashboard on ports
+permits exact HTTP origins for Cryft Cards, the widget and dashboard on ports
 3033, 3034 and 3035 at localhost, 127.0.0.1 and 100.111.1.4. POST responses include
 the matching origin; OPTIONS preflight returns 204. Unknown browser origins get
 403, while server clients without an Origin header continue to work. No cookies

@@ -108,7 +108,7 @@ records and source-upload backlog have been resolved.
 
 The live verifier supports the recorded 0.8.19, 0.8.34 and 0.8.37 compiler inputs.
 All original missing genesis records and source uploads were completed. The later
-Kota tenant release added ten full matches, including the moment.cards beacon
+Kota tenant release added ten full matches, including the Cryft Cards beacon
 proxy and its verified implementation. Use [current status](../../docs/CURRENT_STATUS.md)
 for the separate deployment records. Revalidate an existing match before submitting
 anything; do not recreate the historical upload backlog or alter verifier flags.

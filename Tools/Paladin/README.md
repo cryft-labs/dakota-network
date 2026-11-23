@@ -328,10 +328,10 @@ The successful tests invoked real Paladin and chain APIs directly. Kota Router's
 private adapter still reports `blocked/private_submission_not_implemented` for live
 requests and `simulated` for dry runs. Implement the adapter with durable operation
 IDs/outbox, scoped authorization and receipt/delivery reconciliation before exposing
-code issuance/redemption endpoints. The optional widget, admin UI and moment.cards
+code issuance/redemption endpoints. The optional widget, admin UI and Cryft Cards
 must use those same endpoints; no browser may receive node signing access.
 
-Outstanding: Router/API and account-registration integration; deployed moment.cards
+Outstanding: Router/API and account-registration integration; deployed Cryft Cards
 and widget/admin UI; final management acceptance and private identity handover;
 public Cloudflare/IPFS gateway; production SSH/network
 lockdown; full reboot/backup-restore/multiparty/load tests. This runbook documents

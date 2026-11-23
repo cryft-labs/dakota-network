@@ -1,10 +1,15 @@
 # Kota / Dakota implementation and operations manual
 
+> **Name note (2026-11-23).** The consumer app called moment.cards below is now **Cryft Cards** (`cryft.cards`); its service
+> tenant id is `cryft.cards`, with `moment.cards` kept as a permanent alias. On-chain strings keep their original values
+> (the tenant registry's id `moment.cards`, the account salt `moment.cards:tba:v1`, deployed contract names such as
+> `MomentCardAccount`). The sections below are kept as written for the record.
+
 ## 1. Purpose and current status
 
 Kota is the API service for issuing, managing and redeeming codes/tokens. The widget
 is an optional client; sites/apps may call the documented endpoints directly.
-moment.cards is the initial consumer for greeting cards, business cards and postcards. Dakota's
+Cryft Cards (formerly moment.cards) is the initial consumer for greeting cards, business cards and postcards. Dakota's
 Besu public ledger and Paladin privacy state supply the underlying settlement.
 
 This manual describes the development release under review. Source changes and

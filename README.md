@@ -67,7 +67,7 @@ sponsor/delegation, card and private-state handovers remain separate; see the
 roles only after their replacements are effective and required acceptance is complete.
 
 The new Kota release added ten fully verified public instances and 43 verified
-IPFS objects. The moment.cards registry is `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`.
+IPFS objects. The Cryft Cards tenant registry (its on-chain id is `moment.cards`) is `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`.
 These membership credentials are separate from redeemable card NFTs. The 32,451
 address genesis/application audit remains its historical baseline; its counts
 and hashes are not rewritten to include later deployments.

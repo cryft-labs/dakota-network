@@ -1,4 +1,10 @@
-# Token-bound accounts for moment.cards
+# Token-bound accounts for Cryft Cards
+
+> **Name note (2026-11-23).** The product is now **Cryft Cards** (`cryft.cards`); "moment.cards" was its earlier name.
+> `MomentCardAccount` is deployed and verified on Dakota at `0x492A6645D40Fb5896C0D53D08778D819bA5583F2`, so its source,
+> artifacts and name stay exactly as deployed. The on-chain identities below also keep their original strings: the tenant
+> registry's id `moment.cards` and the application salt `keccak256("moment.cards:tba:v1")`. Any future implementation
+> uses Cryft names only.
 
 Deployed on Dakota chain `112311` on 14 September 2026. This deployment uses a
 Dakota-local registry at `0x7144D34A7cB2fDF9a0C008855Da6A9B15Cf266D7` and account
@@ -36,7 +42,7 @@ account = keccak256(0xff || registry || salt || keccak256(init))[12:]
 `owner()` is `IERC721.ownerOf(tokenId)` on that contract, and only when
 `chainId == block.chainid`.
 
-moment.cards application salt:
+Application salt (an on-chain identity; its string never changes):
 
 ```
 keccak256("moment.cards:tba:v1")
