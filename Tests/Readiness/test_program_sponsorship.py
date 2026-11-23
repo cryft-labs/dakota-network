@@ -45,6 +45,25 @@ contract MockProgram {
     function caps(address s, address sponsor, uint256 op, uint256 day) external { IProgramSponsor(s).setProgramSponsorCaps(sponsor, op, day); }
     function fund(address s, address sponsor) external payable { IProgramSponsor(s).depositGasCredit{value: msg.value}(sponsor); }
 }
+contract PolicyV2 {
+    address public gasSponsor; address public sponsor; bool public v2 = true;
+    address[] public lastTargets; bytes4[] public lastSelectors; uint256 public v1Calls; uint256 public v2Calls;
+    constructor(address g, address s) { gasSponsor = g; sponsor = s; }
+    function setV2(bool on) external { v2 = on; }
+    function supportsInterface(bytes4 id) external view returns (bool) {
+        if (id == 0x01ffc9a7) return true;
+        if (id == 0xffffffff) return false;
+        return v2 && id == this.reserveCalls.selector;
+    }
+    function reserve(bytes32, address, uint256) external returns (bytes4) { v1Calls++; return this.reserve.selector; }
+    function reserveCalls(bytes32, address, uint256, address[] calldata t, bytes4[] calldata s) external returns (bytes4) {
+        v2Calls++; delete lastTargets; delete lastSelectors;
+        for (uint256 i; i < t.length; ++i) { lastTargets.push(t[i]); lastSelectors.push(s[i]); }
+        return this.reserveCalls.selector;
+    }
+    function settle(bytes32, uint256) external pure returns (bytes4) { return this.settle.selector; }
+    function workerSettlementVersion() external pure returns (uint256) { return 0; }
+}
 '''
 
 
@@ -60,7 +79,8 @@ def program_build():
     sponsor = next(v for k, v in out.items() if k.rsplit(':', 1)[-1] == 'ProgramGasSponsor')
     mock = next(iter(solcx.compile_source(MOCK, solc_version='0.8.37', output_values=['abi', 'bin']).items()))
     found = {k.split(':')[-1]: v for k, v in solcx.compile_source(MOCK, solc_version='0.8.37', output_values=['abi', 'bin']).items()}
-    return {'ProgramGasSponsor': sponsor, 'MockProgram': {'abi': found['MockProgram']['abi'], 'creation_bytecode': '0x' + found['MockProgram']['bin']}}
+    return {'ProgramGasSponsor': sponsor, 'MockProgram': {'abi': found['MockProgram']['abi'], 'creation_bytecode': '0x' + found['MockProgram']['bin']},
+            'PolicyV2': {'abi': found['PolicyV2']['abi'], 'creation_bytecode': '0x' + found['PolicyV2']['bin']}}
 
 
 def create(c, artifact, *args):
@@ -94,10 +114,10 @@ def open_dev(w, op=2 * 10 ** 15, day=4 * 10 ** 15, credit=10 ** 17):
     if credit: paid(w['c'], w['program'].functions.fund(w['sponsor'].address, w['dev']), credit)
 
 
-def voucher_for(w, sponsor_address, tenant, tag, fee=GWEI, inner=100000):
+def voucher_for(w, sponsor_address, tenant, tag, fee=GWEI, inner=100000, calls=None):
     c, a, account, sponsor = w['c'], w['a'], w['account'], w['sponsor']
     w3 = c['w3']; op = Web3.keccak(text=tag); deadline = w3.eth.get_block('latest').timestamp + 3600
-    request = (op, sponsor.address, [(a[9], 1, b'')], account.functions.getNonce().call(), deadline, inner)
+    request = (op, sponsor.address, calls or [(a[9], 1, b'')], account.functions.getNonce().call(), deadline, inner)
     digest = account.functions.getExecutionDigest(*request).call()
     signature = Account.unsafe_sign_hash(digest, c['tester'].backend.account_keys[3]).signature
     data = bytes.fromhex(account.functions.executeSponsored(request, signature)._encode_transaction_data()[2:])
@@ -252,3 +272,40 @@ def test_storage_is_append_only(program_build):
                       'mapping(address => mapping(address => uint8)) sponsoredWallets;']
     runtime = len(bytes.fromhex(program_build['ProgramGasSponsor']['runtime_bytecode'].removeprefix('0x')))
     assert runtime <= 32768, runtime                                                                             # Dakota's genesis limit
+
+
+# ── allowed targets and the V2 policy (any sponsor; off by default) ──
+
+def test_allowed_targets_are_the_managers_choice_and_every_call_is_checked(world):
+    w = world; s, c, a = w['sponsor'], w['c'], w['a']
+    tenant = Web3.keccak(text='tenant')
+    assert not s.functions.targetApprovalRequired(a[4]).call()
+    fails(c, s.functions.setTargetApprovalRequired(a[4], True), a[6])                                            # the manager's alone
+    tx(c, s.functions.setTargetApprovalRequired(a[4], True), a[5])
+    refused(w, voucher_for(w, a[4], tenant, 'not-approved'))
+    tx(c, s.functions.setSponsoredTarget(a[4], a[9], True), a[5])
+    assert run(w, voucher_for(w, a[4], tenant, 'approved')) == (1, True)
+    refused(w, voucher_for(w, a[4], tenant, 'one-of-two', calls=[(a[9], 1, b''), (a[8], 1, b'')]))               # every call, not the first
+    tx(c, s.functions.setSponsoredTargets(a[4], [a[8], a[7]], True), a[5])
+    assert run(w, voucher_for(w, a[4], tenant, 'both', calls=[(a[9], 1, b''), (a[8], 1, b'')])) == (1, True)
+    tx(c, s.functions.setSponsoredTarget(a[4], a[9], False), a[5])
+    refused(w, voucher_for(w, a[4], tenant, 'withdrawn'))
+    fails(c, s.functions.setSponsoredTarget(a[4], '0x' + '0' * 40, True), a[5])
+    fails(c, s.functions.setSponsoredTargets(a[4], [], True), a[5])
+    tx(c, s.functions.setTargetApprovalRequired(a[4], False), a[5])
+    assert run(w, voucher_for(w, a[4], tenant, 'off-again')) == (1, True)
+
+
+def test_a_v2_policy_sees_the_calls_targets_and_selectors_and_a_v1_policy_is_unchanged(world, program_build):
+    w = world; s, c, a = w['sponsor'], w['c'], w['a']
+    tenant = Web3.keccak(text='tenant')
+    policy = create(c, program_build['PolicyV2'], s.address, a[4])
+    tx(c, s.functions.setSponsorPolicy(a[4], policy.address), a[5])
+    calls = [(a[9], 1, bytes.fromhex('a9059cbb') + b'\0' * 32), (a[8], 1, b'')]
+    assert run(w, voucher_for(w, a[4], tenant, 'v2', calls=calls)) == (1, True)
+    assert policy.functions.v2Calls().call() == 1 and policy.functions.v1Calls().call() == 0
+    assert [policy.functions.lastTargets(i).call() for i in range(2)] == [a[9], a[8]]
+    assert [policy.functions.lastSelectors(i).call() for i in range(2)] == [bytes.fromhex('a9059cbb'), b'\0' * 4]
+    tx(c, policy.functions.setV2(False))
+    assert run(w, voucher_for(w, a[4], tenant, 'v1')) == (1, True)
+    assert policy.functions.v1Calls().call() == 1 and policy.functions.v2Calls().call() == 1

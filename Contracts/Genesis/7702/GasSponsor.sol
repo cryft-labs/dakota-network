@@ -599,18 +599,15 @@ contract GasSponsor is
         uint256 gasStart = gasleft();
         _validateVoucherEnvelope(voucher, executionData);
         _validateSponsorBudget(voucher);
-        _beforeSponsoredExecution(voucher);
         _validateDelegationAndSignature(
             voucher,
             executionData,
             voucherSignature
         );
+        _beforeSponsoredExecution(voucher, executionData);
 
         PolicyContext memory context = PolicyContext(_sponsorStorage().allowancePolicies[voucher.sponsor], costOverheadGas(voucher.sponsor));
-        if (context.policy != address(0)) {
-            _callPolicy(context.policy, abi.encodeCall(ITenantAllowancePolicy.reserve,
-                (voucher.operationId, voucher.account, voucher.maxCost)), ITenantAllowancePolicy.reserve.selector);
-        }
+        if (context.policy != address(0)) _reservePolicy(context.policy, voucher, executionData);
 
         GasSponsorStorage storage state = _sponsorStorage();
         state.consumedOperations[voucher.operationId] = true;
@@ -1013,9 +1010,14 @@ contract GasSponsor is
     }
 
     function _validateSponsoredTargets(bytes calldata) internal view virtual {}
-    /// @dev A later implementation's own checks on a voucher, after the sponsor's budget is validated and before the
-    /// signature and execution (ProgramGasSponsor 1.4.0: the developer gas program's sponsors). Reverts to refuse.
-    function _beforeSponsoredExecution(SponsorshipVoucher calldata) internal virtual {}
+    /// @dev A later implementation's own checks on a voucher and its (validated) execution envelope, after the budget, the
+    /// delegation and both signatures, before the policy and the call (ProgramGasSponsor 1.4.0). Reverts to refuse.
+    function _beforeSponsoredExecution(SponsorshipVoucher calldata, bytes calldata) internal virtual {}
+    /// @dev The sponsor's allowance policy asked to reserve this operation (1.1: reserve; 1.4.0 may ask a V2 policy with the calls).
+    function _reservePolicy(address policy, SponsorshipVoucher calldata voucher, bytes calldata) internal virtual {
+        _callPolicy(policy, abi.encodeCall(ITenantAllowancePolicy.reserve,
+            (voucher.operationId, voucher.account, voucher.maxCost)), ITenantAllowancePolicy.reserve.selector);
+    }
 
     function _validateExecutionEnvelope(
         bytes calldata executionData,

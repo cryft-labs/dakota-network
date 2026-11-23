@@ -11,13 +11,21 @@ interface IDeveloperGasProgramLimits {
     function sponsorLimits(address sponsor) external view returns (bool eligible, uint256 maxFeePerGas, uint256 opsPerDay);
 }
 
+/// @notice A sponsor's allowance policy that also sees the calls it pays for (detected by ERC-165; V1's `reserve` otherwise).
+interface ITenantAllowancePolicyV2 {
+    function reserveCalls(bytes32 operationId, address wallet, uint256 maximumCost, address[] calldata targets, bytes4[] calldata selectors)
+        external returns (bytes4);
+}
+
 /// @notice GasSponsor 1.4.0: WorkerGasSponsor 1.3.0 and the developer gas program (2026-11-22). One PROGRAM address, set by the
 /// platform administrator, opens sponsors that never existed and sets their caps, within program-wide HARD caps the
 /// administrator sets; its gas reaches them through the existing restricted `depositGasCredit` (gas only, never withdrawable).
 /// A program sponsor is spent from only while the program says it is eligible (its developer's Pass active, the program not
 /// paused), with a voucher fee no higher than its tier's, and at most its tier's operations a UTC day: a saturating counter,
 /// reset by the day, that can never overflow nor stop anything but that sponsor's own extra operations. Every other sponsor
-/// (cryft.app's own, the tenants') is exactly as in 1.3.0.
+/// (cryft.app's own, the tenants') is exactly as in 1.3.0, but for two choices every manager now has, both off by default:
+/// ALLOWED TARGETS (setTargetApprovalRequired, setSponsoredTarget[s]): every call's `to` in the execution envelope must be one the
+/// manager approved; and a V2 ALLOWANCE POLICY (ITenantAllowancePolicyV2, by ERC-165) is asked with the calls' targets and selectors.
 /// @dev Append-only: the base and worker storage are untouched; this version's state lives in its own slot.
 contract ProgramGasSponsor is WorkerGasSponsor {
     bytes32 private constant PROGRAM_SLOT = keccak256("dakota.storage.ProgramGasSponsor.v1");
@@ -30,7 +38,12 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         mapping(address => bool) programSponsor;
         mapping(address => uint256) opsDay;
         mapping(address => uint256) opsCount;
+        mapping(address => bool) targetsRequired;
+        mapping(address => mapping(address => bool)) sponsoredTargets;
     }
+    uint256 private constant _MAX_CALLS = 32;
+    uint256 private constant _TARGETS_BATCH_MOST = 64;
+    uint256 private constant _ERC165_GAS = 30_000;
 
     error NotProgram();
     error NotProgramSponsor(address sponsor);
@@ -40,11 +53,14 @@ contract ProgramGasSponsor is WorkerGasSponsor {
     error ProgramFeeTooHigh(uint256 offered, uint256 maximum);
     error ProgramDailyOpsReached(address sponsor, uint256 opsPerDay);
     error ProgramSponsorHasNoWorkers(address sponsor);
+    error TargetNotSponsored(address sponsor, address target);
 
     event ProgramConfigured(address indexed program, uint256 hardMaxCostPerOperation, uint256 hardDailyLimit);
     event ProgramSponsorOpened(address indexed sponsor, bytes32 indexed tenantId, address indexed manager,
         uint256 maxCostPerOperation, uint256 dailyLimit);
     event ProgramSponsorCapsSet(address indexed sponsor, uint256 maxCostPerOperation, uint256 dailyLimit);
+    event TargetApprovalRequired(address indexed sponsor, bool required);
+    event SponsoredTargetUpdated(address indexed sponsor, address indexed target, bool allowed);
 
     function implementationVersion() external pure override returns (string memory) { return "1.4.0"; }
 
@@ -100,6 +116,24 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         emit ProgramSponsorCapsSet(sponsor, maxCostPerOperation, dailyLimit);
     }
 
+    /// @notice Whether this sponsor pays only for calls to targets its manager approved (off by default, any sponsor).
+    function setTargetApprovalRequired(address sponsor, bool required) external onlySponsorManager(sponsor) {
+        _program().targetsRequired[sponsor] = required;
+        emit TargetApprovalRequired(sponsor, required);
+    }
+
+    function setSponsoredTarget(address sponsor, address target, bool allowed) external onlySponsorManager(sponsor) {
+        _setTarget(sponsor, target, allowed);
+    }
+
+    function setSponsoredTargets(address sponsor, address[] calldata targets, bool allowed) external onlySponsorManager(sponsor) {
+        if (targets.length == 0 || targets.length > _TARGETS_BATCH_MOST) revert InvalidConfiguration();
+        for (uint256 i; i < targets.length; ++i) _setTarget(sponsor, targets[i], allowed);
+    }
+
+    function targetApprovalRequired(address sponsor) external view returns (bool) { return _program().targetsRequired[sponsor]; }
+    function isTargetSponsored(address sponsor, address target) external view returns (bool) { return _program().sponsoredTargets[sponsor][target]; }
+
     function programConfiguration() external view returns (address program, uint256 hardMaxCostPerOperation, uint256 hardDailyLimit) {
         ProgramStorage storage p = _program();
         return (p.program, p.hardMaxCostPerOperation, p.hardDailyLimit);
@@ -113,9 +147,14 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         return p.opsDay[sponsor] == block.timestamp / 1 days ? p.opsCount[sponsor] : 0;
     }
 
-    function _beforeSponsoredExecution(SponsorshipVoucher calldata voucher) internal override {
+    function _beforeSponsoredExecution(SponsorshipVoucher calldata voucher, bytes calldata executionData) internal override {
         ProgramStorage storage p = _program();
-        if (!p.programSponsor[voucher.sponsor]) return;                     // every other sponsor: exactly as 1.3.0
+        if (p.targetsRequired[voucher.sponsor]) {                           // the manager's own choice, any sponsor
+            IDakotaDelegation.Call[] memory calls = _calls(executionData);
+            for (uint256 i; i < calls.length; ++i)
+                if (!p.sponsoredTargets[voucher.sponsor][calls[i].target]) revert TargetNotSponsored(voucher.sponsor, calls[i].target);
+        }
+        if (!p.programSponsor[voucher.sponsor]) return;                     // every other sponsor: as 1.3.0
         (bool eligible, uint256 maxFee, uint256 opsPerDay) = _limits(p.program, voucher.sponsor);
         if (!eligible) revert ProgramSponsorIneligible(voucher.sponsor);
         if (voucher.maxFeePerGas > maxFee) revert ProgramFeeTooHigh(voucher.maxFeePerGas, maxFee);
@@ -127,6 +166,19 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         uint256 used = p.opsCount[voucher.sponsor];
         if (used >= opsPerDay) revert ProgramDailyOpsReached(voucher.sponsor, opsPerDay);
         p.opsCount[voucher.sponsor] = used + 1;                             // used < opsPerDay <= max: cannot overflow
+    }
+
+    function _reservePolicy(address policy, SponsorshipVoucher calldata voucher, bytes calldata executionData) internal override {
+        if (!_supportsV2(policy)) return super._reservePolicy(policy, voucher, executionData);
+        IDakotaDelegation.Call[] memory calls = _calls(executionData);
+        address[] memory targets = new address[](calls.length);
+        bytes4[] memory selectors = new bytes4[](calls.length);
+        for (uint256 i; i < calls.length; ++i) {
+            targets[i] = calls[i].target;
+            selectors[i] = calls[i].data.length >= 4 ? bytes4(calls[i].data) : bytes4(0);
+        }
+        _callPolicy(policy, abi.encodeCall(ITenantAllowancePolicyV2.reserveCalls,
+            (voucher.operationId, voucher.account, voucher.maxCost, targets, selectors)), ITenantAllowancePolicyV2.reserveCalls.selector);
     }
 
     function _beforeWorkerReservation(address sponsor) internal view override {
@@ -144,6 +196,30 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         (flag, maxFee, opsPerDay) = abi.decode(answer, (uint256, uint256, uint256));
         if (flag > 1) return (false, 0, 0);
         eligible = flag == 1;
+    }
+
+    /// @dev The envelope's calls (its shape is validated before this runs): 1 to _MAX_CALLS of them.
+    function _calls(bytes calldata executionData) private pure returns (IDakotaDelegation.Call[] memory calls) {
+        (IDakotaDelegation.SponsoredExecutionRequest memory request,) =
+            abi.decode(executionData[4:], (IDakotaDelegation.SponsoredExecutionRequest, bytes));
+        calls = request.calls;
+        if (calls.length == 0 || calls.length > _MAX_CALLS) revert InvalidExecutionEnvelope();
+    }
+
+    /// @dev ERC-165, bounded: supports 0x01ffc9a7, not 0xffffffff, and ITenantAllowancePolicyV2.
+    function _supportsV2(address policy) private view returns (bool) {
+        return _supports(policy, 0x01ffc9a7) && !_supports(policy, 0xffffffff) && _supports(policy, type(ITenantAllowancePolicyV2).interfaceId);
+    }
+
+    function _supports(address target, bytes4 id) private view returns (bool) {
+        (bool ok, bytes memory answer) = target.staticcall{gas: _ERC165_GAS}(abi.encodeWithSelector(0x01ffc9a7, id));
+        return ok && answer.length == 32 && abi.decode(answer, (uint256)) == 1;
+    }
+
+    function _setTarget(address sponsor, address target, bool allowed) private {
+        if (target == address(0) || target == address(this)) revert InvalidConfiguration();
+        _program().sponsoredTargets[sponsor][target] = allowed;
+        emit SponsoredTargetUpdated(sponsor, target, allowed);
     }
 
     function _checkCaps(ProgramStorage storage p, uint256 maxCostPerOperation, uint256 dailyLimit) private view {
