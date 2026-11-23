@@ -50,6 +50,12 @@ contract MockProgram {
     function recover(address s, address sponsor, address to, uint256 amount) external { IProgramSponsor(s).recoverGasCredit(sponsor, to, amount); }
     receive() external payable {}
 }
+contract Sink {                                                           // 1.5.1 (C3): a target with code, to approve
+    uint256 public pings;
+    function ping() external payable { pings++; }
+    fallback() external payable {}
+    receive() external payable {}
+}
 contract PolicyV2 {
     address public gasSponsor; address public sponsor; bool public v2 = true;
     address[] public lastTargets; bytes4[] public lastSelectors; uint256 public v1Calls; uint256 public v2Calls;
@@ -85,7 +91,8 @@ def program_build():
     mock = next(iter(solcx.compile_source(MOCK, solc_version='0.8.37', output_values=['abi', 'bin']).items()))
     found = {k.split(':')[-1]: v for k, v in solcx.compile_source(MOCK, solc_version='0.8.37', output_values=['abi', 'bin']).items()}
     return {'ProgramGasSponsor': sponsor, 'MockProgram': {'abi': found['MockProgram']['abi'], 'creation_bytecode': '0x' + found['MockProgram']['bin']},
-            'PolicyV2': {'abi': found['PolicyV2']['abi'], 'creation_bytecode': '0x' + found['PolicyV2']['bin']}}
+            'PolicyV2': {'abi': found['PolicyV2']['abi'], 'creation_bytecode': '0x' + found['PolicyV2']['bin']},
+            'Sink': {'abi': found['Sink']['abi'], 'creation_bytecode': '0x' + found['Sink']['bin']}}
 
 
 def create(c, artifact, *args):
@@ -110,8 +117,25 @@ def world(chain, program_build):
     tx(c, sponsor.functions.setProgram(program.address, HARD_OP, HARD_DAY))
     dev = Web3.to_checksum_address('0x' + Web3.keccak(text='cryft.dev.sponsor test').hex()[-40:])
     tenant = Web3.keccak(text='dev:test')
-    return {'c': c, 'a': a, 'account': account, 'sponsor': sponsor, 'dispatcher': dispatcher, 'program': program, 'dev': dev,
-            'tenant': tenant, 'before': before}
+    sinks = [create(c, program_build['Sink']) for _ in range(3)]
+    w = {'c': c, 'a': a, 'account': account, 'sponsor': sponsor, 'dispatcher': dispatcher, 'program': program, 'dev': dev,
+         'tenant': tenant, 'before': before, 'sinks': [x.address for x in sinks], 'sink': sinks[0]}
+    approve(w, [(x.address, PING) for x in sinks] + [(sinks[0].address, TRANSFER)])     # 1.5.1 (C3): the platform's approvals
+    return w
+
+
+PING, TRANSFER = Web3.keccak(text='ping()')[:4], bytes.fromhex('a9059cbb')
+
+
+def approve(w, pairs, max_value=1, sender=None):
+    """The platform administrator's call approvals (ApprovedGasSponsor.setCallApprovals) for plain contracts (no proxy)."""
+    w3 = w['c']['w3']
+    permissions = [(t, s, (w3.keccak(w3.eth.get_code(t)), '0x' + '0' * 40, b'\0' * 32, max_value, False, '0x' + '0' * 40, b'\0' * 32))
+                   for t, s in pairs]
+    tx(w['c'], w['sponsor'].functions.setCallApprovals(permissions), sender or w['a'][0])
+
+
+def ping(w, i=0, value=1): return (w['sinks'][i], value, PING)
 
 
 def open_dev(w, op=2 * 10 ** 15, day=4 * 10 ** 15, credit=10 ** 17):
@@ -164,7 +188,8 @@ def test_the_upgrade_from_the_live_worker_sponsor_keeps_every_record(world):
 def test_a_non_program_sponsor_is_exactly_as_before(world):
     w = world
     w['program'].functions.set(False, 1, 0, 1).transact({'from': w['a'][0]})                  # the program says no to everything
-    args = voucher_for(w, w['a'][4], Web3.keccak(text='tenant'), 'plain', fee=3 * GWEI)       # any fee the sponsor's own caps allow
+    refused(w, voucher_for(w, w['a'][4], Web3.keccak(text='tenant'), 'unapproved', fee=3 * GWEI))  # 1.5.1 (C3): no approval, no pay
+    args = voucher_for(w, w['a'][4], Web3.keccak(text='tenant'), 'plain', fee=3 * GWEI, calls=[ping(w)])  # an approved call: as before
     assert run(w, args) == (1, True)
     assert not w['sponsor'].functions.isProgramSponsor(w['a'][4]).call()
 
@@ -286,21 +311,22 @@ def test_storage_is_append_only(program_build):
 def test_allowed_targets_are_the_managers_choice_and_every_call_is_checked(world):
     w = world; s, c, a = w['sponsor'], w['c'], w['a']
     tenant = Web3.keccak(text='tenant')
+    s0, s1, s2 = w['sinks']
     assert not s.functions.targetApprovalRequired(a[4]).call()
     fails(c, s.functions.setTargetApprovalRequired(a[4], True), a[6])                                            # the manager's alone
     tx(c, s.functions.setTargetApprovalRequired(a[4], True), a[5])
-    refused(w, voucher_for(w, a[4], tenant, 'not-approved'))
-    tx(c, s.functions.setSponsoredTarget(a[4], a[9], True), a[5])
-    assert run(w, voucher_for(w, a[4], tenant, 'approved')) == (1, True)
-    refused(w, voucher_for(w, a[4], tenant, 'one-of-two', calls=[(a[9], 1, b''), (a[8], 1, b'')]))               # every call, not the first
-    tx(c, s.functions.setSponsoredTargets(a[4], [a[8], a[7]], True), a[5])
-    assert run(w, voucher_for(w, a[4], tenant, 'both', calls=[(a[9], 1, b''), (a[8], 1, b'')])) == (1, True)
-    tx(c, s.functions.setSponsoredTarget(a[4], a[9], False), a[5])
-    refused(w, voucher_for(w, a[4], tenant, 'withdrawn'))
+    refused(w, voucher_for(w, a[4], tenant, 'not-approved', calls=[ping(w)]))
+    tx(c, s.functions.setSponsoredTarget(a[4], s0, True), a[5])
+    assert run(w, voucher_for(w, a[4], tenant, 'approved', calls=[ping(w)])) == (1, True)
+    refused(w, voucher_for(w, a[4], tenant, 'one-of-two', calls=[ping(w, 0), ping(w, 1)]))                       # every call, not the first
+    tx(c, s.functions.setSponsoredTargets(a[4], [s1, s2], True), a[5])
+    assert run(w, voucher_for(w, a[4], tenant, 'both', calls=[ping(w, 0), ping(w, 1)])) == (1, True)
+    tx(c, s.functions.setSponsoredTarget(a[4], s0, False), a[5])
+    refused(w, voucher_for(w, a[4], tenant, 'withdrawn', calls=[ping(w)]))
     fails(c, s.functions.setSponsoredTarget(a[4], '0x' + '0' * 40, True), a[5])
     fails(c, s.functions.setSponsoredTargets(a[4], [], True), a[5])
     tx(c, s.functions.setTargetApprovalRequired(a[4], False), a[5])
-    assert run(w, voucher_for(w, a[4], tenant, 'off-again')) == (1, True)
+    assert run(w, voucher_for(w, a[4], tenant, 'off-again', calls=[ping(w)])) == (1, True)
 
 
 def test_a_v2_policy_sees_the_calls_targets_and_selectors_and_a_v1_policy_is_unchanged(world, program_build):
@@ -308,13 +334,13 @@ def test_a_v2_policy_sees_the_calls_targets_and_selectors_and_a_v1_policy_is_unc
     tenant = Web3.keccak(text='tenant')
     policy = create(c, program_build['PolicyV2'], s.address, a[4])
     tx(c, s.functions.setSponsorPolicy(a[4], policy.address), a[5])
-    calls = [(a[9], 1, bytes.fromhex('a9059cbb') + b'\0' * 32), (a[8], 1, b'')]
+    calls = [(w['sinks'][0], 1, TRANSFER + b'\0' * 32), ping(w, 1)]
     assert run(w, voucher_for(w, a[4], tenant, 'v2', calls=calls)) == (1, True)
     assert policy.functions.v2Calls().call() == 1 and policy.functions.v1Calls().call() == 0
-    assert [policy.functions.lastTargets(i).call() for i in range(2)] == [a[9], a[8]]
-    assert [policy.functions.lastSelectors(i).call() for i in range(2)] == [bytes.fromhex('a9059cbb'), b'\0' * 4]
+    assert [policy.functions.lastTargets(i).call() for i in range(2)] == [w['sinks'][0], w['sinks'][1]]
+    assert [policy.functions.lastSelectors(i).call() for i in range(2)] == [TRANSFER, PING]
     tx(c, policy.functions.setV2(False))
-    assert run(w, voucher_for(w, a[4], tenant, 'v1')) == (1, True)
+    assert run(w, voucher_for(w, a[4], tenant, 'v1', calls=[ping(w)])) == (1, True)
     assert policy.functions.v1Calls().call() == 1 and policy.functions.v2Calls().call() == 1
 
 
@@ -329,6 +355,8 @@ def test_program_sponsors_never_pay_for_a_denied_target_and_other_sponsors_are_u
     refused(w, voucher_for(w, w['dev'], w['tenant'], 'denied'))
     refused(w, voucher_for(w, w['dev'], w['tenant'], 'denied-second', calls=[(a[8], 1, b''), (a[9], 1, b'')]))
     assert run(w, voucher_for(w, w['dev'], w['tenant'], 'allowed', calls=[(a[8], 1, b'')])) == (1, True)
-    assert run(w, voucher_for(w, a[4], Web3.keccak(text='tenant'), 'not-a-program-sponsor')) == (1, True)       # a[9] still fine for others
+    tx(c, s.functions.setProgramDeniedTargets([w['sinks'][0]], True))
+    assert run(w, voucher_for(w, a[4], Web3.keccak(text='tenant'), 'not-a-program-sponsor', calls=[ping(w)])) == (1, True)  # others: untouched
+    tx(c, s.functions.setProgramDeniedTargets([w['sinks'][0]], False))
     tx(c, s.functions.setProgramDeniedTargets([a[9]], False))
     assert run(w, voucher_for(w, w['dev'], w['tenant'], 'undenied')) == (1, True)

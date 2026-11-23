@@ -43,10 +43,17 @@ CODE_LIMIT = 32_768
 IMPORTS_MOST = 64                       # files in the import closure (11 today)
 IMPORT = re.compile(r'^\s*import\s+(?:[^"\']*from\s+)?["\']([^"\']+)["\']\s*;', re.M)
 # the namespaced structs, by the contract that declares them, and the constants that place them
-STRUCTS = {"GasSponsor": "GasSponsorStorage", "WorkerGasSponsor": "WorkerStorage", "ProgramGasSponsor": "ProgramStorage"}
+STRUCTS = {"GasSponsor": "GasSponsorStorage", "WorkerGasSponsor": "WorkerStorage", "ProgramGasSponsor": "ProgramStorage",
+           "ApprovedGasSponsor": "ApprovalStorage"}
 CONSTANTS = (("GasSponsor.sol", "_GAS_SPONSOR_STORAGE_LOCATION =\n        0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100;"),
              ("WorkerGasSponsor.sol", 'WORKER_SLOT = keccak256("dakota.storage.WorkerGasSponsor.v1");'),
-             ("ProgramGasSponsor.sol", 'PROGRAM_SLOT = keccak256("dakota.storage.ProgramGasSponsor.v1");'))
+             ("ProgramGasSponsor.sol", 'PROGRAM_SLOT = keccak256("dakota.storage.ProgramGasSponsor.v1");'),
+             ("ApprovedGasSponsor.sol", '_APPROVAL_SLOT = keccak256("dakota.storage.ApprovedGasSponsor.v1");'))
+LIVE_STRUCTS = ["GasSponsor", "WorkerGasSponsor", "ProgramGasSponsor"]          # what 1.4.0 and 1.5.0 hold
+APPROVED_COMMIT = "7f70541"          # ApprovedGasSponsor (GasSponsor 1.2), live on 0x…FEeD blocks 5171-5330 (0x788e…9fb0): its namespace
+NAMESPACES = {"GasSponsorStorage": 0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100,
+              "WorkerStorage": "dakota.storage.WorkerGasSponsor.v1", "ProgramStorage": "dakota.storage.ProgramGasSponsor.v1",
+              "ApprovalStorage": "dakota.storage.ApprovedGasSponsor.v1"}
 LIVE_130 = REPO / "Contracts/Verification/20260915/WorkerGasSponsor/standard-input.json"
 LIVE_140 = REPO / "Releases/GasSponsor/1.5.0/live-1.4.0-standard-input.json"
 LIVE_150 = REPO / "Releases/GasSponsor/1.5.0/standard-input.json"
@@ -146,8 +153,16 @@ def build() -> tuple[dict, dict, dict]:
     live140 = json.loads(LIVE_140.read_text())
     live150 = json.loads(LIVE_150.read_text())
     old130 = probe_layout(live130, "source/Genesis/7702", ["GasSponsor", "WorkerGasSponsor"])
-    old140 = probe_layout(live140, "Contracts/Genesis/7702", list(STRUCTS))
-    old150 = probe_layout(live150, "Contracts/Genesis/7702", list(STRUCTS))
+    old140 = probe_layout(live140, "Contracts/Genesis/7702", LIVE_STRUCTS)
+    old150 = probe_layout(live150, "Contracts/Genesis/7702", LIVE_STRUCTS)
+    # ApprovedGasSponsor's struct as 1.2 wrote it (0x…FEeD's namespace still holds its entries), from its commit
+    import subprocess
+    approved_old = subprocess.run(["git", "-C", str(REPO), "show", f"{APPROVED_COMMIT}:Contracts/Genesis/7702/ApprovedGasSponsor.sol"],
+                                  capture_output=True, text=True, timeout=60, check=True).stdout
+    live12 = json.loads(json.dumps(standard))
+    live12["sources"]["Contracts/Genesis/7702/ApprovedGasSponsor.sol"] = {"content": approved_old}
+    live12["sources"].pop(ENTRY)                                         # the probe needs the 1.2 contract alone
+    old12 = probe_layout(live12, "Contracts/Genesis/7702", ["ApprovedGasSponsor"])
     selection = {"*": {"*": ["storageLayout"]}}
     plain140 = plain(compile_input(dict(live140, settings=dict(live140["settings"], outputSelection=selection)))["contracts"][ENTRY][NAME])
     plain150 = plain(compile_input(dict(live150, settings=dict(live150["settings"], outputSelection=selection)))["contracts"][ENTRY][NAME])
@@ -155,12 +170,22 @@ def build() -> tuple[dict, dict, dict]:
     plain130 = plain(out130["contracts"]["source/Genesis/7702/WorkerGasSponsor.sol"]["WorkerGasSponsor"])
     plain151 = plain(made)
     problems = []
-    for label, old in (("1.3.0", old130), ("1.4.0", old140), ("1.5.0", old150)):
+    for label, old in (("1.3.0", old130), ("1.4.0", old140), ("1.5.0", old150), ("1.2 approvals", old12)):
         for struct in old:
             problems += prefix_problems(f"{label} -> {VERSION} {struct}", old[struct], new[struct])
     for label, old_plain in (("1.3.0", plain130), ("1.4.0", plain140), ("1.5.0", plain150)):
         if old_plain != plain151:
             problems.append(f"plain slots differ from {label}: {old_plain} vs {plain151}")
+    # every namespace apart: four distinct keccak-placed bases, each struct a few slots, none near another or the plain slots
+    from eth_utils import keccak as _k
+    bases = {name: (v if isinstance(v, int) else int.from_bytes(_k(text=v), "big")) for name, v in NAMESPACES.items()}
+    spans = sorted((b, b + 1 + max(m[1] for m in new[name]), name) for name, b in bases.items())
+    plain_top = 1 + max(slot for _, slot, _, _ in plain151)
+    if spans[0][0] <= plain_top:
+        problems.append(f"a namespace starts within the plain slots (0..{plain_top})")
+    for (b0, e0, n0), (b1, e1, n1) in zip(spans, spans[1:]):
+        if b1 < e0:
+            problems.append(f"the namespaces {n0} and {n1} overlap")
     for file, constant in CONSTANTS:
         here = (REPO / "Contracts/Genesis/7702" / file).read_text()
         if constant not in here:
@@ -185,6 +210,9 @@ def build() -> tuple[dict, dict, dict]:
                                         "sources": str(LIVE_150.relative_to(REPO)), "sources_sha256": sha256(LIVE_150.read_bytes()),
                                         "plain": plain150, "structs": old150}},
              "new": {"plain": plain151, "structs": new},
+             "approvals_1_2": {"where": f"ApprovedGasSponsor at {APPROVED_COMMIT} (0x…FEeD's implementation 0x788e77a7f7e6d1e65a9c4b19d1c36ac93e749fb0, "
+                                        "blocks 5171-5330; its namespace still initialized with 7 entries)", "structs": old12},
+             "namespaces": {name: hex(b) for name, b in bases.items()},
              "constants": [c for _, c in CONSTANTS], "runtime_bytes": len(runtime), "code_limit": CODE_LIMIT,
              "margin_bytes": CODE_LIMIT - len(runtime)}
     return standard, artifact, proof

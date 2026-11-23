@@ -38,16 +38,8 @@ contract ApprovedGasSponsor is GasSponsor {
         address implementation, bytes32 implementationHash, uint256 maxValue, bool canonicalManagerRequired,
         address proxyReader, bytes32 proxyReaderHash);
 
-    /// @notice Atomic upgrade migration. Only the governed genesis ProxyAdmin may seed it.
-    /// The platform admin may also seed a fresh deployment. This never changes that admin.
-    function initializeCallApprovals(Permission[] calldata permissions) external {
-        ApprovalStorage storage state = _approvals();
-        address admin = this.platformAdmin();
-        if (state.initialized || admin == address(0)
-            || (msg.sender != admin && msg.sender != _APPROVAL_PROXY_ADMIN)) revert ApprovalInitializationDenied();
-        state.initialized = true;
-        _setApprovals(permissions);
-    }
+    // GasSponsor 1.5.1 (2026-11-23): initializeCallApprovals is gone (the 32 KB budget). The platform administrator's
+    // setCallApprovals seeds and changes approvals alike; `initialized` stays in the struct, unread (0x…FEeD holds 1 there).
 
     /// @notice Only platform governance grants/revokes approval. No tenant-level bypass.
     /// Revocation uses a zero codeHash and remains possible when a target is broken.
@@ -63,7 +55,7 @@ contract ApprovedGasSponsor is GasSponsor {
         return data.length >= 4 && _approved(target, value, bytes4(data[:4]));
     }
 
-    function implementationVersion() external pure override returns (string memory) { return "1.2.0"; }
+    function implementationVersion() external pure virtual override returns (string memory) { return "1.2.0"; }
 
     function _setApprovals(Permission[] calldata permissions) private {
         if (permissions.length == 0 || permissions.length > 64) revert InvalidApproval();
@@ -112,7 +104,13 @@ contract ApprovedGasSponsor is GasSponsor {
         return true;
     }
 
-    function _validateSponsoredTargets(bytes calldata data) internal view override {
+    function _validateSponsoredTargets(bytes calldata data) internal view virtual override {
+        _requireApprovedCalls(data);
+    }
+
+    /// @dev Every call of the (validated) execution envelope `data` is a platform-approved (target, selector, value). GasSponsor
+    /// 1.5.1 (ProgramGasSponsor) calls it for every sponsor but a developer program's.
+    function _requireApprovedCalls(bytes calldata data) internal view {
         (IDakotaDelegation.SponsoredExecutionRequest memory request,) =
             abi.decode(data[4:], (IDakotaDelegation.SponsoredExecutionRequest, bytes));
         if (request.calls.length == 0 || request.calls.length > 32) revert InvalidExecutionEnvelope();

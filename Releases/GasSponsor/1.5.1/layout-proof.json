@@ -1,14 +1,42 @@
 {
  "append_only": true,
+ "approvals_1_2": {
+  "structs": {
+   "ApprovalStorage": [
+    [
+     "initialized",
+     0,
+     0,
+     "bool",
+     1
+    ],
+    [
+     "calls",
+     1,
+     0,
+     "mapping(address => mapping(bytes4 => struct ApprovedGasSponsor.CallApproval))",
+     32
+    ]
+   ]
+  },
+  "where": "ApprovedGasSponsor at 7f70541 (0x\u2026FEeD's implementation 0x788e77a7f7e6d1e65a9c4b19d1c36ac93e749fb0, blocks 5171-5330; its namespace still initialized with 7 entries)"
+ },
  "code_limit": 32768,
  "constants": [
   "_GAS_SPONSOR_STORAGE_LOCATION =\n        0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100;",
   "WORKER_SLOT = keccak256(\"dakota.storage.WorkerGasSponsor.v1\");",
-  "PROGRAM_SLOT = keccak256(\"dakota.storage.ProgramGasSponsor.v1\");"
+  "PROGRAM_SLOT = keccak256(\"dakota.storage.ProgramGasSponsor.v1\");",
+  "_APPROVAL_SLOT = keccak256(\"dakota.storage.ApprovedGasSponsor.v1\");"
  ],
  "contract": "ProgramGasSponsor",
  "kind": "dakota.storage-layout-proof.v1",
- "margin_bytes": 4270,
+ "margin_bytes": 98,
+ "namespaces": {
+  "ApprovalStorage": "0xc0696abef0f08b89816777b4efa9e7efa4b4a3297540e7667d5ea29e49f96707",
+  "GasSponsorStorage": "0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100",
+  "ProgramStorage": "0xa428cf7ce7dba86214525ed3913166129f7d839d68a71ead26f40668cba2993e",
+  "WorkerStorage": "0xbe6de09392afcf3cf3c6ad2622c12dfc390f3b61f79365d2b31dbba41d7f921c"
+ },
  "new": {
   "plain": [
    [
@@ -37,6 +65,22 @@
    ]
   ],
   "structs": {
+   "ApprovalStorage": [
+    [
+     "initialized",
+     0,
+     0,
+     "bool",
+     1
+    ],
+    [
+     "calls",
+     1,
+     0,
+     "mapping(address => mapping(bytes4 => struct ApprovedGasSponsor.CallApproval))",
+     32
+    ]
+   ],
    "GasSponsorStorage": [
     [
      "platformAdmin",
@@ -884,6 +928,6 @@
   }
  },
  "problems": [],
- "runtime_bytes": 28498,
+ "runtime_bytes": 32670,
  "version": "1.5.1"
 }

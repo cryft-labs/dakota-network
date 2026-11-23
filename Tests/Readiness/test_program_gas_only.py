@@ -17,7 +17,7 @@ import json
 import pytest
 from web3 import Web3
 
-from test_program_sponsorship import (GWEI, REPO, builds, chain, fails, open_dev, paid, program_build, refused, run, tx,  # noqa: F401
+from test_program_sponsorship import (GWEI, REPO, builds, chain, fails, open_dev, paid, ping, program_build, refused, run, tx,  # noqa: F401
                                       voucher_for, world)
 
 E17 = 10 ** 17
@@ -142,7 +142,7 @@ def test_a_non_program_sponsor_is_unchanged(world):
     assert w3.eth.get_balance(a[8]) - held == E17 and funding(w, a[4]) == [before[0] + 1, before[1]]
     reverts(c, s.functions.recoverGasCredit(a[4], a[8], 1), 'NotPlatformAdmin()', a[5])
     w['program'].functions.set(False, 1, 0, 1).transact({'from': a[0]})        # the program says no: irrelevant to it
-    assert run(w, voucher_for(w, a[4], Web3.keccak(text='tenant'), 'plain', fee=3 * GWEI)) == (1, True)
+    assert run(w, voucher_for(w, a[4], Web3.keccak(text='tenant'), 'plain', fee=3 * GWEI, calls=[ping(w)])) == (1, True)   # approved (C3)
 
 
 # ── the committed build ──

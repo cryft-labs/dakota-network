@@ -41,6 +41,12 @@ contract WorkerGasSponsor is GasSponsor {
         uint256 cost, uint256 reportedCost, bytes32 evidenceHash);
     event WorkerRevenueDeferred(address indexed treasury, uint256 amount);
     event WorkerRevenueClaimed(address indexed treasury, address indexed recipient, uint256 amount);
+    /// GasSponsor 1.5.1 (C4): a stuck reservation released, settled at its maximum (`policySettled`: its policy took the settle).
+    event WorkerReleased(bytes32 indexed operationId, address indexed sponsor, address indexed by, uint256 cost, bool policySettled);
+
+    /// @notice How long a reservation may stay open before ANYONE may release it (GasSponsor 1.5.1, C4): 7 days. A worker's
+    /// transaction lands or is dropped within minutes; a week is far past any honest settlement.
+    uint256 public constant RESERVATION_RELEASE_AFTER = 7 days;
 
     function implementationVersion() external pure virtual override returns (string memory) { return "1.3.0"; }
 
@@ -104,7 +110,7 @@ contract WorkerGasSponsor is GasSponsor {
 
     /// @notice Reconcile once, including failed transaction costs. Lost workers can
     /// be reconciled by platform governance after reviewing the durable journal.
-    /// No automatic timeout releases funds while a transaction may still settle.
+    /// No automatic timeout releases funds while a transaction may still settle; releaseWorker (1.5.1) closes one that is stuck.
     function settleWorker(bytes32 id, uint256 reportedCost, bytes32 evidenceHash) external nonReentrant returns (uint256 cost) {
         uint256 startGas = gasleft();
         WorkerStorage storage s = _workers();
@@ -115,6 +121,37 @@ contract WorkerGasSponsor is GasSponsor {
         // this settlement transaction. Uncovered excess remains a platform cost.
         uint256 measured = reportedCost + (startGas - gasleft() + this.costOverheadGas(r.sponsor)) * tx.gasprice;
         cost = measured < r.maximum ? measured : r.maximum;
+        _closeReservation(s, id, r, cost);
+        _callPolicy(r.policy, abi.encodeCall(ITenantAllowancePolicy.settle, (id, cost)), ITenantAllowancePolicy.settle.selector);
+        // Always pay the treasury captured at reservation, never a user-supplied address.
+        _payTreasury(s, r.treasury, cost);
+        emit WorkerSettled(id,r.sponsor,r.wallet,cost,reportedCost,evidenceHash);
+    }
+
+    /// @notice GasSponsor 1.5.1 (C4): a STUCK reservation released by settling it at its maximum, so a lost worker can never
+    /// lock a sponsor's balance or its policy's allowance for good. The platform administrator at any time; ANYONE once
+    /// RESERVATION_RELEASE_AFTER has passed since it was made. Charged exactly as settleWorker at the reported maximum (the
+    /// tenant agreed to that bound at reservation), paid to the treasury captured then. Idempotent: an operation already
+    /// settled or released (or never reserved) changes nothing and returns 0. The policy's settle is asked with bounded gas and
+    /// its refusal does not keep the reservation stuck (counters never fatal): the event says whether it took it.
+    function releaseWorker(bytes32 id) external nonReentrant returns (uint256 cost) {
+        WorkerStorage storage s = _workers();
+        Reservation memory r = s.operations[id];
+        if (r.worker == address(0)) return 0;
+        if (msg.sender != _sponsorStorage().platformAdmin && block.timestamp < r.created + RESERVATION_RELEASE_AFTER) revert WorkerNotAuthorized();
+        cost = r.maximum;
+        _closeReservation(s, id, r, cost);
+        (bool ok, bytes memory answer) = r.policy.call{gas: _RELEASE_POLICY_GAS}(abi.encodeCall(ITenantAllowancePolicy.settle, (id, cost)));
+        bool settled = ok && answer.length == 32 && bytes4(answer) == ITenantAllowancePolicy.settle.selector;
+        _payTreasury(s, r.treasury, cost);
+        emit WorkerReleased(id, r.sponsor, msg.sender, cost, settled);
+    }
+
+    uint256 private constant _RELEASE_POLICY_GAS = 200_000;
+
+    /// @dev The reservation closed and `cost` (at most its maximum) charged to its sponsor: the day's spend, the balance and the
+    /// restricted credit first, as settleWorker always did.
+    function _closeReservation(WorkerStorage storage s, bytes32 id, Reservation memory r, uint256 cost) private {
         delete s.operations[id];
         s.reserved[r.sponsor] -= r.maximum;
         SponsorState storage account = _sponsorState(r.sponsor);
@@ -123,17 +160,18 @@ contract WorkerGasSponsor is GasSponsor {
         account.balance -= cost;
         uint256 credit = _sponsorStorage().restrictedGasCredit[r.sponsor];
         _sponsorStorage().restrictedGasCredit[r.sponsor] -= cost < credit ? cost : credit;
-        _callPolicy(r.policy, abi.encodeCall(ITenantAllowancePolicy.settle, (id, cost)), ITenantAllowancePolicy.settle.selector);
-        // Always pay the treasury captured at reservation, never a user-supplied address.
-        (bool sent,) = payable(r.treasury).call{value: cost, gas: 30000}("");
-        if (!sent) {
-            s.unpaidRevenue[r.treasury] += cost;
-            emit WorkerRevenueDeferred(r.treasury, cost);
-        }
-        emit WorkerSettled(id,r.sponsor,r.wallet,cost,reportedCost,evidenceHash);
     }
 
-    function _pendingWorkerCost(address sponsor) internal view override returns (uint256) { return _workers().reserved[sponsor]; }
+    /// @dev The treasury captured at reservation paid, or its revenue deferred (a rejecting treasury never locks anything).
+    function _payTreasury(WorkerStorage storage s, address treasury, uint256 cost) private {
+        (bool sent,) = payable(treasury).call{value: cost, gas: 30000}("");
+        if (!sent) {
+            s.unpaidRevenue[treasury] += cost;
+            emit WorkerRevenueDeferred(treasury, cost);
+        }
+    }
+
+    function _pendingWorkerCost(address sponsor) internal view virtual override returns (uint256) { return _workers().reserved[sponsor]; }
     /// @dev A later implementation's own refusal of a reservation for `sponsor` (ProgramGasSponsor 1.4.0: none for a program sponsor).
     function _beforeWorkerReservation(address sponsor) internal view virtual {}
     function _workers() private pure returns (WorkerStorage storage s) {

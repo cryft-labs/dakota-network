@@ -175,5 +175,22 @@ changes one row of the table above: `recoverGasCredit` for a program sponsor is 
 else, the platform administrator included), still only to the program (`ProgramSponsorRecoverToProgram`). The program's own rules
 (DeveloperGasProgram 1.2.0: the 90-day freeze before an ordinary reclaim, an abuse reclaim of a frozen Pass, a paid top-up's refund
 by receipt) are the only way credit leaves a developer's account. Every other sponsor is unchanged. No storage is added;
-`layout-proof.json` proves the layout append-only against 1.3.0 (`0x…FEeD`), 1.4.0 and 1.5.0 (the dev test sponsor since PB-2).
-Runtime 28,498 bytes (margin 4,270 to Dakota's 32,768).
+Two more from the safe-coding review of the live contracts (Chad: "fix all of them"):
+
+- **C3, call approvals on chain again.** `ProgramGasSponsor` now inherits `ApprovedGasSponsor` (GasSponsor 1.2's mandatory
+  target/selector approvals: code hash, implementation, max value, CodeManager). Every sponsored execution of a sponsor that is
+  NOT a developer program's must call only approved (target, selector, value), else `CallNotApproved` (nothing charged). A
+  developer program's sponsor is exempt: its calls are governed by the program deny list, its manager's targets and the
+  router's lists. Only the platform administrator sets approvals (`setCallApprovals`, 1 to 64 at a time; a zero code hash
+  revokes); `initializeCallApprovals` is removed (the 32 KB budget). Storage: ApprovedGasSponsor's own namespace,
+  `keccak256("dakota.storage.ApprovedGasSponsor.v1")`, the one 1.2 wrote: `0x…FEeD` still holds its 7 entries from block 5171
+  (1.2 ran there for blocks 5171-5330, before the rollback and 1.3.0). `layout-proof.json` proves the struct is 1.2's and that
+  the four namespaces and the plain slots are apart.
+- **C4, stuck worker reservations.** `releaseWorker(id)`: the platform administrator at any time, or ANYONE once
+  `RESERVATION_RELEASE_AFTER` (7 days) has passed since the reservation, settles it at its maximum (the bound the tenant agreed
+  to), pays the treasury captured at reservation (or defers its revenue), and emits `WorkerReleased(id, sponsor, by, cost,
+  policySettled)`. Idempotent: an operation already settled, released or never reserved changes nothing and returns 0. The
+  policy's `settle` is asked with 200,000 gas and a refusal does not keep the reservation stuck.
+
+`layout-proof.json` proves the layout append-only against 1.3.0 (`0x…FEeD`), 1.4.0, 1.5.0 (the dev test sponsor since PB-2) and
+the 1.2 approvals namespace. Runtime 32,670 bytes (margin 98 to Dakota's 32,768).

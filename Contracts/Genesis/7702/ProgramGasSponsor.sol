@@ -2,6 +2,7 @@
 pragma solidity >=0.8.20 <0.9.0;
 
 import "./WorkerGasSponsor.sol";
+import "./ApprovedGasSponsor.sol";
 
 /// @notice What GasSponsor asks the developer gas program about one of its sponsors, in one bounded read.
 interface IDeveloperGasProgramLimits {
@@ -36,9 +37,16 @@ interface ITenantAllowancePolicyV2 {
 ///
 /// 1.5.1 (2026-11-23, the independent review's P2-D): `recoverGasCredit` for a program sponsor is the PROGRAM's alone (the
 /// platform administrator's path is gone), so the program's own rules (the 90-day freeze, a paid top-up's refund) are the only
-/// way credit leaves a program sponsor. Every other sponsor is exactly as in 1.5.0. No new storage.
+/// way credit leaves a program sponsor. Two more from the safe-coding review of the live contracts (Chad: "fix all of them"):
+///  - C3: the platform's CALL APPROVALS (ApprovedGasSponsor, GasSponsor 1.2: target, selector, value, code and implementation
+///    hashes) are enforced on chain again for every sponsor but a developer program's (whose calls the program's deny list,
+///    the manager's targets and the router's lists govern); their storage is ApprovedGasSponsor's own namespaced slot
+///    keccak256("dakota.storage.ApprovedGasSponsor.v1"), the one 1.2 wrote (0x…FEeD still holds its entries);
+///  - C4: releaseWorker(id): a stuck worker reservation settled at its maximum, by the platform administrator or, after
+///    RESERVATION_RELEASE_AFTER (7 days), by anyone.
+/// Every other behavior is exactly as in 1.5.0. No new plain storage; the approvals' namespace is proven apart.
 /// @dev Append-only: the base and worker storage are untouched; this version's state lives in its own slot. 1.5.0 and 1.5.1 add no state.
-contract ProgramGasSponsor is WorkerGasSponsor {
+contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
     bytes32 private constant PROGRAM_SLOT = keccak256("dakota.storage.ProgramGasSponsor.v1");
     uint256 private constant _PROGRAM_READ_GAS = 100_000;
 
@@ -79,7 +87,7 @@ contract ProgramGasSponsor is WorkerGasSponsor {
     event SponsoredTargetUpdated(address indexed sponsor, address indexed target, bool allowed);
     event ProgramTargetDeniedSet(address indexed target, bool denied);
 
-    function implementationVersion() external pure override returns (string memory) { return "1.5.1"; }
+    function implementationVersion() external pure override(ApprovedGasSponsor, WorkerGasSponsor) returns (string memory) { return "1.5.1"; }
 
     modifier onlyProgram() {
         if (msg.sender != _program().program || msg.sender == address(0)) revert NotProgram();
@@ -177,8 +185,16 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         return p.opsDay[sponsor] == block.timestamp / 1 days ? p.opsCount[sponsor] : 0;
     }
 
+    /// @dev 1.5.1 (C3): the approval check moves here, where the sponsor is known: a developer program's sponsor is exempt.
+    function _validateSponsoredTargets(bytes calldata) internal view override(GasSponsor, ApprovedGasSponsor) {}
+
+    function _pendingWorkerCost(address sponsor) internal view override(GasSponsor, WorkerGasSponsor) returns (uint256) {
+        return super._pendingWorkerCost(sponsor);
+    }
+
     function _beforeSponsoredExecution(SponsorshipVoucher calldata voucher, bytes calldata executionData) internal override {
         ProgramStorage storage p = _program();
+        if (!p.programSponsor[voucher.sponsor]) _requireApprovedCalls(executionData);       // C3: every other sponsor
         if (p.targetsRequired[voucher.sponsor]) {                           // the manager's own choice, any sponsor
             IDakotaDelegation.Call[] memory calls = _calls(executionData);
             for (uint256 i; i < calls.length; ++i)
