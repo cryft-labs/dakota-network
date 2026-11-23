@@ -40,6 +40,7 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         mapping(address => uint256) opsCount;
         mapping(address => bool) targetsRequired;
         mapping(address => mapping(address => bool)) sponsoredTargets;
+        mapping(address => bool) programDenied;          // targets no program sponsor ever pays for (the platform's own contracts)
     }
     uint256 private constant _MAX_CALLS = 32;
     uint256 private constant _TARGETS_BATCH_MOST = 64;
@@ -54,6 +55,7 @@ contract ProgramGasSponsor is WorkerGasSponsor {
     error ProgramDailyOpsReached(address sponsor, uint256 opsPerDay);
     error ProgramSponsorHasNoWorkers(address sponsor);
     error TargetNotSponsored(address sponsor, address target);
+    error ProgramTargetDenied(address sponsor, address target);
 
     event ProgramConfigured(address indexed program, uint256 hardMaxCostPerOperation, uint256 hardDailyLimit);
     event ProgramSponsorOpened(address indexed sponsor, bytes32 indexed tenantId, address indexed manager,
@@ -61,6 +63,7 @@ contract ProgramGasSponsor is WorkerGasSponsor {
     event ProgramSponsorCapsSet(address indexed sponsor, uint256 maxCostPerOperation, uint256 dailyLimit);
     event TargetApprovalRequired(address indexed sponsor, bool required);
     event SponsoredTargetUpdated(address indexed sponsor, address indexed target, bool allowed);
+    event ProgramTargetDeniedSet(address indexed target, bool denied);
 
     function implementationVersion() external pure override returns (string memory) { return "1.4.0"; }
 
@@ -116,6 +119,19 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         emit ProgramSponsorCapsSet(sponsor, maxCostPerOperation, dailyLimit);
     }
 
+    /// @notice Targets no program sponsor pays for, whatever its manager allows (the rogue-gas audit, 2026-11-22: program credit
+    /// must never make griefing the platform's own contracts cheaper). The platform administrator's alone.
+    function setProgramDeniedTargets(address[] calldata targets, bool denied) external onlyPlatformAdmin {
+        if (targets.length == 0 || targets.length > _TARGETS_BATCH_MOST) revert InvalidConfiguration();
+        for (uint256 i; i < targets.length; ++i) {
+            if (targets[i] == address(0)) revert InvalidConfiguration();
+            _program().programDenied[targets[i]] = denied;
+            emit ProgramTargetDeniedSet(targets[i], denied);
+        }
+    }
+
+    function isProgramDeniedTarget(address target) external view returns (bool) { return _program().programDenied[target]; }
+
     /// @notice Whether this sponsor pays only for calls to targets its manager approved (off by default, any sponsor).
     function setTargetApprovalRequired(address sponsor, bool required) external onlySponsorManager(sponsor) {
         _program().targetsRequired[sponsor] = required;
@@ -155,6 +171,11 @@ contract ProgramGasSponsor is WorkerGasSponsor {
                 if (!p.sponsoredTargets[voucher.sponsor][calls[i].target]) revert TargetNotSponsored(voucher.sponsor, calls[i].target);
         }
         if (!p.programSponsor[voucher.sponsor]) return;                     // every other sponsor: as 1.3.0
+        {
+            IDakotaDelegation.Call[] memory calls = _calls(executionData);
+            for (uint256 i; i < calls.length; ++i)
+                if (p.programDenied[calls[i].target] || calls[i].target == address(this)) revert ProgramTargetDenied(voucher.sponsor, calls[i].target);
+        }
         (bool eligible, uint256 maxFee, uint256 opsPerDay) = _limits(p.program, voucher.sponsor);
         if (!eligible) revert ProgramSponsorIneligible(voucher.sponsor);
         if (voucher.maxFeePerGas > maxFee) revert ProgramFeeTooHigh(voucher.maxFeePerGas, maxFee);

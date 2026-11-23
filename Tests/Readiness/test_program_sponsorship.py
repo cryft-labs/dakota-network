@@ -309,3 +309,19 @@ def test_a_v2_policy_sees_the_calls_targets_and_selectors_and_a_v1_policy_is_unc
     tx(c, policy.functions.setV2(False))
     assert run(w, voucher_for(w, a[4], tenant, 'v1')) == (1, True)
     assert policy.functions.v1Calls().call() == 1 and policy.functions.v2Calls().call() == 1
+
+
+def test_program_sponsors_never_pay_for_a_denied_target_and_other_sponsors_are_untouched(world):
+    """The rogue-gas audit: program credit never pays a call to the platform's own contracts (set by the platform admin)."""
+    w = world; s, c, a = w['sponsor'], w['c'], w['a']
+    open_dev(w)
+    tx(c, w['program'].functions.set(True, GWEI, 10, 0))
+    fails(c, s.functions.setProgramDeniedTargets([a[9]], True), a[6])                                            # the platform admin's alone
+    tx(c, s.functions.setProgramDeniedTargets([a[9]], True))
+    assert s.functions.isProgramDeniedTarget(a[9]).call()
+    refused(w, voucher_for(w, w['dev'], w['tenant'], 'denied'))
+    refused(w, voucher_for(w, w['dev'], w['tenant'], 'denied-second', calls=[(a[8], 1, b''), (a[9], 1, b'')]))
+    assert run(w, voucher_for(w, w['dev'], w['tenant'], 'allowed', calls=[(a[8], 1, b'')])) == (1, True)
+    assert run(w, voucher_for(w, a[4], Web3.keccak(text='tenant'), 'not-a-program-sponsor')) == (1, True)       # a[9] still fine for others
+    tx(c, s.functions.setProgramDeniedTargets([a[9]], False))
+    assert run(w, voucher_for(w, w['dev'], w['tenant'], 'undenied')) == (1, True)
