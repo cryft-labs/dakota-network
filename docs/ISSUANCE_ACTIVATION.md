@@ -17,7 +17,7 @@ On a Nebula-connected computer with MetaMask, open:
 [Activate reviewed registration](http://100.111.1.4:3035/dashboard/gas#issuance-activation)
 
 1. Connect and sign in with **0x9247524040D91D5dd1521A25f2e7711d4a0fe921** on Dakota, chain ID **112311**. Login signatures are separate from the transactions below.
-2. Find **Activate reviewed registration**. Confirm the new policy is **0xEE95c61E5fcbDAc780Ecfb9Bb2F8B94E7B0b97A3**, for moment.cards Account **0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340**. The fixed worker treasury is **0xe7850ecede5d6f7d0b2d2ccabfc2f29d2c345125** on Paladin-01.
+2. Find **Activate reviewed registration**. Confirm the new policy is **0xEE95c61E5fcbDAc780Ecfb9Bb2F8B94E7B0b97A3**, for Cryft Cards Account **0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340**. The fixed worker treasury is **0xe7850ecede5d6f7d0b2d2ccabfc2f29d2c345125** on Paladin-01.
 3. Click the current action button and confirm its transaction in MetaMask. Wait for the receipt before clicking the next action. The page checks the connected wallet, exact release and current chain state, and simulates each transaction before asking for a signature.
 4. Continue until the panel reports **On-chain activation is complete**, then tell the operator it is complete. The operator will verify receipts and enable the worker; the page does not enable server processes.
 
@@ -32,7 +32,7 @@ The initial activation required nine transactions, now confirmed, in this order:
 | 5 | Set the account safety ceiling to 0.03 KOTA per operation | Sets the platform ceiling; the 0.1 KOTA daily ceiling is retained. |
 | 6 | Allow the account to use the reviewed operation ceiling | Sets matching tenant limits. |
 | 7 | Authorize the Paladin worker and fixed treasury | Permits bounded receipt-cost settlement by this trusted worker. |
-| 8 | Enable worker sponsorship for moment.cards | Opts this Account into that worker. |
+| 8 | Enable worker sponsorship for Cryft Cards | Opts this Account into that worker. |
 | 9 | Resume sponsored operations | Ends the temporary platform-wide pause. |
 
 Additional preservation steps appear automatically if wallet/tier rules or today's recorded spending changed before activation. Completed steps are not repeated after refresh. If a step fails, leave sponsorship paused, retain its transaction hash, and use **Refresh activation status** before contacting the operator. Never disconnect a policy or release a reservation to work around an unresolved transaction.
@@ -53,7 +53,7 @@ Verify the new policy binding, preserved overrides/current-day usage, platform a
 
 Only then enable the review API's customer-creation flag and start the full worker against the same database. Stop the enrollment-only worker by its recorded process identity before replacing it. Record exact pushed commits and runtime paths. These desktop previews are not the final persistent production services.
 
-The browser acceptance URL is [moment.cards preview](http://100.111.1.4:3033/). Test an approved ordinary member: create one card, optionally save an encrypted recovery file, publish, refresh and recover, then redeem to the displayed destination. The final artifact has **15 characters: three numeric characters assigned privately plus twelve random characters generated locally**. It is shown only after the private receipt. No separate PIN field is exposed.
+The browser acceptance URL is [Cryft Cards preview](http://100.111.1.4:3033/). Test an approved ordinary member: create one card, optionally save an encrypted recovery file, publish, refresh and recover, then redeem to the displayed destination. The final artifact has **15 characters: three numeric characters assigned privately plus twelve random characters generated locally**. It is shown only after the private receipt. No separate PIN field is exposed.
 
 Then use two different member sessions concurrently. Confirm disjoint token IDs and UIDs, correct creator-to-code mappings, one operation for repeated idempotency keys, independent gas budgets, one successful redemption per code and correct NFT ownership/metadata in the explorer. Batch metadata uses one exact document, so concurrent minting cannot shift metadata filenames. Complete QR/fragment and embedded login acceptance over HTTPS before production; plain HTTP on Nebula does not provide HTTPS transport guarantees.
 

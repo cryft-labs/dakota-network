@@ -44,7 +44,7 @@ or an explicit transfer of execution; never run two signers against the same non
 Act as Cryft Labs' implementation and operations engineer. Complete the authorized
 hardening and deploy the full Dakota/Kota development system on the seven supplied
 DigitalOcean hosts. Kota is an API-first redeemable-code platform. Its optional
-embeddable widget simplifies integration, and moment.cards is its initial consumer
+embeddable widget simplifies integration, and Cryft Cards is its initial consumer
 for redeemable greeting cards, business cards and postcards. Developers must also be able to integrate
 directly through documented endpoints without embedding the widget.
 
@@ -413,7 +413,7 @@ EXPLORER_START_EARLY=true
     issuance/redemption/status/delivery APIs. Keep unresolved paths disabled behind
     private ingress. Validate the full lifecycle and failure recovery through real
     endpoints. A simulated/blocked private operation cannot be reported submitted.
-13. Update the existing Greeting Cards application in place as moment.cards, with
+13. Update the existing Greeting Cards application in place as Cryft Cards, with
     greeting, business and postcard choices. Complete the newer Dakota Cards
     dashboard/docs and retained widget. Build the local admin UI using
     the same documented service contract. Admins can generate/manage codes and inspect

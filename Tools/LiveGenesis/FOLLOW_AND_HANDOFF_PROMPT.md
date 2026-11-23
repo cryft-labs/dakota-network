@@ -280,7 +280,7 @@ dependent work, but should not stop independent read-only verification.
 Keep Nginx security boundaries, low-privilege runtime users and persistent service
 units. Update the existing technical manual and one-shot deployment prompt with
 actual state, addresses, source commits, tests, recovery steps and remaining work.
-Moment.cards is the initial client application; Kota Router is the primary service
+Cryft Cards is the initial client application; Kota Router is the primary service
 API, and the widget is an optional UI. Public genesis acceptance does not mean
 those applications or production handover are complete. Paladin private flows have
 their own completed direct-chain development acceptance, linked above.

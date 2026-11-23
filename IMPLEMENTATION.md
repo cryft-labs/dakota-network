@@ -1,15 +1,13 @@
 # Kota / Dakota implementation and operations manual
 
-> **Name note (2026-11-23).** The consumer app called moment.cards below is now **Cryft Cards** (`cryft.cards`); its service
-> tenant id is `cryft.cards`, with `moment.cards` kept as a permanent alias. On-chain strings keep their original values
-> (the tenant registry's id `moment.cards`, the account salt `moment.cards:tba:v1`, deployed contract names such as
-> `MomentCardAccount`). The sections below are kept as written for the record.
+> **Note (2026-11-23).** The consumer app is **Cryft Cards** (`cryft.cards`). On-chain strings and deployed contract names keep
+> their deployed values.
 
 ## 1. Purpose and current status
 
 Kota is the API service for issuing, managing and redeeming codes/tokens. The widget
 is an optional client; sites/apps may call the documented endpoints directly.
-Cryft Cards (formerly moment.cards) is the initial consumer for greeting cards, business cards and postcards. Dakota's
+Cryft Cards is the initial consumer for greeting cards, business cards and postcards. Dakota's
 Besu public ledger and Paladin privacy state supply the underlying settlement.
 
 This manual describes the development release under review. Source changes and
@@ -29,7 +27,7 @@ Review branches are retained for provenance. Resolve
 and record exact SHAs before building; main is not an automatic deployment instruction.
 Website implementation is merged into `CryftCreator/cryftcomingsoon-main/main`,
 with `review/moment-dakota-tenant` retained. Known build/integration gaps remain.
-The existing `Greeting Cards/` application becomes moment.cards in place,
+The existing `Greeting Cards/` application becomes Cryft Cards in place,
 including greeting cards, business cards and postcards. `Dakota Cards/` is the
 platform portal/dashboard/docs application. The widget is optional; direct
 service endpoints must offer the same authorization and lifecycle semantics.
@@ -345,7 +343,7 @@ Nebula; the UI origin remains `127.0.0.1:3001`. Inform the owner only after this
 has been checked from their computer. Indexing lag must be visible and monitored.
 Configure contract verification using exact standard JSON and compiler versions.
 
-## 10. Kota API, widget and moment.cards
+## 10. Kota API, widget and Cryft Cards
 
 Build the Rust V4 core and portable modules from the review commit. Do not use the
 legacy moving-main/V1 deployment script. The current private-operation adapter
@@ -363,7 +361,7 @@ PINs or private payloads. Keep deployment behind private ingress while blockers 
 
 Discover and review the newer Dakota Cards/dashboard/docs/widget sources before
 reusing them. Publish their exact refs and integration contracts. The API owns
-business rules and supports arbitrary host sites; the widget and moment.cards consume
+business rules and supports arbitrary host sites; the widget and Cryft Cards consume
 the same authenticated endpoints. Provide local admin UI for tenant, code lifecycle,
 private/public state, sponsorship, receipts and pending-delivery repair. The UI cannot
 hold privileged chain keys or authorize itself by claimed wallet/cookie flags.
@@ -476,7 +474,7 @@ Kota tenant release `1.4.0` is deployed on the existing chain and genesis, from
 `CryftCreator/KotaRouter` deployment source commit
 `d1402eb7071a32af98a6359d9992578226c766a7`. The access credential proxy is
 `0xa6a1161Fc96561c5DD94Ab4082D8b867E7C102C0` and factory proxy is `0xD99A083A2125dB1881e1D315885c7ba0FAc933d0`.
-The moment.cards membership registry/public routing key is `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`.
+The Cryft Cards membership registry/public routing key is `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`.
 These are service access credentials, separate from the existing redeemable card NFT.
 
 Forty successful transactions and 32 live checks validated issuance, caps, locks,
@@ -488,7 +486,7 @@ Backend-01 IPFS. Compiler 0.8.34 targets Osaka; no genesis or Paladin state chan
 The final root `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` controls issuer, factory admin, both tenant operators
 and both ProxyAdmins. The factory owns the shared beacon. Temporary deployer and
 tester credentials were revoked and their tenant minting rights invalidated.
-The test registry is empty and locked; moment.cards is empty and unlocked, with
+The test registry is empty and locked; Cryft Cards is empty and unlocked, with
 three active registries allowed, 10000 holders each and a 128 lifetime-slot bound.
 
 See KotaRouter `router_v4/contracts/deployment/README.md`, `addresses.json`,
@@ -545,7 +543,7 @@ and sanitized acceptance reports for API operations, encryption and restore rule
 ## 18. Token-bound accounts — review only, not deployed
 
 An ERC-6551 v0.3.1 compatible registry and `MomentCardAccount` implementation are
-in `Contracts/Accounts/` for moment.cards inventories. They are not on chain
+in `Contracts/Accounts/` for Cryft Cards inventories. They are not on chain
 112311. Canonical registry `0x000000006551c19487814612e58FE06813775758` and
 Nick's CREATE2 factory `0x4e59b44847b379578588920cA78FbF26c0B4956C` have no
 bytecode on this genesis. Occupying the canonical registry address requires the
@@ -566,7 +564,7 @@ The review uses locally generated 12-character codes and private-state assigned
 three-digit prefixes, optional encrypted local backups, receipt-bound UID tracking
 and shared batch metadata. Membership spending uses gas allocations; max batch size
 and batches per minute are separate traffic safeguards. Card-per-hour quotas have
-been retired. API 1.14.0, the widget and moment.cards must deploy together after
+been retired. API 1.14.0, the widget and Cryft Cards must deploy together after
 the matching public/private contract and allowance activation.
 
 Offline regression and PostgreSQL concurrency tests pass. This does not activate
