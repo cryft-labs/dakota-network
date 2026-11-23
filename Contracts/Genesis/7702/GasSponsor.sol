@@ -599,6 +599,7 @@ contract GasSponsor is
         uint256 gasStart = gasleft();
         _validateVoucherEnvelope(voucher, executionData);
         _validateSponsorBudget(voucher);
+        _beforeSponsoredExecution(voucher);
         _validateDelegationAndSignature(
             voucher,
             executionData,
@@ -1012,6 +1013,9 @@ contract GasSponsor is
     }
 
     function _validateSponsoredTargets(bytes calldata) internal view virtual {}
+    /// @dev A later implementation's own checks on a voucher, after the sponsor's budget is validated and before the
+    /// signature and execution (ProgramGasSponsor 1.4.0: the developer gas program's sponsors). Reverts to refuse.
+    function _beforeSponsoredExecution(SponsorshipVoucher calldata) internal virtual {}
 
     function _validateExecutionEnvelope(
         bytes calldata executionData,
