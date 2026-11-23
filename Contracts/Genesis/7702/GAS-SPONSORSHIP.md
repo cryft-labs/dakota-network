@@ -150,3 +150,20 @@ Kota issuer/minter/recovery roles. Remove bootstrap authority only after replace
 controllers and recovery paths are proven. Some explicit governance revocations are
 irreversible; they are not routine handover actions. The existing initialization
 exception is retained only for the owner-approved, closed bootstrap network.
+
+## GasSponsor 1.5.0: program sponsors hold gas credit only (2026-11-23)
+
+`ProgramGasSponsor` 1.5.0 (`Releases/GasSponsor/1.5.0`, built by `Tools/GasSponsor/build_1_5_0.py`) closes every coin path into or
+out of a sponsor opened by the developer gas program (`openProgramSponsor`):
+
+| call | program sponsor | every other sponsor |
+|---|---|---|
+| `depositFor` | reverts `ProgramSponsorGasOnly` (from anyone) | unchanged: refundable deposit |
+| `withdrawSponsor` | reverts `ProgramSponsorNoWithdraw` | unchanged: the manager withdraws the refundable part |
+| `depositGasCredit` | only from the program (`NotProgram`) | unchanged: anyone |
+| `recoverGasCredit` | the platform admin or the program, to the program only (`ProgramSponsorRecoverToProgram`) | unchanged: the platform admin, any address |
+
+Spending is unchanged: a program sponsor is spent from only while the program answers eligible (its developer's Pass active, the
+program not paused), so a revoked Pass stops spending at the very next execution. No storage is added; `layout-proof.json` proves
+the layout append-only against both live predecessors (1.3.0 at `0x…FEeD`, 1.4.0 behind the dev test sponsor). Runtime 28,547 bytes
+(Dakota's limit 32,768).

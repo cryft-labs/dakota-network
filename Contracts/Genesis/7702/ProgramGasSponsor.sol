@@ -26,7 +26,14 @@ interface ITenantAllowancePolicyV2 {
 /// (cryft.app's own, the tenants') is exactly as in 1.3.0, but for two choices every manager now has, both off by default:
 /// ALLOWED TARGETS (setTargetApprovalRequired, setSponsoredTarget[s]): every call's `to` in the execution envelope must be one the
 /// manager approved; and a V2 ALLOWANCE POLICY (ITenantAllowancePolicyV2, by ERC-165) is asked with the calls' targets and selectors.
-/// @dev Append-only: the base and worker storage are untouched; this version's state lives in its own slot.
+///
+/// 1.5.0 (2026-11-23, Chad: developer gas is "only spendable and not transferrable … only ever a function of the blockchain"):
+/// a PROGRAM SPONSOR holds gas credit and nothing else. `depositFor` to it reverts ProgramSponsorGasOnly (no refundable coin goes
+/// in); `withdrawSponsor` from it reverts ProgramSponsorNoWithdraw (no coin comes out to its manager); `depositGasCredit` for it
+/// is accepted from the program alone (NotProgram otherwise); and `recoverGasCredit` for it, by the platform administrator or
+/// the program, sends only to the program (ProgramSponsorRecoverToProgram otherwise): back into the program's budget, never to
+/// any other address. Every other sponsor is exactly as in 1.4.0.
+/// @dev Append-only: the base and worker storage are untouched; this version's state lives in its own slot. 1.5.0 adds no state.
 contract ProgramGasSponsor is WorkerGasSponsor {
     bytes32 private constant PROGRAM_SLOT = keccak256("dakota.storage.ProgramGasSponsor.v1");
     uint256 private constant _PROGRAM_READ_GAS = 100_000;
@@ -56,6 +63,9 @@ contract ProgramGasSponsor is WorkerGasSponsor {
     error ProgramSponsorHasNoWorkers(address sponsor);
     error TargetNotSponsored(address sponsor, address target);
     error ProgramTargetDenied(address sponsor, address target);
+    error ProgramSponsorGasOnly(address sponsor);
+    error ProgramSponsorNoWithdraw(address sponsor);
+    error ProgramSponsorRecoverToProgram(address sponsor, address program);
 
     event ProgramConfigured(address indexed program, uint256 hardMaxCostPerOperation, uint256 hardDailyLimit);
     event ProgramSponsorOpened(address indexed sponsor, bytes32 indexed tenantId, address indexed manager,
@@ -65,7 +75,7 @@ contract ProgramGasSponsor is WorkerGasSponsor {
     event SponsoredTargetUpdated(address indexed sponsor, address indexed target, bool allowed);
     event ProgramTargetDeniedSet(address indexed target, bool denied);
 
-    function implementationVersion() external pure override returns (string memory) { return "1.4.0"; }
+    function implementationVersion() external pure override returns (string memory) { return "1.5.0"; }
 
     modifier onlyProgram() {
         if (msg.sender != _program().program || msg.sender == address(0)) revert NotProgram();
@@ -200,6 +210,31 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         }
         _callPolicy(policy, abi.encodeCall(ITenantAllowancePolicyV2.reserveCalls,
             (voucher.operationId, voucher.account, voucher.maxCost, targets, selectors)), ITenantAllowancePolicyV2.reserveCalls.selector);
+    }
+
+    /// @dev 1.5.0: a program sponsor takes no refundable deposit, from anyone (its program included).
+    function _beforeRefundableDeposit(address sponsor) internal view override {
+        if (_program().programSponsor[sponsor]) revert ProgramSponsorGasOnly(sponsor);
+    }
+
+    /// @dev 1.5.0: a program sponsor's gas credit comes from the program alone (a zero program: from nobody).
+    function _beforeGasCreditDeposit(address sponsor) internal view override {
+        ProgramStorage storage p = _program();
+        if (p.programSponsor[sponsor] && (msg.sender != p.program || msg.sender == address(0))) revert NotProgram();
+    }
+
+    /// @dev 1.5.0: nothing leaves a program sponsor as coin to its manager.
+    function _beforeSponsorWithdrawal(address sponsor) internal view override {
+        if (_program().programSponsor[sponsor]) revert ProgramSponsorNoWithdraw(sponsor);
+    }
+
+    /// @dev 1.5.0: a program sponsor's credit is recovered by the platform administrator or the program, and only to the
+    /// program (its budget); every other sponsor's, by the platform administrator to any non-zero address, as before.
+    function _authorizeGasCreditRecovery(address sponsor, address recipient) internal view override {
+        ProgramStorage storage p = _program();
+        if (!p.programSponsor[sponsor]) return super._authorizeGasCreditRecovery(sponsor, recipient);
+        if (msg.sender != _sponsorStorage().platformAdmin && (msg.sender != p.program || msg.sender == address(0))) revert NotPlatformAdmin();
+        if (p.program == address(0) || recipient != p.program) revert ProgramSponsorRecoverToProgram(sponsor, p.program);
     }
 
     function _beforeWorkerReservation(address sponsor) internal view override {

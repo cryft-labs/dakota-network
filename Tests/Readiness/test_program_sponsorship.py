@@ -1,4 +1,4 @@
-"""GasSponsor 1.4.0 (ProgramGasSponsor, 2026-11-22: the developer gas program) in a real isolated EVM with real EIP-7702 accounts.
+"""GasSponsor 1.4.0 and 1.5.0 (ProgramGasSponsor, 2026-11-22 and 2026-11-23: the developer gas program) in a real isolated EVM with real EIP-7702 accounts.
 
 The live path is reproduced: GasSponsor 1.1.0 linked at 0x…FEeD, upgraded to the VERIFIED WorkerGasSponsor 1.3.0 (what runs on the
 chain), then to ProgramGasSponsor 1.4.0 from source. A mock program stands in for DeveloperGasProgram (its one read,
@@ -29,6 +29,8 @@ interface IProgramSponsor {
     function openProgramSponsor(address,bytes32,address,uint256,uint256) external;
     function setProgramSponsorCaps(address,uint256,uint256) external;
     function depositGasCredit(address) external payable;
+    function depositFor(address) external payable;
+    function recoverGasCredit(address,address,uint256) external;
 }
 contract MockProgram {
     bool public eligible = true; uint256 public fee = 1e9; uint256 public ops = 3; uint8 public mode;  // 1 revert, 2 short, 3 flag 2, 4 gas
@@ -44,6 +46,9 @@ contract MockProgram {
         IProgramSponsor(s).openProgramSponsor(sponsor, tenant, manager, op, day); }
     function caps(address s, address sponsor, uint256 op, uint256 day) external { IProgramSponsor(s).setProgramSponsorCaps(sponsor, op, day); }
     function fund(address s, address sponsor) external payable { IProgramSponsor(s).depositGasCredit{value: msg.value}(sponsor); }
+    function refundable(address s, address sponsor) external payable { IProgramSponsor(s).depositFor{value: msg.value}(sponsor); }
+    function recover(address s, address sponsor, address to, uint256 amount) external { IProgramSponsor(s).recoverGasCredit(sponsor, to, amount); }
+    receive() external payable {}
 }
 contract PolicyV2 {
     address public gasSponsor; address public sponsor; bool public v2 = true;
@@ -148,7 +153,7 @@ def refused(w, args, gas_price=GWEI):
 
 def test_the_upgrade_from_the_live_worker_sponsor_keeps_every_record(world):
     w = world; s, a, b = w['sponsor'], w['a'], w['before']
-    assert s.functions.implementationVersion().call() == '1.4.0'
+    assert s.functions.implementationVersion().call() == '1.5.0'
     assert s.functions.getSponsorAccount(a[4]).call() == b['account'] and s.functions.getSponsorFunding(a[4]).call() == b['funding']
     assert s.functions.sponsorStorageLocation().call() == b['location'] and s.functions.platformAdmin().call() == b['admin']
     assert s.functions.voucherSigner().call() == b['signer'] and s.functions.isRelayer(a[2]).call()
@@ -199,7 +204,8 @@ def test_program_credit_is_gas_only_and_never_the_managers_to_withdraw(world):
     open_dev(w, credit=10 ** 17)
     assert s.functions.getSponsorFunding(w['dev']).call() == [0, 10 ** 17]
     fails(c, s.functions.withdrawSponsor(w['dev'], a[6], 1), a[6])
-    tx(c, s.functions.recoverGasCredit(w['dev'], a[8], 10 ** 17))                                                 # the admin brings it back
+    fails(c, s.functions.recoverGasCredit(w['dev'], a[8], 10 ** 17))                                              # 1.5.0: never to another address
+    tx(c, s.functions.recoverGasCredit(w['dev'], w['program'].address, 10 ** 17))                                 # the admin brings it back to the program
     assert s.functions.getSponsorFunding(w['dev']).call() == [0, 0]
 
 

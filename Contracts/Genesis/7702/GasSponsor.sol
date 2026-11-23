@@ -457,6 +457,7 @@ contract GasSponsor is
     /// @inheritdoc IGasSponsor
     function depositFor(address sponsor) external payable override {
         if (msg.value == 0) revert ZeroValue();
+        _beforeRefundableDeposit(sponsor);
         SponsorState storage sponsorState = _sponsorState(sponsor);
         sponsorState.balance += msg.value;
         emit Deposited(sponsor, msg.sender, msg.value);
@@ -469,6 +470,7 @@ contract GasSponsor is
     /// Ordinary depositFor retains its refundable deposit/grant behavior.
     function depositGasCredit(address sponsor) external payable override {
         if (msg.value == 0) revert ZeroValue();
+        _beforeGasCreditDeposit(sponsor);
         _sponsorState(sponsor).balance += msg.value;
         _sponsorStorage().restrictedGasCredit[sponsor] += msg.value;
         emit GasCreditDeposited(sponsor, msg.sender, msg.value);
@@ -479,7 +481,8 @@ contract GasSponsor is
         refundable = _sponsorStorage().sponsors[sponsor].balance - gasCredit;
     }
 
-    function recoverGasCredit(address sponsor, address payable recipient, uint256 amount) external onlyPlatformAdmin nonReentrant {
+    function recoverGasCredit(address sponsor, address payable recipient, uint256 amount) external nonReentrant {
+        _authorizeGasCreditRecovery(sponsor, recipient);
         _requireNonZero(recipient);
         require(amount > 0 && amount <= _sponsorStorage().restrictedGasCredit[sponsor], "Insufficient gas credit");
         require(amount <= _sponsorState(sponsor).balance - _pendingWorkerCost(sponsor), "Funds reserved for work");
@@ -505,6 +508,7 @@ contract GasSponsor is
         onlySponsorManager(sponsor)
         nonReentrant
     {
+        _beforeSponsorWithdrawal(sponsor);
         _requireNonZero(recipient);
         if (amount == 0) revert ZeroValue();
         SponsorState storage sponsorState = _sponsorState(sponsor);
@@ -1010,6 +1014,20 @@ contract GasSponsor is
     }
 
     function _validateSponsoredTargets(bytes calldata) internal view virtual {}
+    /// @dev A later implementation's refusal of a refundable deposit (`depositFor`) to `sponsor` (ProgramGasSponsor 1.5.0: a
+    /// program sponsor holds gas credit only). Reverts to refuse.
+    function _beforeRefundableDeposit(address sponsor) internal view virtual {}
+    /// @dev A later implementation's refusal of restricted gas credit (`depositGasCredit`) for `sponsor` from `msg.sender`
+    /// (ProgramGasSponsor 1.5.0: a program sponsor's credit comes from its program alone). Reverts to refuse.
+    function _beforeGasCreditDeposit(address sponsor) internal view virtual {}
+    /// @dev A later implementation's refusal of a manager's withdrawal (`withdrawSponsor`) from `sponsor` (ProgramGasSponsor
+    /// 1.5.0: nothing leaves a program sponsor as coin). Reverts to refuse.
+    function _beforeSponsorWithdrawal(address sponsor) internal view virtual {}
+    /// @dev Who may recover `sponsor`'s restricted gas credit, and to where: the platform administrator, to any non-zero address
+    /// (1.1 to 1.4.0). ProgramGasSponsor 1.5.0 narrows a program sponsor's recipient to its program (the program's budget).
+    function _authorizeGasCreditRecovery(address, address) internal view virtual {
+        if (msg.sender != _sponsorStorage().platformAdmin) revert NotPlatformAdmin();
+    }
     /// @dev A later implementation's own checks on a voucher and its (validated) execution envelope, after the budget, the
     /// delegation and both signatures, before the policy and the call (ProgramGasSponsor 1.4.0). Reverts to refuse.
     function _beforeSponsoredExecution(SponsorshipVoucher calldata, bytes calldata) internal virtual {}
