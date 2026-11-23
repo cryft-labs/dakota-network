@@ -1,14 +1,14 @@
-"""GasSponsor 1.5.0 (ProgramGasSponsor, 2026-11-23): a program sponsor holds gas credit and nothing else (Chad: developer gas is
+"""GasSponsor 1.5.0 and 1.5.1 (ProgramGasSponsor, 2026-11-23): a program sponsor holds gas credit and nothing else (Chad: developer gas is
 "only spendable and not transferrable"). On the live path (1.1.0 at 0x…FEeD, the VERIFIED 1.3.0, then this build) with real
 EIP-7702 accounts, as test_program_sponsorship.py:
 
   * depositFor to a program sponsor reverts ProgramSponsorGasOnly (from anyone, the program included);
   * withdrawSponsor from it reverts ProgramSponsorNoWithdraw;
   * depositGasCredit for it is accepted from the program alone (NotProgram otherwise);
-  * recoverGasCredit for it goes to the program alone (ProgramSponsorRecoverToProgram), by the platform admin or the program;
+  * recoverGasCredit for it is the program's alone (1.5.1: NotProgram for the platform admin too), to the program alone;
   * an ineligible answer (a revoked Pass) stops spending at once, on chain, and charges nothing;
   * a sponsor the program never opened is exactly as before: refundable deposits, withdrawals, credit from anyone, recovery anywhere;
-  * the committed build and its layout proof (Releases/GasSponsor/1.5.0) are this source's, append-only, within 32 KB.
+  * the committed build and its layout proof (Releases/GasSponsor/1.5.1) are this source's, append-only, within 32 KB.
 
     DAKOTA_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_gas_only.py
 """
@@ -49,9 +49,9 @@ def funding(w, sponsor):
 
 # ── the version ──
 
-def test_the_version_is_1_5_0_and_every_record_survives(world):
+def test_the_version_is_1_5_1_and_every_record_survives(world):
     w = world; s, a, b = w['sponsor'], w['a'], w['before']
-    assert s.functions.implementationVersion().call() == '1.5.0'
+    assert s.functions.implementationVersion().call() == '1.5.1'
     assert s.functions.getSponsorAccount(a[4]).call() == b['account'] and s.functions.getSponsorFunding(a[4]).call() == b['funding']
     assert s.functions.platformAdmin().call() == b['admin'] and s.functions.voucherSigner().call() == b['signer']
 
@@ -87,21 +87,22 @@ def test_depositGasCredit_for_a_program_sponsor_comes_from_the_program_alone(wor
     reverts(c, p.functions.fund(s.address, w['dev']), 'NotProgram()', value=1)
 
 
-def test_recoverGasCredit_for_a_program_sponsor_goes_to_the_program_alone(world):
+def test_recoverGasCredit_for_a_program_sponsor_is_the_programs_alone_and_goes_to_it(world):
+    """1.5.1 (the review's P2-D): the platform administrator has no recovery path for a program sponsor; the program alone
+    recovers, and only to itself, so its own rules (the 90-day freeze, a top-up's refund) are the only way credit leaves."""
     w = world; s, c, a, p, w3 = w['sponsor'], w['c'], w['a'], w['program'], w['c']['w3']
     open_dev(w, credit=E17)
-    reverts(c, s.functions.recoverGasCredit(w['dev'], a[8], 1), 'ProgramSponsorRecoverToProgram(address,address)')
     reverts(c, p.functions.recover(s.address, w['dev'], a[8], 1), 'ProgramSponsorRecoverToProgram(address,address)')
-    reverts(c, s.functions.recoverGasCredit(w['dev'], p.address, 1), 'NotPlatformAdmin()', a[6])       # the manager
-    reverts(c, s.functions.recoverGasCredit(w['dev'], p.address, 1), 'NotPlatformAdmin()', a[9])       # a stranger
+    for sender in (a[0], a[6], a[9]):                                  # the platform admin, the manager, a stranger
+        reverts(c, s.functions.recoverGasCredit(w['dev'], p.address, 1), 'NotProgram()', sender)
+        reverts(c, s.functions.recoverGasCredit(w['dev'], a[8], 1), 'NotProgram()', sender)
     before = w3.eth.get_balance(p.address)
-    tx(c, s.functions.recoverGasCredit(w['dev'], p.address, E17 // 4))                                  # the platform admin, to the budget
     tx(c, p.functions.recover(s.address, w['dev'], p.address, E17 // 4))                                 # the program, to itself
-    assert w3.eth.get_balance(p.address) - before == E17 // 2 and funding(w, w['dev']) == [0, E17 // 2]
+    assert w3.eth.get_balance(p.address) - before == E17 // 4 and funding(w, w['dev']) == [0, E17 - E17 // 4]
     fails(c, p.functions.recover(s.address, w['dev'], p.address, E17))                                   # never more than the credit
     tx(c, s.functions.setProgram('0x' + '0' * 39 + '1', 10 ** 16, 10 ** 18))                            # the program changed:
-    reverts(c, p.functions.recover(s.address, w['dev'], p.address, 1), 'NotPlatformAdmin()')            # the old one can't
-    reverts(c, s.functions.recoverGasCredit(w['dev'], p.address, 1), 'ProgramSponsorRecoverToProgram(address,address)')
+    reverts(c, p.functions.recover(s.address, w['dev'], p.address, 1), 'NotProgram()')                  # the old one can't
+    reverts(c, s.functions.recoverGasCredit(w['dev'], p.address, 1), 'NotProgram()')                    # nor the admin
 
 
 def test_the_program_recovers_only_its_own_sponsors(world):
@@ -147,14 +148,14 @@ def test_a_non_program_sponsor_is_unchanged(world):
 # ── the committed build ──
 
 def test_the_committed_build_is_this_source_and_append_only(program_build):
-    folder = REPO / 'Releases/GasSponsor/1.5.0'
+    folder = REPO / 'Releases/GasSponsor/1.5.1'
     proof = json.loads((folder / 'layout-proof.json').read_text())
     artifact = json.loads((folder / 'ProgramGasSponsor.json').read_text())
     standard = json.loads((folder / 'standard-input.json').read_text())
     assert proof['append_only'] is True and proof['problems'] == []
-    assert set(proof['predecessors']) == {'1.3.0', '1.4.0'}
+    assert set(proof['predecessors']) == {'1.3.0', '1.4.0', '1.5.0'}
     for path, entry in standard['sources'].items():
         assert (REPO / path).read_text() == entry['content'], path                    # the committed input is this checkout
     built = program_build['ProgramGasSponsor']['runtime_bytecode'].removeprefix('0x').lower()
     assert artifact['runtime_bytecode'].removeprefix('0x').lower()[:-106] == built[:-106]  # the same code (metadata aside)
-    assert artifact['runtime_bytes'] <= 32768 and artifact['version'] == '1.5.0'
+    assert artifact['runtime_bytes'] <= 32768 and artifact['version'] == '1.5.1'

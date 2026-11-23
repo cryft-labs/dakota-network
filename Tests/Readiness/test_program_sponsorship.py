@@ -153,7 +153,7 @@ def refused(w, args, gas_price=GWEI):
 
 def test_the_upgrade_from_the_live_worker_sponsor_keeps_every_record(world):
     w = world; s, a, b = w['sponsor'], w['a'], w['before']
-    assert s.functions.implementationVersion().call() == '1.5.0'
+    assert s.functions.implementationVersion().call() == '1.5.1'
     assert s.functions.getSponsorAccount(a[4]).call() == b['account'] and s.functions.getSponsorFunding(a[4]).call() == b['funding']
     assert s.functions.sponsorStorageLocation().call() == b['location'] and s.functions.platformAdmin().call() == b['admin']
     assert s.functions.voucherSigner().call() == b['signer'] and s.functions.isRelayer(a[2]).call()
@@ -205,7 +205,8 @@ def test_program_credit_is_gas_only_and_never_the_managers_to_withdraw(world):
     assert s.functions.getSponsorFunding(w['dev']).call() == [0, 10 ** 17]
     fails(c, s.functions.withdrawSponsor(w['dev'], a[6], 1), a[6])
     fails(c, s.functions.recoverGasCredit(w['dev'], a[8], 10 ** 17))                                              # 1.5.0: never to another address
-    tx(c, s.functions.recoverGasCredit(w['dev'], w['program'].address, 10 ** 17))                                 # the admin brings it back to the program
+    fails(c, s.functions.recoverGasCredit(w['dev'], w['program'].address, 10 ** 17))                              # 1.5.1: not the admin
+    tx(c, w['program'].functions.recover(s.address, w['dev'], w['program'].address, 10 ** 17))                    # the program brings it back
     assert s.functions.getSponsorFunding(w['dev']).call() == [0, 0]
 
 

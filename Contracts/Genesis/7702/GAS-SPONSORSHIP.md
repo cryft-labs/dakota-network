@@ -167,3 +167,13 @@ Spending is unchanged: a program sponsor is spent from only while the program an
 program not paused), so a revoked Pass stops spending at the very next execution. No storage is added; `layout-proof.json` proves
 the layout append-only against both live predecessors (1.3.0 at `0x…FEeD`, 1.4.0 behind the dev test sponsor). Runtime 28,547 bytes
 (Dakota's limit 32,768).
+
+## GasSponsor 1.5.1: a program sponsor's credit is recovered by the program alone (2026-11-23)
+
+`ProgramGasSponsor` 1.5.1 (`Releases/GasSponsor/1.5.1`, built by `Tools/GasSponsor/build_1_5_1.py`; the independent review's P2-D)
+changes one row of the table above: `recoverGasCredit` for a program sponsor is the **program's alone** (`NotProgram` for anyone
+else, the platform administrator included), still only to the program (`ProgramSponsorRecoverToProgram`). The program's own rules
+(DeveloperGasProgram 1.2.0: the 90-day freeze before an ordinary reclaim, an abuse reclaim of a frozen Pass, a paid top-up's refund
+by receipt) are the only way credit leaves a developer's account. Every other sponsor is unchanged. No storage is added;
+`layout-proof.json` proves the layout append-only against 1.3.0 (`0x…FEeD`), 1.4.0 and 1.5.0 (the dev test sponsor since PB-2).
+Runtime 28,498 bytes (margin 4,270 to Dakota's 32,768).

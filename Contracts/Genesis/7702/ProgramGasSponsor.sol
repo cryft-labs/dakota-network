@@ -33,7 +33,11 @@ interface ITenantAllowancePolicyV2 {
 /// is accepted from the program alone (NotProgram otherwise); and `recoverGasCredit` for it, by the platform administrator or
 /// the program, sends only to the program (ProgramSponsorRecoverToProgram otherwise): back into the program's budget, never to
 /// any other address. Every other sponsor is exactly as in 1.4.0.
-/// @dev Append-only: the base and worker storage are untouched; this version's state lives in its own slot. 1.5.0 adds no state.
+///
+/// 1.5.1 (2026-11-23, the independent review's P2-D): `recoverGasCredit` for a program sponsor is the PROGRAM's alone (the
+/// platform administrator's path is gone), so the program's own rules (the 90-day freeze, a paid top-up's refund) are the only
+/// way credit leaves a program sponsor. Every other sponsor is exactly as in 1.5.0. No new storage.
+/// @dev Append-only: the base and worker storage are untouched; this version's state lives in its own slot. 1.5.0 and 1.5.1 add no state.
 contract ProgramGasSponsor is WorkerGasSponsor {
     bytes32 private constant PROGRAM_SLOT = keccak256("dakota.storage.ProgramGasSponsor.v1");
     uint256 private constant _PROGRAM_READ_GAS = 100_000;
@@ -75,7 +79,7 @@ contract ProgramGasSponsor is WorkerGasSponsor {
     event SponsoredTargetUpdated(address indexed sponsor, address indexed target, bool allowed);
     event ProgramTargetDeniedSet(address indexed target, bool denied);
 
-    function implementationVersion() external pure override returns (string memory) { return "1.5.0"; }
+    function implementationVersion() external pure override returns (string memory) { return "1.5.1"; }
 
     modifier onlyProgram() {
         if (msg.sender != _program().program || msg.sender == address(0)) revert NotProgram();
@@ -228,13 +232,14 @@ contract ProgramGasSponsor is WorkerGasSponsor {
         if (_program().programSponsor[sponsor]) revert ProgramSponsorNoWithdraw(sponsor);
     }
 
-    /// @dev 1.5.0: a program sponsor's credit is recovered by the platform administrator or the program, and only to the
-    /// program (its budget); every other sponsor's, by the platform administrator to any non-zero address, as before.
+    /// @dev 1.5.1: a program sponsor's credit is recovered by the program ALONE (its reclaim after the 90-day freeze, or a paid
+    /// top-up's refund), and only to the program (its budget): the platform administrator has no path around the program's
+    /// rules. Every other sponsor's, by the platform administrator to any non-zero address, as before.
     function _authorizeGasCreditRecovery(address sponsor, address recipient) internal view override {
         ProgramStorage storage p = _program();
         if (!p.programSponsor[sponsor]) return super._authorizeGasCreditRecovery(sponsor, recipient);
-        if (msg.sender != _sponsorStorage().platformAdmin && (msg.sender != p.program || msg.sender == address(0))) revert NotPlatformAdmin();
-        if (p.program == address(0) || recipient != p.program) revert ProgramSponsorRecoverToProgram(sponsor, p.program);
+        if (msg.sender != p.program || msg.sender == address(0)) revert NotProgram();
+        if (recipient != p.program) revert ProgramSponsorRecoverToProgram(sponsor, p.program);
     }
 
     function _beforeWorkerReservation(address sponsor) internal view override {
