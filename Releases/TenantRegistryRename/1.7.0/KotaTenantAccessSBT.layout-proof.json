@@ -1,0 +1,286 @@
+{
+ "live_last_slot": 30,
+ "rows": [
+  {
+   "slot": 0,
+   "offset": 0,
+   "live": "name: string",
+   "new": "name: string",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 1,
+   "offset": 0,
+   "live": "symbol: string",
+   "new": "symbol: string",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 2,
+   "offset": 0,
+   "live": "tenantId: string",
+   "new": "tenantId: string",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 3,
+   "offset": 0,
+   "live": "operator: address",
+   "new": "operator: address",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 3,
+   "offset": 20,
+   "live": "registryLocked: bool",
+   "new": "registryLocked: bool",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 4,
+   "offset": 0,
+   "live": "totalMinted: uint256",
+   "new": "totalMinted: uint256",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 5,
+   "offset": 0,
+   "live": "_ownerOf: mapping(uint256 => address)",
+   "new": "_ownerOf: mapping(uint256 => address)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 6,
+   "offset": 0,
+   "live": "_balanceOf: mapping(address => uint256)",
+   "new": "_balanceOf: mapping(address => uint256)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 7,
+   "offset": 0,
+   "live": "tokenOf: mapping(address => uint256)",
+   "new": "tokenOf: mapping(address => uint256)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 8,
+   "offset": 0,
+   "live": "_approvedTransferTo: mapping(uint256 => address)",
+   "new": "_approvedTransferTo: mapping(uint256 => address)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 9,
+   "offset": 0,
+   "live": "tierCount: uint32",
+   "new": "tierCount: uint32",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 10,
+   "offset": 0,
+   "live": "tierLabel: mapping(uint32 => string)",
+   "new": "tierLabel: mapping(uint32 => string)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 11,
+   "offset": 0,
+   "live": "tierMetadata: mapping(uint32 => string)",
+   "new": "tierMetadata: mapping(uint32 => string)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 12,
+   "offset": 0,
+   "live": "tierOf: mapping(address => uint32)",
+   "new": "tierOf: mapping(address => uint32)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 13,
+   "offset": 0,
+   "live": "_allowedOrigins: string[]",
+   "new": "_allowedOrigins: string[]",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 14,
+   "offset": 0,
+   "live": "_legacyMaxHoldersSlot: uint256",
+   "new": "_legacyMaxHoldersSlot: uint256",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 15,
+   "offset": 0,
+   "live": "activeHolders: uint256",
+   "new": "activeHolders: uint256",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 16,
+   "offset": 0,
+   "live": "_minters: mapping(address => bool)",
+   "new": "_minters: mapping(address => bool)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 17,
+   "offset": 0,
+   "live": "backupApprover: address",
+   "new": "backupApprover: address",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 18,
+   "offset": 0,
+   "live": "pendingOperator: address",
+   "new": "pendingOperator: address",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 19,
+   "offset": 0,
+   "live": "factory: address",
+   "new": "factory: address",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 20,
+   "offset": 0,
+   "live": "_contractMetadataURI: string",
+   "new": "_contractMetadataURI: string",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 21,
+   "offset": 0,
+   "live": "_baseTokenURI: string",
+   "new": "_baseTokenURI: string",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 22,
+   "offset": 0,
+   "live": "_placeholderTokenURI: string",
+   "new": "_placeholderTokenURI: string",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 23,
+   "offset": 0,
+   "live": "_tokenURISuffix: string",
+   "new": "_tokenURISuffix: string",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 24,
+   "offset": 0,
+   "live": "metadataRevealed: bool",
+   "new": "metadataRevealed: bool",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 24,
+   "offset": 1,
+   "live": "perTokenMetadataEnabled: bool",
+   "new": "perTokenMetadataEnabled: bool",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 25,
+   "offset": 0,
+   "live": "_tokenMetadataURI: mapping(uint256 => string)",
+   "new": "_tokenMetadataURI: mapping(uint256 => string)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 26,
+   "offset": 0,
+   "live": "authorityEpoch: uint256",
+   "new": "authorityEpoch: uint256",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 27,
+   "offset": 0,
+   "live": "_minterEpoch: mapping(address => uint256)",
+   "new": "_minterEpoch: mapping(address => uint256)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 28,
+   "offset": 0,
+   "live": "_transferApprovalEpoch: mapping(uint256 => uint256)",
+   "new": "_transferApprovalEpoch: mapping(uint256 => uint256)",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 29,
+   "offset": 0,
+   "live": "defaultTierId: uint32",
+   "new": "defaultTierId: uint32",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 29,
+   "offset": 4,
+   "live": "_metadataUpdater: address",
+   "new": "_metadataUpdater: address",
+   "same_type": true,
+   "renamed": false
+  },
+  {
+   "slot": 30,
+   "offset": 0,
+   "live": "_metadataUpdaterEpoch: uint256",
+   "new": "_metadataUpdaterEpoch: uint256",
+   "same_type": true,
+   "renamed": false
+  }
+ ],
+ "appended": [
+  {
+   "slot": 31,
+   "offset": 0,
+   "entry": "registryRenamed: bool"
+  }
+ ],
+ "problems": [],
+ "append_only": true
+}

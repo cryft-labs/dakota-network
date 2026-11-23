@@ -34,7 +34,12 @@ contract KotaTenantAccessSBT is Initializable {
     using Strings for uint256;
 
     uint256 public constant MAX_BATCH_SIZE = 100;
+    /// Bounds every name, symbol and tenant id the one-time rename writes (bytes).
+    uint256 public constant MAX_RENAME_BYTES = 64;
     address private immutable _implementationSelf = address(this);
+    /// The ONE registry (proxy address) whose identity the factory may rewrite, once: set at construction, never changeable.
+    /// Every other registry behind the shared beacon reverts renameRegistry (NotRenameTarget) and otherwise runs unchanged.
+    address public immutable RENAME_TARGET;
 
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event Locked(uint256 tokenId); // ERC-5192: locked unless operator approves a transfer
@@ -71,6 +76,7 @@ contract KotaTenantAccessSBT is Initializable {
     event PerTokenMetadataEnabled(bool enabled);
     event TokenMetadataURIUpdated(uint256 indexed tokenId, string metadataURI);
     event MetadataUpdaterChanged(address indexed updater);
+    event RegistryRenamed(string previousTenantId, string newTenantId, string name, string symbol);
 
     error NotFactory();
     error NotOperator();
@@ -88,6 +94,10 @@ contract KotaTenantAccessSBT is Initializable {
     error PerTokenMetadataNotEnabled();
     error BatchLengthMismatch();
     error BatchTooLarge();
+    error NotRenameTarget();
+    error RegistryAlreadyRenamed();
+    error TenantIdMismatch();
+    error InvalidRename();
 
     string public name;
     string public symbol;
@@ -157,6 +167,9 @@ contract KotaTenantAccessSBT is Initializable {
     address private _metadataUpdater;
     uint256 private _metadataUpdaterEpoch;
 
+    // Append-only (v1.7.0): set once by renameRegistry; never cleared.
+    bool public registryRenamed;
+
     function metadataUpdater() public view returns (address) {
         return _metadataUpdaterEpoch == authorityEpoch ? _metadataUpdater : address(0);
     }
@@ -173,8 +186,9 @@ contract KotaTenantAccessSBT is Initializable {
         _;
     }
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    /// @custom:oz-upgrades-unsafe-allow constructor state-variable-immutable
+    constructor(address renameTarget) {
+        RENAME_TARGET = renameTarget;   // zero: no registry may ever be renamed by this implementation
         _disableInitializers();
     }
 
@@ -400,6 +414,37 @@ contract KotaTenantAccessSBT is Initializable {
     }
 
     // ---- platform plane (via factory only) ----
+    /// @notice One-time identity rewrite (name, symbol, tenantId: slots 0-2), ONLY by the factory, ONLY on RENAME_TARGET, ONLY
+    ///         while tenantId still equals `previousTenantId`. Nothing else changes: holders, tokens, tiers, origins, operator,
+    ///         locks, epochs and metadata stay as they are. Works whether or not the registry is locked (a platform action).
+    function renameRegistry(
+        string calldata previousTenantId,
+        string calldata newTenantId,
+        string calldata name_,
+        string calldata symbol_
+    ) external onlyFactory {
+        if (RENAME_TARGET == address(0) || address(this) != RENAME_TARGET) revert NotRenameTarget();
+        if (registryRenamed) revert RegistryAlreadyRenamed();
+        if (keccak256(bytes(tenantId)) != keccak256(bytes(previousTenantId))) revert TenantIdMismatch();
+        _requireRenameText(newTenantId);
+        _requireRenameText(name_);
+        _requireRenameText(symbol_);
+        // "CRYFT" is the coin's symbol: a membership registry never takes it.
+        if (keccak256(bytes(symbol_)) == keccak256(bytes("CRYFT"))) revert InvalidRename();
+        if (keccak256(bytes(newTenantId)) == keccak256(bytes(previousTenantId))) revert InvalidRename();
+        registryRenamed = true;
+        name = name_;
+        symbol = symbol_;
+        tenantId = newTenantId;
+        emit RegistryRenamed(previousTenantId, newTenantId, name_, symbol_);
+        emit CollectionMetadataUpdated(name_, symbol_, _contractMetadataURI);
+    }
+
+    function _requireRenameText(string calldata value) private pure {
+        uint256 length = bytes(value).length;
+        if (length == 0 || length > MAX_RENAME_BYTES) revert InvalidRename();
+    }
+
     function setRegistryLocked(bool locked_) external onlyFactory {
         registryLocked = locked_;
         emit RegistryLockChanged(locked_);
@@ -733,6 +778,12 @@ contract KotaAccessFactory is Initializable {
         bool locked,
         address indexed approvedBy
     );
+    event TenantRenamed(
+        string previousTenantId,
+        string newTenantId,
+        address indexed registry,
+        address indexed approvedBy
+    );
 
     error NotAdmin();
     error ZeroAddress();
@@ -765,9 +816,18 @@ contract KotaAccessFactory is Initializable {
     address private _tenantRegistryBeaconSlot;
     /// @dev Append-only v6 factory state. Slots 0-9 are deployed and immutable.
     /// These mappings occupy slots 10, 11, and 12 respectively.
-    mapping(string => address) public tenantOperatorOf;
+    /// v1.7.0: the public getters of slots 10 and 12 became the explicit views below (same selectors), so a renamed tenant's
+    /// former id keeps answering. The storage positions are unchanged.
+    mapping(string => address) private _tenantOperatorOf;
     mapping(string => uint256) internal _activeRegistryCountByTenant;
-    mapping(string => bool) public tenantDeploymentLocked;
+    mapping(string => bool) private _tenantDeploymentLocked;
+    /// @dev Append-only v1.7.0 state (slots 13 and 14). A renamed tenant's former id -> its id now: every read and write that
+    /// takes a tenant id resolves through it (one hop: an id now is never itself a former id), and a former id can never be
+    /// registered again. Written once, by renameTenant, and never cleared.
+    mapping(string => string) private _renamedTenantOf;
+    bool public tenantRenamed;
+    /// Bounds every tenant id, name and symbol renameTenant takes (bytes).
+    uint256 public constant MAX_TENANT_ID_BYTES = 64;
 
     struct RegistryDeployment {
         string tenantId;
@@ -796,6 +856,9 @@ contract KotaAccessFactory is Initializable {
     error TenantStateMissing();
     error TenantStateAlreadyInitialized();
     error RegistryOperatorMismatch();
+    error TenantAlreadyRenamed();
+    error TenantIdTaken();
+    error InvalidRename();
 
     event AdminRegistryChanged(address indexed adminRegistry);
 
@@ -860,7 +923,7 @@ contract KotaAccessFactory is Initializable {
     function registryFeatures(address registry) public view returns (uint256 features) {
         string memory tenantId = tenantIdOf[registry];
         if (bytes(tenantId).length == 0) revert RegistryMissing();
-        address tenantOperator = tenantOperatorOf[tenantId];
+        address tenantOperator = _tenantOperatorOf[tenantId];
         if (tenantOperator == address(0)) {
             tenantOperator = KotaTenantAccessSBT(registry).operator();
         }
@@ -912,7 +975,7 @@ contract KotaAccessFactory is Initializable {
     function _activeRegistryCount(string memory tenantId)
         private view returns (uint256 count)
     {
-        if (tenantOperatorOf[tenantId] == address(0)) {
+        if (_tenantOperatorOf[tenantId] == address(0)) {
             return _scanActiveRegistryCount(tenantId);
         }
         return _activeRegistryCountByTenant[tenantId];
@@ -921,7 +984,7 @@ contract KotaAccessFactory is Initializable {
     function _requireTenantOperator(string memory tenantId)
         private view returns (address tenantOperator)
     {
-        tenantOperator = tenantOperatorOf[tenantId];
+        tenantOperator = _tenantOperatorOf[tenantId];
         if (tenantOperator == address(0)) revert TenantStateMissing();
     }
 
@@ -956,10 +1019,11 @@ contract KotaAccessFactory is Initializable {
         private returns (address registry)
     {
         if (bytes(config.tenantId).length == 0) revert InvalidTenantId();
+        if (bytes(_renamedTenantOf[config.tenantId]).length != 0) revert RegistryExists();   // a former id stays reserved
         if (config.tenantOperator == address(0)) revert ZeroAddress();
         if (
             _registriesOf[config.tenantId].length != 0
-                || tenantOperatorOf[config.tenantId] != address(0)
+                || _tenantOperatorOf[config.tenantId] != address(0)
         ) revert RegistryExists();
         (uint256 allowance, uint256 holderLimit) =
             validateTenantOperator(config.tenantOperator);
@@ -969,9 +1033,9 @@ contract KotaAccessFactory is Initializable {
         uint256 registryIndex = _registriesOf[config.tenantId].length;
         _registriesOf[config.tenantId].push(registry);
         allRegistries.push(registry);
-        tenantOperatorOf[config.tenantId] = config.tenantOperator;
+        _tenantOperatorOf[config.tenantId] = config.tenantOperator;
         _activeRegistryCountByTenant[config.tenantId] = 1;
-        tenantDeploymentLocked[config.tenantId] = false;
+        _tenantDeploymentLocked[config.tenantId] = false;
         emit RegistryDeployed(
             config.tenantId,
             registryIndex,
@@ -988,14 +1052,15 @@ contract KotaAccessFactory is Initializable {
     }
 
     function _deployAdditionalRegistry(
-        string memory tenantId,
+        string memory requestedTenantId,
         RegistryDeployment memory config
     )
         private returns (address registry)
     {
+        string memory tenantId = _canonicalTenantId(requestedTenantId);
         address tenantOperator = _requireTenantOperator(tenantId);
         if (msg.sender != tenantOperator) revert NotTenantOperator();
-        if (tenantDeploymentLocked[tenantId]) revert TenantSuspended();
+        if (_tenantDeploymentLocked[tenantId]) revert TenantSuspended();
         (uint256 allowance,) = validateTenantOperator(tenantOperator);
         bool baselineIdentity =
             keccak256(bytes(config.name)) == keccak256(bytes(DEFAULT_REGISTRY_NAME))
@@ -1058,8 +1123,9 @@ contract KotaAccessFactory is Initializable {
     ///         that already has registries. Every active registry must agree
     ///         on the operator; admin recovery can normalize divergence with
     ///         `setRegistryOperator` instead.
-    function migrateTenantState(string calldata tenantId) external onlyAdmin {
-        if (tenantOperatorOf[tenantId] != address(0)) {
+    function migrateTenantState(string calldata requestedTenantId) external onlyAdmin {
+        string memory tenantId = _canonicalTenantId(requestedTenantId);
+        if (_tenantOperatorOf[tenantId] != address(0)) {
             revert TenantStateAlreadyInitialized();
         }
         (
@@ -1067,9 +1133,9 @@ contract KotaAccessFactory is Initializable {
             uint256 activeCount,
             bool allActiveRegistriesLocked
         ) = _scanTenantState(tenantId);
-        tenantOperatorOf[tenantId] = tenantOperator;
+        _tenantOperatorOf[tenantId] = tenantOperator;
         _activeRegistryCountByTenant[tenantId] = activeCount;
-        tenantDeploymentLocked[tenantId] = allActiveRegistriesLocked;
+        _tenantDeploymentLocked[tenantId] = allActiveRegistriesLocked;
         emit TenantStateMigrated(
             tenantId,
             tenantOperator,
@@ -1085,7 +1151,7 @@ contract KotaAccessFactory is Initializable {
     ) private {
         if (newOperator == address(0)) revert ZeroAddress();
         validateTenantOperator(newOperator);
-        address previousOperator = tenantOperatorOf[tenantId];
+        address previousOperator = _tenantOperatorOf[tenantId];
         address[] storage registries = _registriesOf[tenantId];
         if (previousOperator == address(0)) {
             uint256 activeCount;
@@ -1100,8 +1166,8 @@ contract KotaAccessFactory is Initializable {
             }
             if (activeCount == 0) revert RegistryMissing();
             _activeRegistryCountByTenant[tenantId] = activeCount;
-            tenantDeploymentLocked[tenantId] = allActiveRegistriesLocked;
-            tenantOperatorOf[tenantId] = newOperator;
+            _tenantDeploymentLocked[tenantId] = allActiveRegistriesLocked;
+            _tenantOperatorOf[tenantId] = newOperator;
             emit TenantStateMigrated(
                 tenantId,
                 newOperator,
@@ -1109,7 +1175,7 @@ contract KotaAccessFactory is Initializable {
                 allActiveRegistriesLocked
             );
         } else {
-            tenantOperatorOf[tenantId] = newOperator;
+            _tenantOperatorOf[tenantId] = newOperator;
         }
         for (uint256 i = 0; i < registries.length; i++) {
             address registry = registries[i];
@@ -1141,14 +1207,15 @@ contract KotaAccessFactory is Initializable {
     ///         one unit of the tenant's active registry allowance.
     /// @dev The slot becomes a permanent tombstone so every other registry
     ///      keeps its original index. New registries append at new indexes.
-    function retireRegistry(string calldata tenantId, uint256 registryIndex) external {
+    function retireRegistry(string calldata requestedTenantId, uint256 registryIndex) external {
+        string memory tenantId = _canonicalTenantId(requestedTenantId);
         address registry = _registryAt(tenantId, registryIndex);
         KotaTenantAccessSBT target = KotaTenantAccessSBT(registry);
         address tenantOperator = _requireTenantOperator(tenantId);
         bool platformAuthority = msg.sender == admin || isSystemAddress(msg.sender);
         if (!platformAuthority) {
             if (msg.sender != tenantOperator) revert NotTenantOperator();
-            if (tenantDeploymentLocked[tenantId]) revert TenantSuspended();
+            if (_tenantDeploymentLocked[tenantId]) revert TenantSuspended();
             validateTenantOperator(tenantOperator);
         }
         uint256 activeCount = _activeRegistryCountByTenant[tenantId];
@@ -1166,7 +1233,8 @@ contract KotaAccessFactory is Initializable {
 
     /// @notice Platform suspension switch: locked registries report zero
     ///         balances, failing every router/NFT gate immediately.
-    function setRegistryLocked(string calldata tenantId, bool locked_) external onlyAdmin {
+    function setRegistryLocked(string calldata requestedTenantId, bool locked_) external onlyAdmin {
+        string memory tenantId = _canonicalTenantId(requestedTenantId);
         address[] storage registries = _registriesOf[tenantId];
         if (_activeRegistryCount(tenantId) == 0) revert RegistryMissing();
         for (uint256 i = 0; i < registries.length; i++) {
@@ -1175,7 +1243,7 @@ contract KotaAccessFactory is Initializable {
             KotaTenantAccessSBT(registry).setRegistryLocked(locked_);
             emit RegistryLockChanged(tenantId, registry, locked_);
         }
-        tenantDeploymentLocked[tenantId] = locked_;
+        _tenantDeploymentLocked[tenantId] = locked_;
         emit TenantDeploymentLockChanged(tenantId, locked_, msg.sender);
     }
 
@@ -1190,7 +1258,7 @@ contract KotaAccessFactory is Initializable {
 
     /// @notice Recover/replace a tenant's operator wallet.
     function setRegistryOperator(string calldata tenantId, address newOperator) external onlyAdmin {
-        _setTenantOperator(tenantId, newOperator, msg.sender);
+        _setTenantOperator(_canonicalTenantId(tenantId), newOperator, msg.sender);
     }
 
     function setAdmin(address newAdmin) external onlyAdmin {
@@ -1223,7 +1291,7 @@ contract KotaAccessFactory is Initializable {
     function maxHoldersForRegistry(address registry) public view returns (uint256) {
         string memory tenantId = tenantIdOf[registry];
         if (bytes(tenantId).length == 0) revert RegistryMissing();
-        address tenantOperator = tenantOperatorOf[tenantId];
+        address tenantOperator = _tenantOperatorOf[tenantId];
         if (tenantOperator == address(0)) {
             tenantOperator = KotaTenantAccessSBT(registry).operator();
         }
@@ -1349,26 +1417,122 @@ contract KotaAccessFactory is Initializable {
     }
 
     function registriesOf(string calldata tenantId) external view returns (address[] memory) {
-        return _registriesOf[tenantId];
+        return _registriesOf[_canonicalTenantId(tenantId)];
     }
 
-    /// @notice Stable registry lookup. Retired slots return the zero address.
+    /// @notice Stable registry lookup. Retired slots return the zero address. A renamed tenant answers under both ids.
     function registryAt(string calldata tenantId, uint256 registryIndex)
         external view returns (address)
     {
-        address[] storage registries = _registriesOf[tenantId];
+        address[] storage registries = _registriesOf[_canonicalTenantId(tenantId)];
         return registryIndex < registries.length ? registries[registryIndex] : address(0);
     }
 
     function registrySlotCount(string calldata tenantId) external view returns (uint256) {
-        return _registriesOf[tenantId].length;
+        return _registriesOf[_canonicalTenantId(tenantId)].length;
     }
 
     function activeRegistryCount(string calldata tenantId) external view returns (uint256) {
-        return _activeRegistryCount(tenantId);
+        return _activeRegistryCount(_canonicalTenantId(tenantId));
     }
 
     function retiredRegistryCount(string calldata tenantId) external view returns (uint256) {
-        return _registriesOf[tenantId].length - _activeRegistryCount(tenantId);
+        string memory canonical = _canonicalTenantId(tenantId);
+        return _registriesOf[canonical].length - _activeRegistryCount(canonical);
+    }
+
+    /// @notice The tenant's operator (slot 10), under its id now or a former id.
+    function tenantOperatorOf(string calldata tenantId) external view returns (address) {
+        return _tenantOperatorOf[_canonicalTenantId(tenantId)];
+    }
+
+    /// @notice The tenant's deployment lock (slot 12), under its id now or a former id.
+    function tenantDeploymentLocked(string calldata tenantId) external view returns (bool) {
+        return _tenantDeploymentLocked[_canonicalTenantId(tenantId)];
+    }
+
+    /// @notice The id a tenant id names now: itself, or (a former id) the id it was renamed to.
+    function canonicalTenantId(string calldata tenantId) external view returns (string memory) {
+        return _canonicalTenantId(tenantId);
+    }
+
+    /// @notice A former id's id now; empty for an id that was never renamed.
+    function renamedTenantOf(string calldata tenantId) external view returns (string memory) {
+        return _renamedTenantOf[tenantId];
+    }
+
+    function _canonicalTenantId(string memory tenantId) private view returns (string memory) {
+        string storage renamed = _renamedTenantOf[tenantId];
+        return bytes(renamed).length == 0 ? tenantId : renamed;
+    }
+
+    function _requireRenameText(string calldata value) private pure {
+        uint256 length = bytes(value).length;
+        if (length == 0 || length > MAX_TENANT_ID_BYTES) revert InvalidRename();
+    }
+
+    function _tenantIdUnused(string calldata tenantId) private view returns (bool) {
+        return _registriesOf[tenantId].length == 0
+            && _tenantOperatorOf[tenantId] == address(0)
+            && _legacyRegistryFor[tenantId] == address(0)
+            && maxRegistriesOf[tenantId] == 0
+            && _activeRegistryCountByTenant[tenantId] == 0
+            && !_tenantDeploymentLocked[tenantId]
+            && bytes(_renamedTenantOf[tenantId]).length == 0;
+    }
+
+    /// @notice ONE-TIME tenant rename (admin only; the flag `tenantRenamed` makes it once per factory). Moves every
+    ///         tenant-keyed entry from `previousTenantId` to `newTenantId` (slots 1, 3, 4, 10, 11, 12), rebinds tenantIdOf
+    ///         of each of the tenant's registries, records the former id as an alias of the new one (every tenant-id read and
+    ///         write keeps answering under it; it can never be registered again), and has the tenant's one active registry
+    ///         rewrite its own name, symbol and tenantId. Registry-keyed state (overrides, allRegistries) is unchanged.
+    ///         Bounded: the move loop runs at most MAX_REGISTRY_SLOTS_PER_TENANT times.
+    function renameTenant(
+        string calldata previousTenantId,
+        string calldata newTenantId,
+        address registry,
+        string calldata newName,
+        string calldata newSymbol
+    ) external onlyAdmin {
+        if (tenantRenamed) revert TenantAlreadyRenamed();
+        _requireRenameText(previousTenantId);
+        _requireRenameText(newTenantId);
+        _requireRenameText(newName);
+        _requireRenameText(newSymbol);
+        if (keccak256(bytes(previousTenantId)) == keccak256(bytes(newTenantId))) revert InvalidRename();
+        if (!_tenantIdUnused(newTenantId)) revert TenantIdTaken();
+        address tenantOperator = _tenantOperatorOf[previousTenantId];
+        if (tenantOperator == address(0)) revert TenantStateMissing();
+        if (keccak256(bytes(tenantIdOf[registry])) != keccak256(bytes(previousTenantId))) revert RegistryMissing();
+        // The one registry whose identity is rewritten must be the tenant's only active one, so no registry of the
+        // tenant is left answering tenantId() with the former id.
+        if (_activeRegistryCountByTenant[previousTenantId] != 1) revert InvalidRename();
+        address[] storage from = _registriesOf[previousTenantId];
+        uint256 slots = from.length;
+        if (slots == 0) revert RegistryMissing();
+        if (slots > MAX_REGISTRY_SLOTS_PER_TENANT) revert RegistryHistoryLimitReached();
+
+        tenantRenamed = true;
+        address[] storage to = _registriesOf[newTenantId];
+        for (uint256 i = 0; i < slots; i++) {
+            address moved = from[i];
+            to.push(moved);                                    // retired slots (zero) keep their index
+            if (moved != address(0)) tenantIdOf[moved] = newTenantId;
+        }
+        delete _registriesOf[previousTenantId];               // clears at most `slots` (<= 128) words
+        _tenantOperatorOf[newTenantId] = tenantOperator;
+        delete _tenantOperatorOf[previousTenantId];
+        _activeRegistryCountByTenant[newTenantId] = _activeRegistryCountByTenant[previousTenantId];
+        delete _activeRegistryCountByTenant[previousTenantId];
+        _tenantDeploymentLocked[newTenantId] = _tenantDeploymentLocked[previousTenantId];
+        delete _tenantDeploymentLocked[previousTenantId];
+        _legacyRegistryFor[newTenantId] = _legacyRegistryFor[previousTenantId];
+        delete _legacyRegistryFor[previousTenantId];
+        maxRegistriesOf[newTenantId] = maxRegistriesOf[previousTenantId];
+        delete maxRegistriesOf[previousTenantId];
+        _renamedTenantOf[previousTenantId] = newTenantId;
+
+        KotaTenantAccessSBT(registry).renameRegistry(previousTenantId, newTenantId, newName, newSymbol);
+        emit TenantRenamed(previousTenantId, newTenantId, registry, msg.sender);
     }
 }

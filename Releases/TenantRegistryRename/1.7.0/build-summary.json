@@ -1,0 +1,99 @@
+{
+ "compiler": "0.8.34+commit.80d5c536",
+ "settings": {
+  "evmVersion": "osaka",
+  "optimizer": {
+   "enabled": true,
+   "runs": 200
+  },
+  "viaIR": false,
+  "metadata": {
+   "bytecodeHash": "ipfs"
+  }
+ },
+ "dakota_code_limit": 32768,
+ "contracts": {
+  "KotaAccessFactory": {
+   "runtime_bytes": 24033,
+   "live_runtime_bytes": 20530,
+   "margin_to_dakota_limit": 8735,
+   "within_dakota_limit": true,
+   "within_eip170": true,
+   "runtime_keccak256_immutables_zeroed": "0xbf0cb3ff6e9a3fc93a1b3109ef5f53f63076cf1015e390ea61deefceb9c8328b",
+   "immutables": {},
+   "append_only": true,
+   "abi_superset": true,
+   "abi_added": [
+    "MAX_TENANT_ID_BYTES()",
+    "canonicalTenantId(string)",
+    "renameTenant(string,string,address,string,string)",
+    "renamedTenantOf(string)",
+    "tenantRenamed()"
+   ],
+   "abi_changed_or_missing": []
+  },
+  "KotaTenantAccessSBT": {
+   "runtime_bytes": 19665,
+   "live_runtime_bytes": 18405,
+   "margin_to_dakota_limit": 13103,
+   "within_dakota_limit": true,
+   "within_eip170": true,
+   "runtime_keccak256_immutables_zeroed": "0x877c21783dabd2be90a6a222cfbf70b200ac9606eed4100b17da2f67ed24e8e5",
+   "immutables": {
+    "6407": [
+     {
+      "length": 32,
+      "start": 2068
+     }
+    ],
+    "6410": [
+     {
+      "length": 32,
+      "start": 1874
+     },
+     {
+      "length": 32,
+      "start": 12054
+     },
+     {
+      "length": 32,
+      "start": 12112
+     }
+    ]
+   },
+   "append_only": true,
+   "abi_superset": true,
+   "abi_added": [
+    "MAX_RENAME_BYTES()",
+    "RENAME_TARGET()",
+    "registryRenamed()",
+    "renameRegistry(string,string,string,string)"
+   ],
+   "abi_changed_or_missing": []
+  }
+ },
+ "sources_sha256": {
+  "@openzeppelin/contracts/access/Ownable.sol": "38578bd71c0a909840e67202db527cc6b4e6b437e0f39f0c909da32c1e30cb81",
+  "@openzeppelin/contracts/interfaces/IERC1967.sol": "886b093d8f7c41f73af42b8e183314b3654531a9d5e11f07c41a5a7f11d3e006",
+  "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol": "a06fe97082355529c1da9076ea6c4518875ca9fdb1a4fa1e194c35cff21b29a1",
+  "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol": "454cf052a9513cdfd7cf2e3227f3ef1a2e3a2cfd9ea4706814f602dbe4f19d8f",
+  "@openzeppelin/contracts/proxy/Proxy.sol": "5f5081378d4bc82b814b0d64990b7f7b9c69697593b73a3341f4a269940ba540",
+  "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol": "220626a31d80fb0d7a625f0c9ac741d40cd9f3c98ef74eb5b3dd43d224701282",
+  "@openzeppelin/contracts/proxy/beacon/IBeacon.sol": "422eabc0e645e24c3a52898f6255b349323b013544a3ebdc4b2d3f7fc5bb7e9e",
+  "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol": "26dda9d5bb961b3df26602d49f9f5a0647cfdb78b63cc253aed8527030a64f25",
+  "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol": "4da9a90b1c8b45fdab7d73d8cf81f51cf7d990657ee4e3f943492c3bf0e4c2f1",
+  "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol": "8391555685fb89d92ad37327d21e098b242058c10ded6398447b4eeb1c908ab0",
+  "@openzeppelin/contracts/proxy/utils/Initializable.sol": "a8b7eafa0fdc7cb5a644c8c61a8e4c51e031d5e1e6f268f72dbe18b768ead56e",
+  "@openzeppelin/contracts/utils/Address.sol": "2395099726e6c215641a5857a74f663987f37a3ad8a2932a9f3d8ee27fb11dd4",
+  "@openzeppelin/contracts/utils/Context.sol": "847fda5460fee70f56f4200f59b82ae622bb03c79c77e67af010e31b7e2cc5b6",
+  "@openzeppelin/contracts/utils/Errors.sol": "0704b9d6c032cca8512a3bc3f30f49f86f1f03102d2896a3d23e794b82efea66",
+  "@openzeppelin/contracts/utils/Panic.sol": "270fc8401c1a13fae6a7a4a2dd6e381b95d658896701e51f0d3e2688acab3dec",
+  "@openzeppelin/contracts/utils/StorageSlot.sol": "75704538dcb223239280c6726d9a31cf769a7816718517c997fc7d63bdb70778",
+  "@openzeppelin/contracts/utils/Strings.sol": "1d47b183ce3217de32c41cf6034281a783f41380ca99d1ca043509018b656165",
+  "@openzeppelin/contracts/utils/math/Math.sol": "68cf79a637995d5ed243c4a5856b42a5e134ee8786a05034e24d75927fc40ebc",
+  "@openzeppelin/contracts/utils/math/SafeCast.sol": "9769274bf53f26a7c7896c526ea1980dc9bea5bf5c2a5fd04870008c4afc1de9",
+  "@openzeppelin/contracts/utils/math/SignedMath.sol": "1ed50b1056af886752f0fb48a0165d381e69bb4a4b18b893b066dc144a7e08d7",
+  "KotaAccessFactory.sol": "ac6dfb60e6dd7aa560390968e12ac9a4e388b7360ff1b79ceb4e472b63acb7f5",
+  "KotaProxy.sol": "b4bb2140ace4eb93fdfd30af476b43e01d5310e2d883b1737ce9b8882e6d6551"
+ }
+}
