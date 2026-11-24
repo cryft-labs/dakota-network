@@ -45,7 +45,7 @@ def main():
     args=['/usr/bin/podman','--cgroup-manager=cgroupfs','build','--network=host','--layers','--jobs=2','--pull=missing',
        '--file',str(dockerfile),'--tag',f'localhost/cryft-explorer-{component}:{revision}',
        '--iidfile',str(home/(component+'-image.id'))]
-    if frontend:args+=['--build-arg','GIT_COMMIT_SHA='+revision,'--build-arg','GIT_TAG=dakota-development','--build-arg','NEXT_OPEN_TELEMETRY_ENABLED=false']
+    if frontend:args+=['--build-arg','GIT_COMMIT_SHA='+revision,'--build-arg','GIT_TAG=cryft-production','--build-arg','NEXT_OPEN_TELEMETRY_ENABLED=false']
     else:args+=['--build-arg','RELEASE_VERSION=11.3.0','--build-arg','BLOCKSCOUT_VERSION=v11.3.0','--build-arg','CHAIN_TYPE=default']
     args+=[str(source)]
     unit=f'''[Unit]
