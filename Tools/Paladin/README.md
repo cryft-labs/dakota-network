@@ -382,11 +382,10 @@ signature. Keep the account/registry configuration disabled until deployment and
 owner-signed settlement have been reviewed and tested; current card codes must
 not deliver parent NFTs into another parent-card inventory.
 
-The dedicated `docs.dakota.cards` and `dashboard.dakota.cards` applications still
-need their independent build configuration completed in the website repository.
-Current `/admin/contracts`, `/admin/paladin` and `/dashboard/paladin` routes share
-the main Dakota application. Preserve these existing tools when separating the
-dashboard; do not interpret the subdomain names as verified deployed endpoints.
+Developer docs live at `docs.cryft.cards`. A separate dashboard application was
+planned but has no public name yet. Current `/admin/contracts`, `/admin/paladin`
+and `/dashboard/paladin` routes share the main application. Preserve these
+existing tools when separating the dashboard.
 
 
 See [the September 15 issuance review](ISSUANCE_REVIEW.md) for the new registration, gas and recovery behavior. Activation remains pending.

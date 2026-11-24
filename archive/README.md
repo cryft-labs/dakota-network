@@ -24,3 +24,10 @@ this repo serves only them:
 | Contracts/Tokens/GreetingCards.sol | The legacy card contract's verified source (rule 3). |
 
 Candidates to look at again once the router drops the Moment Inventory routes: the Moment Inventory tooling above.
+
+## 2026-11-24: dakota-cards-portal
+
+`archive/dakota-cards-portal/` was `dakota-cards-portal/`, the static landing page of the old dakota.cards site. It was
+not hosted anywhere. Retired 2026-11-24 with every other dakota.cards address (Chad: "update to explore.cryft.cards and
+retire all old uses for dakota.cards"); the live names are cryft.cards, explore.cryft.cards, rpc.cryft.cards,
+gateway.cryft.cards and docs.cryft.cards. Its pages keep the old dakota.cards links as a record of what it was.

@@ -491,10 +491,10 @@ Stop before broadcasting if any of these are true:
 
 ## Blockscout Records
 
-- ProxyAdmin: <https://explore.dakota.cards/address/0x0000000000000000000000000000000000FacAdE?tab=contract>
-- Old delegation `1.0.0`: <https://explore.dakota.cards/address/0xEfbFba9c9e9A38b5E15030511Ad15139356F39f7?tab=contract>
-- Beacon: <https://explore.dakota.cards/address/0x69E67BF40445448ac342BBAFe6CA2922AAF56eE3?tab=contract>
-- Dispatcher: <https://explore.dakota.cards/address/0x6CfA66d263F84B6b8B9E21621562D624b51a58be?tab=contract>
-- Unused first registry: <https://explore.dakota.cards/address/0x04f05257ce82cc32F207Dc58bBe7458686a2CBda?tab=contract>
-- Selected second registry: <https://explore.dakota.cards/address/0x8e19A0fC3c1E878F053Be9A0E6256a128169b755?tab=contract>
-- GasSponsor implementation: <https://explore.dakota.cards/address/0x7c3FB725e4dF120dA7426c96f878aF413d431ab2?tab=contract>
+- ProxyAdmin: <https://explore.cryft.cards/address/0x0000000000000000000000000000000000FacAdE?tab=contract>
+- Old delegation `1.0.0`: <https://explore.cryft.cards/address/0xEfbFba9c9e9A38b5E15030511Ad15139356F39f7?tab=contract>
+- Beacon: <https://explore.cryft.cards/address/0x69E67BF40445448ac342BBAFe6CA2922AAF56eE3?tab=contract>
+- Dispatcher: <https://explore.cryft.cards/address/0x6CfA66d263F84B6b8B9E21621562D624b51a58be?tab=contract>
+- Unused first registry: <https://explore.cryft.cards/address/0x04f05257ce82cc32F207Dc58bBe7458686a2CBda?tab=contract>
+- Selected second registry: <https://explore.cryft.cards/address/0x8e19A0fC3c1E878F053Be9A0E6256a128169b755?tab=contract>
+- GasSponsor implementation: <https://explore.cryft.cards/address/0x7c3FB725e4dF120dA7426c96f878aF413d431ab2?tab=contract>
