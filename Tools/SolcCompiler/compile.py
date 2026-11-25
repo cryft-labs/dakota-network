@@ -357,8 +357,6 @@ DEFAULT_PRIVATE_EVM_VERSION = "shanghai"
 PRIVATE_ENTRYPOINTS = {
     "codemanagement/privatecardcontentregistry.sol",
     "codemanagement/privatecombostorage.sol",
-    "codemanagement/privatemetatxrelay.sol",
-    "codemanagement/interfaces/iprivatemetatxrelay.sol",
 }
 VALIDATOR_SOLC_VERSION = "0.8.19"
 VALIDATOR_EVM_VERSION = "london"

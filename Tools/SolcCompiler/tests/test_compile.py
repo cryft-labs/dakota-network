@@ -25,7 +25,6 @@ def build(tmp_path, monkeypatch):
     ("Genesis/validatorContracts/ValidatorSmartContractAllowList.sol", "ValidatorSmartContractAllowList", "london", False),
     ("Genesis/7702/GasSponsor.sol", "GasSponsor", "osaka", False),
     ("CodeManagement/PrivateComboStorage.sol", "PrivateComboStorage", "shanghai", False),
-    ("CodeManagement/PrivateMetaTxRelay.sol", "PrivateMetaTxRelay", "shanghai", False),
     ("Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol", "TransparentUpgradeableProxy", "shanghai", True),
 ])
 def test_export_reproduces_all_bytecode_without_source_callbacks(build, tmp_path, relative, name, evm, private):
