@@ -1,8 +1,8 @@
 # Cryft native sponsorship: development release v2 route
 
-This guide describes the current review branch. Production promotion requires
-live acceptance and owner approval. The July `LIVE-DEPLOYMENT-RUNBOOK.md` records
-an older deployment and must not supply this release's addresses or bytecodes.
+This guide describes GasSponsor 1.5.2 and the delegation contracts on the Cryft Network (chain 113211).
+Addresses of the implementations come from the link journal (`Tools/Genesis/link.py`); nothing from the
+previous chain applies.
 
 ## 1. Addresses and execution boundary
 
@@ -56,22 +56,21 @@ are not byte-for-byte deployed runtime until those values are resolved.
    using that beacon; verify both configuration getters and runtime code hash.
 3. Deploy GasSponsor and registry implementations. Atomically first-link the
    sponsor with `initialize(platformAdmin, voucherSigner, dispatcher, overhead)`.
-   Initialize the registry with
-   `initializeWithAdmin(dispatcher, beacon, gasSponsor, registryAdmin)` through its
-   reserved proxy. Use the temporary controller for setup duties that require
-   subsequent signatures; record every temporary role for final handover.
-4. Propose beacon ownership to the registry proxy. The registry admin calls
-   `acceptBeaconOwnership()` through the registry. Verify actual `owner()` and
-   registry snapshots. The beacon remains controlled until acceptance succeeds.
+   Link the registry with
+   `initializeWithAdmin(dispatcher, beacon, gasSponsor, registryAdmin, upgradeDelay)` through its
+   reserved proxy. `Tools/Genesis/link.py` does steps 1-3 and checks every result.
+4. The beacon is owned by the registry entry 0x…de1E6A7E from construction: there is no ownership
+   handover. Verify `beacon.owner()` and the registry snapshot.
 5. Configure the allowlisted relayer, voucher signer, sponsor tenant bindings,
    managers, hard caps and tenant caps, each sponsor's operations per day (1.5.2:
    zero runs none) and the pauser. Seed the program deny list before `setProgram`
    (1.5.2 reverts otherwise). Sponsorship starts paused. Unpause only
    after route, signature, funding and end-to-end execution checks succeed.
 
-Upgrade through `upgradeDelegation(implementation, expectedCodeHash)` on the
-registry. It verifies the supported protocol/capabilities/interfaces, activates
-the beacon and records release history atomically. Preserve each account's nonce
+Upgrade in two phases on the registry: `scheduleDelegationUpgrade(implementation, expectedCodeHash)`
+(public event), then `executeDelegationUpgrade` once `upgradeDelay` has passed; the admin or any
+proxy guardian can `cancelDelegationUpgrade`. Execution re-verifies the protocol, capabilities and
+interfaces, activates the beacon and records release history atomically. Preserve each account's nonce
 and namespaced storage; an upgrade must not reactivate old signed operations.
 
 ## 3. User authorization, execution and reimbursement
