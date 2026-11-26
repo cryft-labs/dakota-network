@@ -10,13 +10,19 @@ import solcx, requests
 REPO = Path(__file__).resolve().parents[2]
 
 def main():
-    p = argparse.ArgumentParser(); p.add_argument('--workspace', required=True); a = p.parse_args()
+    p = argparse.ArgumentParser(); p.add_argument('--workspace', required=True)
+    # --repo-only (fresh chain 113211): rebuild only the contracts whose source is in this repo, without the
+    # upstream Paladin checkout, and REPLACE their lock entries (nothing of the old chain is deployed any more).
+    # The upstream Pente entries (PenteFactory, PentePrivacyGroup, ERC1967Proxy) keep their lock entries.
+    p.add_argument('--repo-only', action='store_true'); p.add_argument('--only', nargs='*', default=None)
+    a = p.parse_args()
     root = Path(a.workspace).resolve(); upstream = root/'work/production-hardening/paladin-runtime/solidity'
     checkout=upstream.parent
     def git(*args): return subprocess.check_output(['git','-c','safe.directory='+checkout.as_posix(),'-C',str(checkout),*args],text=True).strip()
-    assert git('rev-parse','HEAD')=='6d4b91343426d17d713a0d61dfbcb2e262cb346d'
-    assert not git('status','--porcelain'), 'Upstream sources must be pristine'
-    out = root/'outputs/paladin-live-20260911/artifacts'; out.mkdir(parents=True, exist_ok=True)
+    if not a.repo_only:
+        assert git('rev-parse','HEAD')=='6d4b91343426d17d713a0d61dfbcb2e262cb346d'
+        assert not git('status','--porcelain'), 'Upstream sources must be pristine'
+    out = root/'outputs/paladin-113211/artifacts'; out.mkdir(parents=True, exist_ok=True)
     spec = importlib.util.spec_from_file_location('compiler', REPO/'Tools/SolcCompiler/compile.py')
     compiler = importlib.util.module_from_spec(spec); spec.loader.exec_module(compiler)
     inputs = {}
@@ -26,6 +32,7 @@ def main():
         ('Paladin/DeliveryFailureProbe.sol', 'osaka', ['DeliveryFailureProbe']),
         ('Paladin/ManagedProxyAdmin.sol', 'shanghai', ['ManagedProxyAdmin','ManagedApplicationProxy']),
     ]:
+        if a.only is not None and not set(names) & set(a.only): continue
         result = compiler.compile_contract(REPO/'Contracts'/file, solc_version='0.8.37', evm_version=evm)
         for name in names:
             assert name in result, (name, list(result))
@@ -47,9 +54,10 @@ def main():
         sources[name] = {'content': source}
         for dependency in re.findall(r'import\s+(?:[^;]*?from\s+)?["\']([^"\']+)["\']\s*;', source):
             resolve(posixpath.normpath(posixpath.join(posixpath.dirname(name), dependency)) if dependency.startswith('.') else dependency)
-    resolve('contracts/domains/pente/PenteFactory.sol')
+    if not a.repo_only: resolve('contracts/domains/pente/PenteFactory.sol')
     upstream_input = {'language':'Solidity','sources':sources,'settings':{'optimizer':{'enabled':True,'runs':200},'viaIR':True,'evmVersion':'osaka','metadata':{'bytecodeHash':'ipfs'}}}
-    for name in ['PenteFactory','PentePrivacyGroup','ERC1967Proxy']: inputs[name] = upstream_input
+    if not a.repo_only:
+        for name in ['PenteFactory','PentePrivacyGroup','ERC1967Proxy']: inputs[name] = upstream_input
     lockpath = Path(__file__).with_name('artifact-lock.json')
     lock = json.loads(lockpath.read_text()) if lockpath.exists() else {}
     for name, standard in inputs.items():
@@ -65,9 +73,9 @@ def main():
                     'storage_layout':compiled['storageLayout']}
         target=out/name; target.mkdir(exist_ok=True)
         blob=(json.dumps(artifact,indent=2)+'\n').encode()
-        if name in lock:
+        if name in lock and not a.repo_only:
             assert hashlib.sha256(blob).hexdigest()==lock[name]['artifact_sha256'], 'Preserve historical artifact aliases; use build-strict.py or the recorded original source commit: '+name
-        if (target/'artifact.json').exists():
+        if (target/'artifact.json').exists() and not a.repo_only:
             assert (target/'artifact.json').read_bytes()==blob, 'Use a versioned artifact alias for changed deployed contracts: '+name
         (target/'artifact.json').write_bytes(blob)
         (target/'standard-input.json').write_text(json.dumps(standard,indent=2)+'\n',encoding='utf-8')

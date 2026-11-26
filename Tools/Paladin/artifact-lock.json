@@ -1,14 +1,14 @@
 {
   "PrivateComboStorage": {
-    "artifact_sha256": "c829400dadfed02ec37cc6c64c04ae3a57ca1a7d3cf6b3e5df61e45ece4117b2",
-    "runtime_bytes": 17127,
+    "artifact_sha256": "dd2cc2b30e3ea55214367ae1059b2d62881c69a5b6e9b0db129533965cf62604",
+    "runtime_bytes": 18249,
     "immutable_references": {},
     "evm": "shanghai",
     "compiler": "0.8.37"
   },
   "CryftGreetingCards": {
-    "artifact_sha256": "f78fb0f16950b5f29d7a06f399ee3a7e6aa586acd06de3d904003fe52188489d",
-    "runtime_bytes": 18283,
+    "artifact_sha256": "f0f75e38e2fdde4a350563c2b4085e4d9908b97f0e6983bfa56f0eb58281b177",
+    "runtime_bytes": 19045,
     "immutable_references": {},
     "evm": "osaka",
     "compiler": "0.8.37"
@@ -21,14 +21,14 @@
     "compiler": "0.8.37"
   },
   "ManagedProxyAdmin": {
-    "artifact_sha256": "aa197322f9b112224c69cb9a96cccbd4d12a013c05fe6e02e79b7f87e36e1714",
-    "runtime_bytes": 2051,
+    "artifact_sha256": "6f95ecc18aaa35894432e358ef66c34fb4c64cb63d9921fc61e1da7892b268f5",
+    "runtime_bytes": 1969,
     "immutable_references": {},
     "evm": "shanghai",
     "compiler": "0.8.37"
   },
   "ManagedApplicationProxy": {
-    "artifact_sha256": "4156fba7a013dd3e3a561bed416d3774819c8a59684a9a88ffdb021757b049b2",
+    "artifact_sha256": "7e2438b8efa00864689fe8e7b42f91a847b7dccdeba06a835f475c47e6c22490",
     "runtime_bytes": 2151,
     "immutable_references": {},
     "evm": "shanghai",
