@@ -21,7 +21,9 @@ import "./TransparentUpgradeableProxy.sol";
   │  per-proxy guardian/overlord governance.                    │
   │                                                             │
   │  Access control:                                            │
-  │    Guardian — upgrade proxy implementation                  │
+  │    Guardian — execute an upgrade that was scheduled on the  │
+  │    proxy (proxy_scheduleUpgrade) and whose network-wide     │
+  │    delay (0x1111 getUpgradeDelay) has elapsed (audit X-1).  │
   │                                                             │
   │  Provides:                                                  │
   │    - upgrade() / upgradeAndCall() — guardian-gated          │
@@ -157,6 +159,7 @@ contract ProxyAdmin {
         address implementation,
         bytes memory data
     ) public payable virtual onlyGuardianOf(proxy) {
+        require(data.length > 0, "ProxyAdmin: use upgrade() when there is no call data");
         proxy.upgradeToAndCall{value: msg.value}(implementation, data);
     }
 

@@ -115,10 +115,36 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         assembly ("memory-safe") { s.slot := slot }
     }
     function _governanceMembers() private view returns (address[] memory) {
-        address[] memory roots = _isRootRevoked() ? new address[](0)
-            : GovernanceMembers.read(_PROXY_VALIDATOR_CONTRACT, bytes4(keccak256("getRootOverlords()")));
-        return GovernanceMembers.combineControllers(_proxyGovernanceStorage().localOverlords, roots);
+        return GovernanceMembers.combineControllers(_proxyGovernanceStorage().localOverlords, _activeRoots());
     }
+    /// @dev Roots from 0x1111 that still hold power on THIS proxy: none while every root is revoked
+    ///      by quorum, otherwise all except those that renounced here themselves (audit X-17).
+    function _activeRoots() private view returns (address[] memory roots) {
+        if (_isRootRevoked()) return new address[](0);
+        roots = GovernanceMembers.read(_PROXY_VALIDATOR_CONTRACT, bytes4(keccak256("getRootOverlords()")));
+        RootRenounceStorage storage r = _rootRenounceStorage();
+        if (r.renounced.length == 0) return roots;
+        uint256 count;
+        for (uint256 i; i < roots.length; ++i) {
+            if (!r.isRenounced[roots[i]]) roots[count++] = roots[i];
+        }
+        assembly ("memory-safe") { mstore(roots, count) }
+    }
+    struct RootRenounceStorage {
+        address[] renounced;
+        mapping(address => bool) isRenounced;
+    }
+    function _rootRenounceStorage() private pure returns (RootRenounceStorage storage r) {
+        bytes32 slot = keccak256("cryft.proxy.root.renounced.v1");
+        assembly ("memory-safe") { r.slot := slot }
+    }
+    function _clearRootRenounces() private {
+        RootRenounceStorage storage r = _rootRenounceStorage();
+        uint256 length = r.renounced.length;
+        for (uint256 i; i < length; ++i) r.isRenounced[r.renounced[i]] = false;
+        delete r.renounced;
+    }
+    function proxy_getRenouncedRoots() external view returns (address[] memory) { return _rootRenounceStorage().renounced; }
     function _governanceContext() private view returns (bytes32) {
         return keccak256(abi.encode(_getVoteEpoch(), _isRootRevoked(), _governanceMembers()));
     }
@@ -128,11 +154,18 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         GovernanceVotes.Proposal storage p = GovernanceVotes.proposal(_proxyVotes(), _getActiveProposal());
         return (p.threshold, p.expires, p.electorate);
     }
+    /// @dev Removal ballots (an overlord or guardian out, or clear all guardians) are exempt from the
+    ///      single-session lock and the ballot caps (audit X-13): a rogue controller holding the session
+    ///      with a junk ballot can never delay its own removal.
     function _castProxyVote(bytes32 proposalId) private returns (uint256 votes, uint256 threshold) {
-        _enforceSession(proposalId);
+        return _castProxyVote(proposalId, false);
+    }
+    function _castProxyVote(bytes32 proposalId, bool exempt) private returns (uint256 votes, uint256 threshold) {
+        if (exempt) _refreshSessionContext();
+        else _enforceSession(proposalId);
         address[] memory members;
         if (!GovernanceVotes.live(_proxyVotes(), proposalId)) members = _governanceMembers();
-        GovernanceVotes.cast(_proxyVotes(), proposalId, members, proxy_getVoteExpiry(), msg.sender);
+        GovernanceVotes.cast(_proxyVotes(), proposalId, members, proxy_getVoteExpiry(), msg.sender, exempt);
         GovernanceVotes.Proposal storage p = GovernanceVotes.proposal(_proxyVotes(), proposalId);
         return (p.votes.length, p.threshold);
     }
@@ -173,7 +206,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     bytes32 private constant _PROXY_ACTIVE_PROPOSAL_START_SLOT =
         keccak256("TransparentUpgradeableProxy.activeProposalStart");
 
-    uint256 private constant _DEFAULT_VOTE_EXPIRY = 60000; // ~1 week at 3s blocks
+    uint256 private constant _DEFAULT_VOTE_EXPIRY = 7 days; // seconds (audit X-14: never block counts)
     uint256 private constant _MAX_GUARDIANS = 10;
 
     /// @dev Returns the address of the genesis validator contract.
@@ -192,7 +225,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
     /// @dev Checks if an address is a root overlord via the validator contract (0x1111).
     function _isRootOverlordAddress(address addr) internal view returns (bool) {
-        if (addr == address(0)) return false;
+        if (addr == address(0) || _rootRenounceStorage().isRenounced[addr]) return false;
         try IValidatorRootOverlord(_PROXY_VALIDATOR_CONTRACT).isRootOverlord(addr) returns (bool result) {
             return result;
         } catch {
@@ -201,10 +234,9 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     /// @dev Returns the count of root overlords from the validator contract.
+    /// @dev Roots that still hold power here (excludes self-renounced roots; 0 while all are revoked).
     function _getRootOverlordCount() internal view returns (uint256) {
-        address[] memory providers = new address[](1);
-        providers[0] = _PROXY_VALIDATOR_CONTRACT;
-        return GovernanceMembers.collect(new address[](0), providers, bytes4(keccak256("getRootOverlords()"))).length;
+        return _activeRoots().length;
     }
 
     event OverlordAdded(address indexed overlord);
@@ -222,6 +254,10 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     event RestoreRootProposed(address indexed voter, uint256 currentVotes, uint256 threshold);
     event RevokeRootProposed(address indexed voter, uint256 currentVotes, uint256 threshold);
     event ProposalRoundExpired(bytes32 indexed proposalKey, uint256 newRound);
+    event RootOverlordRenounced(address indexed root);
+    event UpgradeScheduled(bytes32 indexed id, address indexed implementation, bytes data, address indexed proposer, uint256 readyAt);
+    event UpgradeCancelled(bytes32 indexed id, address indexed cancelledBy);
+    event UpgradeExecuted(bytes32 indexed id, address indexed implementation);
 
     modifier onlyOverlord() {
         require(
@@ -286,19 +322,22 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     }
 
     /**
-     * @dev Root overlord voluntarily disables its own privileges.
-     *      Requires at least one other overlord to exist so the system
-     *      is not left without governance.
-     *      Only another overlord can restore access via restoreRootOverlord().
+     * @dev A root overlord gives up ITS OWN root powers on this proxy only (audit X-17: one root can
+     *      no longer lock every other root out). Revoking every root at once needs an overlord
+     *      quorum (proxy_proposeRevokeRootOverlord). A restore-root ballot clears all renounces.
+     *      Never leaves the proxy without a controller.
      */
     function proxy_revokeRootOverlord() external {
-        require(_isRootOverlordAddress(msg.sender), "Only root overlord can revoke");
         require(!_isRootRevoked(), "Root overlord already revoked");
-        require(_rawOverlordCount() > 0, "Cannot revoke: no other overlords exist");
-        _setRootRevoked(true);
+        require(_isRootOverlordAddress(msg.sender), "Only root overlord can revoke");
+        RootRenounceStorage storage r = _rootRenounceStorage();
+        require(r.renounced.length < GovernanceMembers.MAX_MEMBERS, "Renounce limit");
+        r.renounced.push(msg.sender);
+        r.isRenounced[msg.sender] = true;
+        require(_governanceMembers().length > 0, "Cannot revoke: no other controllers exist");
         _clearActiveProposal();
         _incrementVoteEpoch();
-        emit RootOverlordRevoked();
+        emit RootOverlordRenounced(msg.sender);
     }
 
     /**
@@ -308,6 +347,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      */
     function _restoreRootOverlord() internal {
         _setRootRevoked(false);
+        _clearRootRenounces();
         emit RootOverlordRestored(msg.sender);
     }
 
@@ -755,7 +795,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      while a session is active, it reverts. If the session has expired, it clears
      *      the lock and allows the new proposal.
      */
-    function _enforceSession(bytes32 proposalId) internal {
+    function _refreshSessionContext() private {
         bytes32 context = _governanceContext();
         ProxyGovernanceStorage storage s = _proxyGovernanceStorage();
         if (s.sessionContext != context) {
@@ -763,12 +803,16 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
             _clearActiveProposal();
             s.sessionContext = context;
         }
+    }
+
+    function _enforceSession(bytes32 proposalId) internal {
+        _refreshSessionContext();
         bytes32 active = _getActiveProposal();
         if (active == proposalId) return;
         require(!GovernanceVotes.live(_proxyVotes(), active), "Another proposal is still active, wait for it to expire or pass");
         if (active != bytes32(0)) GovernanceVotes.complete(_proxyVotes(), active);
         _setActiveProposal(proposalId);
-        _setActiveProposalStart(block.number);
+        _setActiveProposalStart(block.timestamp);
     }
 
     /// @dev View: is a voting session currently active?
@@ -816,13 +860,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
+        if (startBlock > 0 && block.timestamp > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
         }
 
-        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId);
+        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId, !isAdd);
         emit OverlordChangeProposed(msg.sender, target, isAdd, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -843,10 +887,10 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
     /**
      * @dev Any overlord can propose a new vote expiry window.
      *      Auto-executes at 2/3 threshold. Subject to the same expiry window.
-     *      Minimum expiry: 100 blocks (~5 minutes at 3s blocks) to prevent abuse.
+     *      In SECONDS: one hour to 30 days (GovernanceVotes.validWindow).
      */
     function proxy_proposeExpiryChange(uint256 newExpiry) external onlyOverlord {
-        require(newExpiry >= 100 && newExpiry <= 100000, "Expiry must be 100 to 100000 blocks");
+        require(GovernanceVotes.validWindow(newExpiry), "Expiry must be 1 hour to 30 days");
         require(newExpiry != proxy_getVoteExpiry(), "Already set to this value");
         require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
@@ -855,7 +899,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
+        if (startBlock > 0 && block.timestamp > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -954,7 +998,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         proposalId = _getActiveProposal();
         startBlock = _getActiveProposalStart();
         if (proposalId != bytes32(0) && startBlock > 0) {
-            expired = block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires;
+            expired = block.timestamp > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires;
         }
     }
 
@@ -977,13 +1021,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
+        if (startBlock > 0 && block.timestamp > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
         }
 
-        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId);
+        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId, true);
         emit ClearGuardiansProposed(msg.sender, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -1018,13 +1062,13 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
+        if (startBlock > 0 && block.timestamp > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
         }
 
-        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId);
+        (uint256 newVoteCount, uint256 threshold) = _castProxyVote(proposalId, !isAdd);
         emit GuardianChangeProposed(msg.sender, target, isAdd, newVoteCount, threshold);
 
         if (newVoteCount >= threshold) {
@@ -1045,7 +1089,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      */
     function proxy_proposeRestoreRootOverlord() external {
         require(_isOverlord(msg.sender), "Only a non-root overlord can propose restore");
-        require(_isRootRevoked(), "Root overlord is not revoked");
+        require(_isRootRevoked() || _rootRenounceStorage().renounced.length > 0, "Root overlord is not revoked");
         require(proxy_getOverlordCount() > 0, "No overlords to vote");
 
         bytes32 proposalKey = _getRestoreRootProposalKey();
@@ -1053,7 +1097,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
+        if (startBlock > 0 && block.timestamp > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -1085,7 +1129,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
 
         // Check if current proposal has expired
         uint256 startBlock = _getProposalStartBlock(proposalId);
-        if (startBlock > 0 && block.number > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
+        if (startBlock > 0 && block.timestamp > GovernanceVotes.proposal(_proxyVotes(), proposalId).expires) {
             _incrementProposalRound(proposalKey);
             proposalId = keccak256(abi.encodePacked(proposalKey, _getProposalRound(proposalKey)));
             emit ProposalRoundExpired(proposalKey, _getProposalRound(proposalKey));
@@ -1102,12 +1146,109 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         }
     }
 
+    // ── Scheduled upgrades (audit X-1) ───────────────────────────────
+    //
+    //    Every implementation change through the ProxyAdmin (0x…FacAdE) must first be scheduled here by
+    //    a guardian (roots count as guardians), publicly (UpgradeScheduled), and may run only after the
+    //    network-wide delay that the 0x…1111 voters set (`getUpgradeDelay()`, 0 to 30 days, measured in
+    //    block.timestamp). Any guardian or overlord may cancel. A ready upgrade must run within
+    //    _UPGRADE_GRACE or be scheduled again. Each proposer holds at most one schedule per proxy.
+
+    uint256 private constant _UPGRADE_GRACE = 14 days;
+    uint256 private constant _MAX_UPGRADE_DELAY = 30 days;
+
+    struct UpgradeStorage {
+        mapping(bytes32 => uint256) scheduledAt;
+        mapping(bytes32 => address) proposerOf;
+        mapping(address => bytes32) scheduleOf;
+    }
+    function _upgradeStorage() private pure returns (UpgradeStorage storage u) {
+        bytes32 slot = keccak256("cryft.proxy.upgrade.schedule.v1");
+        assembly ("memory-safe") { u.slot := slot }
+    }
+
+    /// @dev Fails closed: if 0x1111 cannot answer, nothing can be upgraded.
+    function proxy_getUpgradeDelay() public view returns (uint256 delay) {
+        (bool ok, bytes memory out) = _PROXY_VALIDATOR_CONTRACT.staticcall{gas: 100000}(
+            abi.encodeWithSelector(bytes4(keccak256("getUpgradeDelay()"))));
+        require(ok && out.length == 32, "Upgrade delay unavailable");
+        delay = abi.decode(out, (uint256));
+        if (delay > _MAX_UPGRADE_DELAY) delay = _MAX_UPGRADE_DELAY;
+    }
+
+    function proxy_upgradeId(address implementation, bytes memory data) public pure returns (bytes32) {
+        return keccak256(abi.encode(implementation, data));
+    }
+
+    function proxy_getScheduledUpgrade(bytes32 id)
+        external view returns (uint256 scheduledAt, uint256 readyAt, uint256 expiresAt, address proposer)
+    {
+        UpgradeStorage storage u = _upgradeStorage();
+        scheduledAt = u.scheduledAt[id];
+        proposer = u.proposerOf[id];
+        if (scheduledAt != 0) {
+            readyAt = scheduledAt + proxy_getUpgradeDelay();
+            expiresAt = readyAt + _UPGRADE_GRACE;
+        }
+    }
+
+    function proxy_scheduleUpgrade(address implementation, bytes calldata data) external onlyGuardian returns (bytes32 id) {
+        require(proxy_getIsInit(), "Proxy not linked");
+        require(implementation.code.length > 0, "Implementation has no code");
+        UpgradeStorage storage u = _upgradeStorage();
+        bytes32 previous = u.scheduleOf[msg.sender];
+        if (previous != bytes32(0)) {
+            require(block.timestamp > u.scheduledAt[previous] + proxy_getUpgradeDelay() + _UPGRADE_GRACE,
+                "Proposer already has a scheduled upgrade");
+            _clearSchedule(previous);
+        }
+        id = proxy_upgradeId(implementation, data);
+        require(u.scheduledAt[id] == 0, "Upgrade already scheduled");
+        u.scheduledAt[id] = block.timestamp;
+        u.proposerOf[id] = msg.sender;
+        u.scheduleOf[msg.sender] = id;
+        emit UpgradeScheduled(id, implementation, data, msg.sender, block.timestamp + proxy_getUpgradeDelay());
+    }
+
+    function proxy_cancelUpgrade(bytes32 id) external {
+        require(
+            (_isRootOverlordAddress(msg.sender) && !_isRootRevoked()) || _isGuardian(msg.sender) || _isOverlord(msg.sender),
+            "Only a guardian or overlord can cancel"
+        );
+        require(_upgradeStorage().scheduledAt[id] != 0, "Upgrade not scheduled");
+        _clearSchedule(id);
+        emit UpgradeCancelled(id, msg.sender);
+    }
+
+    function _clearSchedule(bytes32 id) private {
+        UpgradeStorage storage u = _upgradeStorage();
+        address proposer = u.proposerOf[id];
+        if (u.scheduleOf[proposer] == id) delete u.scheduleOf[proposer];
+        delete u.scheduledAt[id];
+        delete u.proposerOf[id];
+    }
+
+    /// @dev Consumes a ready schedule for exactly (implementation, data).
+    function _consumeUpgrade(address implementation, bytes memory data) private {
+        require(proxy_getIsInit(), "Proxy not linked");
+        bytes32 id = proxy_upgradeId(implementation, data);
+        uint256 at = _upgradeStorage().scheduledAt[id];
+        require(at != 0, "Upgrade not scheduled");
+        uint256 readyAt = at + proxy_getUpgradeDelay();
+        require(block.timestamp >= readyAt, "Upgrade delay not elapsed");
+        require(block.timestamp <= readyAt + _UPGRADE_GRACE, "Scheduled upgrade expired");
+        _clearSchedule(id);
+        emit UpgradeExecuted(id, implementation);
+    }
+
     function proxy_linkLogicAdmin(
         address _logic,
         bytes memory _data
     ) external payable onlyGuardian {
         require(proxy_getIsInit() == false, "Already linked");
         require(_logic != address(0), "Logic address cannot be zero");
+        // Link and initialize in ONE transaction, so nobody can front-run an open initializer (audit X-16).
+        require(_data.length > 0, "Link requires init data");
         _setIsInit(true);
 
         _initializeProxy(_logic, _data); // Initialize the proxy logic
@@ -1158,6 +1299,9 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
                 return(add(ret, 0x20), mload(ret))
             }
         } else {
+            // An unlinked proxy accepts no calls and no coin (audit X-53). Block rewards to 0x…cafE are
+            // balance credits, not calls, so they still arrive before the link.
+            require(_implementation() != address(0), "Proxy not linked");
             super._fallback();
         }
     }
@@ -1197,6 +1341,7 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
         _requireZeroValue();
 
         address newImplementation = abi.decode(msg.data[4:], (address));
+        _consumeUpgrade(newImplementation, bytes(""));
         _upgradeToAndCall(newImplementation, bytes(""), false);
 
         return "";
@@ -1212,7 +1357,10 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
             msg.data[4:],
             (address, bytes)
         );
-        _upgradeToAndCall(newImplementation, data, true);
+        // An empty call would still run the new logic's fallback; use upgradeTo instead (audit X-16).
+        require(data.length > 0, "upgradeToAndCall requires data");
+        _consumeUpgrade(newImplementation, data);
+        _upgradeToAndCall(newImplementation, data, false);
 
         return "";
     }
