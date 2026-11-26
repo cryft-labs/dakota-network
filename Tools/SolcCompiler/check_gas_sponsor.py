@@ -191,14 +191,15 @@ REQUIRED_GAS_MANAGER_FUNCTIONS = {
     "initializeWithVoters",
     "getProposalSnapshot",
     "voteToSetVoterConfiguration",
-    "executeFundGasV2",
+    "executeGasFunding",
     "executeSponsorFunding",
     "gasSponsor",
     "getSponsorFundingTarget",
     "implementationVersion",
     "proposeSponsorFunding",
     "sponsorFundingStorageLocation",
-    "voteToFundGasV2",
+    "voteToFundGas",
+    "proposeGasFunding",
 }
 
 # 2.6.0 (audit N-7): init only through the proxy link with the full voter list; V1 funding gone.
@@ -208,6 +209,9 @@ RETIRED_GAS_MANAGER_FUNCTIONS = {
     "initializeV2",
     "voteToFundGasV1",
     "executeFundGasV1",
+    "proposeFundGasV2",
+    "voteToFundGasV2",
+    "executeFundGasV2",
 }
 
 EXPECTED_SPONSOR_LINEAR_STORAGE = [
@@ -344,12 +348,12 @@ def _assert_source_contract() -> None:
         "_requireLinkGuardian();",
         "IGasSponsorDepository(_GAS_SPONSOR).depositGasCredit",
         "revert SponsorFundingExecutorRequired();",
-        "gasSponsorBalanceAfter - gasSponsorBalanceBefore != proposal.amount",
+        "gasSponsorBalanceAfter - gasSponsorBalanceBefore != amount",
     )
     required_beacon_fragments = (
         "0x00000000000000000000000000000000de1E6A7E",
         "function owner() external pure returns (address)",
-        "if (msg.sender != _REGISTRY) {",
+        "if (msg.sender != _REGISTRY) revert BeaconUnauthorizedAccount(msg.sender);",
         "revert BeaconUnauthorizedAccount(msg.sender);",
     )
     required_registry_fragments = (
@@ -361,7 +365,7 @@ def _assert_source_contract() -> None:
         EXPECTED_REGISTRY_NAMESPACE,
         "address(this) != _DELEGATION_ENTRY",
         "0x00000000000000000000000000000000de1E6A7E",
-        "state.registryAdmin = admin_;",
+        "state.registryAdmin = admin;",
         ").isRootOverlord(caller)",
         "error EmptyCodeHash();",
         "function scheduleDelegationUpgrade(",

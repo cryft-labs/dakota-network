@@ -1,14 +1,9 @@
 // SPDX-License-Identifier: MIT
-//
-// Based on OpenZeppelin Contracts v4.9.6 (proxy/utils/Initializable.sol).
-// Modified by Cryft Labs — pragma range widened for solc 0.8.34 / Osaka EVM.
-//
-// WARNING: This is a modified version of the original OpenZeppelin contract.
-// Do not assume it is stock or unmodified — review all changes before use.
+// Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
+// Derived from OpenZeppelin Contracts v4.9.6 (proxy/utils/Initializable.sol), MIT.
+pragma solidity 0.8.37;
 
-pragma solidity >=0.8.2 <0.9.0;
-
-import "./AddressUpgradeable.sol";
+import {AddressUpgradeable} from "./AddressUpgradeable.sol";
 
 /**
  * @dev This is a base contract to aid in writing upgradeable contracts, or any kind of contract that will be deployed

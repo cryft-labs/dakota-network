@@ -1,132 +1,82 @@
 // SPDX-License-Identifier: Apache-2.0
-//
-// Original work Copyright 2021 ConsenSys.
-// Derivative work Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// NOTICE: This file has been modified from the original Consensys/Besu
-// ValidatorSmartContractAllowList. Changes include overlord/guardian
-// governance with threshold voting. Do not assume it is stock or
-// unmodified — review all changes before use.
+// Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
+// Derived from Hyperledger Besu ValidatorSmartContractAllowList (Apache-2.0, ConsenSys 2021).
+pragma solidity >=0.8.19 <0.9.0;
 
-pragma solidity >=0.8.2 <0.8.20;
+import {GovernanceMembers} from "../Governance/GovernanceMembers.sol";
+import {GovernanceVotes} from "../Governance/GovernanceVotes.sol";
+import {ValidatorSmartContractInterface} from "./ValidatorSmartContractInterface.sol";
 
-/*
-  _   __     ___    __     __             ___   ____         __ _      __
- | | / /__ _/ (_)__/ /__ _/ /____  ____  / _ | / / /__ _    / / (_)__ / /_
- | |/ / _ `/ / / _  / _ `/ __/ _ \/ __/ / __ |/ / / _ \ |/|/ / / (_-</ __/
- |___/\_,_/_/_/\_,_/\_,_/\__/\___/_/   /_/ |_/_/_/\___/__,__/_/_/___/\__/
-                                                         By: CryftCreator
-
-  Pre-genesis review — Validator Allow List  [GENESIS]
-
-  ┌──────────────── Contract Architecture ──────────────────────┐
-  │                                                             │
-  │  QBFT validator, voter, and root overlord governance.       │
-  │  2/3 supermajority quorum for all state changes.            │
-  │  Proposal electorates/thresholds/expiry are snapshotted.   │
-  │  Deployed at genesis address 0x0000...1111.                 │
-  │                                                             │
-  │  Manages: validators, voters, root overlords,               │
-  │  external delegation contracts, and max-validator cap.      │
-  │                                                             │
-  │  ── Permanent Management Revocation ──────────────────────  │
-  │                                                             │
-  │  Three independent management domains can be permanently    │
-  │  revoked via voter supermajority vote, delegating all       │
-  │  governance to external contracts. IRREVERSIBLE.            │
-  │                                                             │
-  │  1. Overlord management revocation                          │
-  │     Pre-conditions:                                         │
-  │       - rootOverlords[] must be empty                       │
-  │       - otherOverlordContracts[] must have ≥1 entry         │
-  │                                                             │
-  │  2. Validator management revocation                         │
-  │     Pre-conditions:                                         │
-  │       - validators[] must be empty                          │
-  │       - otherValidatorContracts[] must have ≥1 entry        │
-  │       - getValidators() must return ≥4 addresses            │
-  │                                                             │
-  │  3. Voter management revocation (LAST — final switch)       │
-  │     Pre-conditions:                                         │
-  │       - Overlord management must already be revoked         │
-  │       - Validator management must already be revoked        │
-  │       - votersArray[] must be empty                         │
-  │       - otherVoterContracts[] must have ≥1 entry            │
-  │       - getVoters() must return ≥1 address                  │
-  │                                                             │
-  │  Once all three are revoked, this contract's lists are      │
-  │  frozen. Upstream changes require explicit refresh votes.  │
-  │  Approved cached lists remain available during outages.    │
-  └─────────────────────────────────────────────────────────────┘
-*/
-
-import "../Governance/GovernanceMembers.sol";
-import "../Governance/GovernanceVotes.sol";
-
-import "./ValidatorSmartContractInterface.sol";
-
+/// @title ValidatorSmartContractAllowList
+/// @notice Holds the QBFT validator set, the voters and the roots of the Cryft network, changed only by 2/3 voter
+///         ballots.
+/// @dev Baked into genesis at 0x…1111; genesis storage sets every field, so there is no initializer. Ballots
+///      snapshot their electorate, threshold and window (GovernanceVotes). Besu reads the approved validator set
+///      (getValidators), which never changes silently when a provider list changes: provider changes need a
+///      hash-bound refresh or configuration ballot.
+///      Three management domains can be revoked for good, handing that domain to external provider contracts:
+///      roots (no local roots, at least one provider, at least one root), validators (no local validators, at
+///      least one provider, at least MIN_VALIDATORS validators) and, last, voters (roots and validators already
+///      revoked, no local voters, at least one provider, at least one voter). This is irreversible.
+///      The compiler of this contract never changes: solc 0.8.19, EVM London, optimizer 200 runs.
+/// @custom:version 1.0.0
+/// @custom:security-contact security@cryft.cards
 contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
-    event AllowedValidator(address indexed validator, bool added);
-    event VoteCast(address indexed voter, VoteType voteType, uint256 target);
-    event StateChanged(VoteType voteType, uint256 newValue);
-    event MaxValidatorsChanged(uint256 newMax);
-    event VoteTallyBlockThresholdUpdated(uint256 newThreshold);
-    event VoteTallyReset(VoteType voteType, uint256 target);
-    event VoterUpdated(address indexed target, bool added);
-    event OtherValidatorContractUpdated(address indexed target, bool added);
-    event OtherVoterContractUpdated(address indexed target, bool added);
-    event RootOverlordUpdated(address indexed target, bool added);
-    event OtherOverlordContractUpdated(address indexed target, bool added);
-    event OverlordManagementRevoked();
-    event ValidatorManagementRevoked();
-    event VoterManagementRevoked();
-    event UpgradeDelayChanged(uint256 newDelay);
+    // ─── Type declarations ───────────────────────────────────────────────────────────────────────
 
+    /// @dev Ballot kinds. Members are stored and hashed by index: never reorder, remove or insert.
     enum VoteType {
-        ADD_VALIDATOR,
-        REMOVE_VALIDATOR,
-        ADD_VOTER,
-        REMOVE_VOTER,
-        ADD_OTHER_VALIDATOR_CONTRACT,       // unused since 2026-11-25 (X-55): use voteToSetValidatorConfiguration
-        REMOVE_OTHER_VALIDATOR_CONTRACT,
-        ADD_OTHER_VOTER_CONTRACT,           // unused (X-55): use voteToSetVoterConfiguration
-        REMOVE_OTHER_VOTER_CONTRACT,
-        UPDATE_MAX_VALIDATORS,
-        UPDATE_VOTE_TALLY_BLOCK_THRESHOLD,
-        ADD_ROOT_OVERLORD,
-        REMOVE_ROOT_OVERLORD,
-        ADD_OTHER_OVERLORD_CONTRACT,        // unused (X-55): use voteToSetRootConfiguration
-        REMOVE_OTHER_OVERLORD_CONTRACT,
-        REVOKE_OVERLORD_MANAGEMENT,
-        REVOKE_VALIDATOR_MANAGEMENT,
-        REVOKE_VOTER_MANAGEMENT,
-        REPLACE_VALIDATOR,
-        REFRESH_VALIDATORS,
-        REFRESH_VOTERS,
-        SET_VOTER_CONFIGURATION,
-        REFRESH_ROOTS,
-        SET_ROOT_CONFIGURATION,
-        SET_VALIDATOR_CONFIGURATION,
-        SET_UPGRADE_DELAY
+        AddValidator,
+        RemoveValidator,
+        AddVoter,
+        RemoveVoter,
+        AddOtherValidatorContract,      // unused: provider lists change through voteToSetValidatorConfiguration
+        RemoveOtherValidatorContract,   // unused
+        AddOtherVoterContract,          // unused: use voteToSetVoterConfiguration
+        RemoveOtherVoterContract,       // unused
+        SetMaxValidators,
+        SetVoteWindow,                  // seconds; the setting lives in voteTallyBlockThreshold
+        AddRootOverlord,
+        RemoveRootOverlord,
+        AddOtherOverlordContract,       // unused: use voteToSetRootConfiguration
+        RemoveOtherOverlordContract,    // unused
+        RevokeOverlordManagement,
+        RevokeValidatorManagement,
+        RevokeVoterManagement,
+        ReplaceValidator,
+        RefreshValidators,
+        RefreshVoters,
+        SetVoterConfiguration,
+        RefreshRoots,
+        SetRootConfiguration,
+        SetValidatorConfiguration,
+        SetUpgradeDelay
     }
 
+    /// @dev Legacy ballot record; only its storage slot remains (voteTallies).
     struct VoteTally {
         uint256 totalVotes;
         uint256 startVoteBlock;
         address[] voters;
     }
+
+    /// @dev A pending validator swap, keyed by its ballot target.
+    struct ValidatorReplacement { address previous; address replacement; }
+
+    // ─── Constants and immutables ────────────────────────────────────────────────────────────────
+
+    /// @notice Fewest validators the approved set may hold.
+    uint256 public constant MIN_VALIDATORS = 4;
+    /// @notice Longest proxy upgrade delay voters may set.
+    uint256 public constant MAX_UPGRADE_DELAY = 30 days;
+
+    /// @dev `kind` values of ManagementRevoked.
+    uint8 private constant _ROOT_DOMAIN = 0;
+    uint8 private constant _VALIDATOR_DOMAIN = 1;
+    uint8 private constant _VOTER_DOMAIN = 2;
+
+    // ─── Storage ─────────────────────────────────────────────────────────────────────────────────
+    // Genesis storage is derived from this layout (Tools/Genesis/build.py). Never reorder, retype or remove.
 
     address private __deprecated_guardian;
     address[] public validators;
@@ -138,6 +88,7 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
     address[] public otherOverlordContracts;
 
     uint256 public maxValidators;
+    /// @notice The ballot window in seconds (one hour to 30 days). The name is kept for its storage slot.
     uint256 public voteTallyBlockThreshold;
     uint256 private __legacyActiveVoteCount; // Slot retained; use activeVoteCount().
 
@@ -149,66 +100,367 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
     mapping(VoteType => mapping(uint256 => mapping(address => bool)))
         private __legacyHasVoted;
 
-    struct ValidatorReplacement { address previous; address replacement; }
     mapping(uint256 => ValidatorReplacement) private _validatorReplacements;
     address[] private _effectiveValidators;
     bool private _validatorCacheInitialized;
     address[] private _effectiveRoots;
     bool private _rootCacheInitialized;
-    /// @notice Seconds every genesis proxy waits between scheduling and executing an implementation
-    ///         upgrade (audit X-1). Set by genesis storage; changed only by a voter ballot. May be 0 in dev.
+    /// @notice Seconds every genesis proxy waits between scheduling and executing an implementation upgrade.
+    ///         Set by genesis storage; changed only by a voter ballot. May be 0 in development.
     uint256 public upgradeDelay;
-    uint256 public constant MIN_VALIDATORS = 4;
-    uint256 public constant MAX_UPGRADE_DELAY = 30 days;
+
+    // ─── Events ──────────────────────────────────────────────────────────────────────────────────
+
+    /// @notice A validator was added to or removed from the local list.
+    event AllowedValidator(address indexed validator, bool added);
+    /// @notice A voter voted on a ballot.
+    event VoteCast(address indexed voter, VoteType voteType, uint256 target);
+    /// @notice A ballot passed and its change was applied.
+    event StateChanged(VoteType voteType, uint256 newValue);
+    /// @notice The validator cap changed.
+    event MaxValidatorsUpdated(uint256 newMax);
+    /// @notice The ballot window changed (seconds).
+    event VoteWindowUpdated(uint256 newWindow);
+    /// @notice An expired ballot was cleared.
+    event VoteTallyReset(VoteType voteType, uint256 target);
+    /// @notice A voter was added to or removed from the local list.
+    event VoterUpdated(address indexed target, bool added);
+    /// @notice Not emitted; kept in the ABI.
+    event OtherVoterContractUpdated(address indexed target, bool added);
+    /// @notice A root was added to or removed from the local list.
+    event RootOverlordUpdated(address indexed target, bool added);
+    /// @notice Root management was revoked for good.
+    event OverlordManagementRevoked();
+    /// @notice Validator management was revoked for good.
+    event ValidatorManagementRevoked();
+    /// @notice Voter management was revoked for good.
+    event VoterManagementRevoked();
+    /// @notice The proxy upgrade delay changed (seconds).
+    event UpgradeDelayUpdated(uint256 newDelay);
+    /// @notice The approved validator set that Besu reads changed.
     event EffectiveValidatorsUpdated(bytes32 indexed membersHash, uint256 count);
 
-    modifier onlyVoters() {
-        address[] memory allVoters = getVoters();
-        bool isCallerVoter = false;
+    // ─── Errors ──────────────────────────────────────────────────────────────────────────────────
 
-        for (uint256 i = 0; i < allVoters.length; i++) {
-            if (allVoters[i] == msg.sender) {
-                isCallerVoter = true;
-                break;
-            }
-        }
+    /// @notice An address argument is zero.
+    error ZeroAddress();
+    /// @notice The upgrade delay is over MAX_UPGRADE_DELAY.
+    error UpgradeDelayTooLong();
+    /// @notice The management domain `kind` (0 roots, 1 validators, 2 voters) is revoked for good.
+    error ManagementRevoked(uint8 kind);
+    /// @notice Revocation needs the local list of that domain to be empty first.
+    error LocalMembersRemain();
+    /// @notice Revocation needs at least one provider contract and at least one member from providers.
+    error NoProviderListed();
+    /// @notice The approved validator set would be under MIN_VALIDATORS or over the validator cap.
+    error UnsafeValidatorCount();
+    /// @notice Voter management can be revoked only after root and validator management.
+    error RevokeOrder();
+    /// @notice The address is already a validator.
+    error AlreadyValidator();
+    /// @notice The address is not in the list.
+    error NotFound(address member);
+    /// @notice The address is already a root.
+    error AlreadyRootOverlord();
+    /// @notice The validator cap is zero, under MIN_VALIDATORS or over the member cap.
+    error InvalidValidatorMaximum();
+    /// @notice A validator replacement names a zero or identical address.
+    error InvalidReplacement();
+    /// @notice The ballot would leave no root.
+    error LastRootOverlord();
 
-        require(isCallerVoter, "Only voters can call this function");
-        _;
+    // ─── External functions ──────────────────────────────────────────────────────────────────────
+
+    /// @notice Votes to set the validator cap.
+    function voteToSetMaxValidators(uint256 newMax) external {
+        if (newMax == 0) revert InvalidValidatorMaximum();
+        _castVote(VoteType.SetMaxValidators, newMax);
     }
 
-    // No initialize(): genesis storage sets every field (audit X-6 / H-3). A re-armable
-    // initializer would let anyone become the sole local voter once the local list is empty.
+    /// @notice Votes to add `validator` to the local validator list.
+    function voteToAddValidator(address validator) external {
+        if (validator == address(0)) revert ZeroAddress();
+        _castVote(VoteType.AddValidator, uint256(uint160(validator)));
+    }
 
-    // ── Voter & Validator Queries ─────────────────────
+    /// @notice Votes to remove `validator` from the local validator list.
+    function voteToRemoveValidator(address validator) external {
+        if (validator == address(0)) revert ZeroAddress();
+        _castVote(VoteType.RemoveValidator, uint256(uint160(validator)));
+    }
 
+    /// @notice Votes to swap `previous` for `replacement` in the local validator list, keeping the count.
+    function voteToReplaceValidator(address previous, address replacement) external {
+        if (previous == address(0) || replacement == address(0) || previous == replacement) {
+            revert InvalidReplacement();
+        }
+        uint256 target = uint256(keccak256(abi.encode(previous, replacement)));
+        _validatorReplacements[target] = ValidatorReplacement(previous, replacement);
+        _castVote(VoteType.ReplaceValidator, target);
+    }
+
+    /// @notice Votes to approve the current provider-derived validator set, bound to its hash.
+    /// @dev Still possible after local validator management is revoked.
+    function voteToRefreshValidators(bytes32 expectedHash) external {
+        _castVote(VoteType.RefreshValidators, uint256(expectedHash));
+    }
+
+    /// @notice Votes to replace the local validator list and providers, bound to the resulting set's hash.
+    function voteToSetValidatorConfiguration(
+        address[] calldata local,
+        address[] calldata providers,
+        bytes32 expectedHash
+    ) external {
+        uint256 target = GovernanceVotes.configure(GovernanceVotes.state(), local, providers, expectedHash);
+        _castVote(VoteType.SetValidatorConfiguration, target);
+    }
+
+    /// @notice Votes to add `voter` to the local voter list.
+    function voteToAddVoter(address voter) external {
+        if (voter == address(0)) revert GovernanceVotes.InvalidVoteTarget();
+        _castVote(VoteType.AddVoter, uint256(uint160(voter)));
+    }
+
+    /// @notice Votes to remove `voter` from the local voter list.
+    /// @dev Exempt from the ballot caps, so a voter's junk ballots cannot block its own removal.
+    function voteToRemoveVoter(address voter) external {
+        if (voter == address(0)) revert GovernanceVotes.InvalidVoteTarget();
+        _castVote(VoteType.RemoveVoter, uint256(uint160(voter)));
+    }
+
+    /// @notice Votes to approve the current provider-derived voter set, bound to its hash.
+    function voteToRefreshVoters(bytes32 expectedHash) external {
+        _castVote(VoteType.RefreshVoters, uint256(expectedHash));
+    }
+
+    /// @notice Votes to replace the local voter list and providers (handover or recovery), bound to the
+    ///         resulting set's hash.
+    /// @dev Exempt from the ballot caps.
+    function voteToSetVoterConfiguration(
+        address[] calldata local,
+        address[] calldata providers,
+        bytes32 expectedHash
+    ) external {
+        uint256 target = GovernanceVotes.configure(GovernanceVotes.state(), local, providers, expectedHash);
+        _castVote(VoteType.SetVoterConfiguration, target);
+    }
+
+    /// @notice Votes to add `overlord` to the local root list.
+    function voteToAddRootOverlord(address overlord) external {
+        if (overlord == address(0)) revert ZeroAddress();
+        _castVote(VoteType.AddRootOverlord, uint256(uint160(overlord)));
+    }
+
+    /// @notice Votes to remove `overlord` from the local root list.
+    function voteToRemoveRootOverlord(address overlord) external {
+        if (overlord == address(0)) revert ZeroAddress();
+        _castVote(VoteType.RemoveRootOverlord, uint256(uint160(overlord)));
+    }
+
+    /// @notice Votes to approve the current provider-derived root set, bound to its hash.
+    function voteToRefreshRoots(bytes32 expectedHash) external {
+        _castVote(VoteType.RefreshRoots, uint256(expectedHash));
+    }
+
+    /// @notice Votes to replace the local root list and providers, bound to the resulting set's hash.
+    function voteToSetRootConfiguration(
+        address[] calldata local,
+        address[] calldata providers,
+        bytes32 expectedHash
+    ) external {
+        uint256 target = GovernanceVotes.configure(GovernanceVotes.state(), local, providers, expectedHash);
+        _castVote(VoteType.SetRootConfiguration, target);
+    }
+
+    /// @notice Votes to revoke root management in this contract for good.
+    /// @dev Applies only when the local root list is empty and providers supply at least one root. Irreversible.
+    function voteToRevokeOverlordManagement() external {
+        if (overlordManagementRevoked) revert ManagementRevoked(_ROOT_DOMAIN);
+        // Target 1 stands for this ballot, which has no address target.
+        _castVote(VoteType.RevokeOverlordManagement, 1);
+    }
+
+    /// @notice Votes to revoke validator management in this contract for good.
+    /// @dev Applies only when the local validator list is empty and providers supply at least MIN_VALIDATORS
+    ///      validators. Irreversible.
+    function voteToRevokeValidatorManagement() external {
+        if (validatorManagementRevoked) revert ManagementRevoked(_VALIDATOR_DOMAIN);
+        _castVote(VoteType.RevokeValidatorManagement, 1);
+    }
+
+    /// @notice Votes to revoke voter management in this contract for good; the last revocation.
+    /// @dev Applies only after root and validator management are revoked, with no local voters and at least one
+    ///      voter from providers. Afterwards every list here is frozen. Irreversible.
+    function voteToRevokeVoterManagement() external {
+        if (voterManagementRevoked) revert ManagementRevoked(_VOTER_DOMAIN);
+        _castVote(VoteType.RevokeVoterManagement, 1);
+    }
+
+    /// @notice Votes to set the ballot window in seconds (one hour to 30 days).
+    function voteToSetVoteWindow(uint256 newWindowSeconds) external {
+        if (!GovernanceVotes.validWindow(newWindowSeconds)) revert GovernanceVotes.InvalidExpiry();
+        _castVote(VoteType.SetVoteWindow, newWindowSeconds);
+    }
+
+    /// @notice Votes to set the proxy upgrade delay in seconds (0 to 30 days), read by every genesis proxy.
+    function voteToSetUpgradeDelay(uint256 delaySeconds) external {
+        if (delaySeconds > MAX_UPGRADE_DELAY) revert UpgradeDelayTooLong();
+        _castVote(VoteType.SetUpgradeDelay, delaySeconds + 1);
+    }
+
+    /// @notice Clears an expired ballot. Anyone may call it; it changes no membership and approves nothing.
+    function resetExpiredTally(VoteType voteType, uint256 target) external {
+        GovernanceVotes.resetExpired(GovernanceVotes.state(), _voteKey(voteType, target));
+        emit VoteTallyReset(voteType, target);
+    }
+
+    /// @notice Returns the proxy upgrade delay in seconds.
+    function getUpgradeDelay() external view returns (uint256) {
+        return upgradeDelay;
+    }
+
+    /// @notice Returns the open ballots `proposer` holds in the current epoch: (counted, exempt).
+    function openBallots(address proposer) external view returns (uint256 counted, uint256 exempt) {
+        return GovernanceVotes.openCount(GovernanceVotes.state(), proposer);
+    }
+
+    /// @notice Returns a ballot's snapshot: threshold, closing time, epoch and electorate.
+    function getProposalSnapshot(VoteType voteType, uint256 target)
+        external
+        view
+        returns (uint256 threshold, uint256 expires, uint256 epoch, address[] memory electorate)
+    {
+        return GovernanceVotes.snapshot(GovernanceVotes.state(), _voteKey(voteType, target));
+    }
+
+    /// @notice Returns the current electorate epoch.
+    function governanceEpoch() external view returns (uint256) {
+        return GovernanceVotes.state().epoch;
+    }
+
+    /// @notice Returns true if `voter` voted on the open ballot.
+    function hasVoted(VoteType voteType, uint256 target, address voter) external view returns (bool) {
+        return GovernanceVotes.voted(GovernanceVotes.state(), _voteKey(voteType, target), voter);
+    }
+
+    /// @notice Returns the voter set that providers and the local list give now, and its hash.
+    function previewVoters() external view returns (address[] memory members, bytes32 membersHash) {
+        members = _readVoters();
+        membersHash = keccak256(abi.encode(members));
+    }
+
+    // ─── Public functions ────────────────────────────────────────────────────────────────────────
+
+    /// @notice Returns true if `potentialVoter` is an approved voter.
     function isVoter(address potentialVoter) public view override returns (bool) {
         return GovernanceMembers.contains(getVoters(), potentialVoter);
     }
 
-    function isValidator(
-        address potentialValidator
-    ) public view override returns (bool) {
+    /// @notice Returns true if `potentialValidator` is in the approved validator set.
+    /// @dev Bounded: the set holds at most GovernanceMembers.MAX_MEMBERS addresses.
+    function isValidator(address potentialValidator) public view override returns (bool) {
         address[] memory allValidators = getValidators();
-        for (uint256 i = 0; i < allValidators.length; i++) {
-            if (allValidators[i] == potentialValidator) {
-                return true;
-            }
+        for (uint256 i; i < allValidators.length; ++i) {
+            if (allValidators[i] == potentialValidator) return true;
         }
         return false;
     }
 
-    // ── Internal Vote Engine ──────────────────────────
+    /// @notice Returns a ballot's tally: votes, opening time, closing time and the voters so far.
+    function getVoteTally(VoteType voteType, uint256 target)
+        public
+        view
+        returns (
+            uint256 totalVotes,
+            uint256 startVoteBlock,
+            uint256 voteExpirationBlock,
+            address[] memory votedAddresses
+        )
+    {
+        return GovernanceVotes.tally(GovernanceVotes.state(), _voteKey(voteType, target));
+    }
 
+    /// @notice Returns the counted ballots open in the current epoch.
+    function activeVoteCount() public view returns (uint256) {
+        return GovernanceVotes.state().active;
+    }
+
+    /// @notice Returns the votes a ballot needs with the current voter set: ceil(2/3 of the voters).
+    function getSupermajorityThreshold() public view returns (uint256) {
+        uint256 totalVoterCount = getVoterCount();
+        if (totalVoterCount == 0) revert GovernanceVotes.NoVoters();
+        return (totalVoterCount * 2 + 2) / 3;
+    }
+
+    /// @notice Returns the approved validator set that Besu reads, independent of provider availability.
+    function getValidators() public view override returns (address[] memory) {
+        if (_validatorCacheInitialized) return _effectiveValidators;
+        // A fresh genesis uses its reviewed local validator list until the first change.
+        return validators;
+    }
+
+    /// @notice Returns the number of approved validators.
+    function getValidatorCount() public view returns (uint256) {
+        return getValidators().length;
+    }
+
+    /// @notice Returns the validator set that providers and the local list give now, and its hash.
+    function previewValidators() public view returns (address[] memory members, bytes32 membersHash) {
+        members = GovernanceMembers.collect(
+            validators, otherValidatorContracts, bytes4(keccak256("getValidators()"))
+        );
+        membersHash = keccak256(abi.encode(members));
+    }
+
+    /// @notice Returns the approved voter set.
+    function getVoters() public view override returns (address[] memory) {
+        if (GovernanceVotes.state().votersInitialized) return GovernanceVotes.state().approvedVoters;
+        return _readVoters();
+    }
+
+    /// @notice Returns the number of approved voters.
+    function getVoterCount() public view returns (uint256) {
+        return getVoters().length;
+    }
+
+    /// @notice Returns the approved root set.
+    function getRootOverlords() public view override returns (address[] memory) {
+        if (_rootCacheInitialized) return _effectiveRoots;
+        return rootOverlords;
+    }
+
+    /// @notice Returns the number of approved roots.
+    function getRootOverlordCount() public view returns (uint256) {
+        return getRootOverlords().length;
+    }
+
+    /// @notice Returns true if `potentialOverlord` is an approved root.
+    function isRootOverlord(address potentialOverlord) public view override returns (bool) {
+        return GovernanceMembers.contains(getRootOverlords(), potentialOverlord);
+    }
+
+    /// @notice Returns the root set that providers and the local list give now, and its hash.
+    function previewRoots() public view returns (address[] memory members, bytes32 membersHash) {
+        members = GovernanceMembers.collect(
+            rootOverlords, otherOverlordContracts, bytes4(keccak256("getRootOverlords()"))
+        );
+        membersHash = keccak256(abi.encode(members));
+    }
+
+    // ─── Internal functions ──────────────────────────────────────────────────────────────────────
+
+    /// @dev Records the caller's vote and, when the ballot passes, applies it. Voter removal and voter-set
+    ///      configuration never count toward the ballot caps.
     function _castVote(VoteType voteType, uint256 target) internal {
         if (target == 0) revert GovernanceVotes.InvalidVoteTarget();
         bytes32 key = _voteKey(voteType, target);
         address[] memory electorate;
         if (!GovernanceVotes.live(GovernanceVotes.state(), key)) electorate = getVoters();
-        // Voter removal and voter-set recovery never count toward the ballot caps (audit X-13):
-        // a rogue voter's junk ballots can never block the ballot that removes it.
-        bool exempt = voteType == VoteType.REMOVE_VOTER || voteType == VoteType.SET_VOTER_CONFIGURATION;
-        if (GovernanceVotes.cast(GovernanceVotes.state(), key, electorate, voteTallyBlockThreshold, msg.sender, exempt)) {
+        bool exempt = voteType == VoteType.RemoveVoter || voteType == VoteType.SetVoterConfiguration;
+        bool approved = GovernanceVotes.cast(
+            GovernanceVotes.state(), key, electorate, voteTallyBlockThreshold, msg.sender, exempt
+        );
+        if (approved) {
             emit StateChanged(voteType, target);
             _applySetting(voteType, target);
             _applyMembership(voteType, address(uint160(target)));
@@ -220,84 +472,85 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         emit VoteCast(msg.sender, voteType, target);
     }
 
+    // ─── Private functions ───────────────────────────────────────────────────────────────────────
+
     /// @dev Scalar settings and the one-way management revocations.
     function _applySetting(VoteType voteType, uint256 target) private {
-        if (voteType == VoteType.UPDATE_MAX_VALIDATORS) {
+        if (voteType == VoteType.SetMaxValidators) {
             maxValidators = target;
-            emit MaxValidatorsChanged(target);
-        } else if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
-            // Seconds since the 2026-11-25 rebuild (audit X-14); the name keeps the storage slot.
+            emit MaxValidatorsUpdated(target);
+        } else if (voteType == VoteType.SetVoteWindow) {
             if (!GovernanceVotes.validWindow(target)) revert GovernanceVotes.InvalidExpiry();
             voteTallyBlockThreshold = target;
-            emit VoteTallyBlockThresholdUpdated(target);
-        } else if (voteType == VoteType.SET_UPGRADE_DELAY) {
+            emit VoteWindowUpdated(target);
+        } else if (voteType == VoteType.SetUpgradeDelay) {
             uint256 delay = target - 1; // target 0 is reserved; the ballot target is delay + 1
-            require(delay <= MAX_UPGRADE_DELAY, "Upgrade delay too long");
+            if (delay > MAX_UPGRADE_DELAY) revert UpgradeDelayTooLong();
             upgradeDelay = delay;
-            emit UpgradeDelayChanged(delay);
-        } else if (voteType == VoteType.REVOKE_OVERLORD_MANAGEMENT) {
-            require(!overlordManagementRevoked, "Overlord management already revoked");
-            require(rootOverlords.length == 0, "Cannot revoke: local root overlords still exist, remove them first");
-            require(otherOverlordContracts.length > 0, "Cannot revoke: at least one other overlord contract must be listed");
-            require(getRootOverlordCount() > 0, "No external root overlords");
+            emit UpgradeDelayUpdated(delay);
+        } else if (voteType == VoteType.RevokeOverlordManagement) {
+            if (overlordManagementRevoked) revert ManagementRevoked(_ROOT_DOMAIN);
+            if (rootOverlords.length != 0) revert LocalMembersRemain();
+            if (otherOverlordContracts.length == 0) revert NoProviderListed();
+            if (getRootOverlordCount() == 0) revert NoProviderListed();
             overlordManagementRevoked = true;
             emit OverlordManagementRevoked();
-        } else if (voteType == VoteType.REVOKE_VALIDATOR_MANAGEMENT) {
-            require(!validatorManagementRevoked, "Validator management already revoked");
-            require(validators.length == 0, "Cannot revoke: local validators still exist, remove them first");
-            require(otherValidatorContracts.length > 0, "Cannot revoke: at least one other validator contract must be listed");
-            require(getValidators().length >= 4, "Cannot revoke: aggregated validator count must be at least 4");
+        } else if (voteType == VoteType.RevokeValidatorManagement) {
+            if (validatorManagementRevoked) revert ManagementRevoked(_VALIDATOR_DOMAIN);
+            if (validators.length != 0) revert LocalMembersRemain();
+            if (otherValidatorContracts.length == 0) revert NoProviderListed();
+            if (getValidators().length < MIN_VALIDATORS) revert UnsafeValidatorCount();
             validatorManagementRevoked = true;
             emit ValidatorManagementRevoked();
-        } else if (voteType == VoteType.REVOKE_VOTER_MANAGEMENT) {
-            require(!voterManagementRevoked, "Voter management already revoked");
-            require(overlordManagementRevoked, "Cannot revoke: overlord management must be revoked first");
-            require(validatorManagementRevoked, "Cannot revoke: validator management must be revoked first");
-            require(votersArray.length == 0, "Cannot revoke: local voters still exist, remove them first");
-            require(otherVoterContracts.length > 0, "Cannot revoke: at least one other voter contract must be listed");
-            require(getVoters().length >= 1, "Cannot revoke: aggregated voter count must be at least 1");
+        } else if (voteType == VoteType.RevokeVoterManagement) {
+            if (voterManagementRevoked) revert ManagementRevoked(_VOTER_DOMAIN);
+            if (!overlordManagementRevoked) revert RevokeOrder();
+            if (!validatorManagementRevoked) revert RevokeOrder();
+            if (votersArray.length != 0) revert LocalMembersRemain();
+            if (otherVoterContracts.length == 0) revert NoProviderListed();
+            if (getVoters().length == 0) revert GovernanceVotes.NoVoters();
             voterManagementRevoked = true;
             emit VoterManagementRevoked();
         }
     }
 
     /// @dev Single-address membership ballots. Provider lists change only through the hash-bound
-    ///      voteToSet*Configuration ballots (audit X-55): the unbound ADD/REMOVE_OTHER_* types are gone.
+    ///      voteToSet*Configuration ballots.
     function _applyMembership(VoteType voteType, address targetAddress) private {
-        if (voteType == VoteType.ADD_VALIDATOR) {
-            require(!validatorManagementRevoked, "Validator management permanently revoked");
-            require(!isValidator(targetAddress), "Validator already in list");
-            require(validators.length < GovernanceMembers.MAX_MEMBERS, "Reached max validators");
+        if (voteType == VoteType.AddValidator) {
+            if (validatorManagementRevoked) revert ManagementRevoked(_VALIDATOR_DOMAIN);
+            if (isValidator(targetAddress)) revert AlreadyValidator();
+            if (validators.length >= GovernanceMembers.MAX_MEMBERS) revert GovernanceMembers.TooManyMembers();
             validators.push(targetAddress);
             emit AllowedValidator(targetAddress, true);
-        } else if (voteType == VoteType.REMOVE_VALIDATOR) {
-            require(!validatorManagementRevoked, "Validator management permanently revoked");
-            require(_removeFrom(validators, targetAddress), "Validator not found");
+        } else if (voteType == VoteType.RemoveValidator) {
+            if (validatorManagementRevoked) revert ManagementRevoked(_VALIDATOR_DOMAIN);
+            if (!_removeFrom(validators, targetAddress)) revert NotFound(targetAddress);
             emit AllowedValidator(targetAddress, false);
-        } else if (voteType == VoteType.ADD_VOTER) {
-            require(!voterManagementRevoked, "Voter management permanently revoked");
+        } else if (voteType == VoteType.AddVoter) {
+            if (voterManagementRevoked) revert ManagementRevoked(_VOTER_DOMAIN);
             if (isVoter(targetAddress)) revert GovernanceVotes.VoterAlreadyPresent();
-            require(votersArray.length < GovernanceMembers.MAX_MEMBERS, "Reached max voters");
+            if (votersArray.length >= GovernanceMembers.MAX_MEMBERS) revert GovernanceMembers.TooManyMembers();
             votersArray.push(targetAddress);
             emit VoterUpdated(targetAddress, true);
-        } else if (voteType == VoteType.REMOVE_VOTER) {
-            require(!voterManagementRevoked, "Voter management permanently revoked");
+        } else if (voteType == VoteType.RemoveVoter) {
+            if (voterManagementRevoked) revert ManagementRevoked(_VOTER_DOMAIN);
             if (!_removeFrom(votersArray, targetAddress)) revert GovernanceVotes.VoterNotFound();
             emit VoterUpdated(targetAddress, false);
-        } else if (voteType == VoteType.ADD_ROOT_OVERLORD) {
-            require(!overlordManagementRevoked, "Overlord management permanently revoked");
-            require(!isRootOverlord(targetAddress), "Already a root overlord");
-            require(rootOverlords.length < GovernanceMembers.MAX_MEMBERS, "Reached max root overlords");
+        } else if (voteType == VoteType.AddRootOverlord) {
+            if (overlordManagementRevoked) revert ManagementRevoked(_ROOT_DOMAIN);
+            if (isRootOverlord(targetAddress)) revert AlreadyRootOverlord();
+            if (rootOverlords.length >= GovernanceMembers.MAX_MEMBERS) revert GovernanceMembers.TooManyMembers();
             rootOverlords.push(targetAddress);
             emit RootOverlordUpdated(targetAddress, true);
-        } else if (voteType == VoteType.REMOVE_ROOT_OVERLORD) {
-            require(!overlordManagementRevoked, "Overlord management permanently revoked");
-            require(_removeFrom(rootOverlords, targetAddress), "Root overlord not found");
+        } else if (voteType == VoteType.RemoveRootOverlord) {
+            if (overlordManagementRevoked) revert ManagementRevoked(_ROOT_DOMAIN);
+            if (!_removeFrom(rootOverlords, targetAddress)) revert NotFound(targetAddress);
             emit RootOverlordUpdated(targetAddress, false);
         }
     }
 
-    /// @dev Bounded swap-and-pop removal (lists are capped at MAX_MEMBERS).
+    /// @dev Bounded swap-and-pop removal (lists are capped at GovernanceMembers.MAX_MEMBERS).
     function _removeFrom(address[] storage list, address member) private returns (bool) {
         uint256 length = list.length;
         for (uint256 i; i < length; ++i) {
@@ -310,9 +563,10 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         return false;
     }
 
+    /// @dev Applies a voter configuration and approves the resulting voter set.
     function _approveVoterChange(VoteType voteType, uint256 target) private {
-        if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
-            require(!voterManagementRevoked, "Voter management permanently revoked");
+        if (voteType == VoteType.SetVoterConfiguration) {
+            if (voterManagementRevoked) revert ManagementRevoked(_VOTER_DOMAIN);
             GovernanceVotes.Configuration storage config = GovernanceVotes.state().configurations[target];
             votersArray = config.local;
             otherVoterContracts = config.providers;
@@ -320,321 +574,109 @@ contract ValidatorSmartContractAllowList is ValidatorSmartContractInterface {
         address[] memory members = _readVoters();
         if (members.length == 0) revert GovernanceVotes.EmptyVoterSet();
         bytes32 membersHash = keccak256(abi.encode(members));
-        if (voteType == VoteType.REFRESH_VOTERS && membersHash != bytes32(target)) revert GovernanceVotes.MembershipChanged();
-        if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
-            if (membersHash != GovernanceVotes.state().configurations[target].membersHash) revert GovernanceVotes.MembershipChanged();
+        if (voteType == VoteType.RefreshVoters && membersHash != bytes32(target)) {
+            revert GovernanceVotes.MembershipChanged();
+        }
+        if (voteType == VoteType.SetVoterConfiguration) {
+            if (membersHash != GovernanceVotes.state().configurations[target].membersHash) {
+                revert GovernanceVotes.MembershipChanged();
+            }
             delete GovernanceVotes.state().configurations[target];
         }
         GovernanceVotes.approveVoters(GovernanceVotes.state(), members);
     }
 
-    // ── Validator Governance ──────────────────────────
-
-    function voteToUpdateMaxValidators(uint256 newMax) external {
-        require(
-            newMax > 0,
-            "New max validators must be greater than zero"
-        );
-        _castVote(VoteType.UPDATE_MAX_VALIDATORS, newMax);
-    }
-
-    function voteToAddValidator(address validator) external {
-        require(
-            validator != address(0),
-            "Validator address should not be zero"
-        );
-        _castVote(VoteType.ADD_VALIDATOR, uint256(uint160(validator)));
-    }
-
-    function voteToRemoveValidator(address validator) external {
-        require(
-            validator != address(0),
-            "Validator address should not be zero"
-        );
-        _castVote(VoteType.REMOVE_VALIDATOR, uint256(uint160(validator)));
-    }
-
-    // ── Voter Management ──────────────────────────────
-
-    function voteToAddVoter(address voter) external {
-        if (voter == address(0)) revert GovernanceVotes.InvalidVoteTarget();
-        _castVote(VoteType.ADD_VOTER, uint256(uint160(voter)));
-    }
-
-    function voteToRemoveVoter(address voter) external {
-        if (voter == address(0)) revert GovernanceVotes.InvalidVoteTarget();
-        _castVote(VoteType.REMOVE_VOTER, uint256(uint160(voter)));
-    }
-
-    // ── Root Overlord Management ──────────────────────
-
-    function voteToAddRootOverlord(address overlord) external {
-        require(
-            overlord != address(0),
-            "Root overlord address should not be zero"
-        );
-        _castVote(VoteType.ADD_ROOT_OVERLORD, uint256(uint160(overlord)));
-    }
-
-    function voteToRemoveRootOverlord(address overlord) external {
-        require(
-            overlord != address(0),
-            "Root overlord address should not be zero"
-        );
-        _castVote(VoteType.REMOVE_ROOT_OVERLORD, uint256(uint160(overlord)));
-    }
-
-    // ── Overlord Management Revocation ────────────────
-
-    /**
-     * @dev Voters can permanently revoke the ability to add/remove root overlords
-     *      and other overlord contracts from THIS contract.
-     *      Pre-conditions:
-     *        - No locally stored root overlords (rootOverlords must be empty)
-     *        - At least one external overlord contract must be listed
-     *      Once revoked, all overlord management is permanently delegated
-     *      to the listed external contract(s). This action is IRREVERSIBLE.
-     */
-    function voteToRevokeOverlordManagement() external {
-        require(!overlordManagementRevoked, "Overlord management already revoked");
-        // Use 1 as a sentinel for this non-targeted vote
-        _castVote(VoteType.REVOKE_OVERLORD_MANAGEMENT, 1);
-    }
-
-    /**
-     * @dev Voters can permanently revoke the ability to add/remove validators
-     *      and other validator contracts from THIS contract.
-     *      Pre-conditions:
-     *        - At least one external validator contract must be listed
-     *      Once revoked, all validator management is permanently delegated
-     *      to the listed external contract(s). This action is IRREVERSIBLE.
-     */
-    function voteToRevokeValidatorManagement() external {
-        require(!validatorManagementRevoked, "Validator management already revoked");
-        _castVote(VoteType.REVOKE_VALIDATOR_MANAGEMENT, 1);
-    }
-
-    /**
-     * @dev Voters can permanently revoke the ability to add/remove voters
-     *      and other voter contracts from THIS contract.
-     *      Pre-conditions (enforced to prevent lockout):
-     *        - Overlord management must already be revoked
-     *        - Validator management must already be revoked
-     *        - At least one external voter contract must be listed
-     *      This is the LAST management revocation — once done, this contract's
-     *      lists are completely frozen. All governance is permanently delegated
-     *      to external contracts. This action is IRREVERSIBLE.
-     */
-    function voteToRevokeVoterManagement() external {
-        require(!voterManagementRevoked, "Voter management already revoked");
-        _castVote(VoteType.REVOKE_VOTER_MANAGEMENT, 1);
-    }
-
-    // ── Vote Threshold Governance ─────────────────────
-
-    /// @notice Ballot window in SECONDS (1 hour to 30 days). The name is kept for the storage slot.
-    function voteToUpdateVoteTallyBlockThreshold(uint256 newWindowSeconds) external {
-        if (!GovernanceVotes.validWindow(newWindowSeconds)) revert GovernanceVotes.InvalidExpiry();
-        _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, newWindowSeconds);
-    }
-
-    /// @notice Proxy upgrade delay in seconds (0 to 30 days), read by every genesis proxy (audit X-1).
-    function voteToSetUpgradeDelay(uint256 delaySeconds) external {
-        require(delaySeconds <= MAX_UPGRADE_DELAY, "Upgrade delay too long");
-        _castVote(VoteType.SET_UPGRADE_DELAY, delaySeconds + 1);
-    }
-
-    function getUpgradeDelay() external view returns (uint256) { return upgradeDelay; }
-
-    /// @notice Open ballots a voter holds in the current epoch: (counted, exempt).
-    function openBallots(address proposer) external view returns (uint256 counted, uint256 exempt) {
-        return GovernanceVotes.openCount(GovernanceVotes.state(), proposer);
-    }
-
-    // ── Vote Tally & Thresholds ───────────────────────
-
-    function getVoteTally(VoteType voteType, uint256 target) public view
-        returns (uint256 totalVotes, uint256 startVoteBlock, uint256 voteExpirationBlock, address[] memory votedAddresses)
-    {
-        return GovernanceVotes.tally(GovernanceVotes.state(), _voteKey(voteType, target));
-    }
-
-    function getProposalSnapshot(VoteType voteType, uint256 target) external view
-        returns (uint256 threshold, uint256 expires, uint256 epoch, address[] memory electorate)
-    {
-        return GovernanceVotes.snapshot(GovernanceVotes.state(), _voteKey(voteType, target));
-    }
-
-    function activeVoteCount() public view returns (uint256) { return GovernanceVotes.state().active; }
-    function governanceEpoch() external view returns (uint256) { return GovernanceVotes.state().epoch; }
-    function hasVoted(VoteType voteType, uint256 target, address voter) external view returns (bool) {
-        return GovernanceVotes.voted(GovernanceVotes.state(), _voteKey(voteType, target), voter);
-    }
-    function _voteKey(VoteType voteType, uint256 target) private pure returns (bytes32) {
-        return keccak256(abi.encode(voteType, target));
-    }
-    function _changesVoters(VoteType voteType) private pure returns (bool) {
-        return voteType == VoteType.REFRESH_VOTERS || voteType == VoteType.SET_VOTER_CONFIGURATION
-            || voteType == VoteType.ADD_VOTER || voteType == VoteType.REMOVE_VOTER
-            || voteType == VoteType.REVOKE_VOTER_MANAGEMENT;
-    }
-
-    function getSupermajorityThreshold() public view returns (uint256) {
-        uint256 totalVoterCount = getVoterCount();
-        require(totalVoterCount > 0, "No voters available");
-        return (totalVoterCount * 2 + 2) / 3;
-    }
-
-    // ── Aggregation Queries ───────────────────────────
-
-    /// @notice Besu reads the approved set, independent of provider availability.
-    function getValidators() public view override returns (address[] memory) {
-        if (_validatorCacheInitialized) return _effectiveValidators;
-        // Fresh genesis uses its reviewed local validator allocation before the first change.
-        return validators;
-    }
-
-    /// @notice Returns the total number of validators (local + external).
-    function getValidatorCount() public view returns (uint256) { return getValidators().length; }
-
-    function getVoters() public view override returns (address[] memory) {
-        if (GovernanceVotes.state().votersInitialized) return GovernanceVotes.state().approvedVoters;
-        return _readVoters();
-    }
-
-    /// @notice Returns the total number of voters (local + external).
-    function _readVoters() private view returns (address[] memory) {
-        return GovernanceMembers.collect(votersArray, otherVoterContracts, bytes4(keccak256("getVoters()")));
-    }
-    function previewVoters() external view returns (address[] memory members, bytes32 membersHash) {
-        members = _readVoters();
-        membersHash = keccak256(abi.encode(members));
-    }
-    function voteToRefreshVoters(bytes32 expectedHash) external {
-        _castVote(VoteType.REFRESH_VOTERS, uint256(expectedHash));
-    }
-    /// @notice Atomic handover/recovery; approvals bind both configuration and resulting membership.
-    function voteToSetVoterConfiguration(address[] calldata local, address[] calldata providers, bytes32 expectedHash) external {
-        uint256 target = GovernanceVotes.configure(GovernanceVotes.state(), local, providers, expectedHash);
-        _castVote(VoteType.SET_VOTER_CONFIGURATION, target);
-    }
-
-    function getVoterCount() public view returns (uint256) {
-        return getVoters().length;
-    }
-
-    // ── Root Overlord Queries ─────────────────────────
-
-    function getRootOverlords() public view override returns (address[] memory) {
-        if (_rootCacheInitialized) return _effectiveRoots;
-        return rootOverlords;
-    }
-
-    /// @notice Returns the total number of root overlords (local + external).
-    function getRootOverlordCount() public view returns (uint256) { return getRootOverlords().length; }
-
-    function isRootOverlord(address potentialOverlord) public view override returns (bool) {
-        return GovernanceMembers.contains(getRootOverlords(), potentialOverlord);
-    }
-
-    // ── Expired Tally Cleanup ─────────────────────────
-
-    /// @notice Anyone may clear an expired ballot; no membership or approval changes.
-    function resetExpiredTally(VoteType voteType, uint256 target) external {
-        GovernanceVotes.resetExpired(GovernanceVotes.state(), _voteKey(voteType, target));
-        emit VoteTallyReset(voteType, target);
-    }
-
-    // ── Utilities ─────────────────────────────────────
-
-    /// @notice Propose an atomic local validator replacement, retaining the count.
-    function voteToReplaceValidator(address previous, address replacement) external {
-        require(previous != address(0) && replacement != address(0) && previous != replacement, "Invalid replacement");
-        uint256 target = uint256(keccak256(abi.encode(previous, replacement)));
-        _validatorReplacements[target] = ValidatorReplacement(previous, replacement);
-        _castVote(VoteType.REPLACE_VALIDATOR, target);
-    }
-
-    /// @notice Preview provider changes before approving their exact effective-set hash.
-    function previewValidators() public view returns (address[] memory members, bytes32 membersHash) {
-        members = GovernanceMembers.collect(validators, otherValidatorContracts, bytes4(keccak256("getValidators()")));
-        membersHash = keccak256(abi.encode(members));
-    }
-
-    /// @notice Provider list changes never silently alter Besu's active validator set.
-    ///         Refresh remains possible after local management is delegated/revoked.
-    function voteToRefreshValidators(bytes32 expectedHash) external {
-        _castVote(VoteType.REFRESH_VALIDATORS, uint256(expectedHash));
-    }
-
-    function previewRoots() public view returns (address[] memory members, bytes32 membersHash) {
-        members = GovernanceMembers.collect(rootOverlords, otherOverlordContracts, bytes4(keccak256("getRootOverlords()")));
-        membersHash = keccak256(abi.encode(members));
-    }
-    function voteToRefreshRoots(bytes32 expectedHash) external { _castVote(VoteType.REFRESH_ROOTS, uint256(expectedHash)); }
-    function voteToSetRootConfiguration(address[] calldata local, address[] calldata providers, bytes32 expectedHash) external {
-        _castVote(VoteType.SET_ROOT_CONFIGURATION, GovernanceVotes.configure(GovernanceVotes.state(), local, providers, expectedHash));
-    }
-    function voteToSetValidatorConfiguration(address[] calldata local, address[] calldata providers, bytes32 expectedHash) external {
-        _castVote(VoteType.SET_VALIDATOR_CONFIGURATION, GovernanceVotes.configure(GovernanceVotes.state(), local, providers, expectedHash));
-    }
-
+    /// @dev Applies validator and root list changes and re-approves the sets Besu and the proxies read.
     function _validateValidatorChange(VoteType voteType, uint256 target) private {
-        if (voteType == VoteType.SET_VALIDATOR_CONFIGURATION || voteType == VoteType.SET_ROOT_CONFIGURATION) {
+        if (voteType == VoteType.SetValidatorConfiguration || voteType == VoteType.SetRootConfiguration) {
             GovernanceVotes.Configuration storage config = GovernanceVotes.state().configurations[target];
-            if (voteType == VoteType.SET_VALIDATOR_CONFIGURATION) {
-                require(!validatorManagementRevoked, "Validator management permanently revoked");
+            if (voteType == VoteType.SetValidatorConfiguration) {
+                if (validatorManagementRevoked) revert ManagementRevoked(_VALIDATOR_DOMAIN);
                 validators = config.local;
                 otherValidatorContracts = config.providers;
             } else {
-                require(!overlordManagementRevoked, "Overlord management permanently revoked");
+                if (overlordManagementRevoked) revert ManagementRevoked(_ROOT_DOMAIN);
                 rootOverlords = config.local;
                 otherOverlordContracts = config.providers;
             }
         }
-        if (voteType == VoteType.REPLACE_VALIDATOR) {
-            require(!validatorManagementRevoked, "Validator management permanently revoked");
+        if (voteType == VoteType.ReplaceValidator) {
+            if (validatorManagementRevoked) revert ManagementRevoked(_VALIDATOR_DOMAIN);
             ValidatorReplacement memory replacement = _validatorReplacements[target];
-            require(!isValidator(replacement.replacement), "Validator already in list");
+            if (isValidator(replacement.replacement)) revert AlreadyValidator();
             bool found;
+            // Bounded: the local list holds at most GovernanceMembers.MAX_MEMBERS addresses.
             for (uint256 i; i < validators.length; ++i) {
-                if (validators[i] == replacement.previous) { validators[i] = replacement.replacement; found = true; break; }
+                if (validators[i] == replacement.previous) {
+                    validators[i] = replacement.replacement;
+                    found = true;
+                    break;
+                }
             }
-            require(found, "Validator not found");
+            if (!found) revert NotFound(replacement.previous);
             emit AllowedValidator(replacement.previous, false);
             emit AllowedValidator(replacement.replacement, true);
             delete _validatorReplacements[target];
         }
-        if (voteType == VoteType.ADD_VALIDATOR || voteType == VoteType.REMOVE_VALIDATOR
-            || voteType == VoteType.UPDATE_MAX_VALIDATORS || voteType == VoteType.REVOKE_VALIDATOR_MANAGEMENT
-            || voteType == VoteType.REPLACE_VALIDATOR || voteType == VoteType.REFRESH_VALIDATORS
-            || voteType == VoteType.SET_VALIDATOR_CONFIGURATION)
-        {
+        if (
+            voteType == VoteType.AddValidator || voteType == VoteType.RemoveValidator
+                || voteType == VoteType.SetMaxValidators || voteType == VoteType.RevokeValidatorManagement
+                || voteType == VoteType.ReplaceValidator || voteType == VoteType.RefreshValidators
+                || voteType == VoteType.SetValidatorConfiguration
+        ) {
             (address[] memory members, bytes32 membersHash) = previewValidators();
-            require(maxValidators >= MIN_VALIDATORS && maxValidators <= GovernanceMembers.MAX_MEMBERS, "Invalid validator maximum");
-            require(members.length >= MIN_VALIDATORS && members.length <= maxValidators, "Unsafe validator count");
-            if (voteType == VoteType.REFRESH_VALIDATORS) require(membersHash == bytes32(target), "Validator set changed");
-            if (voteType == VoteType.SET_VALIDATOR_CONFIGURATION) {
-                require(membersHash == GovernanceVotes.state().configurations[target].membersHash, "Validator set changed");
+            if (maxValidators < MIN_VALIDATORS || maxValidators > GovernanceMembers.MAX_MEMBERS) {
+                revert InvalidValidatorMaximum();
+            }
+            if (members.length < MIN_VALIDATORS || members.length > maxValidators) revert UnsafeValidatorCount();
+            if (voteType == VoteType.RefreshValidators && membersHash != bytes32(target)) {
+                revert GovernanceVotes.MembershipChanged();
+            }
+            if (voteType == VoteType.SetValidatorConfiguration) {
+                if (membersHash != GovernanceVotes.state().configurations[target].membersHash) {
+                    revert GovernanceVotes.MembershipChanged();
+                }
                 delete GovernanceVotes.state().configurations[target];
             }
             _effectiveValidators = members;
             _validatorCacheInitialized = true;
             emit EffectiveValidatorsUpdated(membersHash, members.length);
         }
-        if (voteType == VoteType.ADD_ROOT_OVERLORD || voteType == VoteType.REMOVE_ROOT_OVERLORD
-            || voteType == VoteType.REFRESH_ROOTS || voteType == VoteType.SET_ROOT_CONFIGURATION
-            || voteType == VoteType.REVOKE_OVERLORD_MANAGEMENT)
-        {
+        if (
+            voteType == VoteType.AddRootOverlord || voteType == VoteType.RemoveRootOverlord
+                || voteType == VoteType.RefreshRoots || voteType == VoteType.SetRootConfiguration
+                || voteType == VoteType.RevokeOverlordManagement
+        ) {
             (address[] memory members, bytes32 membersHash) = previewRoots();
-            require(members.length > 0, "Cannot remove the last root overlord");
-            if (voteType == VoteType.REFRESH_ROOTS) require(membersHash == bytes32(target), "Root set changed");
-            if (voteType == VoteType.SET_ROOT_CONFIGURATION) {
-                require(membersHash == GovernanceVotes.state().configurations[target].membersHash, "Root set changed");
+            if (members.length == 0) revert LastRootOverlord();
+            if (voteType == VoteType.RefreshRoots && membersHash != bytes32(target)) {
+                revert GovernanceVotes.MembershipChanged();
+            }
+            if (voteType == VoteType.SetRootConfiguration) {
+                if (membersHash != GovernanceVotes.state().configurations[target].membersHash) {
+                    revert GovernanceVotes.MembershipChanged();
+                }
                 delete GovernanceVotes.state().configurations[target];
             }
             _effectiveRoots = members;
             _rootCacheInitialized = true;
         }
+    }
+
+    /// @dev The voter set that the local list and providers give now.
+    function _readVoters() private view returns (address[] memory) {
+        return GovernanceMembers.collect(votersArray, otherVoterContracts, bytes4(keccak256("getVoters()")));
+    }
+
+    /// @dev Ballot key: one ballot per (kind, target).
+    function _voteKey(VoteType voteType, uint256 target) private pure returns (bytes32) {
+        return keccak256(abi.encode(voteType, target));
+    }
+
+    /// @dev Ballot kinds that change the voter set (and so start a new electorate epoch).
+    function _changesVoters(VoteType voteType) private pure returns (bool) {
+        return voteType == VoteType.RefreshVoters || voteType == VoteType.SetVoterConfiguration
+            || voteType == VoteType.AddVoter || voteType == VoteType.RemoveVoter
+            || voteType == VoteType.RevokeVoterManagement;
     }
 }

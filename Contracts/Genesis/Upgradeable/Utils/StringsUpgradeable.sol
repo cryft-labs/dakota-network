@@ -1,16 +1,10 @@
 // SPDX-License-Identifier: MIT
-//
-// Based on OpenZeppelin Contracts v4.9.6 (utils/Strings.sol).
-// Modified by Cryft Labs — pragma range widened for solc 0.8.34 / Osaka EVM,
-// assembly blocks annotated memory-safe (inline syntax).
-//
-// WARNING: This is a modified version of the original OpenZeppelin contract.
-// Do not assume it is stock or unmodified — review all changes before use.
+// Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
+// Derived from OpenZeppelin Contracts v4.9.6 (utils/Strings.sol), MIT.
+pragma solidity 0.8.37;
 
-pragma solidity >=0.8.2 <0.9.0;
-
-import "./Math/MathUpgradeable.sol";
-import "./Math/SignedMathUpgradeable.sol";
+import {MathUpgradeable} from "./Math/MathUpgradeable.sol";
+import {SignedMathUpgradeable} from "./Math/SignedMathUpgradeable.sol";
 
 /**
  * @dev String operations.

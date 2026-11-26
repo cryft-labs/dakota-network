@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-//
 // Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
-// This software is part of a patented system. See LICENSE and PATENT NOTICE.
-// Licensed under the Apache License, Version 2.0.
-
-pragma solidity >=0.8.20 <0.9.0;
+pragma solidity 0.8.37;
 
 /// @title CryftDelegationCapabilities
-/// @notice Stable capability-bit assignments for delegation protocol v1.
+/// @notice Stable capability bits of delegation protocol v1.
+/// @custom:version 1.2.0
+/// @custom:security-contact security@cryft.cards
 library CryftDelegationCapabilities {
+    // ─── Constants and immutables ────────────────────────────────────────────────────────────────
+
     uint256 internal constant SPONSORED_EXECUTION = 1 << 0;
     uint256 internal constant BATCHED_CALLS = 1 << 1;
     uint256 internal constant EIP1271 = 1 << 2;
@@ -18,16 +18,10 @@ library CryftDelegationCapabilities {
     uint256 internal constant TYPED_DATA_HELPERS = 1 << 6;
     uint256 internal constant REPLAY_PROTECTION = 1 << 7;
 
+    /// @notice Bits every v1 account logic must implement.
     uint256 internal constant REQUIRED_V1 =
-        SPONSORED_EXECUTION |
-        BATCHED_CALLS |
-        EIP1271 |
-        TYPED_DATA_HELPERS |
-        REPLAY_PROTECTION;
+        SPONSORED_EXECUTION | BATCHED_CALLS | EIP1271 | TYPED_DATA_HELPERS | REPLAY_PROTECTION;
 
-    uint256 internal constant ALL_V1 =
-        REQUIRED_V1 |
-        NATIVE_RECEIVE |
-        ERC721_RECEIVE |
-        ERC1155_RECEIVE;
+    /// @notice Every v1 bit.
+    uint256 internal constant ALL_V1 = REQUIRED_V1 | NATIVE_RECEIVE | ERC721_RECEIVE | ERC1155_RECEIVE;
 }

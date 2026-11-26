@@ -203,8 +203,8 @@ def drills(c, run, manifest):
     c.check("three voters", len(reg.functions.getVoters().call()) == 3)
     cap = 64 // 3
     for i in range(cap):
-        c.ok(v3a, reg.functions.voteToUpdateMaxValidators(12 + i))
-    c.check(f"flooder capped at {cap} open ballots", c.reverts(v3a, reg.functions.voteToUpdateMaxValidators(60)))
+        c.ok(v3a, reg.functions.voteToSetMaxValidators(12 + i))
+    c.check(f"flooder capped at {cap} open ballots", c.reverts(v3a, reg.functions.voteToSetMaxValidators(60)))
     c.ok(v1, reg.functions.voteToRemoveVoter(v3a.address))
     c.ok(v2a, reg.functions.voteToRemoveVoter(v3a.address))
     c.check("REMOVE_VOTER of the flooder passed (exempt ballot)", v3a.address not in reg.functions.getVoters().call())

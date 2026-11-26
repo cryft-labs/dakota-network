@@ -1,0 +1,1336 @@
+{
+ "contracts": {
+  "Contracts/CodeManagement/CanonicalUid.sol:CanonicalUid": [],
+  "Contracts/CodeManagement/CodeManager.sol:CodeManager": [
+   {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "uint8",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "bool",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "_status",
+    "slot": "1",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "__gap",
+    "slot": "2",
+    "offset": 0,
+    "type": "uint256[49]",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "votersArray",
+    "slot": "51",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "otherVoterContracts",
+    "slot": "52",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "__reserved2",
+    "slot": "53",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "registrationFee",
+    "slot": "54",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "voteTallyBlockThreshold",
+    "slot": "55",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "feeVault",
+    "slot": "56",
+    "offset": 0,
+    "type": "address",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "_identifierCounter",
+    "slot": "57",
+    "offset": 0,
+    "type": "mapping(string => uint256)",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "_contractIdentifierToData",
+    "slot": "58",
+    "offset": 0,
+    "type": "mapping(string => struct ICodeManager.ContractData)",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "_uniqueIdStatuses",
+    "slot": "59",
+    "offset": 0,
+    "type": "mapping(bytes32 => enum CodeManager.UniqueIdStatus)",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "isAuthorizedPrivacyGroup",
+    "slot": "60",
+    "offset": 0,
+    "type": "mapping(address => bool)",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "registrationOperators",
+    "slot": "61",
+    "offset": 0,
+    "type": "mapping(address => mapping(address => bool))",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "privacyGroupEpoch",
+    "slot": "62",
+    "offset": 0,
+    "type": "mapping(address => uint256)",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "_groupGiftGrants",
+    "slot": "63",
+    "offset": 0,
+    "type": "mapping(bytes32 => bool)",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "_groupGiftChanges",
+    "slot": "64",
+    "offset": 0,
+    "type": "mapping(uint256 => struct CodeManager.GroupGiftChange)",
+    "contract": "CodeManager"
+   },
+   {
+    "label": "_deliveries",
+    "slot": "65",
+    "offset": 0,
+    "type": "mapping(bytes32 => struct CodeManager.Delivery)",
+    "contract": "CodeManager"
+   }
+  ],
+  "Contracts/CodeManagement/Interfaces/ICodeManager.sol:ICodeManager": [],
+  "Contracts/CodeManagement/Interfaces/IRedeemable.sol:IRedeemable": [],
+  "Contracts/Genesis/7702/ApprovedGasSponsor.sol:ApprovedGasSponsor": [
+   {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "uint8",
+    "contract": "ApprovedGasSponsor"
+   },
+   {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "bool",
+    "contract": "ApprovedGasSponsor"
+   },
+   {
+    "label": "_status",
+    "slot": "1",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "ApprovedGasSponsor"
+   },
+   {
+    "label": "__gap",
+    "slot": "2",
+    "offset": 0,
+    "type": "uint256[49]",
+    "contract": "ApprovedGasSponsor"
+   }
+  ],
+  "Contracts/Genesis/7702/CryftBeaconDispatcher.sol:CryftBeaconDispatcher": [],
+  "Contracts/Genesis/7702/CryftDelegation.sol:CryftDelegation": [],
+  "Contracts/Genesis/7702/CryftDelegationBeacon.sol:CryftDelegationBeacon": [
+   {
+    "label": "_implementation",
+    "slot": "0",
+    "offset": 0,
+    "type": "address",
+    "contract": "CryftDelegationBeacon"
+   }
+  ],
+  "Contracts/Genesis/7702/CryftDelegationRegistry.sol:CryftDelegationRegistry": [
+   {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "uint8",
+    "contract": "CryftDelegationRegistry"
+   },
+   {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "bool",
+    "contract": "CryftDelegationRegistry"
+   },
+   {
+    "label": "__gap",
+    "slot": "1",
+    "offset": 0,
+    "type": "uint256[49]",
+    "contract": "CryftDelegationRegistry"
+   }
+  ],
+  "Contracts/Genesis/7702/CryftDelegationRegistry.sol:ICryftDelegationBeaconControl": [],
+  "Contracts/Genesis/7702/CryftDelegationRegistry.sol:ICryftDelegationGenesisProxy": [],
+  "Contracts/Genesis/7702/CryftDelegationRegistry.sol:ICryftDelegationRootRegistry": [],
+  "Contracts/Genesis/7702/DelegationGas.sol:DelegationGas": [],
+  "Contracts/Genesis/7702/GasSponsor.sol:GasSponsor": [
+   {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "uint8",
+    "contract": "GasSponsor"
+   },
+   {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "bool",
+    "contract": "GasSponsor"
+   },
+   {
+    "label": "_status",
+    "slot": "1",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasSponsor"
+   },
+   {
+    "label": "__gap",
+    "slot": "2",
+    "offset": 0,
+    "type": "uint256[49]",
+    "contract": "GasSponsor"
+   }
+  ],
+  "Contracts/Genesis/7702/GasSponsor.sol:IERC1271VoucherSigner": [],
+  "Contracts/Genesis/7702/GasSponsor.sol:IRootOverlordRegistry": [],
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegation.sol:ICryftDelegation": [],
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegationRegistry.sol:ICryftDelegationRegistry": [],
+  "Contracts/Genesis/7702/Interfaces/IGasSponsor.sol:IGasSponsor": [],
+  "Contracts/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol:ITenantAllowancePolicy": [],
+  "Contracts/Genesis/7702/Libraries/CryftDelegationCapabilities.sol:CryftDelegationCapabilities": [],
+  "Contracts/Genesis/7702/Libraries/CryftECDSA.sol:CryftECDSA": [],
+  "Contracts/Genesis/7702/ProgramGasSponsor.sol:IDeveloperGasProgramLimits": [],
+  "Contracts/Genesis/7702/ProgramGasSponsor.sol:ITenantAllowancePolicyV2": [],
+  "Contracts/Genesis/7702/ProgramGasSponsor.sol:ProgramGasSponsor": [
+   {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "uint8",
+    "contract": "ProgramGasSponsor"
+   },
+   {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "bool",
+    "contract": "ProgramGasSponsor"
+   },
+   {
+    "label": "_status",
+    "slot": "1",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "ProgramGasSponsor"
+   },
+   {
+    "label": "__gap",
+    "slot": "2",
+    "offset": 0,
+    "type": "uint256[49]",
+    "contract": "ProgramGasSponsor"
+   }
+  ],
+  "Contracts/Genesis/7702/WorkerGasSponsor.sol:IWorkerAllowancePolicy": [],
+  "Contracts/Genesis/7702/WorkerGasSponsor.sol:WorkerGasSponsor": [
+   {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "uint8",
+    "contract": "WorkerGasSponsor"
+   },
+   {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "bool",
+    "contract": "WorkerGasSponsor"
+   },
+   {
+    "label": "_status",
+    "slot": "1",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "WorkerGasSponsor"
+   },
+   {
+    "label": "__gap",
+    "slot": "2",
+    "offset": 0,
+    "type": "uint256[49]",
+    "contract": "WorkerGasSponsor"
+   }
+  ],
+  "Contracts/Genesis/GasManager/GasManager.sol:GasManager": [
+   {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "uint8",
+    "contract": "GasManager"
+   },
+   {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "bool",
+    "contract": "GasManager"
+   },
+   {
+    "label": "_status",
+    "slot": "1",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "__gap",
+    "slot": "2",
+    "offset": 0,
+    "type": "uint256[49]",
+    "contract": "GasManager"
+   },
+   {
+    "label": "voteTallyBlockThreshold",
+    "slot": "51",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "totalGasFunded",
+    "slot": "52",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "__reserved53",
+    "slot": "53",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "votersArray",
+    "slot": "54",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "GasManager"
+   },
+   {
+    "label": "otherVoterContracts",
+    "slot": "55",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "GasManager"
+   },
+   {
+    "label": "guardiansArray",
+    "slot": "56",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "GasManager"
+   },
+   {
+    "label": "isGuardian",
+    "slot": "57",
+    "offset": 0,
+    "type": "mapping(address => bool)",
+    "contract": "GasManager"
+   },
+   {
+    "label": "__reserved58",
+    "slot": "58",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "__reserved59",
+    "slot": "59",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "_burnApprovals",
+    "slot": "60",
+    "offset": 0,
+    "type": "mapping(bytes32 => struct GasManager.Approval)",
+    "contract": "GasManager"
+   },
+   {
+    "label": "approvedFunds",
+    "slot": "61",
+    "offset": 0,
+    "type": "mapping(bytes32 => bool)",
+    "contract": "GasManager"
+   },
+   {
+    "label": "__reserved62",
+    "slot": "62",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "_fundProposals",
+    "slot": "63",
+    "offset": 0,
+    "type": "mapping(bytes32 => struct GasManager.FundProposal)",
+    "contract": "GasManager"
+   },
+   {
+    "label": "_lastFundingNonceByFundingId",
+    "slot": "64",
+    "offset": 0,
+    "type": "mapping(bytes32 => uint256)",
+    "contract": "GasManager"
+   },
+   {
+    "label": "fundApprovalWindow",
+    "slot": "65",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "fundExecutableAt",
+    "slot": "66",
+    "offset": 0,
+    "type": "mapping(bytes32 => uint256)",
+    "contract": "GasManager"
+   },
+   {
+    "label": "fundExpiresAt",
+    "slot": "67",
+    "offset": 0,
+    "type": "mapping(bytes32 => uint256)",
+    "contract": "GasManager"
+   },
+   {
+    "label": "_activeApprovedFundKeys",
+    "slot": "68",
+    "offset": 0,
+    "type": "bytes32[]",
+    "contract": "GasManager"
+   },
+   {
+    "label": "_activeApprovedFundKeyIndexPlusOne",
+    "slot": "69",
+    "offset": 0,
+    "type": "mapping(bytes32 => uint256)",
+    "contract": "GasManager"
+   },
+   {
+    "label": "expiredFundCleanupAuthorized",
+    "slot": "70",
+    "offset": 0,
+    "type": "bool",
+    "contract": "GasManager"
+   },
+   {
+    "label": "expiredFundCleanupCursor",
+    "slot": "71",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "executionDelay",
+    "slot": "72",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "outflowCap",
+    "slot": "73",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "outflowPeriod",
+    "slot": "74",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "outflowPeriodStart",
+    "slot": "75",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "outflowUsed",
+    "slot": "76",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "GasManager"
+   },
+   {
+    "label": "_parameterChanges",
+    "slot": "77",
+    "offset": 0,
+    "type": "mapping(uint256 => struct GasManager.ParameterChange)",
+    "contract": "GasManager"
+   }
+  ],
+  "Contracts/Genesis/GasManager/GasManager.sol:IERC20": [],
+  "Contracts/Genesis/GasManager/GasManager.sol:IGasSponsorDepository": [],
+  "Contracts/Genesis/Governance/GovernanceMembers.sol:GovernanceMembers": [],
+  "Contracts/Genesis/Governance/GovernanceVotes.sol:GovernanceVotes": [],
+  "Contracts/Genesis/Upgradeable/AddressUpgradeable.sol:AddressUpgradeable": [],
+  "Contracts/Genesis/Upgradeable/Initializable.sol:Initializable": [
+   {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "uint8",
+    "contract": "Initializable"
+   },
+   {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "bool",
+    "contract": "Initializable"
+   }
+  ],
+  "Contracts/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol:IERC1822Proxiable": [],
+  "Contracts/Genesis/Upgradeable/Interfaces/IERC1967.sol:IERC1967": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol:IBeacon": [],
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy": [],
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol:ERC1967Upgrade": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Proxy.sol:Proxy": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol:ProxyAdmin": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol:ITransparentUpgradeableProxy": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol:IValidatorRootOverlord": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy": [],
+  "Contracts/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol:ReentrancyGuardUpgradeable": [
+   {
+    "label": "_initialized",
+    "slot": "0",
+    "offset": 0,
+    "type": "uint8",
+    "contract": "ReentrancyGuardUpgradeable"
+   },
+   {
+    "label": "_initializing",
+    "slot": "0",
+    "offset": 1,
+    "type": "bool",
+    "contract": "ReentrancyGuardUpgradeable"
+   },
+   {
+    "label": "_status",
+    "slot": "1",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "ReentrancyGuardUpgradeable"
+   },
+   {
+    "label": "__gap",
+    "slot": "2",
+    "offset": 0,
+    "type": "uint256[49]",
+    "contract": "ReentrancyGuardUpgradeable"
+   }
+  ],
+  "Contracts/Genesis/Upgradeable/Utils/Address.sol:Address": [],
+  "Contracts/Genesis/Upgradeable/Utils/Math/MathUpgradeable.sol:MathUpgradeable": [],
+  "Contracts/Genesis/Upgradeable/Utils/Math/SignedMathUpgradeable.sol:SignedMathUpgradeable": [],
+  "Contracts/Genesis/Upgradeable/Utils/StorageSlot.sol:StorageSlot": [],
+  "Contracts/Genesis/Upgradeable/Utils/StringsUpgradeable.sol:StringsUpgradeable": [],
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol:ValidatorSmartContractAllowList": [
+   {
+    "label": "__deprecated_guardian",
+    "slot": "0",
+    "offset": 0,
+    "type": "address",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "validators",
+    "slot": "1",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "otherValidatorContracts",
+    "slot": "2",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "votersArray",
+    "slot": "3",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "otherVoterContracts",
+    "slot": "4",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "rootOverlords",
+    "slot": "5",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "otherOverlordContracts",
+    "slot": "6",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "maxValidators",
+    "slot": "7",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "voteTallyBlockThreshold",
+    "slot": "8",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "__legacyActiveVoteCount",
+    "slot": "9",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "overlordManagementRevoked",
+    "slot": "10",
+    "offset": 0,
+    "type": "bool",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "validatorManagementRevoked",
+    "slot": "10",
+    "offset": 1,
+    "type": "bool",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "voterManagementRevoked",
+    "slot": "10",
+    "offset": 2,
+    "type": "bool",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "voteTallies",
+    "slot": "11",
+    "offset": 0,
+    "type": "mapping(enum ValidatorSmartContractAllowList.VoteType => mapping(uint256 => struct ValidatorSmartContractAllowList.VoteTally))",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "__legacyHasVoted",
+    "slot": "12",
+    "offset": 0,
+    "type": "mapping(enum ValidatorSmartContractAllowList.VoteType => mapping(uint256 => mapping(address => bool)))",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "_validatorReplacements",
+    "slot": "13",
+    "offset": 0,
+    "type": "mapping(uint256 => struct ValidatorSmartContractAllowList.ValidatorReplacement)",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "_effectiveValidators",
+    "slot": "14",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "_validatorCacheInitialized",
+    "slot": "15",
+    "offset": 0,
+    "type": "bool",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "_effectiveRoots",
+    "slot": "16",
+    "offset": 0,
+    "type": "address[]",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "_rootCacheInitialized",
+    "slot": "17",
+    "offset": 0,
+    "type": "bool",
+    "contract": "ValidatorSmartContractAllowList"
+   },
+   {
+    "label": "upgradeDelay",
+    "slot": "18",
+    "offset": 0,
+    "type": "uint256",
+    "contract": "ValidatorSmartContractAllowList"
+   }
+  ],
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractInterface.sol:ValidatorSmartContractInterface": [],
+  "Contracts/Paladin/ManagedProxyAdmin.sol:ManagedApplicationProxy": [],
+  "Contracts/Paladin/ManagedProxyAdmin.sol:ManagedProxyAdmin": [
+   {
+    "label": "_owner",
+    "slot": "0",
+    "offset": 0,
+    "type": "address",
+    "contract": "ManagedProxyAdmin"
+   },
+   {
+    "label": "_pendingOwner",
+    "slot": "1",
+    "offset": 0,
+    "type": "address",
+    "contract": "ManagedProxyAdmin"
+   }
+  ]
+ },
+ "slotStrings": {
+  "Contracts/CodeManagement/CanonicalUid.sol": [],
+  "Contracts/CodeManagement/CodeManager.sol": [
+   "getVoters()"
+  ],
+  "Contracts/CodeManagement/Interfaces/ICodeManager.sol": [],
+  "Contracts/CodeManagement/Interfaces/IRedeemable.sol": [],
+  "Contracts/Genesis/7702/ApprovedGasSponsor.sol": [
+   "cryft.storage.ApprovedGasSponsor.v1"
+  ],
+  "Contracts/Genesis/7702/CryftBeaconDispatcher.sol": [
+   "cryft.delegation.direct-beacon-dispatch.v2"
+  ],
+  "Contracts/Genesis/7702/CryftDelegation.sol": [
+   "1",
+   "Call(address target,uint256 value,bytes data)",
+   "CryftDelegation",
+   "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)",
+   "ExecuteSponsored(bytes32 operationId,address executor,bytes32 callsHash,uint256 nonce,uint256 deadline,uint256 executionGasLimit)",
+   "cryft.delegation.sponsored-execution.v1",
+   "cryft.transient.CryftDelegation.reentrancy"
+  ],
+  "Contracts/Genesis/7702/CryftDelegationBeacon.sol": [],
+  "Contracts/Genesis/7702/CryftDelegationRegistry.sol": [
+   "cryft.delegation.direct-beacon-dispatch.v2",
+   "proxy_getIsInit()"
+  ],
+  "Contracts/Genesis/7702/DelegationGas.sol": [],
+  "Contracts/Genesis/7702/GasSponsor.sol": [
+   "1",
+   "CryftGasSponsor",
+   "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)",
+   "SponsorshipVoucher(bytes32 operationId,bytes32 tenantId,bytes32 campaignId,address sponsor,address account,address relayer,address delegate,bytes32 executionHash,uint256 callGasLimit,uint256 maxFeePerGas,uint256 maxCost,uint256 deadline)",
+   "cryft.delegation.direct-beacon-dispatch.v2",
+   "cryft.delegation.sponsored-execution.v1"
+  ],
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegation.sol": [],
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegationRegistry.sol": [],
+  "Contracts/Genesis/7702/Interfaces/IGasSponsor.sol": [],
+  "Contracts/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol": [],
+  "Contracts/Genesis/7702/Libraries/CryftDelegationCapabilities.sol": [],
+  "Contracts/Genesis/7702/Libraries/CryftECDSA.sol": [],
+  "Contracts/Genesis/7702/ProgramGasSponsor.sol": [
+   "cryft.storage.ApprovedGasSponsor.v1",
+   "cryft.storage.ProgramGasSponsor.v1"
+  ],
+  "Contracts/Genesis/7702/WorkerGasSponsor.sol": [
+   "cryft.storage.WorkerGasSponsor.v1"
+  ],
+  "Contracts/Genesis/GasManager/GasManager.sol": [
+   "getVoters()"
+  ],
+  "Contracts/Genesis/Governance/GovernanceMembers.sol": [],
+  "Contracts/Genesis/Governance/GovernanceVotes.sol": [
+   "cryft.governance.snapshot.v1"
+  ],
+  "Contracts/Genesis/Upgradeable/AddressUpgradeable.sol": [],
+  "Contracts/Genesis/Upgradeable/Initializable.sol": [],
+  "Contracts/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": [],
+  "Contracts/Genesis/Upgradeable/Interfaces/IERC1967.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Proxy.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol": [
+   "admin()",
+   "implementation()"
+  ],
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": [
+   "TransparentUpgradeableProxy.activeProposal",
+   "TransparentUpgradeableProxy.activeProposalStart",
+   "TransparentUpgradeableProxy.guardianArray",
+   "TransparentUpgradeableProxy.guardianArrayIndex",
+   "TransparentUpgradeableProxy.guardianCount",
+   "TransparentUpgradeableProxy.guardianMap",
+   "TransparentUpgradeableProxy.isInit",
+   "TransparentUpgradeableProxy.overlordCount",
+   "TransparentUpgradeableProxy.overlordMap",
+   "TransparentUpgradeableProxy.proposalRound",
+   "TransparentUpgradeableProxy.proposalStartBlock",
+   "TransparentUpgradeableProxy.proposalVoteCount",
+   "TransparentUpgradeableProxy.proposalVoter",
+   "TransparentUpgradeableProxy.rootRevoked",
+   "TransparentUpgradeableProxy.voteEpoch",
+   "TransparentUpgradeableProxy.voteExpiry",
+   "cryft.proxy.governance.snapshot.v1",
+   "cryft.proxy.governance.votes.v1",
+   "cryft.proxy.root.renounced.v1",
+   "cryft.proxy.upgrade.schedule.v1",
+   "getRootOverlords()",
+   "getUpgradeDelay()"
+  ],
+  "Contracts/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": [],
+  "Contracts/Genesis/Upgradeable/Utils/Address.sol": [],
+  "Contracts/Genesis/Upgradeable/Utils/Math/MathUpgradeable.sol": [],
+  "Contracts/Genesis/Upgradeable/Utils/Math/SignedMathUpgradeable.sol": [],
+  "Contracts/Genesis/Upgradeable/Utils/StorageSlot.sol": [],
+  "Contracts/Genesis/Upgradeable/Utils/StringsUpgradeable.sol": [],
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol": [
+   "getRootOverlords()",
+   "getValidators()",
+   "getVoters()"
+  ],
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractInterface.sol": [],
+  "Contracts/Paladin/ManagedProxyAdmin.sol": []
+ },
+ "structs": {
+  "Contracts/CodeManagement/CanonicalUid.sol": {},
+  "Contracts/CodeManagement/CodeManager.sol": {
+   "Delivery": [
+    "address recipient",
+    "bool delivered",
+    "uint256 attempts"
+   ],
+   "GroupGiftChange": [
+    "address group",
+    "address gift",
+    "bool allowed",
+    "uint256 epoch"
+   ]
+  },
+  "Contracts/CodeManagement/Interfaces/ICodeManager.sol": {
+   "ContractData": [
+    "address giftContract",
+    "string chainId"
+   ]
+  },
+  "Contracts/CodeManagement/Interfaces/IRedeemable.sol": {},
+  "Contracts/Genesis/7702/ApprovedGasSponsor.sol": {
+   "ApprovalStorage": [
+    "bool initialized",
+    "mapping(address => mapping(bytes4 => CallApproval)) calls"
+   ],
+   "CallApproval": [
+    "bytes32 codeHash",
+    "address implementation",
+    "bytes32 implementationHash",
+    "uint256 maxValue",
+    "bool canonicalManagerRequired",
+    "address proxyReader",
+    "bytes32 proxyReaderHash"
+   ],
+   "Permission": [
+    "address target",
+    "bytes4 selector",
+    "CallApproval approval"
+   ]
+  },
+  "Contracts/Genesis/7702/CryftBeaconDispatcher.sol": {},
+  "Contracts/Genesis/7702/CryftDelegation.sol": {
+   "DelegationStorage": [
+    "uint256 nonce"
+   ]
+  },
+  "Contracts/Genesis/7702/CryftDelegationBeacon.sol": {},
+  "Contracts/Genesis/7702/CryftDelegationRegistry.sol": {
+   "DelegationRegistryStorage": [
+    "bytes32 delegationEntryCodeHash",
+    "bytes32 expectedAccountCodeHash",
+    "address dispatcher",
+    "address beacon",
+    "address gasSponsor",
+    "bytes32 expectedProtocolId",
+    "address registryAdmin",
+    "address pendingRegistryAdmin",
+    "Release[] releases",
+    "uint256 upgradeDelay",
+    "address pendingImplementation",
+    "bytes32 pendingCodeHash",
+    "uint256 pendingScheduledAt",
+    "uint256 pendingReadyAt",
+    "bool delayDecreasePending",
+    "uint256 pendingDelay",
+    "uint256 pendingDelayReadyAt"
+   ],
+   "ImplementationMetadata": [
+    "bytes32 codeHash",
+    "bytes32 protocolId",
+    "uint256 capabilities",
+    "string version"
+   ]
+  },
+  "Contracts/Genesis/7702/DelegationGas.sol": {},
+  "Contracts/Genesis/7702/GasSponsor.sol": {
+   "GasSponsorStorage": [
+    "address platformAdmin",
+    "address pendingPlatformAdmin",
+    "address voucherSigner",
+    "address approvedDelegate",
+    "uint256 fixedOverheadGas",
+    "bool paused",
+    "mapping(address => bool) relayers",
+    "mapping(bytes32 => bool) consumedOperations",
+    "mapping(address => SponsorState) sponsors",
+    "bytes32 approvedDelegateCodeHash",
+    "mapping(address => uint256) restrictedGasCredit",
+    "mapping(address => address) allowancePolicies",
+    "mapping(address => bool) walletApprovalRequired",
+    "mapping(address => mapping(address => uint8)) sponsoredWallets",
+    "address pauser",
+    "mapping(address => uint256) opsPerDay",
+    "mapping(address => uint256) opsDay",
+    "mapping(address => uint256) opsCount"
+   ],
+   "PolicyContext": [
+    "address policy",
+    "uint256 overhead"
+   ],
+   "SponsorState": [
+    "bytes32 tenantId",
+    "address manager",
+    "uint256 balance",
+    "uint256 adminMaxCostPerOperation",
+    "uint256 tenantMaxCostPerOperation",
+    "uint256 adminDailyLimit",
+    "uint256 tenantDailyLimit",
+    "uint256 dailySpent",
+    "uint256 lastResetDay",
+    "bool adminEnabled",
+    "bool tenantEnabled"
+   ]
+  },
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegation.sol": {
+   "Call": [
+    "address target",
+    "uint256 value",
+    "bytes data"
+   ],
+   "SponsoredExecutionRequest": [
+    "bytes32 operationId",
+    "address executor",
+    "Call[] calls",
+    "uint256 nonce",
+    "uint256 deadline",
+    "uint256 executionGasLimit"
+   ]
+  },
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegationRegistry.sol": {
+   "AccountStatus": [
+    "bool delegatedToEntry",
+    "bool proxyInitialized",
+    "bool protocolCompatible",
+    "bool interfaceCompatible",
+    "bool sponsorReady",
+    "uint256 nonce",
+    "bytes32 protocolId",
+    "uint256 capabilities",
+    "string implementationVersion"
+   ],
+   "DelegationSnapshot": [
+    "address delegationEntry",
+    "bytes32 delegationEntryCodeHash",
+    "bytes32 expectedAccountCodeHash",
+    "address dispatcher",
+    "address beacon",
+    "address beaconOwner",
+    "address registryImplementation",
+    "string registryVersion",
+    "address implementation",
+    "bytes32 implementationCodeHash",
+    "bytes32 protocolId",
+    "uint256 capabilities",
+    "string version",
+    "bool implementationCompatible",
+    "bool registryControlsBeacon",
+    "bool sponsorUsesDelegationEntry",
+    "bool matchesLatestRelease"
+   ],
+   "Release": [
+    "uint64 sequence",
+    "uint64 activationBlock",
+    "uint64 activationTimestamp",
+    "address implementation",
+    "bytes32 implementationCodeHash",
+    "bytes32 protocolId",
+    "uint256 capabilities",
+    "string version"
+   ]
+  },
+  "Contracts/Genesis/7702/Interfaces/IGasSponsor.sol": {
+   "SponsorAccount": [
+    "bytes32 tenantId",
+    "address manager",
+    "uint256 balance",
+    "uint256 adminMaxCostPerOperation",
+    "uint256 tenantMaxCostPerOperation",
+    "uint256 effectiveMaxCostPerOperation",
+    "uint256 adminDailyLimit",
+    "uint256 tenantDailyLimit",
+    "uint256 effectiveDailyLimit",
+    "uint256 dailySpent",
+    "bool adminEnabled",
+    "bool tenantEnabled"
+   ],
+   "SponsorshipVoucher": [
+    "bytes32 operationId",
+    "bytes32 tenantId",
+    "bytes32 campaignId",
+    "address sponsor",
+    "address account",
+    "address relayer",
+    "address delegate",
+    "bytes32 executionHash",
+    "uint256 callGasLimit",
+    "uint256 maxFeePerGas",
+    "uint256 maxCost",
+    "uint256 deadline"
+   ]
+  },
+  "Contracts/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol": {},
+  "Contracts/Genesis/7702/Libraries/CryftDelegationCapabilities.sol": {},
+  "Contracts/Genesis/7702/Libraries/CryftECDSA.sol": {},
+  "Contracts/Genesis/7702/ProgramGasSponsor.sol": {
+   "ProgramStorage": [
+    "address program",
+    "uint256 hardMaxCostPerOperation",
+    "uint256 hardDailyLimit",
+    "mapping(address => bool) programSponsor",
+    "mapping(address => uint256) opsDay",
+    "mapping(address => uint256) opsCount",
+    "mapping(address => bool) targetsRequired",
+    "mapping(address => mapping(address => bool)) sponsoredTargets",
+    "mapping(address => bool) programDenied",
+    "mapping(address => address) openedBy",
+    "uint256 deniedCount"
+   ]
+  },
+  "Contracts/Genesis/7702/WorkerGasSponsor.sol": {
+   "Reservation": [
+    "address sponsor",
+    "address wallet",
+    "address worker",
+    "address treasury",
+    "address policy",
+    "bytes32 requestHash",
+    "uint256 maximum",
+    "uint256 created"
+   ],
+   "WorkerStorage": [
+    "mapping(address => address) treasuries",
+    "mapping(address => mapping(address => bool)) tenantWorkers",
+    "mapping(address => uint256) reserved",
+    "mapping(bytes32 => Reservation) operations",
+    "mapping(address => uint256) unpaidRevenue"
+   ]
+  },
+  "Contracts/Genesis/GasManager/GasManager.sol": {
+   "Approval": [
+    "uint256 executableAt",
+    "uint256 expiresAt",
+    "uint256 epoch"
+   ],
+   "FundProposal": [
+    "bytes32 fundingId",
+    "bytes32 noteHash",
+    "address payable to",
+    "uint256 amount",
+    "uint256 nonce",
+    "bool executed",
+    "bool exists"
+   ],
+   "ParameterChange": [
+    "Parameter parameter",
+    "uint256 value"
+   ],
+   "SponsorFundingStorage": [
+    "mapping(bytes32 => address) sponsorByFundKey"
+   ]
+  },
+  "Contracts/Genesis/Governance/GovernanceMembers.sol": {},
+  "Contracts/Genesis/Governance/GovernanceVotes.sol": {
+   "Configuration": [
+    "address[] local",
+    "address[] providers",
+    "bytes32 membersHash"
+   ],
+   "Proposal": [
+    "uint256 epoch",
+    "uint256 start",
+    "uint256 expires",
+    "uint256 threshold",
+    "address[] electorate",
+    "address[] votes",
+    "address proposer",
+    "bool exempt"
+   ],
+   "State": [
+    "uint256 epoch",
+    "uint256 active",
+    "mapping(bytes32 => Proposal) proposals",
+    "address[] approvedVoters",
+    "bool votersInitialized",
+    "mapping(uint256 => Configuration) configurations",
+    "mapping(uint256 => mapping(address => uint256)) openBy",
+    "mapping(uint256 => mapping(address => uint256)) exemptBy"
+   ]
+  },
+  "Contracts/Genesis/Upgradeable/AddressUpgradeable.sol": {},
+  "Contracts/Genesis/Upgradeable/Initializable.sol": {},
+  "Contracts/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": {},
+  "Contracts/Genesis/Upgradeable/Interfaces/IERC1967.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/Proxy.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": {
+   "ProxyGovernanceStorage": [
+    "address[] localOverlords",
+    "bytes32 sessionContext"
+   ],
+   "RootRenounceStorage": [
+    "address[] renounced",
+    "mapping(address => bool) isRenounced"
+   ],
+   "UpgradeStorage": [
+    "mapping(bytes32 => uint256) scheduledAt",
+    "mapping(bytes32 => address) proposerOf",
+    "mapping(address => bytes32) scheduleOf"
+   ]
+  },
+  "Contracts/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": {},
+  "Contracts/Genesis/Upgradeable/Utils/Address.sol": {},
+  "Contracts/Genesis/Upgradeable/Utils/Math/MathUpgradeable.sol": {},
+  "Contracts/Genesis/Upgradeable/Utils/Math/SignedMathUpgradeable.sol": {},
+  "Contracts/Genesis/Upgradeable/Utils/StorageSlot.sol": {
+   "AddressSlot": [
+    "address value"
+   ],
+   "BooleanSlot": [
+    "bool value"
+   ],
+   "Bytes32Slot": [
+    "bytes32 value"
+   ],
+   "BytesSlot": [
+    "bytes value"
+   ],
+   "StringSlot": [
+    "string value"
+   ],
+   "Uint256Slot": [
+    "uint256 value"
+   ]
+  },
+  "Contracts/Genesis/Upgradeable/Utils/StringsUpgradeable.sol": {},
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol": {
+   "ValidatorReplacement": [
+    "address previous",
+    "address replacement"
+   ],
+   "VoteTally": [
+    "uint256 totalVotes",
+    "uint256 startVoteBlock",
+    "address[] voters"
+   ]
+  },
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractInterface.sol": {},
+  "Contracts/Paladin/ManagedProxyAdmin.sol": {}
+ },
+ "enumSizes": {
+  "Contracts/CodeManagement/CanonicalUid.sol": {},
+  "Contracts/CodeManagement/CodeManager.sol": {
+   "UniqueIdStatus": 3,
+   "VoteType": 11
+  },
+  "Contracts/CodeManagement/Interfaces/ICodeManager.sol": {},
+  "Contracts/CodeManagement/Interfaces/IRedeemable.sol": {},
+  "Contracts/Genesis/7702/ApprovedGasSponsor.sol": {},
+  "Contracts/Genesis/7702/CryftBeaconDispatcher.sol": {},
+  "Contracts/Genesis/7702/CryftDelegation.sol": {},
+  "Contracts/Genesis/7702/CryftDelegationBeacon.sol": {},
+  "Contracts/Genesis/7702/CryftDelegationRegistry.sol": {},
+  "Contracts/Genesis/7702/DelegationGas.sol": {},
+  "Contracts/Genesis/7702/GasSponsor.sol": {},
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegation.sol": {},
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegationRegistry.sol": {},
+  "Contracts/Genesis/7702/Interfaces/IGasSponsor.sol": {},
+  "Contracts/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol": {},
+  "Contracts/Genesis/7702/Libraries/CryftDelegationCapabilities.sol": {},
+  "Contracts/Genesis/7702/Libraries/CryftECDSA.sol": {},
+  "Contracts/Genesis/7702/ProgramGasSponsor.sol": {},
+  "Contracts/Genesis/7702/WorkerGasSponsor.sol": {},
+  "Contracts/Genesis/GasManager/GasManager.sol": {
+   "Parameter": 4,
+   "VoteType": 16
+  },
+  "Contracts/Genesis/Governance/GovernanceMembers.sol": {},
+  "Contracts/Genesis/Governance/GovernanceVotes.sol": {},
+  "Contracts/Genesis/Upgradeable/AddressUpgradeable.sol": {},
+  "Contracts/Genesis/Upgradeable/Initializable.sol": {},
+  "Contracts/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": {},
+  "Contracts/Genesis/Upgradeable/Interfaces/IERC1967.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/Proxy.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol": {},
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": {},
+  "Contracts/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": {},
+  "Contracts/Genesis/Upgradeable/Utils/Address.sol": {},
+  "Contracts/Genesis/Upgradeable/Utils/Math/MathUpgradeable.sol": {
+   "Rounding": 3
+  },
+  "Contracts/Genesis/Upgradeable/Utils/Math/SignedMathUpgradeable.sol": {},
+  "Contracts/Genesis/Upgradeable/Utils/StorageSlot.sol": {},
+  "Contracts/Genesis/Upgradeable/Utils/StringsUpgradeable.sol": {},
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol": {
+   "VoteType": 25
+  },
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractInterface.sol": {},
+  "Contracts/Paladin/ManagedProxyAdmin.sol": {}
+ },
+ "hexSlotConstants": {
+  "Contracts/CodeManagement/CanonicalUid.sol": [],
+  "Contracts/CodeManagement/CodeManager.sol": [],
+  "Contracts/CodeManagement/Interfaces/ICodeManager.sol": [],
+  "Contracts/CodeManagement/Interfaces/IRedeemable.sol": [],
+  "Contracts/Genesis/7702/ApprovedGasSponsor.sol": [],
+  "Contracts/Genesis/7702/CryftBeaconDispatcher.sol": [],
+  "Contracts/Genesis/7702/CryftDelegation.sol": [
+   "0x2d5df833376e6c9531b3cb92f5745ecf8ad8197730684ec3db99cc12d4e93d00"
+  ],
+  "Contracts/Genesis/7702/CryftDelegationBeacon.sol": [],
+  "Contracts/Genesis/7702/CryftDelegationRegistry.sol": [
+   "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+   "0xab4cfcf4b885f9dbbc02cc8800e34faa6a47500834aa5c49ef09aafea9c84000"
+  ],
+  "Contracts/Genesis/7702/DelegationGas.sol": [],
+  "Contracts/Genesis/7702/GasSponsor.sol": [
+   "0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100"
+  ],
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegation.sol": [],
+  "Contracts/Genesis/7702/Interfaces/ICryftDelegationRegistry.sol": [],
+  "Contracts/Genesis/7702/Interfaces/IGasSponsor.sol": [],
+  "Contracts/Genesis/7702/Interfaces/ITenantAllowancePolicy.sol": [],
+  "Contracts/Genesis/7702/Libraries/CryftDelegationCapabilities.sol": [],
+  "Contracts/Genesis/7702/Libraries/CryftECDSA.sol": [
+   "0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0"
+  ],
+  "Contracts/Genesis/7702/ProgramGasSponsor.sol": [],
+  "Contracts/Genesis/7702/WorkerGasSponsor.sol": [],
+  "Contracts/Genesis/GasManager/GasManager.sol": [
+   "0x2a467852670f144839bf1fd02ad0393580187791ab471304d92161a3bee88100"
+  ],
+  "Contracts/Genesis/Governance/GovernanceMembers.sol": [],
+  "Contracts/Genesis/Governance/GovernanceVotes.sol": [],
+  "Contracts/Genesis/Upgradeable/AddressUpgradeable.sol": [],
+  "Contracts/Genesis/Upgradeable/Initializable.sol": [],
+  "Contracts/Genesis/Upgradeable/Interfaces/DraftIERC1822.sol": [],
+  "Contracts/Genesis/Upgradeable/Interfaces/IERC1967.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Beacon/IBeacon.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Proxy.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/ERC1967/ERC1967Upgrade.sol": [
+   "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+   "0x4910fdfa16fed3260ed0e7147f7cc6da11a60208b5b9406d12a635614ffd9143",
+   "0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50"
+  ],
+  "Contracts/Genesis/Upgradeable/Proxy/Proxy.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol": [],
+  "Contracts/Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol": [],
+  "Contracts/Genesis/Upgradeable/ReentrancyGuardUpgradeable.sol": [],
+  "Contracts/Genesis/Upgradeable/Utils/Address.sol": [],
+  "Contracts/Genesis/Upgradeable/Utils/Math/MathUpgradeable.sol": [],
+  "Contracts/Genesis/Upgradeable/Utils/Math/SignedMathUpgradeable.sol": [],
+  "Contracts/Genesis/Upgradeable/Utils/StorageSlot.sol": [
+   "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+  ],
+  "Contracts/Genesis/Upgradeable/Utils/StringsUpgradeable.sol": [],
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractAllowList.sol": [],
+  "Contracts/Genesis/validatorContracts/ValidatorSmartContractInterface.sol": [],
+  "Contracts/Paladin/ManagedProxyAdmin.sol": []
+ }
+}

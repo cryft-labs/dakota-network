@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
-//
-// Based on OpenZeppelin Contracts v4.9.6 (utils/AddressUpgradeable.sol).
-// Modified by Cryft Labs — assembly ("memory-safe") Osaka-level annotation.
-//
-// WARNING: This is a modified version of the original OpenZeppelin contract.
-// Do not assume it is stock or unmodified — review all changes before use.
-
-pragma solidity >=0.8.2 <0.9.0;
+// Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
+// Derived from OpenZeppelin Contracts v4.9.6 (utils/AddressUpgradeable.sol), MIT.
+pragma solidity 0.8.37;
 
 /**
  * @dev Collection of functions related to the address type

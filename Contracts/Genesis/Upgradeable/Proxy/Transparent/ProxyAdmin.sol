@@ -1,95 +1,82 @@
 // SPDX-License-Identifier: MIT
-//
-// Based on OpenZeppelin Contracts v4.9.0 (proxy/transparent/ProxyAdmin.sol).
-// Modified by Cryft Labs — guardian/overlord governance replaces single-owner pattern.
 // Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
-//
-// WARNING: This is a modified version of the original OpenZeppelin contract.
-// Do not assume it is stock or unmodified — review all changes before use.
+// Derived from OpenZeppelin Contracts v4.9.0 (proxy/transparent/ProxyAdmin.sol), MIT.
+pragma solidity 0.8.37;
 
-pragma solidity >=0.8.2 <0.9.0;
+import {ITransparentUpgradeableProxy, TransparentUpgradeableProxy} from "./TransparentUpgradeableProxy.sol";
 
-import "./TransparentUpgradeableProxy.sol";
-
-/*
-  ┌──────────────── Contract Architecture ──────────────────────┐
-  │                                                             │
-  │  Auxiliary contract assigned as the ERC1967 admin of        │
-  │  TransparentUpgradeableProxy instances.                     │
-  │                                                             │
-  │  Replaces OpenZeppelin's single-owner pattern with          │
-  │  per-proxy guardian/overlord governance.                    │
-  │                                                             │
-  │  Access control:                                            │
-  │    Guardian — execute an upgrade that was scheduled on the  │
-  │    proxy (proxy_scheduleUpgrade) and whose network-wide     │
-  │    delay (0x1111 getUpgradeDelay) has elapsed (audit X-1).  │
-  │                                                             │
-  │  Provides:                                                  │
-  │    - upgrade() / upgradeAndCall() — guardian-gated          │
-  │    - getProxyGovernanceStatus()   — full state snapshot     │
-  │    - getProxyGuardians()          — guardian enumeration    │
-  │    - getProxyAdmin/Implementation — admin introspection     │
-  │                                                             │
-  │  Each proxy is independently governed by its own            │
-  │  controller set — no single-owner bottleneck.               │
-  └─────────────────────────────────────────────────────────────┘
-*/
+/// @title ProxyAdmin
+/// @notice The ERC-1967 admin of every genesis proxy: runs scheduled upgrades and reports proxy governance state.
+/// @dev Baked into genesis at 0x…FacAdE. There is no owner: each proxy is governed by its own controllers. A
+///      guardian of a proxy (roots count as guardians) may run an upgrade that was scheduled on that proxy
+///      (proxy_scheduleUpgrade) once the network upgrade delay set in 0x…1111 has passed; the proxy checks the
+///      schedule.
+/// @custom:version 1.0.0
+/// @custom:security-contact security@cryft.cards
 contract ProxyAdmin {
+    // ─── Errors ──────────────────────────────────────────────────────────────────────────────────
+
+    /// @notice The caller is not a guardian of the proxy.
+    error NotGuardian();
+    /// @notice The proxy did not answer an admin read.
+    error ProxyReadFailed();
+    /// @notice upgradeAndCall needs call data; use upgrade() without it.
+    error EmptyInitData();
+
+    // ─── Modifiers ───────────────────────────────────────────────────────────────────────────────
 
     modifier onlyGuardianOf(ITransparentUpgradeableProxy proxy) {
-        require(
-            TransparentUpgradeableProxy(payable(address(proxy))).proxy_isGuardian(msg.sender),
-            "ProxyAdmin: caller is not a guardian of this proxy"
-        );
+        if (!TransparentUpgradeableProxy(payable(address(proxy))).proxy_isGuardian(msg.sender)) revert NotGuardian();
         _;
     }
 
-    /**
-     * @dev Returns the current implementation of `proxy`.
-     *
-     * Requirements:
-     *
-     * - This contract must be the admin of `proxy`.
-     */
-    function getProxyImplementation(
-        ITransparentUpgradeableProxy proxy
-    ) public view virtual returns (address) {
-        // We need to manually run the static call since the getter cannot be flagged as view
+    // ─── Public functions ────────────────────────────────────────────────────────────────────────
+
+    /// @notice Upgrades `proxy` to the scheduled `implementation` with no call (guardians of `proxy` only).
+    /// @dev This contract must be the admin of `proxy`. See {TransparentUpgradeableProxy-upgradeTo}.
+    function upgrade(ITransparentUpgradeableProxy proxy, address implementation)
+        public
+        virtual
+        onlyGuardianOf(proxy)
+    {
+        proxy.upgradeTo(implementation);
+    }
+
+    /// @notice Upgrades `proxy` to the scheduled `implementation` and calls it with `data` (guardians of `proxy`
+    ///         only).
+    /// @dev This contract must be the admin of `proxy`. See {TransparentUpgradeableProxy-upgradeToAndCall}.
+    function upgradeAndCall(ITransparentUpgradeableProxy proxy, address implementation, bytes memory data)
+        public
+        payable
+        virtual
+        onlyGuardianOf(proxy)
+    {
+        if (data.length == 0) revert EmptyInitData();
+        proxy.upgradeToAndCall{value: msg.value}(implementation, data);
+    }
+
+    /// @notice Returns the current implementation of `proxy`.
+    /// @dev This contract must be the admin of `proxy`.
+    function getProxyImplementation(ITransparentUpgradeableProxy proxy) public view virtual returns (address) {
+        // A raw static call, since the dispatched getter cannot be declared view.
         // bytes4(keccak256("implementation()")) == 0x5c60da1b
-        (bool success, bytes memory returndata) = address(proxy).staticcall(
-            hex"5c60da1b"
-        );
-        require(success, "ProxyAdmin: implementation() call failed");
+        (bool success, bytes memory returndata) = address(proxy).staticcall(hex"5c60da1b");
+        if (!success) revert ProxyReadFailed();
         return abi.decode(returndata, (address));
     }
 
-    /**
-     * @dev Returns the current admin of `proxy`.
-     *
-     * Requirements:
-     *
-     * - This contract must be the admin of `proxy`.
-     */
-    function getProxyAdmin(
-        ITransparentUpgradeableProxy proxy
-    ) public view virtual returns (address) {
-        // We need to manually run the static call since the getter cannot be flagged as view
+    /// @notice Returns the current admin of `proxy`.
+    /// @dev This contract must be the admin of `proxy`.
+    function getProxyAdmin(ITransparentUpgradeableProxy proxy) public view virtual returns (address) {
+        // A raw static call, since the dispatched getter cannot be declared view.
         // bytes4(keccak256("admin()")) == 0xf851a440
-        (bool success, bytes memory returndata) = address(proxy).staticcall(
-            hex"f851a440"
-        );
-        require(success, "ProxyAdmin: admin() call failed");
+        (bool success, bytes memory returndata) = address(proxy).staticcall(hex"f851a440");
+        if (!success) revert ProxyReadFailed();
         return abi.decode(returndata, (address));
     }
 
-    /**
-     * @dev Returns a governance status snapshot for `proxy`.
-     *      Useful for dashboards, monitoring, and quick review of the proxy's state.
-     */
-    function getProxyGovernanceStatus(
-        ITransparentUpgradeableProxy proxy
-    )
+    /// @notice Returns a snapshot of `proxy`'s governance state for dashboards and monitoring.
+    function getProxyGovernanceStatus(ITransparentUpgradeableProxy proxy)
         public
         view
         returns (
@@ -109,66 +96,24 @@ contract ProxyAdmin {
     {
         TransparentUpgradeableProxy p = TransparentUpgradeableProxy(payable(address(proxy)));
 
-        // Admin and implementation via raw staticcall (admin-only selectors)
+        // Admin and implementation through raw static calls (admin-only selectors).
         currentAdmin = getProxyAdmin(proxy);
         currentImplementation = getProxyImplementation(proxy);
 
-        // Governance state
         rootRevoked = p.proxy_isRootOverlordRevoked();
         overlordCount = p.proxy_getOverlordCount();
         guardianCount = p.proxy_getGuardianCount();
         overlordThreshold = p.proxy_getOverlordThreshold();
 
-        // Voting session
         votingSessionActive = p.proxy_isVotingSessionActive();
         (activeProposalId, activeProposalStartBlock, activeProposalExpired) = p.proxy_getActiveProposal();
 
-        // Epoch and expiry
         voteEpoch = p.proxy_getVoteEpoch();
         voteExpiry = p.proxy_getVoteExpiry();
     }
 
-    /**
-     * @dev Upgrades `proxy` to `implementation`. See {TransparentUpgradeableProxy-upgradeTo}.
-     *      Restricted to guardians of the proxy (operational-level action).
-     *
-     * Requirements:
-     *
-     * - This contract must be the admin of `proxy`.
-     * - Caller must be a guardian of `proxy`.
-     */
-    function upgrade(
-        ITransparentUpgradeableProxy proxy,
-        address implementation
-    ) public virtual onlyGuardianOf(proxy) {
-        proxy.upgradeTo(implementation);
-    }
-
-    /**
-     * @dev Upgrades `proxy` to `implementation` and calls a function on the new implementation. See
-     * {TransparentUpgradeableProxy-upgradeToAndCall}.
-     *      Restricted to guardians of the proxy (operational-level action).
-     *
-     * Requirements:
-     *
-     * - This contract must be the admin of `proxy`.
-     * - Caller must be a guardian of `proxy`.
-     */
-    function upgradeAndCall(
-        ITransparentUpgradeableProxy proxy,
-        address implementation,
-        bytes memory data
-    ) public payable virtual onlyGuardianOf(proxy) {
-        require(data.length > 0, "ProxyAdmin: use upgrade() when there is no call data");
-        proxy.upgradeToAndCall{value: msg.value}(implementation, data);
-    }
-
-    /**
-     * @dev Returns the list of guardians for `proxy`.
-     */
-    function getProxyGuardians(
-        ITransparentUpgradeableProxy proxy
-    ) public view returns (address[] memory) {
+    /// @notice Returns the guardians of `proxy`.
+    function getProxyGuardians(ITransparentUpgradeableProxy proxy) public view returns (address[] memory) {
         return TransparentUpgradeableProxy(payable(address(proxy))).proxy_getGuardians();
     }
 }

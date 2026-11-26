@@ -37,7 +37,7 @@ def test_independent_registry_allowed_but_official_registration_still_pays(chain
     assert send(c,sponsor,operation(independent.address,independent.functions.register()._encode_transaction_data()))[0]['success']
     assert independent.functions.count().call()==1
     cm=linked(c,'CodeManager'); vault=c['accounts'][8]
-    tx(c,cm.functions.voteToUpdateFeeVault(vault))
+    tx(c,cm.functions.voteToSetFeeVault(vault))
     gift=mock(c,'''pragma solidity ^0.8.20;
       interface CM {function registerUniqueIds(address,string memory,uint256) external payable;}
       contract Gift {address public codeManagerAddress; constructor(address m){codeManagerAddress=m;}

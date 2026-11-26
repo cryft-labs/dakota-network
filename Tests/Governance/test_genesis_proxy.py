@@ -234,10 +234,10 @@ def test_validator_flooder_hits_its_cap_and_its_removal_still_passes(chain):
     assert r.functions.getVoterCount().call() == 4
     cap = 64 // 4
     for i in range(cap):
-        tx(c, r.functions.voteToUpdateVoteTallyBlockThreshold(HOUR + i), rogue)
+        tx(c, r.functions.voteToSetVoteWindow(HOUR + i), rogue)
     assert r.functions.openBallots(rogue).call() == [cap, 0]
-    fails(c, r.functions.voteToUpdateVoteTallyBlockThreshold(HOUR + cap), rogue)
-    fails(c, r.functions.voteToUpdateVoteTallyBlockThreshold(2 * HOUR), outsider)  # non-members open nothing
+    fails(c, r.functions.voteToSetVoteWindow(HOUR + cap), rogue)
+    fails(c, r.functions.voteToSetVoteWindow(2 * HOUR), outsider)  # non-members open nothing
     tx(c, r.functions.voteToRemoveVoter(rogue), a)
     assert r.functions.openBallots(a).call() == [0, 1]                  # exempt, outside the cap
     tx(c, r.functions.voteToRemoveVoter(rogue), b)
@@ -246,7 +246,7 @@ def test_validator_flooder_hits_its_cap_and_its_removal_still_passes(chain):
     assert not r.functions.isVoter(rogue).call()
     assert r.functions.activeVoteCount().call() == 0                    # voter change starts a new epoch
     assert r.functions.openBallots(rogue).call() == [0, 0]
-    tx(c, r.functions.voteToUpdateVoteTallyBlockThreshold(2 * HOUR), a)
+    tx(c, r.functions.voteToSetVoteWindow(2 * HOUR), a)
 
 
 def test_single_voter_cap_is_one_when_electorate_is_large(chain):
@@ -254,8 +254,8 @@ def test_single_voter_cap_is_one_when_electorate_is_large(chain):
     c = chain; r = c['registry']; a = c['accounts'][0]
     others = [Web3.to_checksum_address('0x' + hex(0x200000 + i)[2:].zfill(40)) for i in range(63)]
     configure(c, r, [a] + others)
-    tx(c, r.functions.voteToUpdateVoteTallyBlockThreshold(2 * HOUR), a)
-    fails(c, r.functions.voteToUpdateVoteTallyBlockThreshold(3 * HOUR), a)
+    tx(c, r.functions.voteToSetVoteWindow(2 * HOUR), a)
+    fails(c, r.functions.voteToSetVoteWindow(3 * HOUR), a)
     assert r.functions.openBallots(a).call() == [1, 0]
 
 
@@ -272,7 +272,7 @@ def test_vote_to_set_upgrade_delay_bounds(chain):
     tx(c, r.functions.voteToAddVoter(b))
     tx(c, r.functions.voteToSetUpgradeDelay(7 * DAY), a)
     assert r.functions.getUpgradeDelay().call() == 0
-    assert r.functions.getVoteTally(enum('ValidatorSmartContractAllowList', 'SET_UPGRADE_DELAY'), 7 * DAY + 1).call()[0] == 1
+    assert r.functions.getVoteTally(enum('ValidatorSmartContractAllowList', 'SetUpgradeDelay'), 7 * DAY + 1).call()[0] == 1
     tx(c, r.functions.voteToSetUpgradeDelay(7 * DAY), b)
     assert r.functions.getUpgradeDelay().call() == 7 * DAY == p.functions.proxy_getUpgradeDelay().call()
 

@@ -295,9 +295,8 @@ Destructive operations (funding, burns) require two phases:
 
 | Operation | Propose/Vote Function | Execute Function | Who Can Execute |
 | --- | --- | --- | --- |
-| Legacy direct funding | `voteToFundGasV1(to, amount)` | `executeFundGasV1(to, amount)` | Guardian or `to` address |
-| Nonce-bound direct funding | `proposeFundGasV2(...)`, then `voteToFundGasV2(fundKey)` | `executeFundGasV2(fundKey)` | Guardian or funded address |
-| Sponsor-ledger funding | `proposeSponsorFunding(...)`, then `voteToFundGasV2(fundKey)` | `executeSponsorFunding(fundKey)` | Guardian or bound sponsor |
+| Nonce-bound direct funding | `proposeGasFunding(...)`, then `voteToFundGas(fundKey)` | `executeGasFunding(fundKey)` | Guardian or funded address |
+| Sponsor-ledger funding | `proposeSponsorFunding(...)`, then `voteToFundGas(fundKey)` | `executeSponsorFunding(fundKey)` | Guardian or bound sponsor |
 | Burn ERC-20 tokens | `voteToBurnTokens(token, amount)` | `executeTokenBurn(token, amount)` | Guardian only |
 | Burn native coin | `voteToBurnNativeCoin(amount)` | `executeCoinBurn(amount)` | Guardian only |
 
@@ -311,7 +310,7 @@ point and verifies the exact balance deltas on both contracts.
 Sponsor funding never uses the generic native-transfer executor because
 `0x...FEeD` intentionally rejects unclassified native transfers. A voter calls
 `proposeSponsorFunding(fundingId, sponsor, amount, note)`, remaining voters use
-`voteToFundGasV2(fundKey)`, and a guardian or the proposal-bound sponsor calls
+`voteToFundGas(fundKey)`, and a guardian or the proposal-bound sponsor calls
 `executeSponsorFunding(fundKey)`. Execution invokes
 `GasSponsor.depositFor{value: amount}(sponsor)` at `0x...FEeD`.
 
@@ -338,7 +337,7 @@ Clearing emits `GuardiansCleared(count)` and resets all guardian mappings and th
 
 | Parameter                 | Default      | Function                                | Constraints  |
 | ------------------------- | ------------ | --------------------------------------- | ------------ |
-| `voteTallyBlockThreshold` | 1,000 blocks | `voteToUpdateVoteTallyBlockThreshold()` | 1 to 100,000 |
+| `voteTallyBlockThreshold` | 1,000 blocks | `voteToSetVoteWindow()` | 1 to 100,000 |
 
 #### Native Coin Burns
 
@@ -550,13 +549,13 @@ Also serves as the public mirror and Pente router. Private code consumption uses
 | ------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------- |
 | Add whitelisted address              | `voteToAddWhitelistedAddress(address)`         | Voter supermajority required                                           |
 | Remove whitelisted address           | `voteToRemoveWhitelistedAddress(address)`      | Voter supermajority required                                           |
-| Update registration fee              | `voteToUpdateRegistrationFee(uint256)`         | Voter supermajority required                                           |
-| Update fee vault                     | `voteToUpdateFeeVault(address)`                | Voter supermajority required                                           |
+| Update registration fee              | `voteToSetRegistrationFee(uint256)`         | Voter supermajority required                                           |
+| Update fee vault                     | `voteToSetFeeVault(address)`                | Voter supermajority required                                           |
 | Add voter                            | `voteToAddVoter(address)`                      | Not already an effective voter; safe resulting set                            |
 | Remove voter                         | `voteToRemoveVoter(address)`                   | Resulting effective voter set must remain nonempty                       |
 | Add external voter contract          | `voteToAddOtherVoterContract(address)`         | Bounded `getVoters()` response; safe unique resulting set     |
 | Remove external voter contract       | `voteToRemoveOtherVoterContract(address)`      | Safe resulting effective voter set                                                 |
-| Update vote tally block threshold    | `voteToUpdateVoteTallyBlockThreshold(uint256)` | 1 to 100,000 blocks                                                    |
+| Update vote tally block threshold    | `voteToSetVoteWindow(uint256)` | 1 to 100,000 blocks                                                    |
 | Authorize/de-authorize privacy group | `voteToAuthorizePrivacyGroup(address)`         | Toggles `isAuthorizedPrivacyGroup[addr]`; voter supermajority required |
 | Reset expired tally                  | `resetExpiredTally(VoteType, uint256)`         | Permissionless; tally must have expired                                    |
 

@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: MIT
-//
-// Based on OpenZeppelin Contracts (last updated v4.9.0) (proxy/ERC1967/ERC1967Upgrade.sol).
-// Modified for the Cryft Network by Cryft Labs.
-//
-// WARNING: This is a modified version of the original OpenZeppelin contract.
-// Do not assume it is stock or unmodified — review all changes before use.
+// Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
+// Derived from OpenZeppelin Contracts v4.9.0 (proxy/ERC1967/ERC1967Upgrade.sol), MIT.
+pragma solidity 0.8.37;
 
-pragma solidity >=0.8.2 <0.9.0;
-
-import "../Beacon/IBeacon.sol";
-import "../../Interfaces/IERC1967.sol";
-import "../../Interfaces/DraftIERC1822.sol";
-import "../../Utils/Address.sol";
-import "../../Utils/StorageSlot.sol";
+import {IBeacon} from "../Beacon/IBeacon.sol";
+import {IERC1967} from "../../Interfaces/IERC1967.sol";
+import {IERC1822Proxiable} from "../../Interfaces/DraftIERC1822.sol";
+import {Address} from "../../Utils/Address.sol";
+import {StorageSlot} from "../../Utils/StorageSlot.sol";
 
 /**
  * @dev This abstract contract provides getters and event emitting update functions for

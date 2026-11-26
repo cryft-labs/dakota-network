@@ -357,7 +357,7 @@ After the GasManager `2.5.0` upgrade, fund the dev sponsor from `0x...caFE`:
 );
 
 // Each remaining GasManager voter calls:
-voteToFundGasV2(fundKey);
+voteToFundGas(fundKey);
 
 // A GasManager guardian or SPONSOR calls after approval:
 executeSponsorFunding(fundKey);

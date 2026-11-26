@@ -194,6 +194,7 @@ def engine(chain, name):
 
 def enum(name, label):
     text=(REPO/'Contracts'/PATHS[name]).read_text(encoding='utf-8')
+    text=re.sub(r'//[^\n]*|/\*.*?\*/','',text,flags=re.S)
     body=re.search(r'enum VoteType\s*\{([^}]+)',text).group(1)
     return [item.strip() for item in body.split(',')].index(label)
 
@@ -223,15 +224,15 @@ def add_provider_fails(chain, c, name, provider, local, effective):
 def test_membership_votes_complete_and_invalidate_other_proposals(chain,name):
     c=engine(chain,name); a,b,d=chain['accounts'][:3]
     tx(chain,c.functions.voteToAddVoter(b),a)
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(2*HOUR),a)
+    tx(chain,c.functions.voteToSetVoteWindow(2*HOUR),a)
     tx(chain,c.functions.voteToAddVoter(d),a)
     assert c.functions.activeVoteCount().call()==2
     tx(chain,c.functions.voteToAddVoter(d),b)
     assert set(c.functions.getVoters().call())=={a,b,d}
     assert c.functions.activeVoteCount().call()==0
-    assert c.functions.getVoteTally(enum(name,'UPDATE_VOTE_TALLY_BLOCK_THRESHOLD'),2*HOUR).call()[0]==0
-    assert not c.functions.hasVoted(enum(name,'UPDATE_VOTE_TALLY_BLOCK_THRESHOLD'),2*HOUR,a).call()
-    fails(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(3*HOUR),chain['accounts'][8])
+    assert c.functions.getVoteTally(enum(name,'SetVoteWindow'),2*HOUR).call()[0]==0
+    assert not c.functions.hasVoted(enum(name,'SetVoteWindow'),2*HOUR,a).call()
+    fails(chain,c.functions.voteToSetVoteWindow(3*HOUR),chain['accounts'][8])
 
 @pytest.mark.parametrize('name',ENGINES)
 def test_duplicate_provider_members_are_unique_and_failure_keeps_authority(chain,name):
@@ -240,10 +241,10 @@ def test_duplicate_provider_members_are_unique_and_failure_keeps_authority(chain
     add_provider(chain,c,name,p.address,[a],[a,b])
     assert c.functions.getVoterCount().call()==2
     assert c.functions.getSupermajorityThreshold().call()==2
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),a)
+    tx(chain,c.functions.voteToSetVoteWindow(5*HOUR),a)
     tx(chain,p.functions.set([],True))
     assert set(c.functions.getVoters().call())=={a,b}
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),b)
+    tx(chain,c.functions.voteToSetVoteWindow(5*HOUR),b)
     assert c.functions.voteTallyBlockThreshold().call()==5*HOUR
     configure(chain,c,[a,b],[],[a,b])
     assert set(c.functions.getVoters().call())=={a,b}
@@ -253,11 +254,11 @@ def test_provider_failure_does_not_lower_three_of_four_quorum(chain,name):
     c=engine(chain,name); a,b,d,e=chain['accounts'][:4]; p=deploy(chain,'Provider')
     tx(chain,p.functions.set([d,e],False))
     configure(chain,c,[a,b],[p.address],effective=[a,b,d,e])
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),a)
+    tx(chain,c.functions.voteToSetVoteWindow(5*HOUR),a)
     tx(chain,p.functions.set([],True))
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),b)
+    tx(chain,c.functions.voteToSetVoteWindow(5*HOUR),b)
     assert c.functions.voteTallyBlockThreshold().call()==WINDOW
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),d)
+    tx(chain,c.functions.voteToSetVoteWindow(5*HOUR),d)
     assert c.functions.voteTallyBlockThreshold().call()==5*HOUR
 
 @pytest.mark.parametrize('name',ENGINES)
@@ -279,10 +280,10 @@ def test_expiry_is_frozen_and_cleanup_cannot_change_membership(chain,name):
     c=engine(chain,name); a,b=chain['accounts'][:2]
     tx(chain,c.functions.voteToAddVoter(b))
     tx(chain,c.functions.voteToAddVoter(chain['accounts'][2]))
-    vote_type=enum(name,'ADD_VOTER'); target=int(chain['accounts'][2],16)
+    vote_type=enum(name,'AddVoter'); target=int(chain['accounts'][2],16)
     expires=c.functions.getVoteTally(vote_type,target).call()[2]
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(HOUR),a)
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(HOUR),b)
+    tx(chain,c.functions.voteToSetVoteWindow(HOUR),a)
+    tx(chain,c.functions.voteToSetVoteWindow(HOUR),b)
     assert c.functions.getVoteTally(vote_type,target).call()[2]==expires
     fails(chain,c.functions.resetExpiredTally(vote_type,target),chain['accounts'][9])
     chain['tester'].mine_blocks(500)  # block counts never expire a ballot (audit X-14)
@@ -300,8 +301,8 @@ def test_atomic_last_voter_handover_and_zero_rejection(chain,name):
     for invalid in ['0x'+'0'*40,c.address,ADMIN]:
         fails(chain,c.functions.voteToSetVoterConfiguration([invalid],[],members_hash(chain,[invalid])))
     configure(chain,c,[b])
-    fails(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),a)
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),b)
+    fails(chain,c.functions.voteToSetVoteWindow(5*HOUR),a)
+    tx(chain,c.functions.voteToSetVoteWindow(5*HOUR),b)
 
 @pytest.mark.parametrize('name',ENGINES)
 def test_bad_providers_cannot_enter_configuration(chain,name):
@@ -327,7 +328,7 @@ def test_besu_validator_abi_floor_atomic_replacement_and_provider_outage(chain):
     old=c.functions.getValidators().call()
     assert len(old)==4
     fails(chain,c.functions.voteToRemoveValidator(old[0]))
-    fails(chain,c.functions.voteToUpdateMaxValidators(3))
+    fails(chain,c.functions.voteToSetMaxValidators(3))
     tx(chain,c.functions.voteToReplaceValidator(old[0],a[4]))
     assert len(c.functions.getValidators().call())==4 and a[4] in c.functions.getValidators().call()
     provider=deploy(chain,'Provider'); tx(chain,provider.functions.set(old,False))
@@ -461,12 +462,12 @@ def test_gas_funding_binds_recipient_and_runs_once(chain):
     names={entry.get('name') for entry in c.abi}
     assert 'voteToFundGasV1' not in names and 'executeFundGasV1' not in names  # V1 funding removed
     configure(chain,c,[b])
-    operation=c.functions.proposeFundGasV2('handover',recipient,amount,'same recipient after rotation')
+    operation=c.functions.proposeGasFunding('handover',recipient,amount,'same recipient after rotation')
     fund_key,_=operation.call({'from':b})
     tx(chain,operation,b)
-    fails(chain,c.functions.executeFundGasV2(fund_key),outsider)
-    tx(chain,c.functions.executeFundGasV2(fund_key),recipient)
-    fails(chain,c.functions.executeFundGasV2(fund_key),recipient)
+    fails(chain,c.functions.executeGasFunding(fund_key),outsider)
+    tx(chain,c.functions.executeGasFunding(fund_key),recipient)
+    fails(chain,c.functions.executeGasFunding(fund_key),recipient)
     assert c.functions.totalGasFunded().call()==amount
 
 def test_revocation_preserves_approved_lists_and_explicit_refresh(chain):
@@ -490,7 +491,7 @@ def test_revocation_preserves_approved_lists_and_explicit_refresh(chain):
     tx(chain,voters.functions.set([b],False))
     tx(chain,c.functions.voteToRefreshVoters(members_hash(chain,[b])))
     tx(chain,voters.functions.set([],True))
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(3*HOUR),b)
+    tx(chain,c.functions.voteToSetVoteWindow(3*HOUR),b)
     assert c.functions.getVoters().call()==[b]
     assert c.functions.getValidators().call()==sorted(validators,key=lambda value:int(value,16))
 
@@ -499,12 +500,12 @@ def test_proxy_and_application_ballots_are_independent(chain,name):
     c=linked(chain,name); a,b,guardian=chain['accounts'][:3]
     p=at(chain,'TransparentUpgradeableProxy',c.address)
     configure(chain,c,[a,b])
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(8*HOUR),a)
+    tx(chain,c.functions.voteToSetVoteWindow(8*HOUR),a)
     epoch=c.functions.governanceEpoch().call()
     tx(chain,p.functions.proxy_proposeGuardianChange(guardian,True),a)
     assert c.functions.governanceEpoch().call()==epoch
     assert c.functions.activeVoteCount().call()==1
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(8*HOUR),b)
+    tx(chain,c.functions.voteToSetVoteWindow(8*HOUR),b)
     assert c.functions.voteTallyBlockThreshold().call()==8*HOUR
     tx(chain,p.functions.proxy_addOverlord(b),a)
     tx(chain,p.functions.proxy_proposeGuardianChange(guardian,False),a)

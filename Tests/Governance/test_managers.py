@@ -228,9 +228,9 @@ def test_three_initial_voters(chain, name):
     assert set(c.functions.getVoters().call()) == {a, b, d}
     assert c.functions.getSupermajorityThreshold().call() == 2
     assert c.functions.voteTallyBlockThreshold().call() == 7 * DAY
-    tx(chain, c.functions.voteToUpdateVoteTallyBlockThreshold(2 * DAY), a)
+    tx(chain, c.functions.voteToSetVoteWindow(2 * DAY), a)
     assert c.functions.voteTallyBlockThreshold().call() == 7 * DAY
-    tx(chain, c.functions.voteToUpdateVoteTallyBlockThreshold(2 * DAY), b)
+    tx(chain, c.functions.voteToSetVoteWindow(2 * DAY), b)
     assert c.functions.voteTallyBlockThreshold().call() == 2 * DAY
     # Duplicate or invalid initial voters are refused.
     logic = deploy(chain, name)
@@ -246,10 +246,10 @@ def test_three_initial_voters(chain, name):
 def test_window_expiry_by_timestamp(chain, name):
     a, b, d = chain['accounts'][:3]
     c = linked(chain, name, [a, b, d])
-    fails(chain, c.functions.voteToUpdateVoteTallyBlockThreshold(HOUR - 1))
-    fails(chain, c.functions.voteToUpdateVoteTallyBlockThreshold(30 * DAY + 1))
-    tx(chain, c.functions.voteToUpdateVoteTallyBlockThreshold(HOUR), a)
-    vote_type = enum(name, 'UPDATE_VOTE_TALLY_BLOCK_THRESHOLD')
+    fails(chain, c.functions.voteToSetVoteWindow(HOUR - 1))
+    fails(chain, c.functions.voteToSetVoteWindow(30 * DAY + 1))
+    tx(chain, c.functions.voteToSetVoteWindow(HOUR), a)
+    vote_type = enum(name, 'SetVoteWindow')
     _, start, expires, _ = c.functions.getVoteTally(vote_type, HOUR).call()
     assert expires - start == 7 * DAY
     chain['tester'].mine_blocks(2000)  # block count alone never expires a ballot
@@ -265,21 +265,21 @@ def test_junk_flood_cannot_block_removing_the_flooder(chain, name):
     c = linked(chain, name, [a, b, rogue])
     cap = 64 // 3
     for i in range(cap):
-        tx(chain, c.functions.voteToUpdateVoteTallyBlockThreshold(HOUR + i), rogue)
-    fails(chain, c.functions.voteToUpdateVoteTallyBlockThreshold(HOUR + cap), rogue)
+        tx(chain, c.functions.voteToSetVoteWindow(HOUR + i), rogue)
+    fails(chain, c.functions.voteToSetVoteWindow(HOUR + cap), rogue)
     assert c.functions.openBallots(rogue).call() == [cap, 0]
     # Other voters still have counted room, and voter removal is exempt from every counted cap.
     tx(chain, c.functions.voteToRemoveVoter(rogue), a)
     tx(chain, c.functions.voteToRemoveVoter(rogue), b)
     assert set(c.functions.getVoters().call()) == {a, b}
     assert c.functions.activeVoteCount().call() == 0
-    fails(chain, c.functions.voteToUpdateVoteTallyBlockThreshold(HOUR), rogue)
+    fails(chain, c.functions.voteToSetVoteWindow(HOUR), rogue)
 
 
 # ── GasManager treasury (N-7) ───────────────────────────────────────────────
 
 def _fund(chain, c, voter, recipient, amount, fid='grant'):
-    operation = c.functions.proposeFundGasV2(fid, recipient, amount, 'note')
+    operation = c.functions.proposeGasFunding(fid, recipient, amount, 'note')
     fund_key, _ = operation.call({'from': voter})
     tx(chain, operation, voter)
     return fund_key
@@ -292,25 +292,25 @@ def test_fund_before_delay_reverts_and_cancel_during_delay(chain):
     key = _fund(chain, c, a, recipient, 10**15)
     approved, executable_at, expires_at, _, _ = c.functions.getFundApprovalStatus(key).call()
     assert approved and executable_at == now(chain) + 2 * DAY and expires_at == executable_at + 3 * DAY
-    fails(chain, c.functions.executeFundGasV2(key), recipient, match=error_selector('ExecutionDelayActive(uint256)')[2:])
+    fails(chain, c.functions.executeGasFunding(key), recipient, match=error_selector('ExecutionDelayActive(uint256)')[2:])
     travel(chain, 2 * DAY)
     before = chain['w3'].eth.get_balance(recipient)
-    tx(chain, c.functions.executeFundGasV2(key), recipient)
+    tx(chain, c.functions.executeGasFunding(key), recipient)
     assert chain['w3'].eth.get_balance(recipient) > before - 10**16
     assert c.functions.totalGasFunded().call() == 10**15
     # A second approval cancelled during its delay can never execute.
     key2 = _fund(chain, c, a, recipient, 10**15, 'grant2')
     tx(chain, c.functions.voteToCancelApproval(key2), a)
     travel(chain, 2 * DAY)
-    fails(chain, c.functions.executeFundGasV2(key2), recipient)
+    fails(chain, c.functions.executeGasFunding(key2), recipient)
 
 
 def test_delay_and_window_are_configurable_by_vote(chain):
     a, b = chain['accounts'][:2]
     c = linked(chain, 'GasManager', [a, b], delay=0)
-    fails(chain, c.functions.voteToSetParameter(0, 30 * DAY + 1))      # EXECUTION_DELAY bound
-    fails(chain, c.functions.voteToSetParameter(1, HOUR - 1))          # APPROVAL_WINDOW bound
-    fails(chain, c.functions.voteToSetParameter(2, 0))                 # OUTFLOW_CAP > 0
+    fails(chain, c.functions.voteToSetParameter(0, 30 * DAY + 1))      # ExecutionDelay bound
+    fails(chain, c.functions.voteToSetParameter(1, HOUR - 1))          # ApprovalWindow bound
+    fails(chain, c.functions.voteToSetParameter(2, 0))                 # OutflowCap > 0
     tx(chain, c.functions.voteToSetParameter(0, DAY), a)
     assert c.functions.executionDelay().call() == 0
     tx(chain, c.functions.voteToSetParameter(0, DAY), b)
@@ -326,11 +326,11 @@ def test_outflow_cap_per_period(chain):
     send(chain, c.address, 10**18)
     k1 = _fund(chain, c, a, recipient, 6 * 10**15, 'one')
     k2 = _fund(chain, c, a, recipient, 6 * 10**15, 'two')
-    tx(chain, c.functions.executeFundGasV2(k1), recipient)
+    tx(chain, c.functions.executeGasFunding(k1), recipient)
     assert c.functions.outflowRemaining().call() == 4 * 10**15
-    fails(chain, c.functions.executeFundGasV2(k2), recipient, match=error_selector('OutflowCapExceeded(uint256)')[2:])
+    fails(chain, c.functions.executeGasFunding(k2), recipient, match=error_selector('OutflowCapExceeded(uint256)')[2:])
     travel(chain, DAY)
-    tx(chain, c.functions.executeFundGasV2(k2), recipient)
+    tx(chain, c.functions.executeGasFunding(k2), recipient)
     assert c.functions.totalGasFunded().call() == 12 * 10**15
 
 
@@ -384,7 +384,8 @@ def test_program_sponsor_refused_at_proposal(chain):
 def test_legacy_paths_removed(chain):
     c = linked(chain, 'GasManager')
     names = {entry.get('name') for entry in c.abi}
-    assert not names & {'initialize', 'initializeV2', 'voteToFundGasV1', 'executeFundGasV1', 'getLegacyFundKey'}
+    assert not names & {'initialize', 'initializeV2', 'voteToFundGasV1', 'executeFundGasV1', 'getLegacyFundKey',
+                         'proposeFundGasV2', 'voteToFundGasV2', 'executeFundGasV2', 'voteToUpdateVoteTallyBlockThreshold'}
     assert c.functions.implementationVersion().call() == '2.6.0'
 
 
@@ -392,7 +393,7 @@ def test_legacy_paths_removed(chain):
 
 def _registered(chain, c, count=3):
     a = chain['accounts'][0]
-    tx(chain, c.functions.voteToUpdateFeeVault(chain['accounts'][8]), a)
+    tx(chain, c.functions.voteToSetFeeVault(chain['accounts'][8]), a)
     gift = deploy(chain, 'Gift')
     fee = c.functions.registrationFee().call()
     tx(chain, gift.functions.register(c.address, '113211', count), value=fee * count)
@@ -449,9 +450,19 @@ def test_registration_fee_cap(chain):
     c = linked(chain, 'CodeManager')
     cap = c.functions.MAX_REGISTRATION_FEE().call()
     assert cap == 10**18
-    fails(chain, c.functions.voteToUpdateRegistrationFee(cap + 1), a)
-    tx(chain, c.functions.voteToUpdateRegistrationFee(cap), a)
+    fails(chain, c.functions.voteToSetRegistrationFee(cap + 1), a)
+    tx(chain, c.functions.voteToSetRegistrationFee(cap), a)
     assert c.functions.registrationFee().call() == cap
+
+
+def test_code_manager_version_and_renamed_ballots(chain):
+    c = linked(chain, 'CodeManager')
+    names = {entry.get('name') for entry in c.abi}
+    assert c.functions.implementationVersion().call() == '3.1.0'
+    assert {'voteToSetRegistrationFee', 'voteToSetFeeVault', 'voteToSetVoteWindow', 'VoteWindowUpdated'} <= names
+    assert not names & {'voteToUpdateRegistrationFee', 'voteToUpdateFeeVault', 'voteToUpdateVoteTallyBlockThreshold',
+                        'VoteTallyBlockThresholdUpdated'}
+    assert 'RedemptionAlreadyCommitted' in {e['name'] for e in c.abi if e['type'] == 'error'}
 
 
 def test_runtime_sizes(builds, tmp_path):

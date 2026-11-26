@@ -94,7 +94,7 @@ def test_clone_selector_value_and_mixed_batch_cannot_bypass(chain):
 def test_real_canonical_registration_pays_fee_and_manager_swap_blocks(chain):
     c=chain;account,sponsor,_,entry=approved_setup(c)
     cm=linked(c,'CodeManager');vault=c['accounts'][8]
-    tx(c,cm.functions.voteToUpdateFeeVault(vault))
+    tx(c,cm.functions.voteToSetFeeVault(vault))
     gift=mock(c,'''pragma solidity ^0.8.20;
     interface CM { function registerUniqueIds(address,string memory,uint256) external payable; }
     contract Gift { address public codeManagerAddress;

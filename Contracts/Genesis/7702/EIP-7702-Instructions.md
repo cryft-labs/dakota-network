@@ -597,7 +597,7 @@ voter-governed GasManager at `0x...caFE`:
 
 // Each remaining GasManager voter:
 GasManager(0x000000000000000000000000000000000000cafE)
-    .voteToFundGasV2(fundKey);
+    .voteToFundGas(fundKey);
 
 // After approval, a GasManager guardian or SPONSOR:
 GasManager(0x000000000000000000000000000000000000cafE)

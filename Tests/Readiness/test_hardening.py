@@ -51,7 +51,7 @@ def paid(c, fn, value, sender=None):
 
 def manager(c):
     cm=linked(c,'CodeManager')
-    tx(c,cm.functions.voteToUpdateFeeVault(c['accounts'][9]))
+    tx(c,cm.functions.voteToSetFeeVault(c['accounts'][9]))
     return cm
 
 

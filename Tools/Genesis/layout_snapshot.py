@@ -43,8 +43,12 @@ def enum_sizes(source):
     return {name: len([m for m in body.split(",") if m.strip()]) for name, body in ENUM.findall(clean)}
 
 
-def version_for(source):
-    return "0.8.19" if re.search(r"pragma solidity[^;]*<\s*0\.8\.20", source) or "pragma solidity 0.8.19" in source else "0.8.37"
+VALIDATOR_FILES = ("Contracts/Genesis/validatorContracts/",)
+
+
+def version_for(rel):
+    """The validator contract (0x…1111) is always built with solc 0.8.19 / London (Chad, 2026-11-25)."""
+    return "0.8.19" if rel.startswith(VALIDATOR_FILES) else "0.8.37"
 
 
 def snapshot(only=()):
@@ -58,7 +62,7 @@ def snapshot(only=()):
         structs[rel] = struct_bodies(source)
         enums[rel] = enum_sizes(source)
         hexes[rel] = sorted(set(h.lower() for h in HEX_CONSTANT.findall(source)))
-        version = version_for(source)
+        version = version_for(rel)
         work = compiler.prepare_source(path, compiler.IMPORT_CACHE_DIR)
         out = solcx.compile_files([str(work)], output_values=["storage-layout", "abi"], solc_version=version,
                                   evm_version="london" if version == "0.8.19" else "osaka",

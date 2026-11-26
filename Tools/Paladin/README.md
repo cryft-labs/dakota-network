@@ -141,8 +141,8 @@ not charge a native balance. Public settlement always has a payer.
 To top up a fee wallet, send a normal native transfer from an authorized funded
 account and confirm its receipt and destination balance. For treasury funding,
 GasManager at `0x000000000000000000000000000000000000cafE` provides a governed
-proposal/vote/execute flow. V2 uses `proposeFundGasV2(fundingId,to,amount,note)`,
-`voteToFundGasV2(fundKey)`, then `executeFundGasV2(fundKey)` after approval. Execution
+proposal/vote/execute flow. V2 uses `proposeGasFunding(fundingId,to,amount,note)`,
+`voteToFundGas(fundKey)`, then `executeGasFunding(fundKey)` after approval. Execution
 requires an allowed guardian or the funded account. A depleted funded account may
 need a guardian to execute because it cannot pay its own transaction fee. Never
 create a second approval after an uncertain broadcast; reconcile the original key.

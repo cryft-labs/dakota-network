@@ -8,7 +8,7 @@ def initialize(d):
     gm = d.first_link('GasManager', gm_logic, 'initializeWithVoter', [DEPLOYER])
     cm_logic = d.deploy('CodeManager')
     cm = d.first_link('CodeManager', cm_logic, 'initializeWithVoter', [DEPLOYER])
-    d.tx('configure:registration_fee_vault', cm.functions.voteToUpdateFeeVault(gm.address))
+    d.tx('configure:registration_fee_vault', cm.functions.voteToSetFeeVault(gm.address))
     logic = d.deploy('CryftDelegation')
     beacon = d.deploy('CryftDelegationBeacon', logic.address)
     dispatcher = d.deploy('CryftBeaconDispatcher', beacon.address)

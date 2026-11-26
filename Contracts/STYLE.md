@@ -27,10 +27,15 @@ contract CodeManager is ... {
 - Files derived from OpenZeppelin or Besu keep their original licence on the SPDX line and add one line under the
   copyright: `// Derived from OpenZeppelin Contracts v4.9.x (proxy/ERC1967/ERC1967Upgrade.sol), MIT.` (or
   `// Derived from Hyperledger Besu ValidatorSmartContractAllowList (Apache-2.0, ConsenSys 2021).`).
-- One pinned pragma for the whole set: `pragma solidity 0.8.37;` (EVM Osaka). This includes the validator
-  contract: Besu runs `getValidators()` under the chain's active fork, and the local 4-node proof covers it.
+- Compiler: every genesis contract uses `pragma solidity 0.8.37;` and is built for EVM Osaka.
+- The one exception is the validator contract (0x…1111). Its compiler must never change: solc 0.8.19, EVM London,
+  optimizer 200 runs, through the soljson 0.8.19 build (`Tools/Genesis/inputs.json` → `compilers.validator`).
+  It, its interface and the governance libraries it compiles (GovernanceMembers, GovernanceVotes) keep
+  `pragma solidity >=0.8.19 <0.9.0;` and use no syntax newer than 0.8.19 (e.g. `if (!cond) revert Error();`,
+  never `require(cond, Error())`).
 - Named imports only (`import {X} from "...";`).
-- `@custom:version` holds the contract's own version (the same string its `version()` returns, if it has one).
+- `@custom:version` holds the contract's own version (the same string its `implementationVersion()` returns, if
+  it has one; `implementationVersion()` is the one name for that getter).
   Libraries and interfaces carry the version of the set they ship with.
 - No ASCII banners, no dates other than the copyright years, no old chain ids, hostnames, branch names or
   "Dakota"/"Moment". "Kota" only for the API (KotaAccess*).
@@ -59,8 +64,16 @@ order is the upgrade contract; `Tools/Genesis/layout_snapshot.py` proves it did 
 Section dividers, one style everywhere (an indented line inside a contract, 100 characters wide in total):
 
 ```solidity
-    // ─── Storage ─────────────────────────────────────────────────────────────────────────────────────
+    // ─── Storage ─────────────────────────────────────────────────────────────────────────────────
 ```
+
+Inside a library, constants and internal functions have no leading underscore (they are the library's API);
+private library members do.
+
+Casing: contracts, structs, events, errors and enum members `PascalCase`; functions, parameters, locals and storage
+`camelCase`; constants and immutables `UPPER_SNAKE`; internal/private contract members start with `_`. The one
+exception is the `proxy_` prefix on the genesis proxy shell's external functions (`proxy_scheduleUpgrade`,
+`proxy_getGuardians`, …): it keeps them apart from every implementation selector behind the proxy, so it stays.
 
 Section titles are exactly the names in the list above (e.g. `External functions`, `View functions` is not a
 section; views sit at the end of their visibility group).
