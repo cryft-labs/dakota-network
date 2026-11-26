@@ -43,7 +43,7 @@ class GenesisGuardTests(unittest.TestCase):
             stage.verify_release(self.release, self.digest)
 
     def test_other_chain_id_is_rejected(self):
-        self.write({'chainId': 112311, 'contractSizeLimit': 32768}, manifest_chain=112311)
+        self.write({'chainId': 1, 'contractSizeLimit': 32768}, manifest_chain=1)
         with self.assertRaises(AssertionError):
             stage.verify_release(self.release, self.digest)
 

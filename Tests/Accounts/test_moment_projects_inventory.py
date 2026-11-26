@@ -1,6 +1,5 @@
 """Local chain tests for shared fixed-supply tokens and upgradeable public projects."""
 import importlib.util
-import json
 import solcx
 from pathlib import Path
 import pytest
@@ -20,8 +19,6 @@ def builds():
         result.update({key.rsplit(':',1)[-1]:value for key,value in output.items()})
     output=solcx.compile_source((REPO/'Tests/Accounts/AllocationTestReceivers.sol').read_text(),solc_version='0.8.37',evm_version='osaka',output_values=['abi','bin'])
     result.update({key.rsplit(':',1)[-1]:dict(abi=value['abi'],creation_bytecode=value['bin']) for key,value in output.items()})
-    result['LegacyInventory']=json.loads((REPO/'Contracts/Accounts/projects-inventory-artifacts/osaka/Accounts/MomentInventoryToken/MomentInventoryToken_artifact.json').read_text())
-    result['AllocationV110']=json.loads((REPO/'Contracts/Accounts/allocation-artifacts/osaka/Accounts/MomentInventoryToken/MomentInventoryToken_artifact.json').read_text())
     return result
 
 @pytest.fixture
@@ -41,7 +38,7 @@ def test_types_are_independently_fungible_fixed_supply_and_cannot_be_seized(chai
     initialization=bytes.fromhex(implementation.functions.initialize(a[0],a[1])._encode_transaction_data()[2:])
     proxy=deploy('MomentProjectProxy',implementation.address,admin.address,initialization)
     token=w3.eth.contract(address=proxy.address,abi=implementation.abi)
-    tenant=w3.keccak(text='moment.cards');request=w3.keccak(text='request')
+    tenant=w3.keccak(text='tenant');request=w3.keccak(text='request')
     with pytest.raises(TransactionFailed):implementation.functions.initialize(a[0],a[1]).transact({'from':a[0]})
     with pytest.raises(TransactionFailed):token.functions.initialize(a[0],a[1]).transact({'from':a[0]})
     args=(a[2],tenant,request,'Coffee on me','ipfs://test/token.json',5,a[3])
@@ -72,7 +69,7 @@ def test_projects_isolate_owners_preserve_revisions_and_survive_upgrade(chain,bu
     initialization=bytes.fromhex(impl.functions.initialize(a[0],a[1])._encode_transaction_data()[2:])
     proxy=deploy('MomentProjectProxy',impl.address,admin.address,initialization)
     registry=w3.eth.contract(address=proxy.address,abi=builds['MomentProjectRegistry']['abi'])
-    tenant=w3.keccak(text='moment.cards');pid=w3.keccak(text='project');digest=w3.keccak(text='public metadata')
+    tenant=w3.keccak(text='tenant');pid=w3.keccak(text='project');digest=w3.keccak(text='public metadata')
     with pytest.raises(TransactionFailed):impl.functions.initialize(a[0],a[1]).transact({'from':a[0]})
     with pytest.raises(TransactionFailed):registry.functions.initialize(a[0],a[1]).transact({'from':a[0]})
     registry.functions.save(a[2],tenant,pid,0,digest,'ipfs://design/v1').transact({'from':a[1]})
@@ -97,20 +94,17 @@ def test_projects_isolate_owners_preserve_revisions_and_survive_upgrade(chain,bu
 
 def allocated_chain(chain):
     w3,a,deploy=chain
-    legacy=deploy('LegacyInventory');admin=deploy('MomentProjectAdmin',a[0])
-    proxy=deploy('MomentProjectProxy',legacy.address,admin.address,bytes.fromhex(legacy.functions.initialize(a[0],a[1])._encode_transaction_data()[2:]))
-    old=w3.eth.contract(address=proxy.address,abi=legacy.abi)
-    old.functions.createType(a[2],w3.keccak(text='tenant'),w3.keccak(text='legacy'),'Coffee','ipfs://legacy/token.json',10000,a[2]).transact({'from':a[1]})
-    upgraded=deploy('MomentInventoryToken')
-    admin.functions.upgrade(proxy.address,upgraded.address).transact({'from':a[0]})
-    token=w3.eth.contract(address=proxy.address,abi=upgraded.abi)
+    implementation=deploy('MomentInventoryToken');admin=deploy('MomentProjectAdmin',a[0])
+    proxy=deploy('MomentProjectProxy',implementation.address,admin.address,bytes.fromhex(implementation.functions.initialize(a[0],a[1])._encode_transaction_data()[2:]))
+    token=w3.eth.contract(address=proxy.address,abi=implementation.abi)
+    token.functions.createType(a[2],w3.keccak(text='tenant'),w3.keccak(text='first'),'Coffee','ipfs://first/token.json',10000,a[2]).transact({'from':a[1]})
     assert token.functions.balanceOf(a[2],1).call()==10000
     assert token.functions.definition(1).call()[3]=='Coffee'
     assert token.functions.owner().call()==a[0] and token.functions.relayers(a[1]).call()
     return w3,a,deploy,token
 
 
-def test_atomic_allocation_surplus_and_upgrade_preserve_existing_tokens(chain):
+def test_atomic_allocation_surplus_preserves_existing_tokens(chain):
     w3,a,deploy,token=allocated_chain(chain)
     receivers=sorted([deploy('AllocationReceiver').address for _ in range(2)],key=lambda address:int(address,16))
     args=(a[2],w3.keccak(text='tenant'),w3.keccak(text='allocation'),'Coffee','ipfs://coffee/token.json',10000,receivers,1500)
@@ -141,7 +135,7 @@ def test_failed_receiver_rolls_back_whole_supply_and_rejects_bad_plans(chain):
 
 def test_activation_is_idempotent_and_receiver_cannot_reenter_creation(chain):
     w3,a,deploy,token=allocated_chain(chain)
-    registry=deploy('ERC6551Registry');impl=deploy('MomentCardAccount');salt=w3.keccak(text='moment.cards:tba:v1')
+    registry=deploy('ERC6551Registry');impl=deploy('MomentCardAccount');salt=impl.functions.APPLICATION_SALT().call()
     args=(registry.address,impl.address,salt,w3.eth.chain_id,token.address,[36,37])
     addresses=token.functions.activateAccounts(*args).call({'from':a[4]})
     token.functions.activateAccounts(*args).transact({'from':a[4]})
@@ -155,26 +149,3 @@ def test_activation_is_idempotent_and_receiver_cannot_reenter_creation(chain):
     assert receiver.functions.reentryBlocked().call() and token.functions.balanceOf(a[2],2).call()==0
     assert token.functions.nextId().call()==3
 
-
-def test_collection_identity_upgrade_preserves_types_balances_and_authority(chain):
-    w3,a,deploy=chain;old=deploy('AllocationV110');admin=deploy('MomentProjectAdmin',a[0])
-    proxy=deploy('MomentProjectProxy',old.address,admin.address,bytes.fromhex(old.functions.initialize(a[0],a[1])._encode_transaction_data()[2:]))
-    token=w3.eth.contract(address=proxy.address,abi=old.abi)
-    receiver=deploy('AllocationReceiver')
-    tenant,request=w3.keccak(text='tenant'),w3.keccak(text='coffee')
-    token.functions.createTypeAllocated((a[2],tenant,request,'Coffee','ipfs://coffee-wake/token.json',10000,[receiver.address],1500)).transact({'from':a[1]})
-    token.functions.setApprovalForAll(a[4],True).transact({'from':a[2]})
-    token.functions.transferOwnership(a[5]).transact({'from':a[0]})
-    definition=token.functions.definition(1).call();key=w3.keccak(w3.codec.encode(['bytes32','address','bytes32'],[tenant,a[2],request]))
-    replacement=deploy('MomentInventoryToken')
-    admin.functions.upgrade(proxy.address,replacement.address).transact({'from':a[0]})
-    token=w3.eth.contract(address=proxy.address,abi=replacement.abi)
-    assert token.functions.name().call()=='Moment Inventory' and token.functions.symbol().call()=='MOMINV'
-    assert token.functions.implementationVersion().call()=='1.1.1'
-    assert token.functions.definition(1).call()==definition
-    assert token.functions.uri(1).call()=='ipfs://coffee-wake/token.json'
-    assert token.functions.balanceOf(receiver.address,1).call()==1500 and token.functions.balanceOf(a[2],1).call()==8500
-    assert token.functions.owner().call()==a[0] and token.functions.pendingOwner().call()==a[5]
-    assert token.functions.relayers(a[1]).call() and token.functions.isApprovedForAll(a[2],a[4]).call()
-    assert token.functions.nextId().call()==2 and token.functions.requests(key).call()==1
-    with pytest.raises(TransactionFailed):token.functions.safeTransferFrom(a[2],a[1],1,1,b'').transact({'from':a[1]})

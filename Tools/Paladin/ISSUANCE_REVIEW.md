@@ -215,8 +215,3 @@ are not proof that this activation has happened. The three-digit configuration
 retains the existing 32-entries-per-component limit: at most 32,000 simultaneous
 active private codes in this shared contract. Monitor capacity and keep production
 volume below that limit until a separately reviewed scaling change is released.
-
-
-## 15 September deployment and owner activation
-
-The reviewed implementations are now deployed, metadata is pinned, and the public sources are verified in Blockscout. Browser publishing remains paused. Follow the [exact owner activation and browser acceptance instructions](../../docs/ISSUANCE_ACTIVATION.md). Earlier deployment snapshots above are historical.

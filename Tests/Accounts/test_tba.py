@@ -2,6 +2,7 @@
 from pathlib import Path
 import importlib.util
 import json
+import re
 
 import pytest
 from eth_abi import encode
@@ -12,7 +13,9 @@ from web3 import Web3, EthereumTesterProvider
 import solcx
 
 REPO = Path(__file__).resolve().parents[2]
-APP_SALT_PREIMAGE = "moment.cards:tba:v1"
+# The salt preimage as the (retired, unchanged) implementation source declares it.
+APP_SALT_PREIMAGE = re.search(r'APPLICATION_SALT = keccak256\("([^"]+)"\)',
+                              (REPO / "Contracts/Accounts/MomentCardAccount.sol").read_text()).group(1)
 ERC1167_HEADER = bytes.fromhex("3d60ad80600a3d3981f3363d3d373d3d3d363d73")
 ERC1167_FOOTER = bytes.fromhex("5af43d82803e903d91602b57fd5bf3")
 MOCK_SOURCE = r'''

@@ -1,6 +1,6 @@
 # Cryft Network genesis (rebuild 2026-11-25)
 
-Fresh genesis for chain id **113211** (`0x1ba3b`). It replaces the lost 112311 chain and its hand-built
+Fresh genesis for chain id **113211** (`0x1ba3b`). It replaces the lost previous chain and its hand-built
 1.24 GB archive. Work order WO-1; audit findings X-1..X-72 in `review-20261121/contract-audit-20261125/CONSOLIDATED.md`.
 
 ## Files

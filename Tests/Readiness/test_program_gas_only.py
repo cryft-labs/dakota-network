@@ -8,7 +8,7 @@ replay is gone) with real EIP-7702 accounts, as test_program_sponsorship.py:
   * recoverGasCredit for it is the program's alone (1.5.1: NotProgram for the platform admin too), to the program alone;
   * an ineligible answer (a revoked Pass) stops spending at once, on chain, and charges nothing;
   * a sponsor the program never opened is exactly as before: refundable deposits, withdrawals, credit from anyone, recovery anywhere;
-  * this source's build (Tools/GasSponsor/build_1_5_2.py) is append-only against 1.5.1 and within 32 KB.
+  * this source's build (Tools/GasSponsor/build_1_5_2.py) has a sound storage layout and fits within 32 KB.
 
     CRYFT_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_gas_only.py
 """
@@ -146,18 +146,15 @@ def test_a_non_program_sponsor_is_unchanged(world):
 
 # ── the committed build ──
 
-def test_this_build_is_append_only_against_1_5_1_and_fits(program_build):
-    """1.5.2: the release build (Tools/GasSponsor/build_1_5_2.py) proves every namespaced struct and the plain slots append-only
-    against the committed 1.5.1 input (namespace constants aside: renamed for the fresh genesis), and the runtime fits Cryft's 32,768 bytes. If Releases/GasSponsor/1.5.2 is committed, it is
+def test_this_build_layout_is_sound_and_fits(program_build):
+    """1.5.2: the release build (Tools/GasSponsor/build_1_5_2.py) records every namespaced struct and the plain slots, finds the
+    namespaces apart and unchanged, and the runtime fits Cryft's 32,768 bytes. If Releases/GasSponsor/1.5.2 is committed, it is
     this checkout's build."""
     import importlib.util
     spec = importlib.util.spec_from_file_location('build_1_5_2', REPO / 'Tools/GasSponsor/build_1_5_2.py')
     tool = importlib.util.module_from_spec(spec); spec.loader.exec_module(tool)
-    standard, artifact, proof = tool.build()
-    # The 11-25 rebuild renamed the on-chain storage namespaces to cryft.storage.* (fresh genesis, nothing to migrate), so
-    # the only differences from the 1.5.1 record may be those namespace constants; every struct stays append-only.
-    renamed = [p for p in proof['problems'] if "1.5.1 has no" in p and 'keccak256("cryft.storage.' in p]
-    assert [p for p in proof['problems'] if p not in renamed] == [] and set(proof['predecessors']) == {'1.5.1'}
+    standard, artifact, layout = tool.build()
+    assert layout['problems'] == [] and layout['ok'] and set(layout['structs']) == set(tool.STRUCTS.values())
     assert artifact['runtime_bytes'] <= 32768 and artifact['version'] == '1.5.2'
     built = program_build['ProgramGasSponsor']['runtime_bytecode'].removeprefix('0x').lower()
     assert artifact['runtime_bytecode'].removeprefix('0x').lower()[:-106] == built[:-106]  # the same code (metadata aside)

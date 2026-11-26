@@ -1,45 +1,11 @@
 # Kota full-system development deployment prompt
 
-Revision 8, 2026-09-11. Copy this entire document into the deployment task.
+Revision 9, chain 113211. Copy this entire document into the deployment task.
 
-Resume checkpoint: the development chain and Nebula explorer are running, and the
-four named genesis services have been linked and initialized. Public governance,
-funding, code delivery, real EIP-7702 sponsorship and beacon upgrades passed live
-checks with 100 confirmed transactions. Read `docs/live-genesis-acceptance-20260911.md`,
-`Tools/LiveGenesis/README.md`, the current transaction journal and live state first.
-Do not reset genesis or blindly repeat completed deployment steps below. Unused
-genesis proxies, including the agent-registry slot Face, remain reserved.
-
-Sponsorship is paused after testing; temporary canary roles/funding are cleaned up.
-The supplied admin is nominated for GasSponsor and registry acceptance, while
-bootstrap authority remains for full application deployment. Exact runtime metadata
-and source pins/readback were verified on Backend-01's private IPFS API/gateway.
-Paladin/Pente now runs persistently on Paladin-01. Five real private code redemptions
-delivered public card NFTs. Native public EIP-7702 sponsorship, rejected-settlement
-rollback/retry, delivery recovery, concurrent redemption and service restart passed.
-Read `docs/paladin-acceptance-20260911.md`, `Tools/Paladin/README.md`, and
-`outputs/paladin-live-20260911/{transactions.json,acceptance-report.json}` next.
-CodeManager/Combo strict upgrades are already applied; do not replay older first-link
-or application setup scripts. Their existing proxy addresses and private group remain.
-Public Osaka and private Shanghai are the verified targets. Private EIP-7702 processing
-is not established; no MetaTx fallback is needed for verified public sponsorship.
-The explorer Rust verifier is enabled and source verification is complete for all
-32,451 public addresses, including every genesis proxy. Read
-`docs/blockscout-verification-20260911.md` before attempting any uploads or imports.
-All source/license/runtime checks, 224 IPFS objects and five private code hashes
-passed. Use
-`Tools/BlockscoutVerification/HANDOFF_PROMPT.md` and the complete deployed package
-`Contracts/Verification/20260911` for exact Standard JSON input/output, metadata,
-constructor data and explicit Apache/MIT license mapping. Native precompiles and
-private state are catalogued separately, not fabricated as public Solidity uploads.
-Kota tenant contracts are now deployed as release 1.4.0/v7: 40 successful
-transactions, 32 live checks, ten full explorer verifications and 43 IPFS objects.
-Use the KotaRouter `router_v4/contracts/deployment/` inventory and receipts; do
-not redeploy them. Tenant issuer/factory/operator/ProxyAdmin handover is complete.
-Public Cloudflare gateway, Kota Router/application deployment and the separate
-core network/card/private-state owner handovers remain pending. Use
-`Tools/LiveGenesis/FOLLOW_AND_HANDOFF_PROMPT.md` for concurrent read-only observation
-or an explicit transfer of execution; never run two signers against the same nonce.
+Chain 113211 starts from a fresh genesis built by `Tools/Genesis/build.py`
+(`Contracts/Genesis/CryftGenesis.json`); nothing from the previous chain carries over.
+Post-genesis contracts, Paladin groups and Kota tenant contracts are deployed anew;
+blank address fields below are filled in as each deployment completes.
 
 Act as Cryft Labs' implementation and operations engineer. Complete the authorized
 hardening and deploy the full Cryft/Kota development system on the seven supplied
@@ -77,7 +43,7 @@ never the credentials themselves. Do not commit keys, codes, PINs or secret stat
 PROJECT_NAME=cryft-kota
 EXAMPLE_HOST_SITE_DOMAIN=cryft.cards
 KOTA_PUBLIC_BASE_URL=
-DEPLOYMENT_MODE=resume
+DEPLOYMENT_MODE=fresh
 GENESIS_DEPLOYMENT_APPROVED=true
 PRODUCTION_PROMOTION_APPROVED=false
 DEPLOYMENT_ENVIRONMENT=development
@@ -90,16 +56,15 @@ SITE_REVIEW_BRANCH=review/moment-cryft-tenant
 DOCUMENTATION_PROMOTION_APPROVED=true
 IMPLEMENTATION_PROMOTED_BY_THIS_UPDATE=true
 PUSH_BEFORE_LIVE_TESTS=true
-GENESIS_ARCHIVE_PATH=Contracts/Genesis/besuGenesis.7z
-GENESIS_ARCHIVE_SHA256=11aba94ef6f8fe3f2fc9e699aa08475afb4081107e17dc3b000301e15a93e57f
+GENESIS_FILE_PATH=Contracts/Genesis/CryftGenesis.json
 GENESIS_REMOTE_PATH=/etc/cryft/besu/BesuGenesis.json
 BESU_VERSION=26.8.1
 SOLC_VERSION=0.8.37
 KOTA_TENANT_SOLC_VERSION=0.8.34
-KOTA_TENANT_RELEASE=20260911-v1.4.0
+KOTA_TENANT_RELEASE=
 PALADIN_VERSION=v1.0.0
 PRIVATE_NATIVE_DELEGATION_ESTABLISHED=false
-PUBLIC_SPONSORED_PENTE_SETTLEMENT_VERIFIED=true
+PUBLIC_SPONSORED_PENTE_SETTLEMENT_VERIFIED=false
 METATX_ENABLED=false
 CONTRACT_ADDRESS_APPROVAL_RECORD=
 APPROVED_CONTRACT_MANIFEST_SHA256=
@@ -213,25 +178,25 @@ RELEASE_APPROVAL_RECORD=
 
 CHAIN_ID=113211
 CHAIN_NETWORK_ID=113211
-GENESIS_SHA256=29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217
-CONTRACT_ADDRESS_MANIFEST_FILE=docs/current-contract-addresses.json
-KOTA_ACCESS_PROXY=0xa6a1161Fc96561c5DD94Ab4082D8b867E7C102C0
-KOTA_FACTORY_PROXY=0xD99A083A2125dB1881e1D315885c7ba0FAc933d0
-CRYFT_TENANT_REGISTRY=0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340
-KOTA_TENANT_HANDOVER_COMPLETE=true
+GENESIS_SHA256=af1ea7970669551b2c529d6bd16df65972286bc151d28d27d89f26d923307a68
+CONTRACT_ADDRESS_MANIFEST_FILE=
+KOTA_ACCESS_PROXY=
+KOTA_FACTORY_PROXY=
+CRYFT_TENANT_REGISTRY=
+KOTA_TENANT_HANDOVER_COMPLETE=false
 FULL_NETWORK_HANDOVER_COMPLETE=false
 GENESIS_ALLOCATION_POLICY=admin_32_deployer_1_tester_1
 DELEGATION_ROUTE_POLICY=direct_beacon_dispatch_v2
 PRIVATE_GROUP_DEPLOYMENT_DOMAIN=pente
 PALADIN_RPC_URL=http://100.111.32.201:8550/
 PALADIN_NODE_NAME=paladin01
-PALADIN_GROUP_ID=0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79
-PALADIN_GROUP_ADDRESS=0x533E526f095407490BB0089D3fc38e73484523B0
-PALADIN_FACTORY_ADDRESS=0x120052f8392c4a3b88b48d82e585138B6df80376
-PRIVATE_COMBO_PROXY_ADDRESS=0x7a3eacca11e28712ed6e0dfc464795b2a0c2a342
-DEVELOPMENT_CARD_PROXY_ADDRESS=0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410
-PALADIN_SETTLEMENT_ADDRESS=0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549
-PALADIN_PRIVATE_OPERATOR_ADDRESS=0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125
+PALADIN_GROUP_ID=
+PALADIN_GROUP_ADDRESS=
+PALADIN_FACTORY_ADDRESS=
+PRIVATE_COMBO_PROXY_ADDRESS=
+DEVELOPMENT_CARD_PROXY_ADDRESS=
+PALADIN_SETTLEMENT_ADDRESS=
+PALADIN_PRIVATE_OPERATOR_ADDRESS=
 PALADIN_RECOVERY_SECRET_POLICY=keep_on_paladin_01
 PALADIN_OFFHOST_SECRET_EXPORT_AUTHORIZED=false
 PALADIN_SETTLEMENT_LOW_BALANCE_WEI=10000000000000000
@@ -347,26 +312,16 @@ EXPLORER_START_EARLY=true
    Do not enable unfinalized Amsterdam/future/experimental forks. Check the pinned
    release's actual genesis schedule rather than treating EVM-library names as
    supported activation fields. Preserve the validator's London target.
-5. For this resume, verify the existing genesis and occupied proxy slots; do not edit
-   historical allocation/runtime state. Only for a separately authorized fresh network,
-   update every embedded genesis runtime from verified current artifacts. Preserve
-   the four existing generated validator identities, 32 tokens for the management
-   account and 1 token for each of the deployment and delegation-testing accounts.
-   Keep temporary bootstrap authority only for autonomous setup/testing; record its
-   removal plan. Reserved proxies remain uninitialized until separate implementation
-   deployment and atomic first-link initialization. Do not regenerate node keys.
-6. The current compressed genesis is already installed and verified. For a separately
-   approved genesis update/new node, use besuGenesis.7z containing BesuGenesis.json. Publish
-   the archive, never the uncompressed large JSON, with SHA-256 checksums for both.
-   Pull the exact release onto every Besu node, verify the archive, extract to staging,
-   verify the JSON, then install it at each service's configured genesis path. Include
-   validators, archive/RPC and Paladin-connected Besu nodes. Confirm identical hashes
-   before any startup. Do not reset an existing chain/data directory automatically.
-   For an existing deployment of the exact prior BPO2 archive, use only the
-   documented compatible BPO update procedure: preserve backups/data, verify
-   header/protocol equivalence, update non-validators first, and restart/check
-   validators individually while retaining quorum. Other retroactive fork changes
-   require a separate migration decision.
+5. Build the genesis from source (`python Tools/Genesis/build.py --check` must reproduce
+   `Contracts/Genesis/CryftGenesis.json` and `genesis-release.json`). Validator
+   identities are `Tools/Genesis/validators.json`. Keep temporary bootstrap authority
+   only for autonomous setup/testing; record its removal plan. Reserved proxies remain
+   uninitialized until separate implementation deployment and atomic first-link
+   initialization. Do not regenerate node keys.
+6. Pull the exact release onto every Besu node and install the same genesis file at
+   each service's configured genesis path (validators, archive/RPC and
+   Paladin-connected Besu). Confirm identical hashes before any startup. Never reset
+   a running chain/data directory automatically.
 7. Start four validators with Nebula-only peering. Verify chain ID/genesis, validator
    list, quorum, block production, gas/size behavior and synchronization. Frontend-01
    hosts the main archival RPC and web interfaces. Backend-01 hosts Blockscout backend,

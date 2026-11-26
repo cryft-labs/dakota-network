@@ -1,14 +1,25 @@
-import json
+import importlib.util
 from pathlib import Path
 import pytest
 import solcx
 from web3 import Web3
 from web3.providers.eth_tester import EthereumTesterProvider
 
-ART=Path(__file__).resolve().parents[2]/'Contracts/Verification/20260917'
+REPO=Path(__file__).resolve().parents[2]
+
+@pytest.fixture(scope='module')
+def builds():
+    """PrivateCardContentRegistry and ManagedApplicationProxy, compiled from this source (0.8.37, Shanghai for Pente)."""
+    spec=importlib.util.spec_from_file_location('registry_compiler',REPO/'Tools/SolcCompiler/compile.py')
+    compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
+    found={}
+    for path in ('Contracts/CodeManagement/PrivateCardContentRegistry.sol','Contracts/Paladin/ManagedProxyAdmin.sol'):
+        out=compiler.compile_contract(REPO/path,solc_version='0.8.37',evm_version='shanghai')
+        found.update({k.rsplit(':',1)[-1]:v for k,v in out.items()})
+    return found
 
 @pytest.fixture
-def registry():
+def registry(builds):
     w=Web3(EthereumTesterProvider());a=w.eth.accounts
     def deploy(artifact,args=()):
         c=w.eth.contract(abi=artifact['abi'],bytecode=artifact['creation_bytecode'])
@@ -21,12 +32,12 @@ def registry():
       function rotate(address a,address s) external {require(msg.sender==ADMIN);ADMIN=a;AUTHORIZED=s;}
     }''',output_values=['abi','bin'],solc_version='0.8.37',evm_version='shanghai')['<stdin>:Authority']
     authority=deploy(dict(abi=stub['abi'],creation_bytecode='0x'+stub['bin']),[a[0],a[1]])
-    artifact=json.loads((ART/'PrivateCardContentRegistry/artifact.json').read_text())
+    artifact=builds['PrivateCardContentRegistry']
     logic=deploy(artifact)
     # Only code at the admin address is needed by the managed proxy constructor;
     # production uses the established Pente ManagedProxyAdmin.
     init=logic.functions.initialize(authority.address,113211,a[8])._encode_transaction_data()
-    proxy=deploy(json.loads((ART/'ManagedApplicationProxy/artifact.json').read_text()),[logic.address,authority.address,bytes.fromhex(init[2:])])
+    proxy=deploy(builds['ManagedApplicationProxy'],[logic.address,authority.address,bytes.fromhex(init[2:])])
     return w,a,authority,logic,w.eth.contract(address=proxy.address,abi=artifact['abi'])
 
 def send(w,call,sender,ok=True):

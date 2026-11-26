@@ -294,11 +294,7 @@ and owner acceptance remain separate. `publish.py` pins exact
 metadata, source bytes and Standard JSON through Nebula SSH to Backend-01's loopback
 Kubo API, then verifies recursive pins and gateway bytes. It never publishes private
 runtime state. The Paladin-specific receipt covers ten builds and 88 unique compiler
-objects. The later complete deployed package in `Contracts/Verification/20260911`
-adds all public/genesis builds, full Standard JSON output, exact license mapping
-and native-precompile exclusions. Its publication receipt is
-`docs/blockscout-artifact-ipfs-20260911.json`; see
-[the verification runbook](../BlockscoutVerification/README.md).
+objects. See [the verification runbook](../BlockscoutVerification/README.md).
 
 | Current implementation | Metadata CID | Standard JSON input CID |
 |---|---|---|
@@ -396,13 +392,12 @@ See [the September 15 issuance review](ISSUANCE_REVIEW.md) for the new registrat
 existing group and private ProxyAdmin. It stores immutable tenant/chain/card/UID
 key bindings, never NFTs. The public Cryft card contract remains unchanged;
 its optional `private_metadata` link points to encrypted IPFS files. Roles follow
-ComboStorage ADMIN/AUTHORIZED dynamically. Source/standard JSON/metadata live in
-`Contracts/Verification/20260917`. The deployment helper is
-`Tools/Paladin/private-content-release.py --workspace <path> --execute`; it checks
-the committed review branch, publishes source artifacts, journals transactions
-and verifies runtime hashes. It does not expose private records to Blockscout.
+ComboStorage ADMIN/AUTHORIZED dynamically. Source is
+`Contracts/CodeManagement/PrivateCardContentRegistry.sol` (proxy:
+`Contracts/Paladin/ManagedProxyAdmin.sol`), built with 0.8.37 for Shanghai; it is
+not yet deployed on chain 113211. It does not expose private records to Blockscout.
 
-Router activation additionally requires the reviewed `private-content-release.json`,
+Router activation additionally requires the reviewed deployment record,
 its ABI hash, and `PLATFORM_PRIVATE_CONTENT_ENABLED=true`. Back up this private
 registry alongside ComboStorage, the Paladin database/signing configuration, API
 database/encryption key and encrypted IPFS pins. Never reset or replace a registry

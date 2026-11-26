@@ -154,7 +154,7 @@ exception is retained only for the owner-approved, closed bootstrap network.
 
 ## GasSponsor 1.5.0: program sponsors hold gas credit only (2026-11-23)
 
-`ProgramGasSponsor` 1.5.0 (`Releases/GasSponsor/1.5.0`, built by `Tools/GasSponsor/build_1_5_0.py`) closes every coin path into or
+`ProgramGasSponsor` 1.5.0 closes every coin path into or
 out of a sponsor opened by the developer gas program (`openProgramSponsor`):
 
 | call | program sponsor | every other sponsor |
@@ -165,13 +165,11 @@ out of a sponsor opened by the developer gas program (`openProgramSponsor`):
 | `recoverGasCredit` | the platform admin or the program, to the program only (`ProgramSponsorRecoverToProgram`) | unchanged: the platform admin, any address |
 
 Spending is unchanged: a program sponsor is spent from only while the program answers eligible (its developer's Pass active, the
-program not paused), so a revoked Pass stops spending at the very next execution. No storage is added; `layout-proof.json` proves
-the layout append-only against both live predecessors (1.3.0 at `0x…FEeD`, 1.4.0 behind the dev test sponsor). Runtime 28,547 bytes
-(Cryft's limit 32,768).
+program not paused), so a revoked Pass stops spending at the very next execution. No storage is added.
 
 ## GasSponsor 1.5.1: a program sponsor's credit is recovered by the program alone (2026-11-23)
 
-`ProgramGasSponsor` 1.5.1 (`Releases/GasSponsor/1.5.1`, built by `Tools/GasSponsor/build_1_5_1.py`; the independent review's P2-D)
+`ProgramGasSponsor` 1.5.1 (the independent review's P2-D)
 changes one row of the table above: `recoverGasCredit` for a program sponsor is the **program's alone** (`NotProgram` for anyone
 else, the platform administrator included), still only to the program (`ProgramSponsorRecoverToProgram`). The program's own rules
 (DeveloperGasProgram 1.2.0: the 90-day freeze before an ordinary reclaim, an abuse reclaim of a frozen Pass, a paid top-up's refund
@@ -188,23 +186,18 @@ Two more from the safe-coding review of the live contracts (Chad: "fix all of th
   developer program's sponsor is exempt: its calls are governed by the program deny list, its manager's targets and the
   router's lists. Only the platform administrator sets approvals (`setCallApprovals`, 1 to 64 at a time; a zero code hash
   revokes); `initializeCallApprovals` is removed (the 32 KB budget). Storage: ApprovedGasSponsor's own namespace,
-  `keccak256("cryft.storage.ApprovedGasSponsor.v1")`, the one 1.2 wrote: `0x…FEeD` still holds its 7 entries from block 5171
-  (1.2 ran there for blocks 5171-5330, before the rollback and 1.3.0). `layout-proof.json` proves the struct is 1.2's and that
-  the four namespaces and the plain slots are apart.
+  `keccak256("cryft.storage.ApprovedGasSponsor.v1")`, apart from the other three namespaces and the plain slots.
 - **C4, stuck worker reservations.** `releaseWorker(id)`: the platform administrator at any time, or ANYONE once
   `RESERVATION_RELEASE_AFTER` (7 days) has passed since the reservation, settles it at its maximum (the bound the tenant agreed
   to), pays the treasury captured at reservation (or defers its revenue), and emits `WorkerReleased(id, sponsor, by, cost,
   policySettled)`. Idempotent: an operation already settled, released or never reserved changes nothing and returns 0. The
   policy's `settle` is asked with 200,000 gas and a refusal does not keep the reservation stuck.
 
-`layout-proof.json` proves the layout append-only against 1.3.0 (`0x…FEeD`), 1.4.0, 1.5.0 (the dev test sponsor since PB-2) and
-the 1.2 approvals namespace. Runtime 32,670 bytes (margin 98 to Cryft's 32,768).
-
 ## GasSponsor 1.5.2: the contract audit's P-1, for the fresh chain (2026-11-25)
 
 `ProgramGasSponsor` 1.5.2 (`Tools/GasSponsor/build_1_5_2.py`; release files under `Releases/GasSponsor/1.5.2` once written with
-`--write`) is what genesis links at `0x…FEeD` on chain 113211. Nothing is deployed yet, but storage stays append-only against 1.5.1
-(the tool proves it) so later upgrades remain provable. One version string, `1.5.2`, for every layer. Runtime 32,491 bytes (margin
+`--write`) is what genesis links at `0x…FEeD` on chain 113211, the first release there. The tool records the storage layout
+(every namespaced struct and the plain slots, the namespaces apart) that later upgrades must stay append-only against. One version string, `1.5.2`, for every layer. Runtime 32,491 bytes (margin
 277 to Cryft's 32,768).
 
 | finding | 1.5.2 |

@@ -123,91 +123,19 @@ from authenticated/trusted ingress and overwrite spoofable forwarding headers.
 
 ## 6. Genesis and validators
 
-### Development checkpoint: 2026-09-11
+### Genesis
 
-Four validators, the Paladin-connected Besu and Frontend archive Besu are running
-as `cryft-besu` under enabled systemd units. All six synchronized at block 43
-after the compatible BPO5 rollout; all seven hosts have the same verified genesis
-file. Runtime installation records describe the original binary installation;
-`/etc/cryft/besu/genesis-installation.json` and `milestone-update.json` describe
-the subsequent genesis update. This distinguishes binary version from current
-chain configuration without rewriting historical installation evidence.
+The chain is 113211. Its genesis is built from source by `Tools/Genesis/build.py`;
+`python Tools/Genesis/build.py --check` rebuilds `Contracts/Genesis/CryftGenesis.json`
+and `genesis-release.json` byte for byte. The validator set is
+`Tools/Genesis/validators.json`. Public builds use Solidity 0.8.37/Osaka; the
+validator stays 0.8.19/London. See `Tools/Genesis/README.md`.
 
-Frontend's Nginx-protected archive is reachable from Backend over Nebula at
-`http://100.111.69.1:8547/`, with WebSocket at `/ws`; the raw origins remain on
-loopback. Backend's persistent `cryft-ipfs` service has published 90 contract
-artifacts as 164 verified IPFS objects. The release bundle is
-`QmSuawtJhsHhAJNS2VtPx4UHTEPvQgDbJD7vKmkV7smMaf`. Pins and readback are verified
-on Backend; public gateway access and offhost pin redundancy are not yet configured.
+Install the same genesis file on every Besu node (validators, the archive/RPC node
+and Paladin-connected Besu). Never start nodes with different genesis hashes, and
+never replace a live genesis or node key to repair synchronization.
 
-The explorer UI on Frontend-01 and API/indexer/database on Backend-01 are running
-as persistent rootless services behind the unprivileged Nginx proxies. The browser
-home page and block 72 detail were verified; the API subsequently matched Besu at
-block 76 and reported indexing complete. Same-origin RPC, validator list, WebSocket
-subscription, runtime CRYFT branding, closed raw origins and a controlled API restart
-were verified. See [explorer acceptance](docs/explorer-nebula-acceptance.json) and
-[the runbook](Tools/Explorer/README.md). All genesis contract address/code records
-are indexed and the original 32,451-address public audit passed; the later Kota
-release added ten fully verified instances. This
-does not reimport genesis balance history. Wallet-write/account UI configuration
-remains pending. See [the independent verification report](docs/blockscout-verification-20260911.md).
-
-Paladin/Pente deployment and direct private-code-to-public-NFT acceptance are
-complete for the development group. Five NFTs were delivered, native public gas
-sponsorship passed and database/Paladin restart preserved state. Kota application
-deployment and Router adapter integration are still pending.
-Full reboot/restore/load acceptance, public SSH/root-login lockdown and
-Cloudflare tunnels are not completed. Kota tenant ownership is handed over;
-core network/card/private-state ownership handover is not completed. The owner has
-temporarily broadened Defined Networking rules for development; production must
-replace that policy with tested role-specific access. Enabled services and these
-network checks do not constitute production approval.
-
-### Authoritative genesis and compatible updates
-
-The existing archive defines chain ID 113211, 64,000,000 block gas, 32,768-byte
-contract limit, the fork schedule, QBFT timing and system addresses. Preserve it.
-The reviewed archive enables BPO1–BPO5 at timestamp 0 with Osaka execution rules.
-It preserves the inherited blob target/max of 6/9; no new blob capacity is implied.
-Amsterdam is unfinalized in Besu 26.8.1 and remains disabled. See the existing
-README's milestone review for pinned source evidence and compatibility limits.
-Beyond these reviewed changes, preserve the schedule and record any proposed diff.
-Public builds use Solidity 0.8.37/Osaka; the validator stays 0.8.19/London with the
-same `getValidators()` ABI encoding. Besu is pinned to 26.8.1, requiring Java 25.
-
-Keep only `Contracts/Genesis/besuGenesis.7z` and its checksums in Git. The archive
-contains exactly `BesuGenesis.json`. After pulling the pinned release, verify the
-archive checksum, extract to a staging directory on **every Besu node**, verify
-the extracted JSON checksum, then atomically install the same file at the configured
-`--genesis-file` path. Include validators, the archive/RPC node, and Paladin-connected
-Besu nodes. Never start nodes with different genesis hashes or upload the 1.2 GB
-uncompressed JSON to Git. Do not reset an existing chain database automatically.
-
-The specific BPO2-to-BPO5 transition is covered by the deployment helper's
-`--allow-compatible-bpo-update` option. It requires the exact previous genesis
-hash and a stopped local Besu service, and verifies that removing only the three
-new fields reconstructs the old file byte for byte. It retains the old genesis
-as a hash-named backup and never changes keys or chain data. Restart/check the
-archive first, then Paladin's Besu, then one validator at a time while the other
-three remain healthy. Verify `[BPO5:0]`, the same genesis block hash, validator
-list, peers, synchronization and continued block production. This exception is
-not a general permission to change a live chain's past execution rules.
-
-| Validator | Public address |
-|---|---|
-| 01 | `0xCdC8d72552dC91EC70b381Cc5b869ad64cEf8451` |
-| 02 | `0x4E84562aCD2A3846C6dA115F00127EBf8279457d` |
-| 03 | `0xCaBE4444b7d2f7A859dC0a9e9963a0dD0d6D8400` |
-| 04 | `0xAFd389303A515D57dc2A97f46908c0E9DDdfa33C` |
-
-Use the already generated protected node keys; do not regenerate identities. Read
-back the validator list and compare its ABI result on the actual Besu network.
-The management account receives 32 native tokens and each of the two development
-accounts receives 1. The deployment account is a temporary root/sole bootstrap
-voter; the supplied management root remains recognized. Handover must remove the
-temporary rights after replacement control succeeds. See `development-release.json`.
-
-### Fee policy (applied 2026-09-12)
+### Fee policy
 
 Inclusion floor: every Besu node keeps `min-gas-price=1000000000` (1 gwei effective gas
 price). Validators keep `min-priority-fee` at its default of 0; setting a tip floor there
@@ -228,35 +156,6 @@ backed up under `/srv/backups/besu-fee-policy-*` on Frontend-01. Symptom that th
 a wallet transaction accepted by the archive pool at a few wei that never leaves pending.
 
 ## 7. Contract deployment and governance
-
-### Live initialization and functional acceptance: 2026-09-11
-
-The named GasManager, CodeManager, GasSponsor and CryftDelegationRegistry proxies
-are initialized on the running development chain. The validator registry and
-ProxyAdmin retain their reviewed genesis runtime. The shared beacon is owned by
-the fixed delegation registry. Do not repeat first-link initialization.
-
-The live suite confirmed 100 transaction receipts and 172 checks covering voter
-quorum/recovery, proxy role separation and upgrades, native funding/burns, restricted
-gas credit, code registration/redemption/delivery repair, real public EIP-7702
-sponsorship, replay/owner-signature enforcement and beacon-upgrade nonce retention.
-The explorer indexes the nested calls, including the sponsored redemption. See
-[the full acceptance record](docs/live-genesis-acceptance-20260911.md),
-[deployment tools](Tools/LiveGenesis/README.md), and
-[the observer/handoff prompt](Tools/LiveGenesis/FOLLOW_AND_HANDOFF_PROMPT.md).
-
-Cleanup removed temporary test voters/controllers, the canary privacy-group grant,
-treasury guardian and relayer. Sponsorship is paused; the canary tenant is disabled
-and its funding is zero. Remaining bootstrap voters/root/platform administrator
-and voucher signer are retained for the authorized application deployment. The
-supplied management address is nominated for GasSponsor and registry admin
-acceptance; it has not accepted, and final ownership handover is not complete.
-
-Face remains an unlinked reserved agent-registry proxy because an approved
-implementation is unavailable. The development canary is not a production gift
-or account-registration service. Paladin private execution has a separate completed
-development acceptance record; Router integration remains unfinished. The retained validator initializer exception in
-GOVERNANCE.md must be revisited before any external-only voter configuration.
 
 Reserved proxies initially have zero implementation and unset initialization.
 Deploy implementations separately, verify runtime and storage layouts, and link
@@ -290,29 +189,14 @@ workstation, Backend-01 and loopback through Nginx. It is not a browser API.
 The [Paladin maintenance runbook](Tools/Paladin/README.md) is part of this manual.
 It includes exact service units, ports, images, data/secret paths, contract addresses,
 funding, receipt reconciliation, restart, recovery, IPFS, upgrade and handover steps.
-Read the [acceptance evidence](docs/paladin-acceptance-20260911.md) and
-[dated funding snapshot](docs/paladin-funding-20260911.json) before changes.
-
-| Funding role | Address | Rule |
-|---|---|---|
-| Automatic Paladin public settlement | `0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549` | Fund native CRYFT on chain 113211; 0.024371939 CRYFT at block 362 |
-| Deployment/development public relayer | `0x633309d1155fD658a717e4f5E4FA853615400867` | Needs native transaction-fee reserve even when later reimbursed |
-| Private operator | `0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125` | Private execution does not require native balance |
-| GasSponsor tenant | Card `0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410` | Deposit through FEeD ledger methods; separate from wallet funding |
-
 Use `Tools/Paladin/funding.py` for a fresh read-only balance snapshot. The runbook
 explains direct transfers and GasManager proposal/vote/execute funding. A suggested
 development settlement reserve alerts below 0.01 CRYFT and refills toward 0.03;
 neither alert nor refill is automated. Registration currently costs 0.001 CRYFT per UID.
 
-Current private Combo proxy: `0x7a3eacca11e28712ed6e0dfc464795b2a0c2a342`.
-Public group: `0x533E526f095407490BB0089D3fc38e73484523B0`.
-Private group ID: `0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79`.
-The public CodeManager and private Combo were upgraded without storage changes to
-use `recordRedemptionStrict`: rejected public preconditions roll back the private
-spend, while accepted redemptions with failed delivery retain the recipient for retry.
-Five private redemptions delivered five public card NFTs. A public-only freeze and
-retry of the exact same prepared transition proved the rejection recovery path.
+The public CodeManager and private Combo use `recordRedemptionStrict`: rejected public
+preconditions roll back the private spend, while accepted redemptions with failed
+delivery retain the recipient for retry.
 
 Private contracts use Solidity 0.8.37/Shanghai, the installed interpreter's newest
 supported execution target. Public contracts use Osaka; the validator remains London.
@@ -385,34 +269,6 @@ publishing are planned, not installed. A tunnel to the read-only gateway does no
 enable peer discovery; public peering is a separate later configuration change.
 Follow `Tools/SolcCompiler/deploy/backend-ipfs/README.md`.
 
-Live deployed bytecode trailers were decoded and their exact metadata/source bytes
-checked against Backend-01 recursive pins, API readback and private gateway readback.
-The core 90-artifact bundle remains
-`QmSuawtJhsHhAJNS2VtPx4UHTEPvQgDbJD7vKmkV7smMaf`; the development fixture has its
-own metadata CID. `Tools/LiveGenesis/verify_ipfs.py` records per-address CIDs and
-source hashes. The additional Paladin/application artifacts are tracked separately
-in `docs/paladin-acceptance-20260911.json`: ten builds, 88 compiler objects, and two
-preserved NFT metadata directories. Deployed public runtime bytes and private code
-hashes match those pinned artifacts. The latest verification API check reports the
-Rust verifier enabled with both required compilers. Subsequent source verification
-completed for all 32,451 public addresses, with every stored runtime/source hash and
-license checked independently. Missing genesis contract records were resolved.
-The completed maintenance job is disabled; its evidence and pre-import database
-backup remain on Backend-01. See `docs/blockscout-verification-20260911.md`.
-
-The complete deployed-contract package is
-[`Contracts/Verification/20260911`](Contracts/Verification/20260911/README.md): 21
-replayed builds, all 32,433 genesis contracts, 18 later public creations and five
-private deployments at the manifest's recorded audit block. It includes Standard
-JSON input **and full output**, exact metadata, ABI, bytecode, per-file hashes,
-constructor arguments and per-target SPDX/API licenses. Eighteen native precompiles
-are catalogued as client code with no Solidity metadata. Use
-[the verification runbook](Tools/BlockscoutVerification/README.md) and
-[the other-LLM handoff](Tools/BlockscoutVerification/HANDOFF_PROMPT.md).
-The publication receipt is `docs/blockscout-artifact-ipfs-20260911.json`; it records
-all pinned artifact/source CIDs and exact API/gateway readback. Do not confuse MIT
-proxy licenses with their Apache-2.0 implementation licenses.
-
 The compiler automatically publishes when configured, verifies metadata/source CIDs
 against embedded bytecode references, pins each object, reads back bytes, and records
 a release-bundle CID. Never upload runtime secrets/private state. Local `--no-ipfs`
@@ -468,45 +324,7 @@ explorer visibility; IPFS retrieval; API/widget/direct integration; backups/rest
 and measured concurrency. Do not promote unresolved critical API, contract or
 privacy-path blockers. Send production promotion for owner review after these pass.
 
-## 16. Kota tenant access contracts — validated deployment
-
-Kota tenant release `1.4.0` is deployed on the existing chain and genesis, from
-`CryftCreator/KotaRouter` deployment source commit
-`d1402eb7071a32af98a6359d9992578226c766a7`. The access credential proxy is
-`0xa6a1161Fc96561c5DD94Ab4082D8b867E7C102C0` and factory proxy is `0xD99A083A2125dB1881e1D315885c7ba0FAc933d0`.
-The Cryft Cards membership registry/public routing key is `0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`.
-These are service access credentials, separate from the existing redeemable card NFT.
-
-Forty successful transactions and 32 live checks validated issuance, caps, locks,
-metadata, recovery and removal of temporary authority. All ten implementation,
-proxy, ProxyAdmin and beacon addresses are fully verified in Blockscout with MIT
-licensing. All 43 public source/metadata objects were pinned and retrieved through
-Backend-01 IPFS. Compiler 0.8.34 targets Osaka; no genesis or Paladin state changed.
-
-The final root `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` controls issuer, factory admin, both tenant operators
-and both ProxyAdmins. The factory owns the shared beacon. Temporary deployer and
-tester credentials were revoked and their tenant minting rights invalidated.
-The test registry is empty and locked; Cryft Cards is empty and unlocked, with
-three active registries allowed, 10000 holders each and a 128 lifetime-slot bound.
-
-See KotaRouter `router_v4/contracts/deployment/README.md`, `addresses.json`,
-`router-bindings.env.example`, and `receipts/` for the full maintenance procedure,
-review findings, metadata CIDs, all addresses and transaction evidence. The network
-inventory `docs/current-contract-addresses.json` includes this deployment under
-`kota_tenants`, retaining the earlier verification timestamp for other contracts.
-The router/widget binding and redemption API lifecycle still require integration.
-No service minter is authorized yet; the root operator must explicitly approve
-a runtime issuance wallet when that integration is ready. Fund that wallet with
-native gas or an approved sponsor policy; do not fund the membership contracts.
-
-## 17. Current maintenance index and acceptance boundaries
-
-Use [current system status](docs/CURRENT_STATUS.md) for the active inventory and
-document map. The [read-only September 11 snapshot](docs/documentation-live-check-20260911.json)
-records service state, wallet balances, verified Kota addresses and independent
-authority planes. Old receipt timestamps remain historical evidence, not live balances.
-The one-shot prompt is a resume procedure: no genesis reset, reenrollment,
-reinitialization, redundant contract deployment or duplicate IPFS/source upload.
+## 16. Acceptance boundaries
 
 Canonical Rust routes check registry locks uncached. The optional platform
 companion currently uses database membership and the slug `cryft-cards`;
@@ -515,32 +333,7 @@ registration and on-chain authorization before connecting it to the widget or
 direct API clients. A public profile key and an Origin header are not credentials.
 Source promotion does not resolve these integration gaps or authorize a live cutover.
 
-## September 12 tenant API lifecycle acceptance
-
-The published KotaRouter review branch completed a service-created postcard and
-private-code redemption to development wallet
-`0x35f9a01bc437c998175E56eD78F77C808FC64c18` (public card NFT token 6).
-Delivery transaction: `0x1613fed4e6f9a3a01a030b5af446b0800a40d91c140ae5c170bdf01e456ab01c`.
-The recipient spent no native gas. API/database acceptance does not imply that
-Kota application services have already been installed on the droplets.
-
-Monitor **both** public gas accounts on Paladin-01:
-
-- `0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549`: Pente public settlement.
-- `0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125`: operator for direct public mint submissions.
-
-The operator was separately funded with 0.03 CRYFT for the acceptance test. Funding
-settlement alone had left its mint pending. The original Paladin transaction ID
-was resumed after funding; a second mint was not submitted. Paladin keys remain on
-Paladin-01. Public sponsorship deposits do not replace these account balances.
-
-The test raised bounded card sale inventory from 5 to 8 with the existing card
-owner account. Confirm launch inventory and finish the recorded owner handover
-before production. The supplied root remains the tenant operator; test wallets
-were not given tenant-owner authority. See the KotaRouter tenant service manual
-and sanitized acceptance reports for API operations, encryption and restore rules.
-
-## 18. Token-bound accounts — review only, not deployed
+## 17. Token-bound accounts — review only, not deployed
 
 An ERC-6551 v0.3.1 compatible registry and `MomentCardAccount` implementation are
 in `Contracts/Accounts/` for Cryft Cards inventories. They are not on chain
@@ -551,24 +344,7 @@ factory first, then the original v0.3.1 bytecode — the 0.8.37 Osaka review bui
 cannot land there. If the factory's pre-EIP-155 transaction is rejected, accept a
 non-canonical registry after review.
 
-Application salt is `keccak256("cryft.cards:tba:v1")`. Bind the first resolved
-account per card; a later implementation address is a different TBA and must not
-be switched silently. Nested CARD NFTs from the parent collection
-`0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410` are rejected. See
-`Contracts/Accounts/README.md` and `docs/current-contract-addresses.json` `tba`.
-
-
-## Issuance and concurrency review — 15 September 2026
-
-The review uses locally generated 12-character codes and private-state assigned
-three-digit prefixes, optional encrypted local backups, receipt-bound UID tracking
-and shared batch metadata. Membership spending uses gas allocations; max batch size
-and batches per minute are separate traffic safeguards. Card-per-hour quotas have
-been retired. API 1.14.0, the widget and Cryft Cards must deploy together after
-the matching public/private contract and allowance activation.
-
-Offline regression and PostgreSQL concurrency tests pass. This does not activate
-browser publishing. The root wallet must approve the reviewed public upgrades and
-gas configuration; private deployment, metadata publication, runtime pins and live
-browser creation/redemption must then be verified. Do not advertise this review as
-production-ready or merge main as a substitute for that acceptance.
+The application salt is the implementation's `APPLICATION_SALT` constant. Bind the
+first resolved account per card; a later implementation address is a different TBA
+and must not be switched silently. Nested CARD NFTs from the parent card collection
+are rejected. See `Contracts/Accounts/README.md`.

@@ -4,7 +4,6 @@ GasSponsor 1.5.2: the engine is THIS source's WorkerGasSponsor linked fresh at 0
 chain's path); adds X-19 (a reservation is an operation) and X-57 (redirectWorkerRevenue).
 """
 import importlib.util
-import json
 from pathlib import Path
 import pytest
 from web3 import Web3
@@ -12,26 +11,31 @@ from web3.logs import DISCARD
 from test_native_sponsorship import builds, chain, setup, tx, fails, paid, at
 from test_governance import ADMIN
 
-ROOT=Path(__file__).resolve().parents[2]/'Contracts/Verification/20260915'
+REPO=Path(__file__).resolve().parents[2]
 
-def artifact(name):return json.loads((ROOT/name/'artifact.json').read_text())
-def create(c,name,*args):
-    a=artifact(name)
+def compiled(relative,name):
+    spec=importlib.util.spec_from_file_location('worker_compiler',REPO/'Tools/SolcCompiler/compile.py')
+    compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
+    out=compiler.compile_contract(REPO/relative,solc_version='0.8.37',evm_version='osaka')
+    return next(v for k,v in out.items() if k.rsplit(':',1)[-1]==name)
+
+@pytest.fixture(scope='session')
+def policy_build():
+    return compiled('Contracts/Templates/TenantAllowancePolicy.sol','TenantAllowancePolicy')
+
+def create(c,a,*args):
     receipt=tx(c,c['w3'].eth.contract(abi=a['abi'],bytecode=a['creation_bytecode']).constructor(*args))
     return c['w3'].eth.contract(address=receipt.contractAddress,abi=a['abi'])
 
 @pytest.fixture(scope='session')
 def worker_build():
-    spec=importlib.util.spec_from_file_location('worker_compiler',Path(__file__).resolve().parents[2]/'Tools/SolcCompiler/compile.py')
-    compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
-    out=compiler.compile_contract(Path(__file__).resolve().parents[2]/'Contracts/Genesis/7702/WorkerGasSponsor.sol',solc_version='0.8.37',evm_version='osaka')
-    return next(v for k,v in out.items() if k.rsplit(':',1)[-1]=='WorkerGasSponsor')
+    return compiled('Contracts/Genesis/7702/WorkerGasSponsor.sol','WorkerGasSponsor')
 
 @pytest.fixture
-def ready(chain, worker_build):
+def ready(chain, worker_build, policy_build):
     c=chain; _,s,_,_=setup(c,worker_build);a=c['accounts']
     assert s.functions.implementationVersion().call()=='1.5.2'
-    p=create(c,'TenantAllowancePolicy',s.address,a[4],a[5],'0x'+'0'*40,10**15,2*10**15,[])
+    p=create(c,policy_build,s.address,a[4],a[5],'0x'+'0'*40,10**15,2*10**15,[])
     tx(c,s.functions.setSponsorPolicy(a[4],p.address),a[5])
     tx(c,s.functions.configureWorker(a[2],a[8]))
     tx(c,s.functions.setTenantWorker(a[4],a[2],True),a[5])

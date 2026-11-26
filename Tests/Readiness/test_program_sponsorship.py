@@ -8,7 +8,6 @@ read, sponsorLimits). No live keys or RPC.
     CRYFT_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_sponsorship.py   # on Apple Silicon without Rosetta
 """
 import importlib.util
-import json
 from pathlib import Path
 
 import pytest
@@ -21,7 +20,6 @@ from test_native_sponsorship import builds, chain, setup, tx, fails, paid, at  #
 from test_governance import ADMIN
 
 REPO = Path(__file__).resolve().parents[2]
-VERIFIED = REPO / 'Contracts/Verification/20260915'
 GWEI = 10 ** 9
 HARD_OP, HARD_DAY = 10 ** 16, 10 ** 18          # 0.01 and 1 CRYFT, the plan's program-wide hard caps
 
@@ -76,9 +74,6 @@ contract PolicyV2 {                                                       // 1.5
     function workerSettlementVersion() external pure returns (uint256) { return 0; }
 }
 '''
-
-
-def verified(name): return json.loads((VERIFIED / name / 'artifact.json').read_text())
 
 
 @pytest.fixture(scope='session')

@@ -1,5 +1,5 @@
-"""GasSponsor 1.5.1 (ProgramGasSponsor, 2026-11-23): the safe-coding review's C3 and C4, on the live path (1.1.0 at 0x…FEeD, the
-VERIFIED 1.3.0, then this build) with real EIP-7702 accounts, as test_program_sponsorship.py:
+"""GasSponsor 1.5.1 (ProgramGasSponsor, 2026-11-23): the safe-coding review's C3 and C4, on THIS source's build linked fresh at
+0x…FEeD with real EIP-7702 accounts, as test_program_sponsorship.py:
 
   C3  the platform's CALL APPROVALS (ApprovedGasSponsor: target, selector, value, code hash) are enforced again for every sponsor
       but a developer program's; only the platform administrator sets them; their storage is ApprovedGasSponsor's own namespace;

@@ -7,7 +7,7 @@ interface IInventoryReceiver {
     function onERC1155Received(address,address,uint256,uint256,bytes calldata) external returns(bytes4);
 }
 contract InventoryTestNFT {
-    string public constant name="Dakota inventory acceptance";
+    string public constant name="Cryft inventory acceptance";
     string public constant symbol="DEVINV";
     address public minter=msg.sender;
     mapping(uint256=>address) private owners;
