@@ -1,7 +1,7 @@
 {
  "kind": "production",
  "chainId": "0x1ba3b",
- "genesis_sha256": "902baa7809d701a0aa9a075fd647cf156a853cbbec0cb39233641df9e801d39b",
+ "genesis_sha256": "af1ea7970669551b2c529d6bd16df65972286bc151d28d27d89f26d923307a68",
  "checks": [
   {
    "check": "blocks are produced",
@@ -85,5 +85,5 @@
   }
  ],
  "passed": true,
- "at": "2026-11-26T03:29:10Z"
+ "at": "2026-11-26T04:44:01Z"
 }

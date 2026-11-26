@@ -30,10 +30,10 @@
    "check": "getValidators matches the genesis",
    "ok": true,
    "detail": [
-    "0xD62583D78030C9D4842C149620693D0901FbfF5E",
-    "0x71d238bc32F4B402c41e6Bb5144c3A62040FcbEC",
-    "0x1f73C80c843d9496Cab8B449b9B6660ED188f140",
-    "0xb58EB20388Ca5d19702C3c7555d6cfe2eaCBAA3f"
+    "0xA6aE079DD2fa1be88673355fEeaE7567519d18e8",
+    "0x0B7E3Ef7c0B5c48afB1A1C7AB228E311A16A1952",
+    "0x01D55B6A3825Ed1FEE6407EFA1a342284cA26881",
+    "0x3f5638D116319623188acA7E738837Fe0DdCFF7A"
    ]
   },
   {
@@ -44,15 +44,15 @@
    "check": "getVoters matches",
    "ok": true,
    "detail": [
-    "0x76F85d2caF0d9aBb23ec6B5Da24A0Cd6a49dCbE7"
+    "0xA60f20A29e069FA7Ae5D082f7b10e3bC74522fF8"
    ]
   },
   {
    "check": "getRootOverlords matches",
    "ok": true,
    "detail": [
-    "0x728890e4d1fDc4816EB1D7E5A9EE465324e0Ab52",
-    "0x8E13e95E282742683cF2a714fFba2D324cD090D5"
+    "0x3E7D8fA9cc9b39E5BE60B00532eB66311438810c",
+    "0x393A24a34D3CC4F4c5dc44Fd8a037c3eF9d126E6"
    ]
   },
   {
@@ -169,5 +169,5 @@
   }
  ],
  "passed": true,
- "at": "2026-11-26T03:36:22Z"
+ "at": "2026-11-26T04:51:10Z"
 }
