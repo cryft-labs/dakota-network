@@ -146,3 +146,17 @@ The September 12 review configuration adds this policy and nosniff to each IPFS
 location. Only successful immutable-object responses receive long cache lifetimes;
 missing pins and gateway errors use no-store. Validate Nginx before reloading.
 These additional headers are prepared source changes until rollout is recorded.
+
+## Genesis balances (2026-11-26)
+
+`backend.env` sets `CHAIN_SPEC_PATH` to the live genesis, so Blockscout imports the genesis allocations (block-0 coin
+balances, the genesis contracts' code) at start. Blockscout does not then fill the current balance of an address that was
+funded at genesis and never appears in a transaction (Chad's root wallet showed 0), and its on-demand fetcher skips an
+address with no balance yet. After the first start, copy the block-0 balances into those addresses once (Indexer-01,
+inside `cryft-explorer-db`, database `blockscout`):
+
+    update addresses a set fetched_coin_balance = b.value, fetched_coin_balance_block_number = 0, updated_at = now()
+      from address_coin_balances b
+      where b.address_hash = a.hash and b.block_number = 0 and b.value is not null and a.fetched_coin_balance is null;
+
+An address that later transacts is refreshed by Blockscout itself.
