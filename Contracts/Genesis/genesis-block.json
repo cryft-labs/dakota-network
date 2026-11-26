@@ -1,0 +1,5 @@
+{
+ "genesis_sha256": "af1ea7970669551b2c529d6bd16df65972286bc151d28d27d89f26d923307a68",
+ "genesisBlockHash": "0xc32d64ac046ddf4177b1e5bc51265fac2bfdd5e3b1a5f252c3788b47ba6c21cc",
+ "recorded_by": "Tools/Genesis/rehearse.py --kind production (local 4-node run, read-only)"
+}

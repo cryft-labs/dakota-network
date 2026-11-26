@@ -85,5 +85,6 @@
   }
  ],
  "passed": true,
- "at": "2026-11-26T04:44:01Z"
+ "at": "2026-11-26T18:13:53Z",
+ "genesisBlockHash": "0xc32d64ac046ddf4177b1e5bc51265fac2bfdd5e3b1a5f252c3788b47ba6c21cc"
 }

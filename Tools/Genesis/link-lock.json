@@ -1,0 +1,47 @@
+{
+ "CodeManager": {
+  "creation_sha256": "e118c81b4a3340299da44a6ebbf7331e38ab625e091d9e00896c711e308a8af6",
+  "runtime_bytes": 24126,
+  "runtime_keccak256": "0xd2c416d7e48e53f744b7dd264b363e46bcbc3d8aef06ff5a6762d10ad99e100b"
+ },
+ "CryftBeaconDispatcher": {
+  "creation_sha256": "cfd31d32d2791a3c605468236f8047cf62d75cd5b08233dc57423367ca78b1a0",
+  "runtime_bytes": 813,
+  "runtime_keccak256": "0x5145b72b1faa14f92174874a9271244bc7ee0dcba4ee07c1b976a169512fc1c3"
+ },
+ "CryftDelegation": {
+  "creation_sha256": "388b1d198269e0777342ef3e250c52c9479002f46b07219df5f7346e14b429b4",
+  "runtime_bytes": 5546,
+  "runtime_keccak256": "0x8d53af48b9401adc92b078f05856965ccdac43acaaa1c8b48fcd3ed45ba6db2a"
+ },
+ "CryftDelegationBeacon": {
+  "creation_sha256": "2c32ded203ba974cdd36c41a83f1b45d281021cd4cfc1c9df35cb3c24520f274",
+  "runtime_bytes": 453,
+  "runtime_keccak256": "0xeefe5cad1aa782519c0131d0ac3949591df637b4739a5d412c97f8a28a590d07"
+ },
+ "CryftDelegationRegistry": {
+  "creation_sha256": "552d8e0b2f9ddd7a7b56e88157fdd4bc899316cdd8200d0fa66054f3a48bdd95",
+  "runtime_bytes": 14930,
+  "runtime_keccak256": "0xff8ca4b07db9cea3896ff98bc14ceca7e34d00eee26fbc24bb724fd5d80c0f51"
+ },
+ "GasManager": {
+  "creation_sha256": "0fe6930737dd7d536c6600a8fd96171fb69935259c71268a0077f9788212fd43",
+  "runtime_bytes": 24008,
+  "runtime_keccak256": "0xabd51f9a7bd4e5366f4a67f225de8245c73f758fede6480508584545ad49a9a9"
+ },
+ "ProgramGasSponsor": {
+  "creation_sha256": "2dca07e5755af201fa1aa4b36c9e12f44de89ddd35287263fec233fbeefc65be",
+  "runtime_bytes": 32435,
+  "runtime_keccak256": "0x191fd3326bfefaeeb4b87777677985b6ba6bdc29e5d9e5b5591e27f7e6885d6f"
+ },
+ "ProxyAdmin": {
+  "creation_sha256": "4e1e7c2629c5a5b6ebd8b60a4c209ef8283d28099c4ae232d0fb9c19cf39c13c",
+  "runtime_bytes": 2941,
+  "runtime_keccak256": "0xfe2bc702366599eac7b406445ab783e9542302ea1f86bcf40aa7273f31969b31"
+ },
+ "TransparentUpgradeableProxy": {
+  "creation_sha256": "79733e24333ddacfe77d290914e10214e6fbba9ef0d1463dc2ea08cea23cc08d",
+  "runtime_bytes": 20210,
+  "runtime_keccak256": "0x3fac509a82d9b79fcd40ded0c0ad85b4ecaead77c93dccb2a33091523718cbd1"
+ }
+}

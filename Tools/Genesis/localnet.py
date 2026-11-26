@@ -103,7 +103,7 @@ def start(kind, run):
         (node / "static-nodes.json").write_text(json.dumps([e for j, e in enumerate(enodes) if j != i - 1]))
         args = [str(BESU), f"--data-path={node / 'data'}", f"--genesis-file={run / 'genesis.json'}",
                 f"--node-private-key-file={node / 'key'}", f"--network-id={inputs['chainId']}",
-                "--sync-mode=FULL", "--data-storage-format=BONSAI", "--discovery-enabled=false",
+                "--sync-mode=FULL", "--sync-min-peers=1", "--data-storage-format=BONSAI", "--discovery-enabled=false",
                 f"--static-nodes-file={node / 'static-nodes.json'}", "--p2p-host=127.0.0.1",
                 "--p2p-interface=127.0.0.1", f"--p2p-port={P2P + i - 1}", "--nat-method=NONE",
                 "--rpc-http-enabled=true", "--rpc-http-host=127.0.0.1", f"--rpc-http-port={rpc_port(i)}",

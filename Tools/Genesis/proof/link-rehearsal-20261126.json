@@ -1,0 +1,200 @@
+{
+ "steps": {
+  "deploy:GasManager": {
+   "tx": "0xb170965085a27b0d64235f024438a0d36c7aa259db70a1d37d980b2752f3def1",
+   "address": "0xbc6E4847Ef5Ee36A9Ee778e72AC84468BcA455aa"
+  },
+  "deploy:CodeManager": {
+   "tx": "0x50ea07e743b29615dd710f79189e1c87867fb9f08aa074eac46ec148c67826e4",
+   "address": "0x16b3fdAba375E482eF4e72210E1C2f6A36e2d65F"
+  },
+  "deploy:CryftDelegation": {
+   "tx": "0xdd371f2cc04172490826713b7a2fa8839a81490846b11e6187ee94e788a37168",
+   "address": "0xd73Fe1C0E925525761A5130Ec04388875c8B1Cf6"
+  },
+  "link:GasManager@cafE": {
+   "tx": "0xc62960263c98d9631f18b4ae8a8ccb74f8c80ebbe7de5809f56d4088396182d0"
+  },
+  "link:CodeManager@c0DE": {
+   "tx": "0x3dc439cfae2843518b6376946f9fb4b7e7c2beea5b086638b06408cae4e1df6e"
+  },
+  "vote:CodeManager.feeVault": {
+   "tx": "0x57b8b7accd4f05fb717972e0136bf1dad5d473685a6b7548bf0ca2b8992ea8aa"
+  },
+  "deploy:CryftDelegationBeacon": {
+   "tx": "0xee8fa150b4300af82b3fbe890fbc12602a92beca9684a4ed5eb375309a9eba85",
+   "address": "0x9Fb602F5Bc5C484bc3eE85C6f5b7c5938086641a"
+  },
+  "deploy:CryftBeaconDispatcher": {
+   "tx": "0x0246dfbd25eded9ac06d126cd8cd30f0ff7973dbb3e0c65a47417ac64edd6902",
+   "address": "0xd77c259636Ad40844c548dA470E1403C1dA9B250"
+  },
+  "deploy:ProgramGasSponsor": {
+   "tx": "0xdbfbe6ef93a85780a3b03f662955b1af8c4bebf888c47cea60bbc55e00021286",
+   "address": "0x435Be00E296d9Cd77beEEE4E2aCa5ebdf97ef86e"
+  },
+  "link:GasSponsor@FEeD": {
+   "tx": "0xaab4fea25aa2907df9cbf3988dd846e8ca9202018da4c07f462090100bfb978c"
+  },
+  "deploy:CryftDelegationRegistry": {
+   "tx": "0x34d25c7a282fee549c07f1a6c1a5255bdb8e33da770c6b8166fc34c065e835f2",
+   "address": "0xfda50E6261ad012CeE9B0EdB5351962D4d12Ad22"
+  },
+  "link:CryftDelegationRegistry@de1E6A7E": {
+   "tx": "0xa1171027acfb975073c948051ecd28a03f485730d4445e9f78bc2b299203fbd0"
+  }
+ },
+ "chain": {
+  "chainId": 113211,
+  "genesis": "0x4cdee5e4f2f6bc28bf8967d4fcfd431ad9c61d8d0b029a4ac5daa1ca3983f458",
+  "signer": "0xBe5148B1AF01B2Fad1Db64B8a5c4Ef3900d75738",
+  "rehearsal": true
+ },
+ "checks": [
+  {
+   "check": "chain id is 113211",
+   "ok": true,
+   "detail": 113211
+  },
+  {
+   "check": "rehearsal chain: roots are the run's throwaway roots",
+   "ok": true
+  },
+  {
+   "check": "rehearsal chain is not the real genesis",
+   "ok": true
+  },
+  {
+   "check": "signer is a root of 0x\u20261111",
+   "ok": true,
+   "detail": "0xBe5148B1AF01B2Fad1Db64B8a5c4Ef3900d75738"
+  },
+  {
+   "check": "CodeManager voter signs the fee-vault ballot",
+   "ok": true
+  },
+  {
+   "check": "0x000000000000000000000000000000000000cafE carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "0x000000000000000000000000000000000000c0DE carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "0x000000000000000000000000000000000000FEeD carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "0x00000000000000000000000000000000de1E6A7E carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "0x000000000000000000000000000000000000Face carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "signer has at least 1 CRYFT for gas",
+   "ok": true,
+   "detail": 999999966929356965977317
+  },
+  {
+   "check": "GasManager@cafE: already linked to the journal's implementation",
+   "ok": true,
+   "detail": "0xbc6E4847Ef5Ee36A9Ee778e72AC84468BcA455aa"
+  },
+  {
+   "check": "GasManager: voters as planned",
+   "ok": true
+  },
+  {
+   "check": "GasManager: second initialization reverts",
+   "ok": true
+  },
+  {
+   "check": "GasManager: implementation cannot be initialized",
+   "ok": true
+  },
+  {
+   "check": "CodeManager@c0DE: already linked to the journal's implementation",
+   "ok": true,
+   "detail": "0x16b3fdAba375E482eF4e72210E1C2f6A36e2d65F"
+  },
+  {
+   "check": "CodeManager: voters as planned",
+   "ok": true
+  },
+  {
+   "check": "CodeManager: second initialization reverts",
+   "ok": true
+  },
+  {
+   "check": "CodeManager: fee vault is GasManager",
+   "ok": true
+  },
+  {
+   "check": "Beacon: owned by the registry entry 0x\u2026de1E6A7E",
+   "ok": true
+  },
+  {
+   "check": "Beacon: points at the delegation logic",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor@FEeD: already linked to the journal's implementation",
+   "ok": true,
+   "detail": "0x435Be00E296d9Cd77beEEE4E2aCa5ebdf97ef86e"
+  },
+  {
+   "check": "GasSponsor: starts paused",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor: platform admin as planned",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor: approved delegate is the dispatcher",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor: version 1.5.2",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor: second initialization reverts",
+   "ok": true
+  },
+  {
+   "check": "CryftDelegationRegistry@de1E6A7E: already linked to the journal's implementation",
+   "ok": true,
+   "detail": "0xfda50E6261ad012CeE9B0EdB5351962D4d12Ad22"
+  },
+  {
+   "check": "Registry: admin as planned",
+   "ok": true
+  },
+  {
+   "check": "Registry: upgrade delay as planned",
+   "ok": true
+  },
+  {
+   "check": "Registry: second initialization reverts",
+   "ok": true
+  },
+  {
+   "check": "0x\u2026Face stays unlinked",
+   "ok": true
+  }
+ ],
+ "addresses": {
+  "GasManagerLogic": "0xbc6E4847Ef5Ee36A9Ee778e72AC84468BcA455aa",
+  "CodeManagerLogic": "0x16b3fdAba375E482eF4e72210E1C2f6A36e2d65F",
+  "CryftDelegation": "0xd73Fe1C0E925525761A5130Ec04388875c8B1Cf6",
+  "CryftDelegationBeacon": "0x9Fb602F5Bc5C484bc3eE85C6f5b7c5938086641a",
+  "CryftBeaconDispatcher": "0xd77c259636Ad40844c548dA470E1403C1dA9B250",
+  "GasSponsorLogic": "0x435Be00E296d9Cd77beEEE4E2aCa5ebdf97ef86e",
+  "CryftDelegationRegistryLogic": "0xfda50E6261ad012CeE9B0EdB5351962D4d12Ad22"
+ },
+ "completed": "2026-11-26T18:23:04Z"
+}

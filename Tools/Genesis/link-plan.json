@@ -1,0 +1,27 @@
+{
+  "purpose": "D.7 bootstrap: link the genesis system proxies with their first implementations and init data (Tools/Genesis/link.py). Values for dev; the handover to Chad's governance keys happens at launch.",
+  "deployer": "0x633309d1155fD658a717e4f5E4FA853615400867",
+  "keychain": {"account": "dev-deployer", "service": "cryft-dev-deployer"},
+  "gasManager": {
+    "voters": ["0x633309d1155fD658a717e4f5E4FA853615400867"],
+    "executionDelaySeconds": 0,
+    "outflowCapWei": "1000000000000000000000",
+    "outflowPeriodSeconds": 86400
+  },
+  "codeManager": {
+    "voters": ["0x633309d1155fD658a717e4f5E4FA853615400867"],
+    "feeVault": "0x000000000000000000000000000000000000cafE"
+  },
+  "gasSponsor": {
+    "logic": "ProgramGasSponsor",
+    "platformAdmin": "0x633309d1155fD658a717e4f5E4FA853615400867",
+    "voucherSigner": "0x633309d1155fD658a717e4f5E4FA853615400867",
+    "voucherSignerNote": "Sponsorship starts paused. Replace with the dedicated voucher signer (audit X-24) before unpausing.",
+    "fixedOverheadGas": 100000
+  },
+  "registry": {
+    "admin": "0x633309d1155fD658a717e4f5E4FA853615400867",
+    "upgradeDelaySeconds": 0
+  },
+  "leftUnlinked": {"0x000000000000000000000000000000000000Face": "Reserved for an ERC-8004 agent registry; reverts until linked."}
+}

@@ -38,6 +38,6 @@ then `install-besu.py` (it reads the tx-pool policy from `Tools/Deployment/txpoo
 
 ## Still to do after genesis (not genesis-baked)
 
-- D.7 bootstrap tool (successor of `Tools/LiveGenesis/initialize.py`): link cafE/c0DE/FEeD/de1E6A7E with init data
+- D.7 bootstrap: `Tools/Genesis/link.py` (plan `link-plan.json`, pins `link-lock.json`, guard `Contracts/Genesis/genesis-block.json`) links cafE/c0DE/FEeD/de1E6A7E with init data; rehearsed (`proof/link-rehearsal-20261126.json`)
   using the new initializers (`initializeWithVoters`, `initializeWithAdmin(..., upgradeDelay)`); no beacon handover.
 - Raise the upgrade delays and move value proxies under the system timelock before real value (audit §3.2).

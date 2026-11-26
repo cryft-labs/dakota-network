@@ -130,6 +130,8 @@ def read_only(c, manifest):
             failed = True
         c.check(f"unlinked proxy {address} reverts", failed)
     c.check("chain-config contract size limit is 32768", True)
+    block0 = w3.eth.get_block(0)["hash"].hex()
+    c.genesis_block_hash = block0 if block0.startswith("0x") else "0x" + block0
 
 
 def drills(c, run, manifest):
@@ -238,6 +240,11 @@ if __name__ == "__main__":
     receipt = {"kind": a.kind, "chainId": manifest["chainIdHex"], "genesis_sha256": manifest.get("genesis_sha256"),
                "checks": c.checks, "passed": all(x["ok"] for x in c.checks),
                "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    receipt["genesisBlockHash"] = c.genesis_block_hash
     Path(a.out).write_text(json.dumps(receipt, indent=1) + "\n")
+    if a.kind == "production" and receipt["passed"]:
+        (REPO / "Contracts/Genesis/genesis-block.json").write_text(json.dumps(
+            {"genesis_sha256": manifest["genesis_sha256"], "genesisBlockHash": c.genesis_block_hash,
+             "recorded_by": "Tools/Genesis/rehearse.py --kind production (local 4-node run, read-only)"}, indent=1) + "\n")
     print("ALL PASSED" if receipt["passed"] else "SOME CHECKS FAILED")
     sys.exit(0 if receipt["passed"] else 1)
