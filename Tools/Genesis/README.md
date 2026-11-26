@@ -38,6 +38,11 @@ then `install-besu.py` (it reads the tx-pool policy from `Tools/Deployment/txpoo
 
 ## Still to do after genesis (not genesis-baked)
 
-- D.7 bootstrap: `Tools/Genesis/link.py` (plan `link-plan.json`, pins `link-lock.json`, guard `Contracts/Genesis/genesis-block.json`) links cafE/c0DE/FEeD/de1E6A7E with init data; rehearsed (`proof/link-rehearsal-20261126.json`)
-  using the new initializers (`initializeWithVoters`, `initializeWithAdmin(..., upgradeDelay)`); no beacon handover.
+- D.7 bootstrap with Chad's root wallet (`Tools/Genesis/link.py`, plan `link-plan.json`, lock `link-lock.json`,
+  guard `Contracts/Genesis/genesis-block.json`):
+  1. `--phase deploy --execute`: the dev deployer deploys the implementations, beacon and dispatcher.
+  2. `--phase guide --dry-run`: writes `Contracts/Genesis/root-link-guide.md` with the four root-wallet steps.
+  3. Chad signs the four links from 0x9247…e921 (explorer form or raw transaction).
+  4. `--phase verify --execute` after each step: sends the CodeManager fee-vault ballot (dev deployer, genesis voter)
+     and checks every link. Rehearsed end to end (`proof/link-rehearsal-20261126.json`).
 - Raise the upgrade delays and move value proxies under the system timelock before real value (audit §3.2).

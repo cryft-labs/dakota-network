@@ -13,20 +13,23 @@ Order:
   5. CryftDelegationRegistry -> 0x…de1E6A7E  initializeWithAdmin(dispatcher, beacon, 0x…FEeD, admin, upgradeDelay)
 0x…Face stays unlinked.
 
-Modes:
-  --dry-run   checks everything that can be checked without sending: chain id, genesis guard, signer is a root,
-              proxies unlinked, balances, artifacts match Tools/Genesis/link-lock.json; estimates each deployment.
-  --execute   sends. Re-running resumes from the journal (deployed code is re-verified against the lock).
-  --lock      (re)writes link-lock.json from the current sources.
+Phases (Chad 2026-11-26: his root wallet signs the links, so he goes through the steps of maintaining the chain):
+  --phase deploy  --execute   the dev deployer deploys the implementations, beacon and dispatcher (no authority).
+  --phase guide   --dry-run   writes Contracts/Genesis/root-link-guide.md: numbered steps for the root wallet with
+                              the exact proxy, logic address, init data and raw calldata of each link.
+  (Chad signs steps 1-4 from his wallet.)
+  --phase verify  --execute   checks every link that is in, sends the CodeManager fee-vault ballot from the dev
+                              deployer (the genesis voter) once CodeManager is linked, and lists what is pending.
+  --phase links   --execute   REHEARSAL ONLY: a throwaway root signs exactly the guide's calldata.
+  --dry-run on deploy estimates the deployments; --lock rewrites link-lock.json from the current sources.
 
-Signers:
-  production  the dev deployer from the macOS Keychain (link-plan.json "keychain"); the chain must be the real
-              113211 genesis (block 0 hash pinned in Contracts/Genesis/genesis-block.json).
-  rehearsal   --rehearsal RUN uses the run folder's throwaway root and voter (Tools/Genesis/localnet.py). The real
-              deployer key is never used on a local chain: its transactions would be valid on the real chain.
+Guards: chain id 113211; on the real chain the block 0 hash must equal Contracts/Genesis/genesis-block.json;
+the link signer is a 0x…1111 root; artifacts match link-lock.json. The real root key never touches this tool,
+and the real deployer key is never used on a local chain (its transactions would be valid on the real chain).
 
-    python Tools/Genesis/link.py --rpc http://127.0.0.1:18545 --rehearsal RUN --execute --journal RUN/link-journal.json
-    python Tools/Genesis/link.py --rpc <archive RPC> --dry-run --journal <path>
+    python Tools/Genesis/link.py --rpc RPC --phase deploy --execute --journal J
+    python Tools/Genesis/link.py --rpc RPC --phase guide  --dry-run --journal J
+    python Tools/Genesis/link.py --rpc RPC --phase verify --execute --journal J
 """
 import argparse
 import hashlib
@@ -115,25 +118,31 @@ class Linker:
     # ── setup ──────────────────────────────────────────────────────────────────────────────────────
 
     def _signers(self):
+        """deployer: deploys implementations and sends the voter's ballot. root: signs the four links."""
         if self.args.rehearsal:
             keys = json.loads((Path(self.args.rehearsal) / "accounts.json").read_text())
-            self.root = Account.from_key("0x" + keys["root1"])
-            self.voter = Account.from_key("0x" + keys["voter1"])
-            me, vote = self.root.address, self.voter.address
+            self.root_signer = Account.from_key("0x" + keys["root1"])   # stands in for Chad's root wallet
+            self.deployer = Account.from_key("0x" + keys["voter1"])     # stands in for 0x6333 (deployer + voter)
+            root, vote = self.root_signer.address, self.deployer.address
+            self.plan["root"] = root
             self.plan["gasManager"]["voters"] = [vote]
             self.plan["codeManager"]["voters"] = [vote]
-            self.plan["gasSponsor"]["platformAdmin"] = me
-            self.plan["gasSponsor"]["voucherSigner"] = me
-            self.plan["registry"]["admin"] = me
+            self.plan["gasSponsor"]["platformAdmin"] = root
+            self.plan["gasSponsor"]["voucherSigner"] = vote
+            self.plan["registry"]["admin"] = root
         else:
-            key = subprocess.run(["security", "find-generic-password", "-a", self.plan["keychain"]["account"],
-                                  "-s", self.plan["keychain"]["service"], "-w"],
-                                 capture_output=True, text=True, check=True).stdout.strip()
-            self.root = Account.from_key(key)
-            del key
-            if self.root.address != A(self.plan["deployer"]):
-                raise SystemExit("The Keychain key is not the planned deployer")
-            self.voter = self.root
+            self.root_signer = None  # the real root key never touches this tool: Chad signs from his wallet
+            if self.args.phase in ("deploy", "verify"):
+                key = subprocess.run(["security", "find-generic-password", "-a", self.plan["keychain"]["account"],
+                                      "-s", self.plan["keychain"]["service"], "-w"],
+                                     capture_output=True, text=True, check=True).stdout.strip()
+                self.deployer = Account.from_key(key)
+                del key
+                if self.deployer.address != A(self.plan["deployer"]):
+                    raise SystemExit("The Keychain key is not the planned deployer")
+            else:
+                self.deployer = None
+        self.root_address = A(self.plan["root"])
 
     def check(self, name, ok, detail=None):
         self.checks.append({"check": name, "ok": bool(ok), **({"detail": detail} if detail is not None else {})})
@@ -168,16 +177,21 @@ class Linker:
             pinned = pinned["genesisBlockHash"]
             self.check("genesis block hash is the pinned 113211 genesis", pinned and genesis == pinned, genesis)
         reg = w3.eth.contract(REGISTRY_1111, abi=VALIDATOR_ABI)
-        self.check("signer is a root of 0x…1111", reg.functions.isRootOverlord(self.root.address).call(), self.root.address)
-        self.check("CodeManager voter signs the fee-vault ballot",
-                   [self.voter.address] == self.plan["codeManager"]["voters"])
+        self.check("link signer is a root of 0x…1111", reg.functions.isRootOverlord(self.root_address).call(), self.root_address)
+        self.check("root has gas for the four links", w3.eth.get_balance(self.root_address) >= 10 ** 17,
+                   w3.eth.get_balance(self.root_address))
+        if self.deployer:
+            self.check("deployer is the CodeManager voter (fee-vault ballot)",
+                       [self.deployer.address] == [A(v) for v in self.plan["codeManager"]["voters"]])
         for address in (CAFE, CODE, FEED, ENTRY, FACE):
             self.check(f"{address} carries the genesis proxy code",
                        runtime_hash("0x" + w3.eth.get_code(address).hex().removeprefix("0x"))
                        == json.loads(MANIFEST.read_text())["runtimes"]["TransparentUpgradeableProxy"]["runtime_keccak256"])
-        balance = w3.eth.get_balance(self.root.address)
-        self.check("signer has at least 1 CRYFT for gas", balance >= 10 ** 18, balance)
-        self.journal["chain"] = {"chainId": CHAIN_ID, "genesis": genesis, "signer": self.root.address,
+        if self.deployer:
+            balance = w3.eth.get_balance(self.deployer.address)
+            self.check("deployer has at least 1 CRYFT for gas", balance >= 10 ** 18, balance)
+        self.journal["chain"] = {"chainId": CHAIN_ID, "genesis": genesis, "root": self.root_address,
+                                 "deployer": self.deployer.address if self.deployer else None,
                                  "rehearsal": bool(self.args.rehearsal)}
 
     # ── sending ────────────────────────────────────────────────────────────────────────────────────
@@ -208,10 +222,10 @@ class Linker:
         factory = self.w3.eth.contract(abi=self.art[name]["abi"], bytecode=self.art[name]["creation"])
         data = factory.constructor(*args).data_in_transaction
         if self.args.dry_run:
-            gas = self.w3.eth.estimate_gas({"from": self.root.address, "data": data})
+            gas = self.w3.eth.estimate_gas({"from": self.deployer.address, "data": data})
             self.check(f"{label}: deployable (estimate {gas} gas)", gas < MAX_TX_GAS, gas)
             return None
-        receipt = self.send(self.root, {"data": data}, label)
+        receipt = self.send(self.deployer, {"data": data}, label)
         address = receipt.contractAddress
         self.journal["steps"][label]["address"] = address
         self.save()
@@ -223,21 +237,31 @@ class Linker:
             self.check(f"{name}: implementation initializer locked (Initializable._initialized == 255)", slot0 & 0xff == 0xff, hex(slot0))
         return self.contract(name, address)
 
-    def link(self, proxy_address, logic, init_fn, label):
+    def link_call(self, proxy_address, logic, init_fn):
         proxy = self.contract("TransparentUpgradeableProxy", proxy_address)
-        admin = self.contract("ProxyAdmin", PROXY_ADMIN)
-        if proxy.functions.proxy_getIsInit().call():
-            current = admin.functions.getProxyImplementation(proxy_address).call()
-            self.check(f"{label}: already linked to the journal's implementation", current == logic.address, current)
+        init_data = init_fn._encode_transaction_data()
+        return proxy, init_data, proxy.functions.proxy_linkLogicAdmin(logic.address, init_data)
+
+    def linked(self, proxy_address, logic, label):
+        proxy = self.contract("TransparentUpgradeableProxy", proxy_address)
+        if not proxy.functions.proxy_getIsInit().call():
+            return False
+        current = self.contract("ProxyAdmin", PROXY_ADMIN).functions.getProxyImplementation(proxy_address).call()
+        self.check(f"{label}: linked to the deployed implementation", current == logic.address, current)
+        return True
+
+    def link(self, proxy_address, logic, init_fn, label):
+        """Rehearsal only: the throwaway root sends exactly the calldata the root guide gives Chad."""
+        if self.linked(proxy_address, logic, label):
             print(f"skip link:{label}")
             return
-        data = init_fn._encode_transaction_data()
-        self.check(f"{label}: init data present", len(data) > 10)
-        self.send(self.root, {"to": proxy_address, "data": proxy.functions.proxy_linkLogicAdmin(logic.address, data)._encode_transaction_data()},
-                  "link:" + label)
-        self.check(f"{label}: proxy reports linked", proxy.functions.proxy_getIsInit().call())
-        self.check(f"{label}: implementation is the deployed logic",
-                   admin.functions.getProxyImplementation(proxy_address).call() == logic.address)
+        _, init_data, call = self.link_call(proxy_address, logic, init_fn)
+        self.check(f"{label}: init data present", len(init_data) > 10)
+        guide = self.journal.get("guide", {}).get(label)
+        if guide:
+            self.check(f"{label}: calldata equals the root guide's", guide["data"] == call._encode_transaction_data())
+        self.send(self.root_signer, {"to": proxy_address, "data": call._encode_transaction_data()}, "link:" + label)
+        self.linked(proxy_address, logic, label)
 
     def reverts(self, fn, sender):
         try:
@@ -248,70 +272,135 @@ class Linker:
 
     # ── the plan ───────────────────────────────────────────────────────────────────────────────────
 
-    def run(self):
-        self.preflight()
-        p = self.plan
-        gm_plan, cm_plan, gs_plan, rg_plan = p["gasManager"], p["codeManager"], p["gasSponsor"], p["registry"]
-        voters_gm = [A(v) for v in gm_plan["voters"]]
-        voters_cm = [A(v) for v in cm_plan["voters"]]
+    # ── the plan ───────────────────────────────────────────────────────────────────────────────────
 
-        gm_logic = self.deploy("GasManager")
-        cm_logic = self.deploy("CodeManager")
+    def deployed(self, name):
+        address = self.journal["steps"].get("deploy:" + name, {}).get("address")
+        if not address:
+            raise SystemExit(f"{name} is not deployed yet: run --phase deploy --execute first")
+        return self.contract(name, address)
+
+    def deploy_all(self):
+        """Implementations, beacon and dispatcher. Grants no authority; the dev deployer sends these."""
+        self.deploy("GasManager")
+        self.deploy("CodeManager")
         delegation = self.deploy("CryftDelegation")
         if self.args.dry_run:
-            self.check("dry run: deployments estimated; links, votes and init checks run in --execute", True)
+            self.check("dry run: deployments estimated", True)
             return
-        gm_init = gm_logic.functions.initializeWithVoters(voters_gm, gm_plan["executionDelaySeconds"],
-                                                          int(gm_plan["outflowCapWei"]), gm_plan["outflowPeriodSeconds"])
-        self.link(CAFE, gm_logic, gm_init, "GasManager@cafE")
-        gm = self.contract("GasManager", CAFE)
-        self.check("GasManager: voters as planned", gm.functions.getVoters().call() == voters_gm)
-        self.check("GasManager: second initialization reverts", self.reverts(gm_init, self.root.address))
-        self.check("GasManager: implementation cannot be initialized", self.reverts(
-            self.contract("GasManager", gm_logic.address).functions.initializeWithVoters(voters_gm, 0, 1, 3600), self.root.address))
-
-        cm_init = cm_logic.functions.initializeWithVoters(voters_cm)
-        self.link(CODE, cm_logic, cm_init, "CodeManager@c0DE")
-        cm = self.contract("CodeManager", CODE)
-        self.check("CodeManager: voters as planned", cm.functions.getVoters().call() == voters_cm)
-        self.check("CodeManager: second initialization reverts", self.reverts(cm_init, self.root.address))
-        if cm.functions.feeVault().call() != A(cm_plan["feeVault"]):
-            self.send(self.voter, {"to": CODE, "data": cm.functions.voteToSetFeeVault(A(cm_plan["feeVault"]))._encode_transaction_data()},
-                      "vote:CodeManager.feeVault")
-        self.check("CodeManager: fee vault is GasManager", cm.functions.feeVault().call() == A(cm_plan["feeVault"]))
-
         beacon = self.deploy("CryftDelegationBeacon", delegation.address)
         self.check("Beacon: owned by the registry entry 0x…de1E6A7E", beacon.functions.owner().call() == ENTRY)
         self.check("Beacon: points at the delegation logic", beacon.functions.implementation().call() == delegation.address)
-        dispatcher = self.deploy("CryftBeaconDispatcher", beacon.address)
+        self.deploy("CryftBeaconDispatcher", beacon.address)
+        self.deploy(self.plan["gasSponsor"]["logic"])
+        self.deploy("CryftDelegationRegistry")
 
-        gs_logic = self.deploy(gs_plan["logic"])
-        gs_init = gs_logic.functions.initialize(A(gs_plan["platformAdmin"]), A(gs_plan["voucherSigner"]),
-                                                dispatcher.address, gs_plan["fixedOverheadGas"])
-        self.link(FEED, gs_logic, gs_init, "GasSponsor@FEeD")
-        gs = self.contract(gs_plan["logic"], FEED)
-        self.check("GasSponsor: starts paused", gs.functions.paused().call())
-        self.check("GasSponsor: platform admin as planned", gs.functions.platformAdmin().call() == A(gs_plan["platformAdmin"]))
-        self.check("GasSponsor: approved delegate is the dispatcher", gs.functions.approvedDelegate().call() == dispatcher.address)
-        self.check("GasSponsor: version 1.5.2", gs.functions.implementationVersion().call() == "1.5.2")
-        self.check("GasSponsor: second initialization reverts", self.reverts(gs_init, self.root.address))
+    def links(self):
+        """The four root links in order: (label, proxy, logic, init call)."""
+        p = self.plan
+        gm, cm, gs, rg = p["gasManager"], p["codeManager"], p["gasSponsor"], p["registry"]
+        gm_logic, cm_logic = self.deployed("GasManager"), self.deployed("CodeManager")
+        gs_logic, rg_logic = self.deployed(gs["logic"]), self.deployed("CryftDelegationRegistry")
+        beacon, dispatcher = self.deployed("CryftDelegationBeacon"), self.deployed("CryftBeaconDispatcher")
+        return [
+            ("GasManager@cafE", CAFE, gm_logic, gm_logic.functions.initializeWithVoters(
+                [A(v) for v in gm["voters"]], gm["executionDelaySeconds"], int(gm["outflowCapWei"]), gm["outflowPeriodSeconds"])),
+            ("CodeManager@c0DE", CODE, cm_logic, cm_logic.functions.initializeWithVoters([A(v) for v in cm["voters"]])),
+            ("GasSponsor@FEeD", FEED, gs_logic, gs_logic.functions.initialize(
+                A(gs["platformAdmin"]), A(gs["voucherSigner"]), dispatcher.address, gs["fixedOverheadGas"])),
+            ("CryftDelegationRegistry@de1E6A7E", ENTRY, rg_logic, rg_logic.functions.initializeWithAdmin(
+                dispatcher.address, beacon.address, FEED, A(rg["admin"]), rg["upgradeDelaySeconds"])),
+        ]
 
-        rg_logic = self.deploy("CryftDelegationRegistry")
-        rg_init = rg_logic.functions.initializeWithAdmin(dispatcher.address, beacon.address, FEED, A(rg_plan["admin"]),
-                                                         rg_plan["upgradeDelaySeconds"])
-        self.link(ENTRY, rg_logic, rg_init, "CryftDelegationRegistry@de1E6A7E")
-        rg = self.contract("CryftDelegationRegistry", ENTRY)
-        self.check("Registry: admin as planned", rg.functions.registryAdmin().call() == A(rg_plan["admin"]))
-        self.check("Registry: upgrade delay as planned", rg.functions.upgradeDelay().call() == rg_plan["upgradeDelaySeconds"])
-        self.check("Registry: second initialization reverts", self.reverts(rg_init, self.root.address))
+    def write_guide(self):
+        """Numbered steps for Chad's root wallet: exact addresses, field values and raw calldata."""
+        self.journal["guide"] = {}
+        lines = ["# Root link guide: link the Cryft genesis system contracts", "",
+                 f"Sign every step from the root wallet **{self.root_address}** on chain **113211** (Cryft Network).",
+                 "Value is 0 for every step. Do the steps in this order. After each one, tell the coordinator; the",
+                 "tool then checks it (`link.py --phase verify`). After step 2 the dev deployer sends the CodeManager",
+                 "fee-vault ballot for you (it is the genesis voter).", ""]
+        for n, (label, proxy_address, logic, init_fn) in enumerate(self.links(), start=1):
+            proxy, init_data, call = self.link_call(proxy_address, logic, init_fn)
+            data = call._encode_transaction_data()
+            inputs = next(f for f in proxy.abi if f.get("name") == "proxy_linkLogicAdmin")["inputs"]
+            done = proxy.functions.proxy_getIsInit().call()
+            gas = None if done else self.w3.eth.estimate_gas({"from": self.root_address, "to": proxy_address, "data": data})
+            self.journal["guide"][label] = {"to": proxy_address, "data": data, "logic": logic.address, "gasEstimate": gas}
+            lines += [f"## Step {n}: link {label.split('@')[0]} at {proxy_address}" + (" (already done)" if done else ""), "",
+                      f"1. Open https://explore.cryft.cards/address/{proxy_address}?tab=write_contract and connect the root wallet.",
+                      "2. Function **proxy_linkLogicAdmin**.",
+                      f"3. `{inputs[0]['name']}` (address): `{logic.address}`",
+                      f"4. `{inputs[1]['name']}` (bytes): `{init_data}`",
+                      f"5. Value `0`. Gas limit about `{int(gas * 1.3) if gas else 'n/a'}`. Write, then confirm in the wallet.", "",
+                      "If the explorer form is not available, send a plain transaction from the wallet instead:", "",
+                      f"- To: `{proxy_address}`", "- Value: `0`", f"- Data: `{data}`", ""]
+        lines += ["## After the last step", "",
+                  "The tool checks every link: implementation initializers locked, a second initialization refused, voters,",
+                  "admins and the paused GasSponsor read back as planned, and 0x…Face still unlinked.", ""]
+        out = Path(self.args.guide)
+        out.write_text("\n".join(lines))
+        self.check(f"root guide written: {out}", True)
 
+    def verify(self, send_ballot):
+        """Checks whatever is linked so far; sends the voter's fee-vault ballot once CodeManager is linked."""
+        pending = []
+        for label, proxy_address, logic, init_fn in self.links():
+            if not self.linked(proxy_address, logic, label):
+                pending.append(label)
+                continue
+            slot0 = int.from_bytes(self.w3.eth.get_storage_at(logic.address, 0), "big")
+            self.check(f"{label}: implementation initializer still locked", slot0 & 0xff == 0xff, hex(slot0))
+            self.check(f"{label}: a second initialization is refused", self.reverts(init_fn, self.root_address))
+        p = self.plan
+        if "GasManager@cafE" not in pending:
+            gm = self.contract("GasManager", CAFE)
+            self.check("GasManager: voters as planned", gm.functions.getVoters().call() == [A(v) for v in p["gasManager"]["voters"]])
+        if "CodeManager@c0DE" not in pending:
+            cm = self.contract("CodeManager", CODE)
+            self.check("CodeManager: voters as planned", cm.functions.getVoters().call() == [A(v) for v in p["codeManager"]["voters"]])
+            if cm.functions.feeVault().call() != A(p["codeManager"]["feeVault"]):
+                if not send_ballot:
+                    pending.append("CodeManager fee-vault ballot (dev deployer)")
+                else:
+                    self.send(self.deployer, {"to": CODE, "data": cm.functions.voteToSetFeeVault(
+                        A(p["codeManager"]["feeVault"]))._encode_transaction_data()}, "vote:CodeManager.feeVault")
+            if cm.functions.feeVault().call() == A(p["codeManager"]["feeVault"]):
+                self.check("CodeManager: fee vault is GasManager", True)
+        if "GasSponsor@FEeD" not in pending:
+            gs = self.contract(p["gasSponsor"]["logic"], FEED)
+            self.check("GasSponsor: starts paused", gs.functions.paused().call())
+            self.check("GasSponsor: platform admin is the root", gs.functions.platformAdmin().call() == A(p["gasSponsor"]["platformAdmin"]))
+            self.check("GasSponsor: approved delegate is the dispatcher",
+                       gs.functions.approvedDelegate().call() == self.deployed("CryftBeaconDispatcher").address)
+            self.check("GasSponsor: version 1.5.2", gs.functions.implementationVersion().call() == "1.5.2")
+        if "CryftDelegationRegistry@de1E6A7E" not in pending:
+            rg = self.contract("CryftDelegationRegistry", ENTRY)
+            self.check("Registry: admin is the root", rg.functions.registryAdmin().call() == A(p["registry"]["admin"]))
+            self.check("Registry: upgrade delay as planned", rg.functions.upgradeDelay().call() == p["registry"]["upgradeDelaySeconds"])
         face = self.contract("TransparentUpgradeableProxy", FACE)
         self.check("0x…Face stays unlinked", not face.functions.proxy_getIsInit().call())
-        self.journal["addresses"] = {"GasManagerLogic": gm_logic.address, "CodeManagerLogic": cm_logic.address,
-                                     "CryftDelegation": delegation.address, "CryftDelegationBeacon": beacon.address,
-                                     "CryftBeaconDispatcher": dispatcher.address, "GasSponsorLogic": gs_logic.address,
-                                     "CryftDelegationRegistryLogic": rg_logic.address}
-        self.journal["completed"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        self.journal["pending"] = pending
+        if not pending:
+            self.journal["completed"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        print("PENDING: " + ", ".join(pending) if pending else "ALL LINKED AND VERIFIED")
+
+    def run(self):
+        self.preflight()
+        phase = self.args.phase
+        if phase == "deploy":
+            self.deploy_all()
+        elif phase == "guide":
+            self.write_guide()
+        elif phase == "links":
+            if not self.root_signer:
+                raise SystemExit("--phase links signs as the root: rehearsal only. On the real chain Chad signs the guide.")
+            for label, proxy_address, logic, init_fn in self.links():
+                self.link(proxy_address, logic, init_fn, label)
+                if label == "CodeManager@c0DE":
+                    self.verify(send_ballot=True)
+        elif phase == "verify":
+            self.verify(send_ballot=bool(self.args.execute and self.deployer))
 
 
 def main():
@@ -319,6 +408,8 @@ def main():
     p.add_argument("--rpc")
     p.add_argument("--journal")
     p.add_argument("--rehearsal", help="run folder from localnet.py --kind rehearsal (throwaway signers)")
+    p.add_argument("--phase", choices=["deploy", "guide", "links", "verify"])
+    p.add_argument("--guide", default=str(REPO / "Contracts/Genesis/root-link-guide.md"))
     mode = p.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true")
     mode.add_argument("--execute", action="store_true")
@@ -328,8 +419,8 @@ def main():
         LOCK.write_text(json.dumps(lock_of(compile_all()), indent=1, sort_keys=True) + "\n")
         print("wrote", LOCK)
         return
-    if not (a.rpc and a.journal):
-        raise SystemExit("--rpc and --journal are required")
+    if not (a.rpc and a.journal and a.phase):
+        raise SystemExit("--rpc, --journal and --phase are required")
     linker = Linker(a)
     try:
         linker.run()

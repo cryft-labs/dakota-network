@@ -1,53 +1,54 @@
 {
  "steps": {
   "deploy:GasManager": {
-   "tx": "0xb170965085a27b0d64235f024438a0d36c7aa259db70a1d37d980b2752f3def1",
-   "address": "0xbc6E4847Ef5Ee36A9Ee778e72AC84468BcA455aa"
+   "tx": "0xc18f847ce9588b860c9892e273a18bb824a8a99fda1e904f9bb2e982356f69a8",
+   "address": "0xf34610A803eF5034C338f7e18A707DE09a2BeE2e"
   },
   "deploy:CodeManager": {
-   "tx": "0x50ea07e743b29615dd710f79189e1c87867fb9f08aa074eac46ec148c67826e4",
-   "address": "0x16b3fdAba375E482eF4e72210E1C2f6A36e2d65F"
+   "tx": "0x869391e2a10df6c1b47a007ec1e8d6c3a92db284385d0d6bf11ba6f968c28414",
+   "address": "0x6E73110Bbb5e10E44F2ab6dEA797Dd7A68F12E2e"
   },
   "deploy:CryftDelegation": {
-   "tx": "0xdd371f2cc04172490826713b7a2fa8839a81490846b11e6187ee94e788a37168",
-   "address": "0xd73Fe1C0E925525761A5130Ec04388875c8B1Cf6"
-  },
-  "link:GasManager@cafE": {
-   "tx": "0xc62960263c98d9631f18b4ae8a8ccb74f8c80ebbe7de5809f56d4088396182d0"
-  },
-  "link:CodeManager@c0DE": {
-   "tx": "0x3dc439cfae2843518b6376946f9fb4b7e7c2beea5b086638b06408cae4e1df6e"
-  },
-  "vote:CodeManager.feeVault": {
-   "tx": "0x57b8b7accd4f05fb717972e0136bf1dad5d473685a6b7548bf0ca2b8992ea8aa"
+   "tx": "0x005cf958ffc073fa7da7e34856a429872d05e6838c709a8696870cd4e1cf7de8",
+   "address": "0xa4D4F583bc7d1f61d4f691Cd8D81Bfb21B52BbCB"
   },
   "deploy:CryftDelegationBeacon": {
-   "tx": "0xee8fa150b4300af82b3fbe890fbc12602a92beca9684a4ed5eb375309a9eba85",
-   "address": "0x9Fb602F5Bc5C484bc3eE85C6f5b7c5938086641a"
+   "tx": "0xcf7e9a963de911ad237ff6d2a48f202559bd79e0b1bc1d6d21505c89c567ecd7",
+   "address": "0xce04A622E4E31B2559356F32Caee458e22f69b43"
   },
   "deploy:CryftBeaconDispatcher": {
-   "tx": "0x0246dfbd25eded9ac06d126cd8cd30f0ff7973dbb3e0c65a47417ac64edd6902",
-   "address": "0xd77c259636Ad40844c548dA470E1403C1dA9B250"
+   "tx": "0xf6fdbc6b1503f73b0a0919fd5bcfd5a7ff67c74d900275664bd6f07d755cf58e",
+   "address": "0x7A54E77aAaE63fAf2Ac7F27cF69fdBB83b3AB407"
   },
   "deploy:ProgramGasSponsor": {
-   "tx": "0xdbfbe6ef93a85780a3b03f662955b1af8c4bebf888c47cea60bbc55e00021286",
-   "address": "0x435Be00E296d9Cd77beEEE4E2aCa5ebdf97ef86e"
-  },
-  "link:GasSponsor@FEeD": {
-   "tx": "0xaab4fea25aa2907df9cbf3988dd846e8ca9202018da4c07f462090100bfb978c"
+   "tx": "0xeddfe7cc192a45f50f78e0c893a9d14c07127167bcfd38921ed4f95bc5e11195",
+   "address": "0xA2135AE4a1ca5CE92c5C3BA39194d7A2040acEa5"
   },
   "deploy:CryftDelegationRegistry": {
-   "tx": "0x34d25c7a282fee549c07f1a6c1a5255bdb8e33da770c6b8166fc34c065e835f2",
-   "address": "0xfda50E6261ad012CeE9B0EdB5351962D4d12Ad22"
+   "tx": "0x0141db758e6829f3e85776b1e4b972b53a9cbb02ee145e727655adddffc5dcda",
+   "address": "0x51CB7bBBc9B6d4CAacf1194b88Ef6c58a5026754"
+  },
+  "link:GasManager@cafE": {
+   "tx": "0xc646faa4b0e5543e36f69e95bfe4f8f38d23252ac80df08b4e0d277250daa196"
+  },
+  "link:CodeManager@c0DE": {
+   "tx": "0x66dbbe1c7a929b888a0434aec021153cec7c06c705bd9ed3a298ce5f08e202e6"
+  },
+  "vote:CodeManager.feeVault": {
+   "tx": "0xb074fa0fb5ef498ca541469ad2fe116e3458fa0a80b369e042c15a0b2bc5665a"
+  },
+  "link:GasSponsor@FEeD": {
+   "tx": "0x897ae0135bdd52e25db16772b08d7049dfed9c4a39c1d0c5e079245fa164ef90"
   },
   "link:CryftDelegationRegistry@de1E6A7E": {
-   "tx": "0xa1171027acfb975073c948051ecd28a03f485730d4445e9f78bc2b299203fbd0"
+   "tx": "0x94a5148b2f6cad89f650b78c035daf9b5186258d975ba05118606f8bba4fd059"
   }
  },
  "chain": {
   "chainId": 113211,
-  "genesis": "0x4cdee5e4f2f6bc28bf8967d4fcfd431ad9c61d8d0b029a4ac5daa1ca3983f458",
-  "signer": "0xBe5148B1AF01B2Fad1Db64B8a5c4Ef3900d75738",
+  "genesis": "0x0d55180eaf2210628dc7b09643825e92a56f509dfb7792302a6fd77e24a130d4",
+  "root": "0xC6Ad23514192D0EDfbCa41377FaB872C55cF7741",
+  "deployer": "0x01B402C7F1912CE293170730c5B565592898837a",
   "rehearsal": true
  },
  "checks": [
@@ -65,12 +66,17 @@
    "ok": true
   },
   {
-   "check": "signer is a root of 0x\u20261111",
+   "check": "link signer is a root of 0x\u20261111",
    "ok": true,
-   "detail": "0xBe5148B1AF01B2Fad1Db64B8a5c4Ef3900d75738"
+   "detail": "0xC6Ad23514192D0EDfbCa41377FaB872C55cF7741"
   },
   {
-   "check": "CodeManager voter signs the fee-vault ballot",
+   "check": "root has gas for the four links",
+   "ok": true,
+   "detail": 999999998334143775729412
+  },
+  {
+   "check": "deployer is the CodeManager voter (fee-vault ballot)",
    "ok": true
   },
   {
@@ -94,38 +100,72 @@
    "ok": true
   },
   {
-   "check": "signer has at least 1 CRYFT for gas",
+   "check": "deployer has at least 1 CRYFT for gas",
    "ok": true,
-   "detail": 999999966929356965977317
+   "detail": 999999967229995992208163
   },
   {
-   "check": "GasManager@cafE: already linked to the journal's implementation",
+   "check": "GasManager@cafE: linked to the deployed implementation",
    "ok": true,
-   "detail": "0xbc6E4847Ef5Ee36A9Ee778e72AC84468BcA455aa"
+   "detail": "0xf34610A803eF5034C338f7e18A707DE09a2BeE2e"
+  },
+  {
+   "check": "GasManager@cafE: implementation initializer still locked",
+   "ok": true,
+   "detail": "0xff"
+  },
+  {
+   "check": "GasManager@cafE: a second initialization is refused",
+   "ok": true
+  },
+  {
+   "check": "CodeManager@c0DE: linked to the deployed implementation",
+   "ok": true,
+   "detail": "0x6E73110Bbb5e10E44F2ab6dEA797Dd7A68F12E2e"
+  },
+  {
+   "check": "CodeManager@c0DE: implementation initializer still locked",
+   "ok": true,
+   "detail": "0xff"
+  },
+  {
+   "check": "CodeManager@c0DE: a second initialization is refused",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor@FEeD: linked to the deployed implementation",
+   "ok": true,
+   "detail": "0xA2135AE4a1ca5CE92c5C3BA39194d7A2040acEa5"
+  },
+  {
+   "check": "GasSponsor@FEeD: implementation initializer still locked",
+   "ok": true,
+   "detail": "0xff"
+  },
+  {
+   "check": "GasSponsor@FEeD: a second initialization is refused",
+   "ok": true
+  },
+  {
+   "check": "CryftDelegationRegistry@de1E6A7E: linked to the deployed implementation",
+   "ok": true,
+   "detail": "0x51CB7bBBc9B6d4CAacf1194b88Ef6c58a5026754"
+  },
+  {
+   "check": "CryftDelegationRegistry@de1E6A7E: implementation initializer still locked",
+   "ok": true,
+   "detail": "0xff"
+  },
+  {
+   "check": "CryftDelegationRegistry@de1E6A7E: a second initialization is refused",
+   "ok": true
   },
   {
    "check": "GasManager: voters as planned",
    "ok": true
   },
   {
-   "check": "GasManager: second initialization reverts",
-   "ok": true
-  },
-  {
-   "check": "GasManager: implementation cannot be initialized",
-   "ok": true
-  },
-  {
-   "check": "CodeManager@c0DE: already linked to the journal's implementation",
-   "ok": true,
-   "detail": "0x16b3fdAba375E482eF4e72210E1C2f6A36e2d65F"
-  },
-  {
    "check": "CodeManager: voters as planned",
-   "ok": true
-  },
-  {
-   "check": "CodeManager: second initialization reverts",
    "ok": true
   },
   {
@@ -133,24 +173,11 @@
    "ok": true
   },
   {
-   "check": "Beacon: owned by the registry entry 0x\u2026de1E6A7E",
-   "ok": true
-  },
-  {
-   "check": "Beacon: points at the delegation logic",
-   "ok": true
-  },
-  {
-   "check": "GasSponsor@FEeD: already linked to the journal's implementation",
-   "ok": true,
-   "detail": "0x435Be00E296d9Cd77beEEE4E2aCa5ebdf97ef86e"
-  },
-  {
    "check": "GasSponsor: starts paused",
    "ok": true
   },
   {
-   "check": "GasSponsor: platform admin as planned",
+   "check": "GasSponsor: platform admin is the root",
    "ok": true
   },
   {
@@ -162,16 +189,7 @@
    "ok": true
   },
   {
-   "check": "GasSponsor: second initialization reverts",
-   "ok": true
-  },
-  {
-   "check": "CryftDelegationRegistry@de1E6A7E: already linked to the journal's implementation",
-   "ok": true,
-   "detail": "0xfda50E6261ad012CeE9B0EdB5351962D4d12Ad22"
-  },
-  {
-   "check": "Registry: admin as planned",
+   "check": "Registry: admin is the root",
    "ok": true
   },
   {
@@ -179,22 +197,36 @@
    "ok": true
   },
   {
-   "check": "Registry: second initialization reverts",
-   "ok": true
-  },
-  {
    "check": "0x\u2026Face stays unlinked",
    "ok": true
   }
  ],
- "addresses": {
-  "GasManagerLogic": "0xbc6E4847Ef5Ee36A9Ee778e72AC84468BcA455aa",
-  "CodeManagerLogic": "0x16b3fdAba375E482eF4e72210E1C2f6A36e2d65F",
-  "CryftDelegation": "0xd73Fe1C0E925525761A5130Ec04388875c8B1Cf6",
-  "CryftDelegationBeacon": "0x9Fb602F5Bc5C484bc3eE85C6f5b7c5938086641a",
-  "CryftBeaconDispatcher": "0xd77c259636Ad40844c548dA470E1403C1dA9B250",
-  "GasSponsorLogic": "0x435Be00E296d9Cd77beEEE4E2aCa5ebdf97ef86e",
-  "CryftDelegationRegistryLogic": "0xfda50E6261ad012CeE9B0EdB5351962D4d12Ad22"
+ "guide": {
+  "GasManager@cafE": {
+   "to": "0x000000000000000000000000000000000000cafE",
+   "data": "0x4c2995f9000000000000000000000000f34610a803ef5034c338f7e18a707de09a2bee2e000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c49c8128e10000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003635c9adc5dea000000000000000000000000000000000000000000000000000000000000000015180000000000000000000000000000000000000000000000000000000000000000100000000000000000000000001b402c7f1912ce293170730c5b565592898837a00000000000000000000000000000000000000000000000000000000",
+   "logic": "0xf34610A803eF5034C338f7e18A707DE09a2BeE2e",
+   "gasEstimate": 359227
+  },
+  "CodeManager@c0DE": {
+   "to": "0x000000000000000000000000000000000000c0DE",
+   "data": "0x4c2995f90000000000000000000000006e73110bbb5e10e44f2ab6dea797dd7a68f12e2e00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000064143f96780000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000100000000000000000000000001b402c7f1912ce293170730c5b565592898837a00000000000000000000000000000000000000000000000000000000",
+   "logic": "0x6E73110Bbb5e10E44F2ab6dEA797Dd7A68F12E2e",
+   "gasEstimate": 305936
+  },
+  "GasSponsor@FEeD": {
+   "to": "0x000000000000000000000000000000000000FEeD",
+   "data": "0x4c2995f9000000000000000000000000a2135ae4a1ca5ce92c5c3ba39194d7a2040acea500000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000084cf756fdf000000000000000000000000c6ad23514192d0edfbca41377fab872c55cf774100000000000000000000000001b402c7f1912ce293170730c5b565592898837a0000000000000000000000007a54e77aaae63faf2ac7f27cf69fdbb83b3ab40700000000000000000000000000000000000000000000000000000000000186a000000000000000000000000000000000000000000000000000000000",
+   "logic": "0xA2135AE4a1ca5CE92c5C3BA39194d7A2040acEa5",
+   "gasEstimate": 286059
+  },
+  "CryftDelegationRegistry@de1E6A7E": {
+   "to": "0x00000000000000000000000000000000de1E6A7E",
+   "data": "0x4c2995f900000000000000000000000051cb7bbbc9b6d4caacf1194b88ef6c58a5026754000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a498bf801d0000000000000000000000007a54e77aaae63faf2ac7f27cf69fdbb83b3ab407000000000000000000000000ce04a622e4e31b2559356f32caee458e22f69b43000000000000000000000000000000000000000000000000000000000000feed000000000000000000000000c6ad23514192d0edfbca41377fab872c55cf7741000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "logic": "0x51CB7bBBc9B6d4CAacf1194b88Ef6c58a5026754",
+   "gasEstimate": 472863
+  }
  },
- "completed": "2026-11-26T18:23:04Z"
+ "pending": [],
+ "completed": "2026-11-26T18:36:25Z"
 }
