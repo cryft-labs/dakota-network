@@ -1,0 +1,173 @@
+{
+ "kind": "rehearsal",
+ "chainId": "0x1ba3b",
+ "genesis_sha256": null,
+ "checks": [
+  {
+   "check": "blocks are produced",
+   "ok": true,
+   "detail": 3
+  },
+  {
+   "check": "eth_chainId is 0x1ba3b",
+   "ok": true
+  },
+  {
+   "check": "net_version is 113211",
+   "ok": true
+  },
+  {
+   "check": "all four nodes in sync",
+   "ok": true,
+   "detail": [
+    3,
+    3,
+    3,
+    3
+   ]
+  },
+  {
+   "check": "getValidators matches the genesis",
+   "ok": true,
+   "detail": [
+    "0xD62583D78030C9D4842C149620693D0901FbfF5E",
+    "0x71d238bc32F4B402c41e6Bb5144c3A62040FcbEC",
+    "0x1f73C80c843d9496Cab8B449b9B6660ED188f140",
+    "0xb58EB20388Ca5d19702C3c7555d6cfe2eaCBAA3f"
+   ]
+  },
+  {
+   "check": "QBFT uses those 4 validators",
+   "ok": true
+  },
+  {
+   "check": "getVoters matches",
+   "ok": true,
+   "detail": [
+    "0x76F85d2caF0d9aBb23ec6B5Da24A0Cd6a49dCbE7"
+   ]
+  },
+  {
+   "check": "getRootOverlords matches",
+   "ok": true,
+   "detail": [
+    "0x728890e4d1fDc4816EB1D7E5A9EE465324e0Ab52",
+    "0x8E13e95E282742683cF2a714fFba2D324cD090D5"
+   ]
+  },
+  {
+   "check": "upgrade delay from genesis",
+   "ok": true
+  },
+  {
+   "check": "vote window 7 days (seconds)",
+   "ok": true
+  },
+  {
+   "check": "no initialize() on 0x1111",
+   "ok": true
+  },
+  {
+   "check": "EIP-2935 returns the parent block hash",
+   "ok": true
+  },
+  {
+   "check": "unlinked proxy 0x000000000000000000000000000000000000cafE reverts",
+   "ok": true
+  },
+  {
+   "check": "unlinked proxy 0x000000000000000000000000000000000000Face reverts",
+   "ok": true
+  },
+  {
+   "check": "chain-config contract size limit is 32768",
+   "ok": true
+  },
+  {
+   "check": "link without init data reverts (X-16)",
+   "ok": true
+  },
+  {
+   "check": "outsider cannot link",
+   "ok": true
+  },
+  {
+   "check": "linked with init data in one transaction",
+   "ok": true
+  },
+  {
+   "check": "unscheduled root upgrade reverts (X-1)",
+   "ok": true
+  },
+  {
+   "check": "upgradeAndCall with empty data reverts",
+   "ok": true
+  },
+  {
+   "check": "scheduled upgrade executes (delay 0)",
+   "ok": true
+  },
+  {
+   "check": "a schedule is consumed once",
+   "ok": true
+  },
+  {
+   "check": "voter ballot sets the upgrade delay",
+   "ok": true
+  },
+  {
+   "check": "execute before the delay reverts",
+   "ok": true
+  },
+  {
+   "check": "root2 cannot hold a second schedule for root1's id",
+   "ok": true
+  },
+  {
+   "check": "execute after the delay works",
+   "ok": true
+  },
+  {
+   "check": "cancelled schedule is gone",
+   "ok": true
+  },
+  {
+   "check": "outsider cannot schedule",
+   "ok": true
+  },
+  {
+   "check": "renounced root lost guardian power here",
+   "ok": true
+  },
+  {
+   "check": "other proxies unaffected",
+   "ok": true
+  },
+  {
+   "check": "three voters",
+   "ok": true
+  },
+  {
+   "check": "flooder capped at 21 open ballots",
+   "ok": true
+  },
+  {
+   "check": "REMOVE_VOTER of the flooder passed (exempt ballot)",
+   "ok": true
+  },
+  {
+   "check": "32,768-byte runtime deploys, 32,769 does not",
+   "ok": true
+  },
+  {
+   "check": "one validator down, the chain continues",
+   "ok": true,
+   "detail": [
+    46,
+    47
+   ]
+  }
+ ],
+ "passed": true,
+ "at": "2026-11-26T03:36:22Z"
+}

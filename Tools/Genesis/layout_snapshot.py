@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Storage-layout snapshot of every genesis-baked or genesis-linked contract (proof for formatting passes).
+
+For each contract: the compiler's storageLayout (label, slot, offset, type) and the base contracts in
+linearization order; for each source file: every keccak256("...") string literal (the namespaced storage
+slots that storageLayout does not show). Two snapshots that compare equal prove no storage moved.
+
+    python Tools/Genesis/layout_snapshot.py --out before.json
+    python Tools/Genesis/layout_snapshot.py --out after.json --compare before.json
+"""
+import argparse, importlib.util, json, re, sys
+from pathlib import Path
+
+import solcx
+
+REPO = Path(__file__).resolve().parents[2]
+spec = importlib.util.spec_from_file_location("compiler", REPO / "Tools/SolcCompiler/compile.py")
+compiler = importlib.util.module_from_spec(spec); spec.loader.exec_module(compiler)
+
+SCOPE = sorted([*map(str, (REPO / "Contracts/Genesis").rglob("*.sol")),
+                str(REPO / "Contracts/CodeManagement/CodeManager.sol"),
+                str(REPO / "Contracts/CodeManagement/CanonicalUid.sol"),
+                *map(str, (REPO / "Contracts/CodeManagement/Interfaces").glob("*.sol")),
+                str(REPO / "Contracts/Paladin/ManagedProxyAdmin.sol")])
+SLOT_STRING = re.compile(r'keccak256\(\s*"([^"]+)"\s*\)')
+
+
+def version_for(source):
+    return "0.8.19" if re.search(r"pragma solidity[^;]*<\s*0\.8\.20", source) or "pragma solidity 0.8.19" in source else "0.8.37"
+
+
+def snapshot():
+    contracts, strings = {}, {}
+    for path in SCOPE:
+        rel = str(Path(path).relative_to(REPO))
+        source = Path(path).read_text()
+        strings[rel] = sorted(set(SLOT_STRING.findall(source)))
+        version = version_for(source)
+        work = compiler.prepare_source(path, compiler.IMPORT_CACHE_DIR)
+        out = solcx.compile_files([str(work)], output_values=["storage-layout", "abi"], solc_version=version,
+                                  evm_version="london" if version == "0.8.19" else "osaka",
+                                  allow_paths=[str(work.parent), str(compiler.IMPORT_CACHE_DIR), str(Path(path).parent)],
+                                  base_path=str(compiler.IMPORT_CACHE_DIR))
+        for key, data in out.items():
+            unit, name = key.rsplit(":", 1)
+            if Path(unit).name != Path(path).name:
+                continue
+            layout = data.get("storage-layout") or {}
+            types = layout.get("types") or {}
+            contracts[f"{rel}:{name}"] = [
+                {"label": s["label"], "slot": s["slot"], "offset": s["offset"],
+                 "type": (types.get(s["type"]) or {}).get("label", s["type"]), "contract": s["contract"].rsplit(":", 1)[-1]}
+                for s in layout.get("storage", [])]
+    return {"contracts": dict(sorted(contracts.items())), "slotStrings": strings}
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser(); p.add_argument("--out", required=True); p.add_argument("--compare")
+    a = p.parse_args()
+    snap = snapshot()
+    Path(a.out).write_text(json.dumps(snap, indent=1) + "\n")
+    print("contracts:", len(snap["contracts"]), "with storage:", sum(1 for v in snap["contracts"].values() if v))
+    if a.compare:
+        old = json.loads(Path(a.compare).read_text())
+        problems = []
+        for k, v in old["contracts"].items():
+            if k not in snap["contracts"]:
+                problems.append(f"missing contract {k}")
+            elif v != snap["contracts"][k]:
+                problems.append(f"layout changed: {k}")
+        for k in snap["contracts"]:
+            if k not in old["contracts"] and snap["contracts"][k]:
+                problems.append(f"new contract with storage {k}")
+        for k, v in old["slotStrings"].items():
+            if snap["slotStrings"].get(k) != v:
+                problems.append(f"slot strings changed: {k}")
+        print("\n".join(problems) if problems else "IDENTICAL storage layouts and namespaced slots")
+        sys.exit(1 if problems else 0)

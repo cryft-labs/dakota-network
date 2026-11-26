@@ -1,0 +1,89 @@
+{
+ "kind": "production",
+ "chainId": "0x1ba3b",
+ "genesis_sha256": "902baa7809d701a0aa9a075fd647cf156a853cbbec0cb39233641df9e801d39b",
+ "checks": [
+  {
+   "check": "blocks are produced",
+   "ok": true,
+   "detail": 3
+  },
+  {
+   "check": "eth_chainId is 0x1ba3b",
+   "ok": true
+  },
+  {
+   "check": "net_version is 113211",
+   "ok": true
+  },
+  {
+   "check": "all four nodes in sync",
+   "ok": true,
+   "detail": [
+    3,
+    3,
+    3,
+    3
+   ]
+  },
+  {
+   "check": "getValidators matches the genesis",
+   "ok": true,
+   "detail": [
+    "0x799b1a85866b0219FE0d9146b295076F3aEBA00F",
+    "0xA0a4e22392398554e7Fd6Cf2861c7702149d9BC9",
+    "0x3F57FF9cDc193Fd43C73BF4386f62a7c21Ef44BA",
+    "0x0fe2e1364e7Cd7ee51E09D3864f39340Bf4D8C8D"
+   ]
+  },
+  {
+   "check": "QBFT uses those 4 validators",
+   "ok": true
+  },
+  {
+   "check": "getVoters matches",
+   "ok": true,
+   "detail": [
+    "0x633309d1155fD658a717e4f5E4FA853615400867"
+   ]
+  },
+  {
+   "check": "getRootOverlords matches",
+   "ok": true,
+   "detail": [
+    "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "0x633309d1155fD658a717e4f5E4FA853615400867"
+   ]
+  },
+  {
+   "check": "upgrade delay from genesis",
+   "ok": true
+  },
+  {
+   "check": "vote window 7 days (seconds)",
+   "ok": true
+  },
+  {
+   "check": "no initialize() on 0x1111",
+   "ok": true
+  },
+  {
+   "check": "EIP-2935 returns the parent block hash",
+   "ok": true
+  },
+  {
+   "check": "unlinked proxy 0x000000000000000000000000000000000000cafE reverts",
+   "ok": true
+  },
+  {
+   "check": "unlinked proxy 0x000000000000000000000000000000000000Face reverts",
+   "ok": true
+  },
+  {
+   "check": "chain-config contract size limit is 32768",
+   "ok": true
+  }
+ ],
+ "passed": true,
+ "at": "2026-11-26T03:29:10Z"
+}

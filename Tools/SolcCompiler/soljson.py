@@ -150,7 +150,7 @@ def shim(version, argv):
     for f in files:
         _collect(sources, _unit_for(f, base), Path(f).resolve(), base, allow)
     selection = {"abi": "abi", "bin": "evm.bytecode.object", "bin-runtime": "evm.deployedBytecode.object",
-                 "opcodes": "evm.bytecode.opcodes", "metadata": "metadata"}
+                 "opcodes": "evm.bytecode.opcodes", "metadata": "metadata", "storage-layout": "storageLayout"}
     settings = {"optimizer": {"enabled": optimize, "runs": runs},
                 "outputSelection": {"*": {"*": sorted({selection[f] for f in fields if f in selection})}}}
     if evm:
@@ -175,6 +175,8 @@ def shim(version, argv):
                     entry["opcodes"] = data["evm"]["bytecode"].get("opcodes", "")
                 elif f == "metadata":
                     entry["metadata"] = data.get("metadata", "")
+                elif f == "storage-layout":
+                    entry["storage-layout"] = data.get("storageLayout", {})
             contracts[f"{unit}:{name}"] = entry
     json.dump({"contracts": contracts, "version": full_version(version)}, sys.stdout)
     return 0
