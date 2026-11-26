@@ -39,9 +39,13 @@ def main():
     archive=Path('/var/cache/cryft/kubo-v0.43.0-linux-amd64.tar.gz')
     if not archive.exists():
         temporary=archive.with_suffix('.download')
-        run('curl','--proto','=https','--tlsv1.2','--fail','--location','--retry','3','--max-time','300',
-            'https://dist.ipfs.tech/kubo/v0.43.0/kubo_v0.43.0_linux-amd64.tar.gz','--output',str(temporary))
-        assert sha(temporary)==SHA
+        # Official sources only; the sha256 pin decides. GitHub first: dist.ipfs.tech has timed out from the droplets.
+        for url in ('https://github.com/ipfs/kubo/releases/download/v0.43.0/kubo_v0.43.0_linux-amd64.tar.gz',
+                    'https://dist.ipfs.tech/kubo/v0.43.0/kubo_v0.43.0_linux-amd64.tar.gz'):
+            if subprocess.run(['curl','--proto','=https','--tlsv1.2','--fail','--location','--retry','3','--max-time','300',
+                               url,'--output',str(temporary)]).returncode==0 and sha(temporary)==SHA:
+                break
+        assert sha(temporary)==SHA,'Kubo archive failed to download or its sha256 does not match'
         os.replace(temporary,archive)
     assert sha(archive)==SHA
     version=ROOT/('v'+VERSION);version.mkdir(mode=0o755,exist_ok=True)
