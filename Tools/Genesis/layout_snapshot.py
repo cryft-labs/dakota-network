@@ -29,9 +29,11 @@ def version_for(source):
     return "0.8.19" if re.search(r"pragma solidity[^;]*<\s*0\.8\.20", source) or "pragma solidity 0.8.19" in source else "0.8.37"
 
 
-def snapshot():
+def snapshot(only=()):
     contracts, strings = {}, {}
     for path in SCOPE:
+        if only and not any(str(Path(path).relative_to(REPO)).startswith(o) for o in only):
+            continue
         rel = str(Path(path).relative_to(REPO))
         source = Path(path).read_text()
         strings[rel] = sorted(set(SLOT_STRING.findall(source)))
@@ -55,14 +57,17 @@ def snapshot():
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(); p.add_argument("--out", required=True); p.add_argument("--compare")
+    p = argparse.ArgumentParser(); p.add_argument("--out", required=True); p.add_argument("--compare"); p.add_argument("--only", nargs="*", default=[])
     a = p.parse_args()
-    snap = snapshot()
+    snap = snapshot(a.only)
     Path(a.out).write_text(json.dumps(snap, indent=1) + "\n")
     print("contracts:", len(snap["contracts"]), "with storage:", sum(1 for v in snap["contracts"].values() if v))
     if a.compare:
         old = json.loads(Path(a.compare).read_text())
         problems = []
+        keep = lambda k: not a.only or any(k.startswith(o) for o in a.only)
+        old["contracts"] = {k: v for k, v in old["contracts"].items() if keep(k)}
+        old["slotStrings"] = {k: v for k, v in old["slotStrings"].items() if keep(k)}
         for k, v in old["contracts"].items():
             if k not in snap["contracts"]:
                 problems.append(f"missing contract {k}")
