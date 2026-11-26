@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Cryft Labs
-pragma solidity ^0.8.24;
+pragma solidity 0.8.37;
 
 /// @title Kota proxy deployment shim — OpenZeppelin Transparent pattern
 /// @notice Requires `npm i @openzeppelin/contracts`. Re-exports OZ's
@@ -30,6 +30,10 @@ pragma solidity ^0.8.24;
 ///      assign a tier to each tenant operator.
 ///   6. Use the PROXY addresses everywhere (router gates, registryFor). Never
 ///      embed a ROLE_SYSTEM private key in a frontend.
+///
+/// Fresh chain 113211 (audit X-69): the factory sits behind Contracts/Paladin's ManagedApplicationProxy with a
+/// ManagedProxyAdmin (Ownable2Step, renounce disabled) instead of this one-step OZ5 ProxyAdmin; see
+/// Tools/TenantRegistry/build.py for the pinned inputs and the deploy order.
 ///
 /// Upgrades: ProxyAdmin.upgradeAndCall(proxy, newImpl, "") — only the
 /// ProxyAdmin owner can upgrade; implementations contain no upgrade logic.

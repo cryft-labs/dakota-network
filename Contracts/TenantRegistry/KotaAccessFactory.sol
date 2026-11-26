@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Cryft Labs
-pragma solidity ^0.8.24;
+pragma solidity 0.8.37;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
@@ -30,10 +30,15 @@ interface IKotaRegistryFactoryPolicy {
 ///             lock changes reported balances without Transfer events;
 ///             `rawBalanceOf` exposes the true holdings for tooling.)
 ///           * TENANT (operator): issues/revokes its own user credentials.
+/// @custom:version 1.8.0
 contract KotaTenantAccessSBT is Initializable {
     using Strings for uint256;
 
     uint256 public constant MAX_BATCH_SIZE = 100;
+    /// Bounds the origin allow-list (X-71): at most MAX_ORIGINS entries, each 1..MAX_ORIGIN_BYTES bytes, so
+    /// allowedOrigins() always fits an RPC call and every origin loop is bounded.
+    uint256 public constant MAX_ORIGINS = 16;
+    uint256 public constant MAX_ORIGIN_BYTES = 256;
     /// Bounds every name, symbol and tenant id the one-time rename writes (bytes).
     uint256 public constant MAX_RENAME_BYTES = 64;
     address private immutable _implementationSelf = address(this);
@@ -62,9 +67,16 @@ contract KotaTenantAccessSBT is Initializable {
     error NotBackup();
     error NoPendingOperator();
     error HolderCapReached();
+    error TooManyOrigins();
+    error InvalidOrigin();
+    error NoPendingBackupChange();
+    error NotPendingOperator();
+    error OperatorChangeNotApproved();
 
     event BackupApproverChanged(address indexed backup);
     event OperatorChangeProposed(address indexed proposed);
+    event OperatorChangeApproved(address indexed proposed, address indexed backup);
+    event BackupApproverChangeProposed(address indexed proposed);
     event MinterChanged(address indexed minter, bool allowed);
     event CollectionMetadataUpdated(string name, string symbol, string contractMetadataURI);
     event TokenMetadataConfigurationUpdated(
@@ -170,6 +182,12 @@ contract KotaTenantAccessSBT is Initializable {
     // Append-only (v1.7.0): set once by renameRegistry; never cleared.
     bool public registryRenamed;
 
+    // Append-only (v1.8.0): the backup-approver change awaiting the current backup's approval (X-28), and the backup's
+    // approval of the pending operator change (two-step operator handover, X-69).
+    address public pendingBackupApprover;
+    bool public pendingBackupApproverSet;     // distinguishes a proposed clear (zero) from no proposal
+    bool public pendingOperatorApproved;
+
     function metadataUpdater() public view returns (address) {
         return _metadataUpdaterEpoch == authorityEpoch ? _metadataUpdater : address(0);
     }
@@ -207,9 +225,9 @@ contract KotaTenantAccessSBT is Initializable {
         tenantId = tenantId_;
         factory = msg.sender;
         operator = operator_;
+        if (initialOrigins.length > MAX_ORIGINS) revert TooManyOrigins();
         for (uint256 i = 0; i < initialOrigins.length; i++) {
-            _allowedOrigins.push(initialOrigins[i]);
-            emit OriginAdded(initialOrigins[i]);
+            _addOrigin(initialOrigins[i]);
         }
         emit OperatorChanged(address(0), operator_);
     }
@@ -254,6 +272,7 @@ contract KotaTenantAccessSBT is Initializable {
 
     function assignTierBatch(address[] calldata holders, uint32 tierId) external onlyOperator whenUnlocked {
         if (tierId > tierCount) revert UnknownTier();
+        if (holders.length == 0 || holders.length > MAX_BATCH_SIZE) revert BatchTooLarge();
         for (uint256 i = 0; i < holders.length; i++) {
             if (_balanceOf[holders[i]] != 0) {
                 tierOf[holders[i]] = tierId;
@@ -264,6 +283,13 @@ contract KotaTenantAccessSBT is Initializable {
 
     // ---- origin whitelist management (tenant plane) ----
     function addAllowedOrigin(string calldata origin) external onlyOperator whenUnlocked {
+        _addOrigin(origin);
+    }
+
+    function _addOrigin(string calldata origin) private {
+        uint256 length = bytes(origin).length;
+        if (length == 0 || length > MAX_ORIGIN_BYTES) revert InvalidOrigin();
+        if (_allowedOrigins.length >= MAX_ORIGINS) revert TooManyOrigins();
         _allowedOrigins.push(origin);
         emit OriginAdded(origin);
     }
@@ -535,17 +561,41 @@ contract KotaTenantAccessSBT is Initializable {
         emit AccessRevoked(holder, tokenId);
     }
 
-    /// @notice Tenant sets (or clears) the wallet whose second approval is
-    ///         required for operator changes. Optional hardening.
+    /// @notice Tenant sets the wallet whose second approval is required for operator changes (optional hardening).
+    ///         With no backup set, the first one takes effect at once. While a backup IS set, changing or clearing it is
+    ///         only a proposal that the current backup must approve (approveBackupApproverChange), so a stolen operator
+    ///         key cannot remove its own second signer (X-28). A lost backup key is recovered by the platform: factory
+    ///         setRegistryOperator clears the backup together with every other delegated authority.
     function setBackupApprover(address backup) external onlyOperator whenUnlocked {
-        delete pendingOperator;
+        if (backupApprover == address(0)) {
+            _applyBackupApprover(backup);
+            return;
+        }
+        pendingBackupApprover = backup;
+        pendingBackupApproverSet = true;
+        emit BackupApproverChangeProposed(backup);
+    }
+
+    /// @notice The current backup approves the operator's proposed backup change (or clear).
+    function approveBackupApproverChange() external whenUnlocked {
+        if (msg.sender != backupApprover || backupApprover == address(0)) revert NotBackup();
+        if (!pendingBackupApproverSet) revert NoPendingBackupChange();
+        _applyBackupApprover(pendingBackupApprover);
+    }
+
+    function _applyBackupApprover(address backup) private {
+        delete pendingBackupApprover;
+        delete pendingBackupApproverSet;
+        delete pendingOperator;              // a new backup never inherits an approval or a proposal
+        delete pendingOperatorApproved;
         backupApprover = backup;
         emit BackupApproverChanged(backup);
     }
 
-    /// @notice Operator change. Factory (platform recovery) applies instantly.
-    ///         Operator-initiated changes apply instantly ONLY when no backup
-    ///         approver is set; otherwise they await the backup's approval tx.
+    /// @notice Operator change. Factory (platform recovery, and the factory's fan-out of an accepted change) applies
+    ///         instantly. An operator-initiated change is two-step (X-69): the operator proposes, the backup approves
+    ///         when one is set, and the proposed operator accepts (acceptOperatorChange), which applies it to every
+    ///         registry of the tenant. A new proposal replaces the old one and needs a fresh approval.
     function setOperator(address newOperator) external {
         if (newOperator == address(0)) revert ZeroAddress();
         IKotaRegistryFactoryPolicy(factory).validateTenantOperator(newOperator);
@@ -553,29 +603,39 @@ contract KotaTenantAccessSBT is Initializable {
             if (newOperator != operator) {
                 authorityEpoch++;
                 delete backupApprover;
+                delete pendingBackupApprover;
+                delete pendingBackupApproverSet;
                 emit BackupApproverChanged(address(0));
                 emit AuthorityPermissionsInvalidated(authorityEpoch);
             }
             emit OperatorChanged(operator, newOperator);
             operator = newOperator;
             delete pendingOperator;
+            delete pendingOperatorApproved;
             return;
         }
         if (msg.sender != operator) revert NotOperator();
-        if (backupApprover == address(0)) {
-            IKotaRegistryFactoryPolicy(factory).coordinateTenantOperatorChange(newOperator);
-        } else {
-            pendingOperator = newOperator;
-            emit OperatorChangeProposed(newOperator);
-        }
+        pendingOperator = newOperator;
+        delete pendingOperatorApproved;
+        emit OperatorChangeProposed(newOperator);
     }
 
-    /// @notice Second-approval tx from the tenant's backup wallet.
+    /// @notice Second-approval tx from the tenant's backup wallet (required only while a backup is set).
     function approveOperatorChange() external {
-        if (msg.sender != backupApprover) revert NotBackup();
+        if (msg.sender != backupApprover || backupApprover == address(0)) revert NotBackup();
         if (pendingOperator == address(0)) revert NoPendingOperator();
-        IKotaRegistryFactoryPolicy(factory).validateTenantOperator(pendingOperator);
-        IKotaRegistryFactoryPolicy(factory).coordinateTenantOperatorChange(pendingOperator);
+        pendingOperatorApproved = true;
+        emit OperatorChangeApproved(pendingOperator, msg.sender);
+    }
+
+    /// @notice The proposed operator accepts, completing the handover across every registry of the tenant.
+    function acceptOperatorChange() external {
+        address proposed = pendingOperator;
+        if (proposed == address(0)) revert NoPendingOperator();
+        if (msg.sender != proposed) revert NotPendingOperator();
+        if (backupApprover != address(0) && !pendingOperatorApproved) revert OperatorChangeNotApproved();
+        IKotaRegistryFactoryPolicy(factory).validateTenantOperator(proposed);
+        IKotaRegistryFactoryPolicy(factory).coordinateTenantOperatorChange(proposed);
     }
 
     // ---- ERC-165 / ERC-5192 / ERC-721 views ----
@@ -715,6 +775,7 @@ interface IKotaAdminRegistry {
 /// @notice The system admin deploys one standardized KotaTenantAccessSBT per
 ///         tenant, retains the lock/unlock switch on every registry, and can
 ///         recover operator keys. Tenants manage their own user credentials.
+/// @custom:version 1.8.0
 contract KotaAccessFactory is Initializable {
     /// Bounds atomic recovery/lock loops, including retired stable slots.
     uint256 public constant MAX_REGISTRY_SLOTS_PER_TENANT = 128;
@@ -728,6 +789,7 @@ contract KotaAccessFactory is Initializable {
     string public constant DEFAULT_REGISTRY_SYMBOL = "KTUA";
 
     event AdminChanged(address indexed previousAdmin, address indexed newAdmin);
+    event AdminTransferStarted(address indexed admin, address indexed pendingAdmin);
     event RegistryDeployed(
         string tenantId,
         uint256 indexed registryIndex,
@@ -790,6 +852,8 @@ contract KotaAccessFactory is Initializable {
     error RegistryExists();
     error RegistryMissing();
     error AlreadyInitialized();
+    error NotPendingAdmin();
+    error RenameDisabled();
 
     address public admin;
     /// @dev Preserves the deployed factory's slot 1. Registry selection now
@@ -828,6 +892,8 @@ contract KotaAccessFactory is Initializable {
     bool public tenantRenamed;
     /// Bounds every tenant id, name and symbol renameTenant takes (bytes).
     uint256 public constant MAX_TENANT_ID_BYTES = 64;
+    /// @dev Append-only v1.8.0 state (slot 15): the admin named by transferAdmin, who must call acceptAdmin (X-69).
+    address public pendingAdmin;
 
     struct RegistryDeployment {
         string tenantId;
@@ -1212,7 +1278,9 @@ contract KotaAccessFactory is Initializable {
         address registry = _registryAt(tenantId, registryIndex);
         KotaTenantAccessSBT target = KotaTenantAccessSBT(registry);
         address tenantOperator = _requireTenantOperator(tenantId);
-        bool platformAuthority = msg.sender == admin || isSystemAddress(msg.sender);
+        // Retiring tombstones the slot for good (tenantIdOf is deleted, so it can never be unlocked again). Only the
+        // admin may retire another tenant's registry; a ROLE_SYSTEM hot key may not (X-70).
+        bool platformAuthority = msg.sender == admin;
         if (!platformAuthority) {
             if (msg.sender != tenantOperator) revert NotTenantOperator();
             if (_tenantDeploymentLocked[tenantId]) revert TenantSuspended();
@@ -1261,10 +1329,18 @@ contract KotaAccessFactory is Initializable {
         _setTenantOperator(_canonicalTenantId(tenantId), newOperator, msg.sender);
     }
 
-    function setAdmin(address newAdmin) external onlyAdmin {
-        if (newAdmin == address(0)) revert ZeroAddress();
-        emit AdminChanged(admin, newAdmin);
-        admin = newAdmin;
+    /// @notice Starts a two-step admin handover (X-69): `newAdmin` must call acceptAdmin. Zero cancels a pending one.
+    function transferAdmin(address newAdmin) external onlyAdmin {
+        pendingAdmin = newAdmin;
+        emit AdminTransferStarted(admin, newAdmin);
+    }
+
+    function acceptAdmin() external {
+        address next = pendingAdmin;
+        if (next == address(0) || msg.sender != next) revert NotPendingAdmin();
+        emit AdminChanged(admin, next);
+        admin = next;
+        delete pendingAdmin;
     }
 
     function registryCount() external view returns (uint256) {
@@ -1390,7 +1466,7 @@ contract KotaAccessFactory is Initializable {
         );
     }
 
-    function tenantRegistryBeaconImplementation() external view returns (address) {
+    function tenantRegistryBeaconImplementation() public view returns (address) {
         address beacon = tenantRegistryBeacon();
         return beacon == address(0) ? address(0) : UpgradeableBeacon(beacon).implementation();
     }
@@ -1471,6 +1547,12 @@ contract KotaAccessFactory is Initializable {
         if (length == 0 || length > MAX_TENANT_ID_BYTES) revert InvalidRename();
     }
 
+    function _requireRenameEnabled(address registry) private view {
+        address implementation = tenantRegistryBeaconImplementation();
+        if (registry == address(0) || implementation == address(0)
+            || KotaTenantAccessSBT(implementation).RENAME_TARGET() != registry) revert RenameDisabled();
+    }
+
     function _tenantIdUnused(string calldata tenantId) private view returns (bool) {
         return _registriesOf[tenantId].length == 0
             && _tenantOperatorOf[tenantId] == address(0)
@@ -1494,6 +1576,10 @@ contract KotaAccessFactory is Initializable {
         string calldata newName,
         string calldata newSymbol
     ) external onlyAdmin {
+        // X-72: the rename exists only while the beacon's implementation names `registry` as its RENAME_TARGET. The
+        // fresh-chain implementation is built with RENAME_TARGET = address(0), so this always reverts there, before
+        // any state is read or written.
+        _requireRenameEnabled(registry);
         if (tenantRenamed) revert TenantAlreadyRenamed();
         _requireRenameText(previousTenantId);
         _requireRenameText(newTenantId);

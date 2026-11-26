@@ -1,0 +1,108 @@
+{
+ "compiler": "0.8.37",
+ "cryft_code_limit": 32768,
+ "contracts": {
+  "KotaAccessFactory": {
+   "standard_input": "KotaAccessFactory.json",
+   "standard_input_sha256": "6fd3249c6ffa45b8ba344c7117c40c1bd799be942d2a516f7cc2df8dc49b5863",
+   "source": "KotaAccessFactory.sol",
+   "evm_version": "osaka",
+   "runtime_bytes": 24424,
+   "runtime_keccak256": "0x9f72ab4805668ebcd5a3cf6b64c89c134ce5dca29607024497d53390535a5638",
+   "immutables": {}
+  },
+  "KotaTenantAccessSBT": {
+   "standard_input": "KotaTenantAccessSBT.json",
+   "standard_input_sha256": "6fd3249c6ffa45b8ba344c7117c40c1bd799be942d2a516f7cc2df8dc49b5863",
+   "source": "KotaAccessFactory.sol",
+   "evm_version": "osaka",
+   "runtime_bytes": 20397,
+   "runtime_keccak256": "0x1353f96f3f0ddae5d989650170833ccd652f21782f43653a8d4b9315da22f6cd",
+   "immutables": {
+    "6192": [
+     {
+      "length": 32,
+      "start": 2210
+     }
+    ],
+    "6195": [
+     {
+      "length": 32,
+      "start": 1987
+     },
+     {
+      "length": 32,
+      "start": 12265
+     },
+     {
+      "length": 32,
+      "start": 12323
+     }
+    ]
+   }
+  },
+  "UpgradeableBeacon": {
+   "standard_input": "UpgradeableBeacon.json",
+   "standard_input_sha256": "6fd3249c6ffa45b8ba344c7117c40c1bd799be942d2a516f7cc2df8dc49b5863",
+   "source": "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol",
+   "evm_version": "osaka",
+   "runtime_bytes": 644,
+   "runtime_keccak256": "0x55096bdf811cc27ab19a23451a18ce646cfa911c5e717171887d99ec937e7e0c",
+   "immutables": {}
+  },
+  "BeaconProxy": {
+   "standard_input": "BeaconProxy.json",
+   "standard_input_sha256": "6fd3249c6ffa45b8ba344c7117c40c1bd799be942d2a516f7cc2df8dc49b5863",
+   "source": "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol",
+   "evm_version": "osaka",
+   "runtime_bytes": 283,
+   "runtime_keccak256": "0xa09c76e024e6cd0f8677b4d4c4bb7183a4175b10c7a26d2ae3515b7f83e70fa6",
+   "immutables": {
+    "511": [
+     {
+      "length": 32,
+      "start": 29
+     }
+    ]
+   }
+  },
+  "ManagedProxyAdmin": {
+   "standard_input": "ManagedProxyAdmin.json",
+   "standard_input_sha256": "3f119239ba51616b7d0d7c0eab2121d2ce1fda1b0cfa1df0ce49f86784cd0e8a",
+   "source": "source/Paladin/ManagedProxyAdmin.sol",
+   "evm_version": "shanghai",
+   "runtime_bytes": 1969,
+   "runtime_keccak256": "0x39cdf529929bc2c146d4cc55b3dea969c287bf4c6eb35e4284f901ddb134ab6b",
+   "immutables": {}
+  },
+  "ManagedApplicationProxy": {
+   "standard_input": "ManagedApplicationProxy.json",
+   "standard_input_sha256": "3f119239ba51616b7d0d7c0eab2121d2ce1fda1b0cfa1df0ce49f86784cd0e8a",
+   "source": "source/Paladin/ManagedProxyAdmin.sol",
+   "evm_version": "shanghai",
+   "runtime_bytes": 2151,
+   "runtime_keccak256": "0xfea4904fd10c1a808bc63f3a841fd80c6f452c5be79dd37454a7d4719910a27b",
+   "immutables": {}
+  }
+ },
+ "sources_sha256": {
+  "@openzeppelin/contracts/access/Ownable.sol": "38578bd71c0a909840e67202db527cc6b4e6b437e0f39f0c909da32c1e30cb81",
+  "@openzeppelin/contracts/interfaces/IERC1967.sol": "886b093d8f7c41f73af42b8e183314b3654531a9d5e11f07c41a5a7f11d3e006",
+  "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol": "454cf052a9513cdfd7cf2e3227f3ef1a2e3a2cfd9ea4706814f602dbe4f19d8f",
+  "@openzeppelin/contracts/proxy/Proxy.sol": "5f5081378d4bc82b814b0d64990b7f7b9c69697593b73a3341f4a269940ba540",
+  "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol": "220626a31d80fb0d7a625f0c9ac741d40cd9f3c98ef74eb5b3dd43d224701282",
+  "@openzeppelin/contracts/proxy/beacon/IBeacon.sol": "422eabc0e645e24c3a52898f6255b349323b013544a3ebdc4b2d3f7fc5bb7e9e",
+  "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol": "26dda9d5bb961b3df26602d49f9f5a0647cfdb78b63cc253aed8527030a64f25",
+  "@openzeppelin/contracts/proxy/utils/Initializable.sol": "a8b7eafa0fdc7cb5a644c8c61a8e4c51e031d5e1e6f268f72dbe18b768ead56e",
+  "@openzeppelin/contracts/utils/Address.sol": "2395099726e6c215641a5857a74f663987f37a3ad8a2932a9f3d8ee27fb11dd4",
+  "@openzeppelin/contracts/utils/Context.sol": "847fda5460fee70f56f4200f59b82ae622bb03c79c77e67af010e31b7e2cc5b6",
+  "@openzeppelin/contracts/utils/Errors.sol": "0704b9d6c032cca8512a3bc3f30f49f86f1f03102d2896a3d23e794b82efea66",
+  "@openzeppelin/contracts/utils/Panic.sol": "270fc8401c1a13fae6a7a4a2dd6e381b95d658896701e51f0d3e2688acab3dec",
+  "@openzeppelin/contracts/utils/StorageSlot.sol": "75704538dcb223239280c6726d9a31cf769a7816718517c997fc7d63bdb70778",
+  "@openzeppelin/contracts/utils/Strings.sol": "1d47b183ce3217de32c41cf6034281a783f41380ca99d1ca043509018b656165",
+  "@openzeppelin/contracts/utils/math/Math.sol": "68cf79a637995d5ed243c4a5856b42a5e134ee8786a05034e24d75927fc40ebc",
+  "@openzeppelin/contracts/utils/math/SafeCast.sol": "9769274bf53f26a7c7896c526ea1980dc9bea5bf5c2a5fd04870008c4afc1de9",
+  "@openzeppelin/contracts/utils/math/SignedMath.sol": "1ed50b1056af886752f0fb48a0165d381e69bb4a4b18b893b066dc144a7e08d7",
+  "KotaAccessFactory.sol": "bbec205e61de8d35d410fe3445f6224af15e732cce5f5bf21c1ac11b9de012f4"
+ }
+}

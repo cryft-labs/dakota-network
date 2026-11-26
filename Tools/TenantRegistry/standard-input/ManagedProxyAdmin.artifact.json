@@ -1,0 +1,250 @@
+{
+ "abi": [
+  {
+   "inputs": [
+    {
+     "internalType": "address",
+     "name": "initialOwner",
+     "type": "address"
+    }
+   ],
+   "stateMutability": "nonpayable",
+   "type": "constructor"
+  },
+  {
+   "inputs": [],
+   "name": "InvalidOwner",
+   "type": "error"
+  },
+  {
+   "inputs": [],
+   "name": "RenounceDisabled",
+   "type": "error"
+  },
+  {
+   "anonymous": false,
+   "inputs": [
+    {
+     "indexed": true,
+     "internalType": "address",
+     "name": "previousOwner",
+     "type": "address"
+    },
+    {
+     "indexed": true,
+     "internalType": "address",
+     "name": "newOwner",
+     "type": "address"
+    }
+   ],
+   "name": "OwnershipTransferStarted",
+   "type": "event"
+  },
+  {
+   "anonymous": false,
+   "inputs": [
+    {
+     "indexed": true,
+     "internalType": "address",
+     "name": "previousOwner",
+     "type": "address"
+    },
+    {
+     "indexed": true,
+     "internalType": "address",
+     "name": "newOwner",
+     "type": "address"
+    }
+   ],
+   "name": "OwnershipTransferred",
+   "type": "event"
+  },
+  {
+   "inputs": [],
+   "name": "acceptOwnership",
+   "outputs": [],
+   "stateMutability": "nonpayable",
+   "type": "function"
+  },
+  {
+   "inputs": [
+    {
+     "internalType": "contract ITransparentUpgradeableProxy",
+     "name": "proxy",
+     "type": "address"
+    },
+    {
+     "internalType": "address",
+     "name": "newAdmin",
+     "type": "address"
+    }
+   ],
+   "name": "changeProxyAdmin",
+   "outputs": [],
+   "stateMutability": "nonpayable",
+   "type": "function"
+  },
+  {
+   "inputs": [
+    {
+     "internalType": "contract ITransparentUpgradeableProxy",
+     "name": "proxy",
+     "type": "address"
+    }
+   ],
+   "name": "getProxyAdmin",
+   "outputs": [
+    {
+     "internalType": "address",
+     "name": "",
+     "type": "address"
+    }
+   ],
+   "stateMutability": "view",
+   "type": "function"
+  },
+  {
+   "inputs": [
+    {
+     "internalType": "contract ITransparentUpgradeableProxy",
+     "name": "proxy",
+     "type": "address"
+    }
+   ],
+   "name": "getProxyImplementation",
+   "outputs": [
+    {
+     "internalType": "address",
+     "name": "",
+     "type": "address"
+    }
+   ],
+   "stateMutability": "view",
+   "type": "function"
+  },
+  {
+   "inputs": [],
+   "name": "owner",
+   "outputs": [
+    {
+     "internalType": "address",
+     "name": "",
+     "type": "address"
+    }
+   ],
+   "stateMutability": "view",
+   "type": "function"
+  },
+  {
+   "inputs": [],
+   "name": "pendingOwner",
+   "outputs": [
+    {
+     "internalType": "address",
+     "name": "",
+     "type": "address"
+    }
+   ],
+   "stateMutability": "view",
+   "type": "function"
+  },
+  {
+   "inputs": [],
+   "name": "renounceOwnership",
+   "outputs": [],
+   "stateMutability": "nonpayable",
+   "type": "function"
+  },
+  {
+   "inputs": [
+    {
+     "internalType": "address",
+     "name": "next",
+     "type": "address"
+    }
+   ],
+   "name": "transferOwnership",
+   "outputs": [],
+   "stateMutability": "nonpayable",
+   "type": "function"
+  },
+  {
+   "inputs": [
+    {
+     "internalType": "contract ITransparentUpgradeableProxy",
+     "name": "proxy",
+     "type": "address"
+    },
+    {
+     "internalType": "address",
+     "name": "implementation",
+     "type": "address"
+    }
+   ],
+   "name": "upgrade",
+   "outputs": [],
+   "stateMutability": "nonpayable",
+   "type": "function"
+  },
+  {
+   "inputs": [
+    {
+     "internalType": "contract ITransparentUpgradeableProxy",
+     "name": "proxy",
+     "type": "address"
+    },
+    {
+     "internalType": "address",
+     "name": "implementation",
+     "type": "address"
+    },
+    {
+     "internalType": "bytes",
+     "name": "data",
+     "type": "bytes"
+    }
+   ],
+   "name": "upgradeAndCall",
+   "outputs": [],
+   "stateMutability": "payable",
+   "type": "function"
+  }
+ ],
+ "compiler": "0.8.37",
+ "creation_bytecode": "0x608060405234801561000f575f5ffd5b506040516108dc3803806108dc83398101604081905261002e916100f1565b61003733610082565b6001600160a01b038116158061005557506001600160a01b03811630145b15610073576040516349e27cff60e01b815260040160405180910390fd5b61007c81610082565b5061011e565b61008b8161008e565b50565b600180546001600160a01b031916905561008b815f80546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b5f60208284031215610101575f5ffd5b81516001600160a01b0381168114610117575f5ffd5b9392505050565b6107b18061012b5f395ff3fe60806040526004361061008f575f3560e01c80639623609d116100575780639623609d1461013357806399a88ec414610146578063e30c397814610165578063f2fde38b14610182578063f3b7dead146101a1575f5ffd5b8063204e1c7a14610093578063715018a6146100ce57806379ba5097146100e45780637eff275e146100f85780638da5cb5b14610117575b5f5ffd5b34801561009e575f5ffd5b506100b26100ad3660046105c2565b6101c0565b6040516001600160a01b03909116815260200160405180910390f35b3480156100d9575f5ffd5b506100e261024b565b005b3480156100ef575f5ffd5b506100e261026c565b348015610103575f5ffd5b506100e26101123660046105e4565b6102eb565b348015610122575f5ffd5b505f546001600160a01b03166100b2565b6100e261014136600461062f565b61034e565b348015610151575f5ffd5b506100e26101603660046105e4565b6103b9565b348015610170575f5ffd5b506001546001600160a01b03166100b2565b34801561018d575f5ffd5b506100e261019c3660046105c2565b6103ef565b3480156101ac575f5ffd5b506100b26101bb3660046105c2565b610453565b5f5f5f836001600160a01b03166040516101e490635c60da1b60e01b815260040190565b5f60405180830381855afa9150503d805f811461021c576040519150601f19603f3d011682016040523d82523d5f602084013e610221565b606091505b50915091508161022f575f5ffd5b808060200190518101906102439190610706565b949350505050565b610253610477565b604051638905116560e01b815260040160405180910390fd5b60015433906001600160a01b031681146102df5760405162461bcd60e51b815260206004820152602960248201527f4f776e61626c6532537465703a2063616c6c6572206973206e6f7420746865206044820152683732bb9037bbb732b960b91b60648201526084015b60405180910390fd5b6102e8816104d2565b50565b6102f3610477565b6040516308f2839760e41b81526001600160a01b038281166004830152831690638f283970906024015b5f604051808303815f87803b158015610334575f5ffd5b505af1158015610346573d5f5f3e3d5ffd5b505050505050565b610356610477565b60405163278f794360e11b81526001600160a01b03841690634f1ef2869034906103869086908690600401610721565b5f604051808303818588803b15801561039d575f5ffd5b505af11580156103af573d5f5f3e3d5ffd5b5050505050505050565b6103c1610477565b604051631b2ce7f360e11b81526001600160a01b038281166004830152831690633659cfe69060240161031d565b6103f7610477565b6001600160a01b038116158061041557506001600160a01b03811630145b8061042c57505f546001600160a01b038281169116145b1561044a576040516349e27cff60e01b815260040160405180910390fd5b6102e8816104db565b5f5f5f836001600160a01b03166040516101e4906303e1469160e61b815260040190565b5f546001600160a01b031633146104d05760405162461bcd60e51b815260206004820181905260248201527f4f776e61626c653a2063616c6c6572206973206e6f7420746865206f776e657260448201526064016102d6565b565b6102e88161054b565b6104e3610477565b600180546001600160a01b0383166001600160a01b031990911681179091556105135f546001600160a01b031690565b6001600160a01b03167f38d16b8cac22d99fc7c124b9cd0de2d3fa1faef420bfe791d8c362d765e2270060405160405180910390a350565b600180546001600160a01b03191690556102e8815f80546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b6001600160a01b03811681146102e8575f5ffd5b5f602082840312156105d2575f5ffd5b81356105dd816105ae565b9392505050565b5f5f604083850312156105f5575f5ffd5b8235610600816105ae565b91506020830135610610816105ae565b809150509250929050565b634e487b7160e01b5f52604160045260245ffd5b5f5f5f60608486031215610641575f5ffd5b833561064c816105ae565b9250602084013561065c816105ae565b9150604084013567ffffffffffffffff811115610677575f5ffd5b8401601f81018613610687575f5ffd5b803567ffffffffffffffff8111156106a1576106a161061b565b604051601f8201601f19908116603f0116810167ffffffffffffffff811182821017156106d0576106d061061b565b6040528181528282016020018810156106e7575f5ffd5b816020840160208301375f602083830101528093505050509250925092565b5f60208284031215610716575f5ffd5b81516105dd816105ae565b60018060a01b0383168152604060208201525f82518060408401525f5b8181101561075b576020818601810151606086840101520161073e565b505f606082850101526060601f19601f830116840101915050939250505056fea26469706673582212206e0cd4593bb964c659b6472a794aa57e89a28a5b5fdc23381a47f26b9b2139c964736f6c63430008250033",
+ "evm_version": "shanghai",
+ "immutable_references": {},
+ "metadata": "{\"compiler\":{\"version\":\"0.8.37+commit.f401782d\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"initialOwner\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"InvalidOwner\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RenounceDisabled\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferStarted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"acceptOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract ITransparentUpgradeableProxy\",\"name\":\"proxy\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"changeProxyAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract ITransparentUpgradeableProxy\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"getProxyAdmin\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract ITransparentUpgradeableProxy\",\"name\":\"proxy\",\"type\":\"address\"}],\"name\":\"getProxyImplementation\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pendingOwner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"next\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract ITransparentUpgradeableProxy\",\"name\":\"proxy\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"}],\"name\":\"upgrade\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract ITransparentUpgradeableProxy\",\"name\":\"proxy\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"upgradeAndCall\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"}],\"devdoc\":{\"custom:security-contact\":\"security@cryft.cards\",\"custom:version\":\"1.0.0\",\"details\":\"Ownership moves only by the two-step handover and can never be renounced. Does not call the public chain's      validator contract from private state. Built for EVM Shanghai (Pente).\",\"kind\":\"dev\",\"methods\":{\"acceptOwnership()\":{\"details\":\"The new owner accepts the ownership transfer.\"},\"changeProxyAdmin(address,address)\":{\"details\":\"Changes the admin of `proxy` to `newAdmin`. Requirements: - This contract must be the current admin of `proxy`.\"},\"getProxyAdmin(address)\":{\"details\":\"Returns the current admin of `proxy`. Requirements: - This contract must be the admin of `proxy`.\"},\"getProxyImplementation(address)\":{\"details\":\"Returns the current implementation of `proxy`. Requirements: - This contract must be the admin of `proxy`.\"},\"owner()\":{\"details\":\"Returns the address of the current owner.\"},\"pendingOwner()\":{\"details\":\"Returns the address of the pending owner.\"},\"upgrade(address,address)\":{\"details\":\"Upgrades `proxy` to `implementation`. See {TransparentUpgradeableProxy-upgradeTo}. Requirements: - This contract must be the admin of `proxy`.\"},\"upgradeAndCall(address,address,bytes)\":{\"details\":\"Upgrades `proxy` to `implementation` and calls a function on the new implementation. See {TransparentUpgradeableProxy-upgradeToAndCall}. Requirements: - This contract must be the admin of `proxy`.\"}},\"title\":\"ManagedProxyAdmin\",\"version\":1},\"userdoc\":{\"errors\":{\"InvalidOwner()\":[{\"notice\":\"The owner is the zero address, this contract, or already the owner.\"}],\"RenounceDisabled()\":[{\"notice\":\"Ownership cannot be renounced; it must be transferred.\"}]},\"kind\":\"user\",\"methods\":{\"renounceOwnership()\":{\"notice\":\"Always reverts: ownership must be transferred, never renounced.\"},\"transferOwnership(address)\":{\"notice\":\"Starts a two-step ownership handover to `next`, who must accept it.\"}},\"notice\":\"Local authority for an application proxy, including inside a Pente privacy group.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"source/Paladin/ManagedProxyAdmin.sol\":\"ManagedProxyAdmin\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/access/Ownable.sol\":{\"keccak256\":\"0xba43b97fba0d32eb4254f6a5a297b39a19a247082a02d6e69349e071e2946218\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://fc980984badf3984b6303b377711220e067722bbd6a135b24669ff5069ef9f32\",\"dweb:/ipfs/QmPHXMSXj99XjSVM21YsY6aNtLLjLVXDbyN76J5HQYvvrz\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/access/Ownable2Step.sol\":{\"keccak256\":\"0xde231558366826d7cb61725af8147965a61c53b77a352cc8c9af38fc5a92ac3c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://1fd55624076bf61d44af5ff351919e32dda748567acfbdd6ba3d6c7be61c758e\",\"dweb:/ipfs/QmSki4dTrf4GPm7MTpG3fk8mC7rnjwd2zMomLp6jLuF63Q\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/interfaces/IERC1967.sol\":{\"keccak256\":\"0x3cbef5ebc24b415252e2f8c0c9254555d30d9f085603b4b80d9b5ed20ab87e90\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://e8fa670c3bdce78e642cc6ae11c4cb38b133499cdce5e1990a9979d424703263\",\"dweb:/ipfs/QmVxeCUk4jL2pXQyhsoNJwyU874wRufS2WvGe8TgPKPqhE\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/interfaces/draft-IERC1822.sol\":{\"keccak256\":\"0x1d4afe6cb24200cc4545eed814ecf5847277dfe5d613a1707aad5fceecebcfff\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://383fb7b8181016ac5ccf07bc9cdb7c1b5045ea36e2cc4df52bcbf20396fc7688\",\"dweb:/ipfs/QmYJ7Cg4WmE3rR8KGQxjUCXFfTH6TcwZ2Z1f6tPrq7jHFr\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/ERC1967/ERC1967Proxy.sol\":{\"keccak256\":\"0xa2b22da3032e50b55f95ec1d13336102d675f341167aa76db571ef7f8bb7975d\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://96b6d77a20bebd4eb06b801d3d020c7e82be13bd535cb0d0a6b7181c51dab5d5\",\"dweb:/ipfs/QmPUR9Cv9jNFdQX6PtBfaBW1ZCnKwiu65R2VD5kbdanDyn\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/ERC1967/ERC1967Upgrade.sol\":{\"keccak256\":\"0x3b21ae06bf5957f73fa16754b0669c77b7abd8ba6c072d35c3281d446fdb86c2\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://2db8e18505e86e02526847005d7287a33e397ed7fb9eaba3fd4a4a197add16e2\",\"dweb:/ipfs/QmW9BSuKTzHWHBNSHF4L8XfVuU1uJrP2vLg84YtBd8mL82\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/Proxy.sol\":{\"keccak256\":\"0xc130fe33f1b2132158531a87734153293f6d07bc263ff4ac90e85da9c82c0e27\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://8831721b6f4cc26534d190f9f1631c3f59c9ff38efdd911f85e0882b8e360472\",\"dweb:/ipfs/QmQZnLErZNStirSQ13ZNWQgvEYUtGE5tXYwn4QUPaVUfPN\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/beacon/IBeacon.sol\":{\"keccak256\":\"0xd50a3421ac379ccb1be435fa646d66a65c986b4924f0849839f08692f39dde61\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://ada1e030c0231db8d143b44ce92b4d1158eedb087880cad6d8cc7bd7ebe7b354\",\"dweb:/ipfs/QmWZ2NHZweRpz1U9GF6R1h65ri76dnX7fNxLBeM2t5N5Ce\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/transparent/ProxyAdmin.sol\":{\"keccak256\":\"0x8e99882a991853dc446278576c8cb9b3a5ded84642e9bcc917b1677807c2f18c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://310153c1a4c739002ffbc1351ed1dd7488a0d20f5dd816353332fc2c1d81e0a3\",\"dweb:/ipfs/QmcvwXQVUBRTEAoNcvwSVFmhpHUXQ21s2Hfj79hq2uQNVM\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/proxy/transparent/TransparentUpgradeableProxy.sol\":{\"keccak256\":\"0x168e36d7e616bd41f6abab4a83009da64513ae9e638aa6d5980066e2a92db689\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://a45c64b97311fabbcbe8dad7e94fa89e06a7f96060d5565326ef706f5f239017\",\"dweb:/ipfs/QmeU2jiBGbHhz9DqRotjbpAx5s2xExDSRQtSD5ENjuHzDq\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Address.sol\":{\"keccak256\":\"0x006dd67219697fe68d7fbfdea512e7c4cb64a43565ed86171d67e844982da6fa\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://2455248c8ddd9cc6a7af76a13973cddf222072427e7b0e2a7d1aff345145e931\",\"dweb:/ipfs/QmfYjnjRbWqYpuxurqveE6HtzsY1Xx323J428AKQgtBJZm\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/Context.sol\":{\"keccak256\":\"0xa92e4fa126feb6907daa0513ddd816b2eb91f30a808de54f63c17d0e162c3439\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://a367861093b74443b137564d3f3c472f70bcf114739e62059c939f25e315706c\",\"dweb:/ipfs/Qmd7JMpcxD9RuQjK3uM3EzJUgSqdN8vzp8eytEiuwxQJ6h\"]},\"OpenZeppelin_openzeppelin-contracts/v4.9.6/contracts/utils/StorageSlot.sol\":{\"keccak256\":\"0xf09e68aa0dc6722a25bc46490e8d48ed864466d17313b8a0b254c36b54e49899\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://e26daf81e2252dc1fe1ce0e4b55c2eb7c6d1ee84ae6558d1a9554432ea1d32da\",\"dweb:/ipfs/Qmb1UANWiWq5pCKbmHSu772hd4nt374dVaghGmwSVNuk8Q\"]},\"source/Paladin/ManagedProxyAdmin.sol\":{\"keccak256\":\"0xe3bc3c9c190c12b5184298470bbcfde63ae82ef04c059d51a064dc13d65c1ec6\",\"license\":\"Apache-2.0\",\"urls\":[\"bzz-raw://eb8961f1b5e30bb04b169839a8fc34f301977277a6011627d149c4ef2c4434b4\",\"dweb:/ipfs/QmW8oLD96u4puLhMyaGCceKCapRZXo87v4g8EL1uQ3JVLY\"]}},\"version\":1}",
+ "name": "ManagedProxyAdmin",
+ "runtime_bytecode": "0x60806040526004361061008f575f3560e01c80639623609d116100575780639623609d1461013357806399a88ec414610146578063e30c397814610165578063f2fde38b14610182578063f3b7dead146101a1575f5ffd5b8063204e1c7a14610093578063715018a6146100ce57806379ba5097146100e45780637eff275e146100f85780638da5cb5b14610117575b5f5ffd5b34801561009e575f5ffd5b506100b26100ad3660046105c2565b6101c0565b6040516001600160a01b03909116815260200160405180910390f35b3480156100d9575f5ffd5b506100e261024b565b005b3480156100ef575f5ffd5b506100e261026c565b348015610103575f5ffd5b506100e26101123660046105e4565b6102eb565b348015610122575f5ffd5b505f546001600160a01b03166100b2565b6100e261014136600461062f565b61034e565b348015610151575f5ffd5b506100e26101603660046105e4565b6103b9565b348015610170575f5ffd5b506001546001600160a01b03166100b2565b34801561018d575f5ffd5b506100e261019c3660046105c2565b6103ef565b3480156101ac575f5ffd5b506100b26101bb3660046105c2565b610453565b5f5f5f836001600160a01b03166040516101e490635c60da1b60e01b815260040190565b5f60405180830381855afa9150503d805f811461021c576040519150601f19603f3d011682016040523d82523d5f602084013e610221565b606091505b50915091508161022f575f5ffd5b808060200190518101906102439190610706565b949350505050565b610253610477565b604051638905116560e01b815260040160405180910390fd5b60015433906001600160a01b031681146102df5760405162461bcd60e51b815260206004820152602960248201527f4f776e61626c6532537465703a2063616c6c6572206973206e6f7420746865206044820152683732bb9037bbb732b960b91b60648201526084015b60405180910390fd5b6102e8816104d2565b50565b6102f3610477565b6040516308f2839760e41b81526001600160a01b038281166004830152831690638f283970906024015b5f604051808303815f87803b158015610334575f5ffd5b505af1158015610346573d5f5f3e3d5ffd5b505050505050565b610356610477565b60405163278f794360e11b81526001600160a01b03841690634f1ef2869034906103869086908690600401610721565b5f604051808303818588803b15801561039d575f5ffd5b505af11580156103af573d5f5f3e3d5ffd5b5050505050505050565b6103c1610477565b604051631b2ce7f360e11b81526001600160a01b038281166004830152831690633659cfe69060240161031d565b6103f7610477565b6001600160a01b038116158061041557506001600160a01b03811630145b8061042c57505f546001600160a01b038281169116145b1561044a576040516349e27cff60e01b815260040160405180910390fd5b6102e8816104db565b5f5f5f836001600160a01b03166040516101e4906303e1469160e61b815260040190565b5f546001600160a01b031633146104d05760405162461bcd60e51b815260206004820181905260248201527f4f776e61626c653a2063616c6c6572206973206e6f7420746865206f776e657260448201526064016102d6565b565b6102e88161054b565b6104e3610477565b600180546001600160a01b0383166001600160a01b031990911681179091556105135f546001600160a01b031690565b6001600160a01b03167f38d16b8cac22d99fc7c124b9cd0de2d3fa1faef420bfe791d8c362d765e2270060405160405180910390a350565b600180546001600160a01b03191690556102e8815f80546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b6001600160a01b03811681146102e8575f5ffd5b5f602082840312156105d2575f5ffd5b81356105dd816105ae565b9392505050565b5f5f604083850312156105f5575f5ffd5b8235610600816105ae565b91506020830135610610816105ae565b809150509250929050565b634e487b7160e01b5f52604160045260245ffd5b5f5f5f60608486031215610641575f5ffd5b833561064c816105ae565b9250602084013561065c816105ae565b9150604084013567ffffffffffffffff811115610677575f5ffd5b8401601f81018613610687575f5ffd5b803567ffffffffffffffff8111156106a1576106a161061b565b604051601f8201601f19908116603f0116810167ffffffffffffffff811182821017156106d0576106d061061b565b6040528181528282016020018810156106e7575f5ffd5b816020840160208301375f602083830101528093505050509250925092565b5f60208284031215610716575f5ffd5b81516105dd816105ae565b60018060a01b0383168152604060208201525f82518060408401525f5b8181101561075b576020818601810151606086840101520161073e565b505f606082850101526060601f19601f830116840101915050939250505056fea26469706673582212206e0cd4593bb964c659b6472a794aa57e89a28a5b5fdc23381a47f26b9b2139c964736f6c63430008250033",
+ "runtime_bytes": 1969,
+ "runtime_keccak256": "0x39cdf529929bc2c146d4cc55b3dea969c287bf4c6eb35e4284f901ddb134ab6b",
+ "source": "source/Paladin/ManagedProxyAdmin.sol",
+ "storage_layout": {
+  "storage": [
+   {
+    "astId": 7,
+    "contract": "source/Paladin/ManagedProxyAdmin.sol:ManagedProxyAdmin",
+    "label": "_owner",
+    "offset": 0,
+    "slot": "0",
+    "type": "t_address"
+   },
+   {
+    "astId": 120,
+    "contract": "source/Paladin/ManagedProxyAdmin.sol:ManagedProxyAdmin",
+    "label": "_pendingOwner",
+    "offset": 0,
+    "slot": "1",
+    "type": "t_address"
+   }
+  ],
+  "types": {
+   "t_address": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+   }
+  }
+ }
+}
