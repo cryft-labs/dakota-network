@@ -1,4 +1,0 @@
-# Compiler metadata, inventories and input/output hashes require exact bytes on
-# every checkout, including Windows clients configured with core.autocrlf=true.
-Contracts/Verification/** -text
-Releases/TenantAllowances/** -text
