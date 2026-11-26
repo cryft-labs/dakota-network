@@ -81,17 +81,46 @@ interface IDakotaDelegationRegistry {
         string version
     );
 
-    event BeaconOwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
+    /// @notice A delegation upgrade was scheduled; members can react before readyAt.
+    event DelegationUpgradeScheduled(
+        address indexed implementation,
+        bytes32 indexed implementationCodeHash,
+        address indexed scheduledBy,
+        uint256 scheduledAt,
+        uint256 readyAt
     );
-    event BeaconOwnershipTransferProposed(address indexed previousOwner, address indexed pendingOwner);
+    event DelegationUpgradeCancelled(
+        address indexed implementation,
+        bytes32 indexed implementationCodeHash,
+        address indexed cancelledBy
+    );
+    event DelegationUpgradeExecuted(
+        address indexed previousImplementation,
+        address indexed newImplementation,
+        bytes32 indexed implementationCodeHash
+    );
+    /// @notice The upgrade delay changed (raises apply at once; lowers after the old delay).
+    event UpgradeDelayChanged(uint256 previousDelay, uint256 newDelay);
+    event UpgradeDelayDecreaseScheduled(uint256 currentDelay, uint256 newDelay, uint256 readyAt);
+    event UpgradeDelayDecreaseCancelled(uint256 newDelay, address indexed cancelledBy);
 
-    /// @notice First-links the control plane; the live root caller is admin.
+    /// @notice First-links the control plane through the genesis proxy link
+    ///         (with data); the live root caller is admin.
+    /// @param upgradeDelay Initial seconds between schedule and execute (0..MAX).
     function initialize(
         address dispatcher,
         address beacon,
-        address gasSponsor
+        address gasSponsor,
+        uint256 upgradeDelay
+    ) external;
+
+    /// @notice Same as initialize, with an explicit registry admin.
+    function initializeWithAdmin(
+        address dispatcher,
+        address beacon,
+        address gasSponsor,
+        address admin,
+        uint256 upgradeDelay
     ) external;
 
     function proposeAdmin(address pendingAdmin_) external;
@@ -100,24 +129,53 @@ interface IDakotaDelegationRegistry {
 
     function cancelAdminTransfer() external;
 
-    /// @notice Atomically upgrades the controlled beacon and records release.
+    /// @notice Phase 1 (admin): validate and schedule a beacon upgrade. One at a time.
+    ///         A rollback is the same call with an earlier release's
+    ///         implementation and code hash (see releaseAt).
     /// @param newImplementation Verified deployment to activate.
     /// @param expectedCodeHash Code hash from the archived build artifact.
-    function upgradeDelegation(
+    function scheduleDelegationUpgrade(
         address newImplementation,
         bytes32 expectedCodeHash
     ) external;
 
-    /// @notice Records a current beacon implementation changed before control.
-    function recordCurrentImplementation() external;
+    /// @notice Phase 2 (admin): activate the scheduled upgrade once it is ready.
+    ///         Arguments must match the scheduled upgrade.
+    function executeDelegationUpgrade(
+        address newImplementation,
+        bytes32 expectedCodeHash
+    ) external;
 
-    /// @notice Proposes an ownership handover; the recipient must accept on the beacon.
-    function transferBeaconOwnership(address newOwner) external;
+    /// @notice Cancel the scheduled upgrade (admin or genesis-proxy guardian).
+    function cancelDelegationUpgrade() external;
 
-    /// @notice Accept a beacon ownership handover proposed to this registry.
-    function acceptBeaconOwnership() external;
-    /// @notice Cancel an outgoing handover while this registry still owns the beacon.
-    function cancelBeaconOwnershipTransfer() external;
+    /// @notice Raise (immediate) or schedule a lower (after the current delay) upgrade delay.
+    function setUpgradeDelay(uint256 newDelay) external;
+
+    /// @notice Apply a scheduled delay decrease once it is ready (admin).
+    function executeUpgradeDelayDecrease() external;
+
+    /// @notice Cancel a scheduled delay decrease (admin or genesis-proxy guardian).
+    function cancelUpgradeDelayDecrease() external;
+
+    function upgradeDelay() external view returns (uint256);
+
+    function MAX_UPGRADE_DELAY() external view returns (uint256);
+
+    function pendingDelegationUpgrade()
+        external
+        view
+        returns (
+            address implementation,
+            bytes32 implementationCodeHash,
+            uint256 scheduledAt,
+            uint256 readyAt
+        );
+
+    function pendingUpgradeDelayDecrease()
+        external
+        view
+        returns (bool pending, uint256 newDelay, uint256 readyAt);
 
     function currentSnapshot()
         external

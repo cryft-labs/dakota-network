@@ -3,8 +3,6 @@
 // Copyright (c) 2023-2026 Cryft Labs. All rights reserved.
 // This software is part of a patented system. See LICENSE and PATENT NOTICE.
 // Licensed under the Apache License, Version 2.0.
-//
-// Uses OpenZeppelin Contracts v5.2.0 UpgradeableBeacon (MIT).
 
 pragma solidity >=0.8.20 <0.9.0;
 
@@ -15,99 +13,80 @@ pragma solidity >=0.8.20 <0.9.0;
  |___/\__,_|_|\_\___/\__\__,_| |___/\___\__,_\__\___/_||_|
                                               By: CryftCreator
 
-  Version 1.0.0 - Production Dakota Delegation Beacon
-  [ROOT-VALIDATED SHARED UPGRADE BEACON]
+  Version 2.0.0 - Production Dakota Delegation Beacon
+  [REGISTRY-OWNED FROM CONSTRUCTION]
 
   +-------------------- Contract Architecture --------------------+
   |                                                               |
   |  NATIVE EIP-7702 SHARED IMPLEMENTATION CONTROL                |
   |                                                               |
-  |  Bootstrap authority:                                         |
-  |    - constructor accepts only the delegation implementation   |
-  |    - deployer must be a live root reported by 0x0000...1111   |
-  |    - failed or unavailable root validation rejects deployment |
-  |    - validated deployer becomes the temporary beacon owner    |
-  |                                                               |
-  |  Registry handoff:                                            |
-  |    - ownership moves to fixed entry 0x0000...de1E6A7E         |
-  |    - Registry validates protocol, capabilities, and code hash |
-  |    - accepted upgrades are activated and recorded atomically  |
+  |  Ownership (audit X-2):                                       |
+  |    - owner is the fixed registry entry 0x0000...de1E6A7E,     |
+  |      a constant set at construction; anyone may deploy        |
+  |    - no EOA-owner window, no handover, no renounce            |
+  |    - only the registry may change the implementation, and     |
+  |      the registry does so only through its two-phase,         |
+  |      delayed schedule/execute upgrade                         |
   |                                                               |
   |  Delegated-account route:                                     |
-  |    user EOA -> immutable dispatcher          |
+  |    user EOA -> immutable dispatcher                           |
   |    -> this beacon -> DakotaDelegation implementation          |
   |                                                               |
-  |  Security and storage:                                        |
-  |    - OpenZeppelin UpgradeableBeacon validates implementation  |
-  |    - no proxy initializer or migration surface                |
-  |    - ownership must not be renounced                          |
-  |                                                               |
+  |  Self-contained (audit L-4): no OpenZeppelin URL import.      |
   +---------------------------------------------------------------+
 */
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.2.0/contracts/proxy/beacon/UpgradeableBeacon.sol";
-
-interface IDakotaDelegationBeaconRootRegistry {
-    function isRootOverlord(address account) external view returns (bool);
-}
+import "../Upgradeable/Proxy/Beacon/IBeacon.sol";
 
 /// @title DakotaDelegationBeacon
-/// @notice Shared implementation authority for Dakota EIP-7702 accounts.
-/// @dev The deployer must be a live root overlord reported by the canonical
-///      validator registry. The validated deployer is the temporary owner
-///      until ownership moves to the fixed delegation registry entry.
-contract DakotaDelegationBeacon is UpgradeableBeacon {
-    error NotRootOverlord(address caller);
-    error InvalidOwnershipTransfer();
-    error OwnershipRenunciationDisabled();
-    address private _pendingOwner;
-    event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);
+/// @notice Shared implementation pointer for Dakota EIP-7702 accounts.
+/// @dev The owner is the delegation registry entry for the beacon's whole life.
+contract DakotaDelegationBeacon is IBeacon {
+    error BeaconUnauthorizedAccount(address account);
+    error BeaconInvalidImplementation(address implementation);
 
-    address private constant _VALIDATOR_ROOT_REGISTRY =
-        0x0000000000000000000000000000000000001111;
+    /// @dev Same event as OpenZeppelin UpgradeableBeacon, for explorers/indexers.
+    event Upgraded(address indexed implementation);
+    /// @dev Emitted once at construction so indexers see the fixed owner.
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    constructor(
-        address implementation_
-    ) UpgradeableBeacon(implementation_, msg.sender) {
-        if (!_isRootOverlord(msg.sender)) {
-            revert NotRootOverlord(msg.sender);
+    address private constant _REGISTRY =
+        0x00000000000000000000000000000000de1E6A7E;
+
+    address private _implementation;
+
+    constructor(address implementation_) {
+        _setImplementation(implementation_);
+        emit OwnershipTransferred(address(0), _REGISTRY);
+    }
+
+    /// @inheritdoc IBeacon
+    function implementation() external view override returns (address) {
+        return _implementation;
+    }
+
+    /// @notice The only account that may change the implementation.
+    function owner() external pure returns (address) {
+        return _REGISTRY;
+    }
+
+    /// @notice Registry-only implementation change.
+    function upgradeTo(address newImplementation) external {
+        if (msg.sender != _REGISTRY) {
+            revert BeaconUnauthorizedAccount(msg.sender);
         }
+        _setImplementation(newImplementation);
     }
 
-    function validatorRootRegistry() external pure returns (address) {
-        return _VALIDATOR_ROOT_REGISTRY;
-    }
-
-    /// @notice Ownership stays with the current controller until the recipient accepts.
-    function transferOwnership(address newOwner) public override onlyOwner {
-        if (newOwner == address(0) || newOwner == address(this) || newOwner == owner()) revert InvalidOwnershipTransfer();
-        _pendingOwner = newOwner;
-        emit OwnershipTransferStarted(owner(), newOwner);
-    }
-
-    function pendingOwner() external view returns (address) { return _pendingOwner; }
-
-    function acceptOwnership() external {
-        if (msg.sender != _pendingOwner) revert InvalidOwnershipTransfer();
-        _pendingOwner = address(0);
-        _transferOwnership(msg.sender);
-    }
-
-    function cancelOwnershipTransfer() external onlyOwner {
-        _pendingOwner = address(0);
-        emit OwnershipTransferStarted(owner(), address(0));
-    }
-
-    /// @notice Permanent loss of the shared account-upgrade controller is disallowed.
-    function renounceOwnership() public override onlyOwner { revert OwnershipRenunciationDisabled(); }
-
-    function _isRootOverlord(address caller) private view returns (bool) {
-        try IDakotaDelegationBeaconRootRegistry(
-            _VALIDATOR_ROOT_REGISTRY
-        ).isRootOverlord(caller) returns (bool authorized) {
-            return authorized;
-        } catch {
-            return false;
+    function _setImplementation(address newImplementation) private {
+        if (
+            newImplementation == address(0) ||
+            newImplementation == address(this) ||
+            newImplementation.code.length == 0
+        ) {
+            revert BeaconInvalidImplementation(newImplementation);
         }
+        _implementation = newImplementation;
+        emit Upgraded(newImplementation);
     }
 }

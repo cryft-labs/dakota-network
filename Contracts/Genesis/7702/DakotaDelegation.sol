@@ -4,7 +4,7 @@
 // This software is part of a patented system. See LICENSE and PATENT NOTICE.
 // Licensed under the Apache License, Version 2.0.
 
-pragma solidity >=0.8.20 <0.9.0;
+pragma solidity >=0.8.24 <0.9.0;
 
 /*
   ___       _        _          ___      _                 _   _
@@ -13,7 +13,7 @@ pragma solidity >=0.8.20 <0.9.0;
  |___/\__,_|_|\_\___/\__\__,_| |___/\___|_\___\__, \__,_|\__|_\___/_||_|
                                                |___/ By: CryftCreator
 
-  Version 1.1.0 — Production Dakota Delegation  [BEACON-UPGRADEABLE]
+  Version 1.2.0 — Production Dakota Delegation  [BEACON-UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ─────────────────────────────┐
   │                                                                    │
@@ -34,7 +34,8 @@ pragma solidity >=0.8.20 <0.9.0;
   │  Security rails:                                                   │
   │    • direct implementation execution is rejected                   │
   │    • strict low-s ECDSA with 65-byte and EIP-2098 signatures       │
-  │    • per-account nonce, reentrancy guard, and post-call reserve    │
+  │    • per-account nonce, transient (EIP-1153) reentrancy guard,     │
+  │      and post-call reserve                                         │
   │    • zero targets are rejected and target reverts are preserved    │
   │                                                                    │
   │  Compatibility:                                                    │
@@ -43,7 +44,8 @@ pragma solidity >=0.8.20 <0.9.0;
   │                                                                    │
   │  Storage and upgrades:                                             │
   │    • ERC-7201 namespace: dakota.storage.DakotaDelegation           │
-  │    • only nonce and reentrancy state live in the user account      │
+  │    • only the nonce lives in the user account's storage; the       │
+  │      reentrancy lock is transient and clears every transaction     │
   │    • normal upgrades change the shared beacon implementation       │
   │    • protocol ID: dakota.delegation.sponsored-execution.v1         │
   └────────────────────────────────────────────────────────────────────┘
@@ -95,11 +97,16 @@ contract DakotaDelegation is IDakotaDelegation {
     /// @custom:storage-location erc7201:dakota.storage.DakotaDelegation
     struct DelegationStorage {
         uint256 nonce;
-        uint256 reentrancyStatus;
     }
 
     bytes32 private constant _DELEGATION_STORAGE_LOCATION =
         0x2d5df833376e6c9531b3cb92f5745ecf8ad8197730684ec3db99cc12d4e93d00;
+    /// @dev Transient (EIP-1153) reentrancy slot (audit X-54 / L-3). Transient
+    ///      storage is cleared at the end of every transaction, so no earlier
+    ///      or foreign 7702 delegate can leave a value behind that bricks
+    ///      executeSponsored. keccak256("dakota.transient.DakotaDelegation.reentrancy") - 1.
+    bytes32 private constant _REENTRANCY_TSLOT =
+        bytes32(uint256(keccak256("dakota.transient.DakotaDelegation.reentrancy")) - 1);
     bytes32 private constant _DELEGATION_PROTOCOL_ID =
         keccak256("dakota.delegation.sponsored-execution.v1");
 
@@ -117,13 +124,21 @@ contract DakotaDelegation is IDakotaDelegation {
     }
 
     modifier nonReentrant() {
-        DelegationStorage storage state = _delegationStorage();
-        if (state.reentrancyStatus == 1) {
+        bytes32 slot = _REENTRANCY_TSLOT;
+        uint256 locked;
+        assembly ("memory-safe") {
+            locked := tload(slot)
+        }
+        if (locked != 0) {
             revert ReentrantExecution();
         }
-        state.reentrancyStatus = 1;
+        assembly ("memory-safe") {
+            tstore(slot, 1)
+        }
         _;
-        state.reentrancyStatus = 0;
+        assembly ("memory-safe") {
+            tstore(slot, 0)
+        }
     }
 
     /// @inheritdoc IDakotaDelegation
@@ -287,7 +302,7 @@ contract DakotaDelegation is IDakotaDelegation {
         override
         returns (string memory)
     {
-        return "1.1.0";
+        return "1.2.0";
     }
 
     /// @inheritdoc IDakotaDelegation

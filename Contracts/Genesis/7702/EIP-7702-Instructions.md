@@ -9,12 +9,31 @@
 > used for deployment. The authoritative native sponsorship and deployment
 > runbook is [`GAS-SPONSORSHIP.md`](./GAS-SPONSORSHIP.md). The initial release
 > first-links `0x00000000000000000000000000000000de1E6A7E` to the upgradeable
-> `DakotaDelegationRegistry` control plane, then transfers beacon ownership to
-> that fixed entry. Each initialized user account independently routes through
-> `DakotaDelegationBeaconDispatcher` and `DakotaDelegationBeacon`. The
-> `0x...FEeD` proxy is first-linked with `GasSponsor.initialize(...)`. This
+> `DakotaDelegationRegistry` control plane (link WITH init data, by a live
+> root). `DakotaDelegationBeacon` is owned by that fixed entry from its
+> constructor: anyone may deploy it and there is no ownership handover. Each
+> user account routes through `DakotaDelegationBeaconDispatcher` and the beacon.
+> The `0x...FEeD` proxy is first-linked with `GasSponsor.initialize(...)`. This
 > release does not expose session-key, claim, top-off, or unrestricted
 > forwarding functions.
+>
+> **Delegation upgrades are two-phase (audit X-2 / N-6).** The registry admin
+> calls `scheduleDelegationUpgrade(logic, codeHash)` (public
+> `DelegationUpgradeScheduled` event with `readyAt`), waits `upgradeDelay()`
+> seconds, then calls `executeDelegationUpgrade(logic, codeHash)` with the same
+> arguments. The admin or any genesis-proxy guardian may
+> `cancelDelegationUpgrade()`. The delay is set in the init data
+> (`initializeWithAdmin(dispatcher, beacon, gasSponsor, admin, upgradeDelay)`),
+> may start at 0 in dev, and is bounded by `MAX_UPGRADE_DELAY` (30 days).
+> `setUpgradeDelay(x)` raises at once; a lower value is scheduled and applies
+> via `executeUpgradeDelayDecrease()` only after the current delay (cancellable
+> with `cancelUpgradeDelayDecrease()`). A raise also holds back an upgrade that
+> is already scheduled. Rollback to a known-good release is the same two-phase
+> call with `releaseAt(i)`'s implementation and code hash.
+>
+> **Reentrancy (audit X-54).** `DakotaDelegation` 1.2.0 uses a transient
+> (EIP-1153) guard; no storage value left by any earlier delegate can block
+> `executeSponsored`.
 
 > **PATENT & LICENSING NOTICE**
 >
@@ -159,7 +178,7 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 |---|---|---|---|
 | **DakotaDelegationRegistry** | `Contracts/Genesis/7702/DakotaDelegationRegistry.sol` | Yes (fixed TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
 | **DakotaDelegation** | `Contracts/Genesis/7702/DakotaDelegation.sol` | Yes (shared beacon) | `<beacon_implementation>` |
-| **DakotaDelegationBeacon** | `Contracts/Genesis/7702/DakotaDelegationBeacon.sol` | Root-validated bootstrap, then Registry-owned | `<beacon_address>` |
+| **DakotaDelegationBeacon** | `Contracts/Genesis/7702/DakotaDelegationBeacon.sol` | Registry-owned from construction (two-phase delayed upgrades) | `<beacon_address>` |
 | **DakotaDelegationBeaconDispatcher** | `Contracts/Genesis/7702/DakotaDelegationBeaconDispatcher.sol` | Immutable | `<dispatcher_address>` |
 | **GasSponsor** | `Contracts/Genesis/7702/GasSponsor.sol` | Yes (TransparentUpgradeableProxy) | `0x...FEeD` (genesis) |
 | **CodeManager** | `Contracts/CodeManagement/CodeManager.sol` | Yes | `<proxy_address>` |

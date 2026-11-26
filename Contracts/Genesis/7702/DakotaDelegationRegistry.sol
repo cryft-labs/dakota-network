@@ -7,14 +7,19 @@
 pragma solidity >=0.8.20 <0.9.0;
 
 /*
-Dakota delegation registry v2: upgradeable release control plane at 0x...de1E6A7E.
-The genesis proxy hosts registry state and owns the shared beacon after a two-step
-handover. User EOAs designate the immutable dispatcher, not this proxy.
-Initialization validates the dispatcher's immutable beacon and v2 protocol.
+Dakota delegation registry v3: upgradeable release control plane at 0x...de1E6A7E.
+The genesis proxy hosts registry state. The shared beacon names this entry as its
+owner from construction (no handover). User EOAs designate the immutable dispatcher.
+Initialization (only through the genesis proxy link, by a live root) validates the
+dispatcher's immutable beacon, v2 protocol and that the beacon is owned by this entry.
+Delegation upgrades are two-phase (audit X-2): schedule -> wait upgradeDelay -> execute,
+with public events; the admin or a genesis-proxy guardian may cancel. The delay is
+configurable (0..MAX_UPGRADE_DELAY); raising is immediate, lowering waits the current
+delay. A rollback is a scheduled upgrade to an earlier recorded release.
 Releases validate implementation code hash, protocol, capabilities and interfaces.
 Account readiness verifies the EIP-7702 designator, dispatcher runtime and account
 protocol. The legacy proxyInitialized result now indicates immutable-route validity.
-Registry administration and beacon ownership use explicit proposal/acceptance.
+Registry administration uses explicit proposal/acceptance.
 */
 
 import "./Interfaces/IDakotaDelegation.sol";
@@ -29,14 +34,14 @@ interface IDakotaDelegationBeaconControl {
     function owner() external view returns (address);
 
     function upgradeTo(address newImplementation) external;
-
-    function transferOwnership(address newOwner) external;
-    function acceptOwnership() external;
-    function cancelOwnershipTransfer() external;
 }
 
 interface IDakotaDelegationRootRegistry {
     function isRootOverlord(address account) external view returns (bool);
+}
+
+interface IDakotaDelegationGenesisProxy {
+    function proxy_isGuardian(address account) external view returns (bool);
 }
 
 /// @title DakotaDelegationRegistry
@@ -64,6 +69,17 @@ contract DakotaDelegationRegistry is
     error InvalidImplementationMetadata(address implementation);
     error InvalidReleaseIndex(uint256 index);
     error BeaconUpgradeFailed(address expected, address actual);
+    error NotAdminOrGuardian(address caller);
+    error UpgradeDelayTooLong(uint256 requested, uint256 maximum);
+    error SameUpgradeDelay(uint256 delay);
+    error UpgradeAlreadyScheduled(address implementation);
+    error NoUpgradeScheduled();
+    error ScheduledUpgradeMismatch(address implementation, bytes32 codeHash);
+    error UpgradeNotReady(uint256 readyAt, uint256 nowTimestamp);
+    error NoDelayDecreaseScheduled();
+
+    /// @notice Hard ceiling for the configurable upgrade delay.
+    uint256 public constant MAX_UPGRADE_DELAY = 30 days;
 
     uint256 public constant CAPABILITY_SPONSORED_EXECUTION =
         DakotaDelegationCapabilities.SPONSORED_EXECUTION;
@@ -114,6 +130,16 @@ contract DakotaDelegationRegistry is
         address registryAdmin;
         address pendingRegistryAdmin;
         Release[] releases;
+        // Two-phase delegation upgrade (audit X-2).
+        uint256 upgradeDelay;
+        address pendingImplementation;
+        bytes32 pendingCodeHash;
+        uint256 pendingScheduledAt;
+        uint256 pendingReadyAt;
+        // Scheduled decrease of upgradeDelay (raises are immediate).
+        bool delayDecreasePending;
+        uint256 pendingDelay;
+        uint256 pendingDelayReadyAt;
     }
 
     bytes32 private constant _REGISTRY_STORAGE_LOCATION =
@@ -132,20 +158,47 @@ contract DakotaDelegationRegistry is
         _disableInitializers();
     }
 
+    modifier onlyAdminOrGuardian() {
+        if (
+            msg.sender != _registryStorage().registryAdmin &&
+            !_isGenesisGuardian(msg.sender)
+        ) {
+            revert NotAdminOrGuardian(msg.sender);
+        }
+        _;
+    }
+
     /// @inheritdoc IDakotaDelegationRegistry
+    /// @dev Locked on the implementation (constructor). On the entry it only
+    ///      runs once, for a live root caller, so it cannot be front-run; the
+    ///      bootstrap links it with data in the same transaction.
     function initialize(
         address dispatcher_,
         address beacon_,
-        address gasSponsor_
+        address gasSponsor_,
+        uint256 upgradeDelay_
     ) external override initializer {
-        _initializeRegistry(dispatcher_, beacon_, gasSponsor_, msg.sender);
+        _initializeRegistry(dispatcher_, beacon_, gasSponsor_, msg.sender, upgradeDelay_);
     }
 
-    function initializeWithAdmin(address dispatcher_, address beacon_, address gasSponsor_, address admin_) external initializer {
-        _initializeRegistry(dispatcher_, beacon_, gasSponsor_, admin_);
+    /// @inheritdoc IDakotaDelegationRegistry
+    function initializeWithAdmin(
+        address dispatcher_,
+        address beacon_,
+        address gasSponsor_,
+        address admin_,
+        uint256 upgradeDelay_
+    ) external override initializer {
+        _initializeRegistry(dispatcher_, beacon_, gasSponsor_, admin_, upgradeDelay_);
     }
 
-    function _initializeRegistry(address dispatcher_, address beacon_, address gasSponsor_, address admin_) private {
+    function _initializeRegistry(
+        address dispatcher_,
+        address beacon_,
+        address gasSponsor_,
+        address admin_,
+        uint256 upgradeDelay_
+    ) private {
         require(admin_ != address(0) && admin_ != address(this)
             && admin_ != 0x0000000000000000000000000000000000FacAdE, "Invalid registry admin");
         if (address(this) != _DELEGATION_ENTRY) {
@@ -171,6 +224,16 @@ contract DakotaDelegationRegistry is
         state.beacon = beacon_;
         state.gasSponsor = gasSponsor_;
         state.registryAdmin = admin_;
+
+        address beaconOwner = IDakotaDelegationBeaconControl(beacon_).owner();
+        if (beaconOwner != address(this)) {
+            revert BeaconNotControlled(beaconOwner);
+        }
+        if (upgradeDelay_ > MAX_UPGRADE_DELAY) {
+            revert UpgradeDelayTooLong(upgradeDelay_, MAX_UPGRADE_DELAY);
+        }
+        state.upgradeDelay = upgradeDelay_;
+        emit UpgradeDelayChanged(0, upgradeDelay_);
 
         address initialImplementation =
             IDakotaDelegationBeaconControl(beacon_).implementation();
@@ -261,7 +324,7 @@ contract DakotaDelegationRegistry is
 
     /// @inheritdoc IDakotaDelegationRegistry
     function registryVersion() external pure override returns (string memory) {
-        return "1.0.0";
+        return "3.0.0";
     }
 
     /// @inheritdoc IDakotaDelegationRegistry
@@ -321,32 +384,95 @@ contract DakotaDelegationRegistry is
     }
 
     /// @inheritdoc IDakotaDelegationRegistry
-    function upgradeDelegation(
+    function upgradeDelay() external view override returns (uint256) {
+        return _registryStorage().upgradeDelay;
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function pendingDelegationUpgrade()
+        external
+        view
+        override
+        returns (
+            address implementation_,
+            bytes32 implementationCodeHash_,
+            uint256 scheduledAt_,
+            uint256 readyAt_
+        )
+    {
+        DelegationRegistryStorage storage state = _registryStorage();
+        implementation_ = state.pendingImplementation;
+        implementationCodeHash_ = state.pendingCodeHash;
+        scheduledAt_ = state.pendingScheduledAt;
+        readyAt_ = implementation_ == address(0) ? 0 : _upgradeReadyAt(state);
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function pendingUpgradeDelayDecrease()
+        external
+        view
+        override
+        returns (bool pending, uint256 newDelay, uint256 readyAt_)
+    {
+        DelegationRegistryStorage storage state = _registryStorage();
+        return (
+            state.delayDecreasePending,
+            state.pendingDelay,
+            state.pendingDelayReadyAt
+        );
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function scheduleDelegationUpgrade(
         address newImplementation,
         bytes32 expectedCodeHash
     ) external override onlyAdmin {
-        if (expectedCodeHash == bytes32(0)) revert EmptyCodeHash();
         DelegationRegistryStorage storage state = _registryStorage();
-        IDakotaDelegationBeaconControl beaconControl =
-            IDakotaDelegationBeaconControl(state.beacon);
-        address beaconOwner = beaconControl.owner();
-        if (beaconOwner != address(this)) {
-            revert BeaconNotControlled(beaconOwner);
+        if (state.pendingImplementation != address(0)) {
+            revert UpgradeAlreadyScheduled(state.pendingImplementation);
+        }
+        _checkUpgradeTarget(state, newImplementation, expectedCodeHash);
+
+        uint256 readyAt_ = block.timestamp + state.upgradeDelay;
+        state.pendingImplementation = newImplementation;
+        state.pendingCodeHash = expectedCodeHash;
+        state.pendingScheduledAt = block.timestamp;
+        state.pendingReadyAt = readyAt_;
+        emit DelegationUpgradeScheduled(
+            newImplementation,
+            expectedCodeHash,
+            msg.sender,
+            block.timestamp,
+            readyAt_
+        );
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function executeDelegationUpgrade(
+        address newImplementation,
+        bytes32 expectedCodeHash
+    ) external override onlyAdmin {
+        DelegationRegistryStorage storage state = _registryStorage();
+        address scheduled = state.pendingImplementation;
+        if (scheduled == address(0)) revert NoUpgradeScheduled();
+        if (
+            scheduled != newImplementation ||
+            state.pendingCodeHash != expectedCodeHash
+        ) {
+            revert ScheduledUpgradeMismatch(newImplementation, expectedCodeHash);
+        }
+        uint256 readyAt_ = _upgradeReadyAt(state);
+        if (block.timestamp < readyAt_) {
+            revert UpgradeNotReady(readyAt_, block.timestamp);
         }
 
-        address previousImplementation = beaconControl.implementation();
-        if (newImplementation == previousImplementation) {
-            revert SameImplementation(newImplementation);
-        }
-
-        ImplementationMetadata memory metadata =
-            _validatedMetadata(newImplementation, expectedCodeHash);
-        if (metadata.protocolId != state.expectedProtocolId) {
-            revert IncompatibleProtocol(
-                state.expectedProtocolId,
-                metadata.protocolId
-            );
-        }
+        // Re-validate at activation: code hash, metadata, protocol, interfaces.
+        (
+            IDakotaDelegationBeaconControl beaconControl,
+            address previousImplementation,
+            ImplementationMetadata memory metadata
+        ) = _checkUpgradeTarget(state, newImplementation, expectedCodeHash);
+        _clearPendingUpgrade(state);
 
         beaconControl.upgradeTo(newImplementation);
         address activatedImplementation = beaconControl.implementation();
@@ -358,61 +484,132 @@ contract DakotaDelegationRegistry is
         }
 
         _recordRelease(newImplementation, metadata);
+        emit DelegationUpgradeExecuted(
+            previousImplementation,
+            newImplementation,
+            metadata.codeHash
+        );
     }
 
     /// @inheritdoc IDakotaDelegationRegistry
-    function recordCurrentImplementation() external override onlyAdmin {
+    function cancelDelegationUpgrade() external override onlyAdminOrGuardian {
         DelegationRegistryStorage storage state = _registryStorage();
-        address implementation_ =
-            IDakotaDelegationBeaconControl(state.beacon).implementation();
-        uint256 count = state.releases.length;
-        if (
-            count != 0 &&
-            state.releases[count - 1].implementation == implementation_
-        ) {
-            revert SameImplementation(implementation_);
+        address scheduled = state.pendingImplementation;
+        if (scheduled == address(0)) revert NoUpgradeScheduled();
+        bytes32 codeHash = state.pendingCodeHash;
+        _clearPendingUpgrade(state);
+        emit DelegationUpgradeCancelled(scheduled, codeHash, msg.sender);
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function setUpgradeDelay(uint256 newDelay) external override onlyAdmin {
+        if (newDelay > MAX_UPGRADE_DELAY) {
+            revert UpgradeDelayTooLong(newDelay, MAX_UPGRADE_DELAY);
+        }
+        DelegationRegistryStorage storage state = _registryStorage();
+        uint256 currentDelay = state.upgradeDelay;
+        if (newDelay == currentDelay) revert SameUpgradeDelay(newDelay);
+
+        if (newDelay > currentDelay) {
+            // Raising is immediate and supersedes any scheduled decrease.
+            if (state.delayDecreasePending) {
+                emit UpgradeDelayDecreaseCancelled(state.pendingDelay, msg.sender);
+                _clearPendingDelay(state);
+            }
+            state.upgradeDelay = newDelay;
+            emit UpgradeDelayChanged(currentDelay, newDelay);
+            return;
         }
 
-        ImplementationMetadata memory metadata =
-            _validatedMetadata(implementation_, bytes32(0));
+        // Lowering waits the current delay (and replaces an earlier decrease).
+        uint256 readyAt_ = block.timestamp + currentDelay;
+        state.delayDecreasePending = true;
+        state.pendingDelay = newDelay;
+        state.pendingDelayReadyAt = readyAt_;
+        emit UpgradeDelayDecreaseScheduled(currentDelay, newDelay, readyAt_);
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function executeUpgradeDelayDecrease() external override onlyAdmin {
+        DelegationRegistryStorage storage state = _registryStorage();
+        if (!state.delayDecreasePending) revert NoDelayDecreaseScheduled();
+        uint256 readyAt_ = state.pendingDelayReadyAt;
+        if (block.timestamp < readyAt_) {
+            revert UpgradeNotReady(readyAt_, block.timestamp);
+        }
+        uint256 previousDelay = state.upgradeDelay;
+        uint256 newDelay = state.pendingDelay;
+        _clearPendingDelay(state);
+        state.upgradeDelay = newDelay;
+        emit UpgradeDelayChanged(previousDelay, newDelay);
+    }
+
+    /// @inheritdoc IDakotaDelegationRegistry
+    function cancelUpgradeDelayDecrease() external override onlyAdminOrGuardian {
+        DelegationRegistryStorage storage state = _registryStorage();
+        if (!state.delayDecreasePending) revert NoDelayDecreaseScheduled();
+        uint256 newDelay = state.pendingDelay;
+        _clearPendingDelay(state);
+        emit UpgradeDelayDecreaseCancelled(newDelay, msg.sender);
+    }
+
+    /// @dev Ready time never shortens below the delay in force at execution:
+    ///      raising the delay also holds back an upgrade already scheduled.
+    function _upgradeReadyAt(
+        DelegationRegistryStorage storage state
+    ) private view returns (uint256) {
+        uint256 byCurrentDelay = state.pendingScheduledAt + state.upgradeDelay;
+        uint256 scheduledReadyAt = state.pendingReadyAt;
+        return byCurrentDelay > scheduledReadyAt ? byCurrentDelay : scheduledReadyAt;
+    }
+
+    function _checkUpgradeTarget(
+        DelegationRegistryStorage storage state,
+        address newImplementation,
+        bytes32 expectedCodeHash
+    )
+        private
+        view
+        returns (
+            IDakotaDelegationBeaconControl beaconControl,
+            address previousImplementation,
+            ImplementationMetadata memory metadata
+        )
+    {
+        if (expectedCodeHash == bytes32(0)) revert EmptyCodeHash();
+        beaconControl = IDakotaDelegationBeaconControl(state.beacon);
+        address beaconOwner = beaconControl.owner();
+        if (beaconOwner != address(this)) {
+            revert BeaconNotControlled(beaconOwner);
+        }
+        previousImplementation = beaconControl.implementation();
+        if (newImplementation == previousImplementation) {
+            revert SameImplementation(newImplementation);
+        }
+        metadata = _validatedMetadata(newImplementation, expectedCodeHash);
         if (metadata.protocolId != state.expectedProtocolId) {
             revert IncompatibleProtocol(
                 state.expectedProtocolId,
                 metadata.protocolId
             );
         }
-        _recordRelease(implementation_, metadata);
     }
 
-    /// @inheritdoc IDakotaDelegationRegistry
-    function transferBeaconOwnership(
-        address newOwner
-    ) external override onlyAdmin {
-        _requireNonZero(newOwner);
-        DelegationRegistryStorage storage state = _registryStorage();
-        IDakotaDelegationBeaconControl beaconControl =
-            IDakotaDelegationBeaconControl(state.beacon);
-        address previousOwner = beaconControl.owner();
-        if (previousOwner != address(this)) {
-            revert BeaconNotControlled(previousOwner);
-        }
-        beaconControl.transferOwnership(newOwner);
-        emit BeaconOwnershipTransferProposed(previousOwner, newOwner);
+    function _clearPendingUpgrade(
+        DelegationRegistryStorage storage state
+    ) private {
+        state.pendingImplementation = address(0);
+        state.pendingCodeHash = bytes32(0);
+        state.pendingScheduledAt = 0;
+        state.pendingReadyAt = 0;
     }
 
-    /// @inheritdoc IDakotaDelegationRegistry
-    function acceptBeaconOwnership() external override onlyAdmin {
-        IDakotaDelegationBeaconControl beaconControl = IDakotaDelegationBeaconControl(_registryStorage().beacon);
-        address previousOwner = beaconControl.owner();
-        beaconControl.acceptOwnership();
-        require(beaconControl.owner() == address(this), "Beacon handover failed");
-        emit BeaconOwnershipTransferred(previousOwner, address(this));
-    }
-
-    /// @inheritdoc IDakotaDelegationRegistry
-    function cancelBeaconOwnershipTransfer() external override onlyAdmin {
-        IDakotaDelegationBeaconControl(_registryStorage().beacon).cancelOwnershipTransfer();
-        emit BeaconOwnershipTransferProposed(address(this), address(0));
+    function _clearPendingDelay(
+        DelegationRegistryStorage storage state
+    ) private {
+        state.delayDecreasePending = false;
+        state.pendingDelay = 0;
+        state.pendingDelayReadyAt = 0;
     }
 
     /// @inheritdoc IDakotaDelegationRegistry
@@ -461,7 +658,7 @@ contract DakotaDelegationRegistry is
             beacon: state.beacon,
             beaconOwner: beaconOwner,
             registryImplementation: _registryImplementation(),
-            registryVersion: "2.0.0",
+            registryVersion: "3.0.0",
             implementation: implementation_,
             implementationCodeHash: implementation_.codehash,
             protocolId: metadata.protocolId,
@@ -920,6 +1117,17 @@ contract DakotaDelegationRegistry is
             _VALIDATOR_ROOT_REGISTRY
         ).isRootOverlord(caller) returns (bool authorized) {
             return authorized;
+        } catch {
+            return false;
+        }
+    }
+
+    /// @dev Genesis-proxy guardians (and the live root) may cancel, never schedule.
+    function _isGenesisGuardian(address caller) private view returns (bool) {
+        try IDakotaDelegationGenesisProxy(address(this)).proxy_isGuardian(
+            caller
+        ) returns (bool guardian) {
+            return guardian;
         } catch {
             return false;
         }
