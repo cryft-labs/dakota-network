@@ -1,0 +1,114 @@
+{
+ "at": "2026-11-26T19:43:11Z",
+ "installation": {
+  "source_commit": "2ca16f47f56608c89d878988930487382078165c",
+  "factory": "0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E",
+  "from_block": 47,
+  "paladin_image": "ghcr.io/lfdt-paladin/paladin@sha256:b7d9b4ab98c5330a2515e8c2c97d0b5f4460278ded824bee0a10ad6008984357",
+  "postgres_image": "docker.io/library/postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675",
+  "runtime_user": "cryft-paladin",
+  "data": "/var/lib/cryft/paladin",
+  "rpc": "http://100.111.32.201:8550 (Backend-01 only)",
+  "rpc_raw": "127.0.0.1:8548",
+  "database": "127.0.0.1:5433",
+  "public_listeners": false,
+  "sealed_secrets": {
+   "file": "/etc/cryft/paladin/secrets.json.cms",
+   "sha256": "0845bd378cbe2c8f7e56101bacfe8268e2b4b9350a6ca560b34571fc0d8baa05",
+   "recipient_cert_sha256": "6683177879408ffa042650be26099cb528d37d4e3db5fcdc4cc8aef1e08fd63e",
+   "plaintext_sha256": "977b8bf82d1835b4414da27fe42e024e8b5510ba9d3e83be372111c7c8887d40"
+  }
+ },
+ "identities": {
+  "operator@paladin01": "0xa777469755546cb7dcfa561cbafe9f6b9373f036",
+  "settlement@paladin01": "0x55045ed1a22cf6c20d62fcc8ea0b4ec050d22850"
+ },
+ "checks": [
+  {
+   "check": "cryft-besu active",
+   "ok": true
+  },
+  {
+   "check": "cryft-paladin-db active",
+   "ok": true
+  },
+  {
+   "check": "cryft-paladin active",
+   "ok": true
+  },
+  {
+   "check": "cryft-nginx active",
+   "ok": true
+  },
+  {
+   "check": "port 8548 on loopback only",
+   "ok": true,
+   "detail": [
+    "127.0.0.1:8548"
+   ]
+  },
+  {
+   "check": "port 8549 on loopback only",
+   "ok": true,
+   "detail": [
+    "127.0.0.1:8549"
+   ]
+  },
+  {
+   "check": "port 5433 on loopback only",
+   "ok": true,
+   "detail": [
+    "127.0.0.1:5433"
+   ]
+  },
+  {
+   "check": "port 6100 on loopback only",
+   "ok": true,
+   "detail": [
+    "127.0.0.1:6100"
+   ]
+  },
+  {
+   "check": "RPC :8550 on Nebula and loopback",
+   "ok": true
+  },
+  {
+   "check": "PenteFactory configured",
+   "ok": true,
+   "detail": "0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E"
+  },
+  {
+   "check": "factory has code on chain",
+   "ok": true
+  },
+  {
+   "check": "secrets sealed to the backup certificate",
+   "ok": true
+  },
+  {
+   "check": "sealed copy is of the current secrets",
+   "ok": true
+  },
+  {
+   "check": "RPC refuses a non-Backend Nebula host (Archive-01)",
+   "ok": true,
+   "detail": "403"
+  },
+  {
+   "check": "operator@paladin01 resolves from Backend-01",
+   "ok": true,
+   "detail": "0xa777469755546cb7dcfa561cbafe9f6b9373f036"
+  },
+  {
+   "check": "settlement@paladin01 resolves from Backend-01",
+   "ok": true,
+   "detail": "0x55045ed1a22cf6c20d62fcc8ea0b4ec050d22850"
+  },
+  {
+   "check": "settlement funded (>= 10000000000000000 wei)",
+   "ok": true,
+   "detail": 30000000000000000
+  }
+ ],
+ "passed": true
+}
