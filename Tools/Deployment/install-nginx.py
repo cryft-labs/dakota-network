@@ -55,11 +55,16 @@ def main():
     files=release/'Tools/SolcCompiler/deploy/backend-ipfs'
     copy_once(files/'nginx.conf',base/'nginx.conf',user.pw_gid,0o640)
     copy_once(files/'cryft-nginx.service',Path('/etc/systemd/system/cryft-nginx.service'))
+    if a.host=='Backend-01':
+        # The private Kubo node's read-only gateway (100.111.67.1:8082); ipfs-public.py copies its allow-list.
+        copy_once(release/'Tools/Explorer/nginx-ipfs-gateway.conf',base/'conf.d/ipfs-gateway.conf',user.pw_gid,0o640)
     if a.host=='Archive-01':
         copy_once(release/'Tools/Deployment/nginx-archive-rpc.conf',base/'conf.d/archive-rpc.conf',user.pw_gid,0o640)
     run('systemd-analyze','verify','/etc/systemd/system/cryft-nginx.service')
     run('systemctl','daemon-reload')
     run('systemctl','enable','--now','cryft-nginx.service')
+    run('runuser','-u','cryft-proxy','--','/usr/sbin/nginx','-t','-c','/etc/cryft/nginx/nginx.conf')
+    run('systemctl','reload','cryft-nginx.service')   # a rerun's new conf.d file takes effect
     # A root-run `nginx -t` (e.g. a manual config test) recreates the spool directories as `nobody`, and the
     # cryft-proxy workers then fail every request body over 16 KB (HTTP 500). Re-assert ownership; test configs with
     # `runuser -u cryft-proxy -- nginx -t -c /etc/cryft/nginx/nginx.conf`, never as root.
