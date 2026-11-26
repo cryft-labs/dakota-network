@@ -7,6 +7,9 @@ VERIFIED 1.3.0, then this build) with real EIP-7702 accounts, as test_program_sp
       after RESERVATION_RELEASE_AFTER (7 days); idempotent; one WorkerReleased each; a refusing policy never keeps it stuck.
 
     DAKOTA_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_gas_sponsor_1_5_1.py
+
+1.5.2 (X-57): ANYONE's release after the 7 days charges NOTHING (a lost worker is the platform's failure); only the platform
+administrator's release charges the maximum. The engine is linked fresh (test_program_sponsorship.world).
 """
 import pytest
 import solcx
@@ -102,7 +105,7 @@ def released(w, receipt):
     return w['sponsor'].events.WorkerReleased().process_receipt(receipt, errors=DISCARD)
 
 
-def test_anyone_releases_a_stuck_reservation_after_seven_days_at_its_maximum(reserved):
+def test_anyone_releases_a_stuck_reservation_after_seven_days_without_charge(reserved):
     w = reserved; s, c, a, w3 = w['sponsor'], w['c'], w['a'], w['c']['w3']
     assert s.functions.RESERVATION_RELEASE_AFTER().call() == 7 * DAY
     reverts(c, s.functions.releaseWorker(w['op']), 'WorkerNotAuthorized()', a[9])           # a stranger, too soon
@@ -111,14 +114,14 @@ def test_anyone_releases_a_stuck_reservation_after_seven_days_at_its_maximum(res
     later(w, 120)
     balance, treasury = s.functions.getSponsorAccount(a[4]).call()[2], w3.eth.get_balance(a[8])
     events = released(w, tx(c, s.functions.releaseWorker(w['op']), a[9]))
-    assert len(events) == 1 and events[0]['args']['cost'] == 10 ** 15 and events[0]['args']['policySettled'] is True
+    assert len(events) == 1 and events[0]['args']['cost'] == 0 and events[0]['args']['policySettled'] is True   # X-57: no charge
     assert events[0]['args']['by'] == a[9] and events[0]['args']['sponsor'] == a[4]
-    assert s.functions.getSponsorAccount(a[4]).call()[2] == balance - 10 ** 15 and w3.eth.get_balance(a[8]) == treasury + 10 ** 15
+    assert s.functions.getSponsorAccount(a[4]).call()[2] == balance and w3.eth.get_balance(a[8]) == treasury
     assert s.functions.pendingWorkerCost(a[4]).call() == 0 and w['policy'].functions.settled().call() == 1
     # idempotent: again, nothing changes and nothing is said
     assert s.functions.releaseWorker(w['op']).call({'from': a[9]}) == 0
     assert len(released(w, tx(c, s.functions.releaseWorker(w['op']), a[9]))) == 0
-    assert s.functions.getSponsorAccount(a[4]).call()[2] == balance - 10 ** 15
+    assert s.functions.getSponsorAccount(a[4]).call()[2] == balance
     fails(c, s.functions.settleWorker(w['op'], 1, Web3.keccak(text='late')), a[7])        # nor can it be settled after
 
 
@@ -126,6 +129,6 @@ def test_the_platform_admin_releases_at_once_and_a_refusing_policy_never_keeps_i
     w = reserved; s, c, a = w['sponsor'], w['c'], w['a']
     tx(c, w['policy'].functions.setRefuse(True))
     events = released(w, tx(c, s.functions.releaseWorker(w['op'])))                         # the platform admin, at once
-    assert len(events) == 1 and events[0]['args']['policySettled'] is False
+    assert len(events) == 1 and events[0]['args']['policySettled'] is False and events[0]['args']['cost'] == 10 ** 15
     assert s.functions.pendingWorkerCost(a[4]).call() == 0
     assert s.functions.releaseWorker(Web3.keccak(text='never')).call({'from': a[9]}) == 0     # never reserved: nothing

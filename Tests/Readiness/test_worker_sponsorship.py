@@ -1,4 +1,9 @@
-"""Actual-EVM worker accounting, rollback and concurrent-reservation checks."""
+"""Actual-EVM worker accounting, rollback and concurrent-reservation checks.
+
+GasSponsor 1.5.2: the engine is THIS source's WorkerGasSponsor linked fresh at 0x…FEeD (the verified 1.3.0 upgrade was the old
+chain's path); adds X-19 (a reservation is an operation) and X-57 (redirectWorkerRevenue).
+"""
+import importlib.util
 import json
 from pathlib import Path
 import pytest
@@ -15,15 +20,17 @@ def create(c,name,*args):
     receipt=tx(c,c['w3'].eth.contract(abi=a['abi'],bytecode=a['creation_bytecode']).constructor(*args))
     return c['w3'].eth.contract(address=receipt.contractAddress,abi=a['abi'])
 
+@pytest.fixture(scope='session')
+def worker_build():
+    spec=importlib.util.spec_from_file_location('worker_compiler',Path(__file__).resolve().parents[2]/'Tools/SolcCompiler/compile.py')
+    compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
+    out=compiler.compile_contract(Path(__file__).resolve().parents[2]/'Contracts/Genesis/7702/WorkerGasSponsor.sol',solc_version='0.8.37',evm_version='osaka')
+    return next(v for k,v in out.items() if k.rsplit(':',1)[-1]=='WorkerGasSponsor')
+
 @pytest.fixture
-def ready(chain):
-    c=chain; _,old,_,_=setup(c);a=c['accounts']
-    before=old.functions.getSponsorAccount(a[4]).call()
-    logic=create(c,'WorkerGasSponsor')
-    tx(c,at(c,'ProxyAdmin',ADMIN).functions.upgrade(old.address,logic.address))
-    s=c['w3'].eth.contract(address=old.address,abi=artifact('WorkerGasSponsor')['abi'])
-    assert s.functions.getSponsorAccount(a[4]).call()==before
-    assert s.functions.implementationVersion().call()=='1.3.0'
+def ready(chain, worker_build):
+    c=chain; _,s,_,_=setup(c,worker_build);a=c['accounts']
+    assert s.functions.implementationVersion().call()=='1.5.2'
     p=create(c,'TenantAllowancePolicy',s.address,a[4],a[5],'0x'+'0'*40,10**15,2*10**15,[])
     tx(c,s.functions.setSponsorPolicy(a[4],p.address),a[5])
     tx(c,s.functions.configureWorker(a[2],a[8]))
@@ -116,3 +123,37 @@ def test_rejecting_treasury_defers_revenue_without_locking_user_allowance(ready)
     fails(c,s.functions.claimWorkerRevenue(a[6],owed),a[6])
     before=c['w3'].eth.get_balance(a[8]);tx(c,treasury.functions.claim(s.address,a[8],owed))
     assert c['w3'].eth.get_balance(a[8])==before+owed and s.functions.unpaidWorkerRevenue(treasury.address).call()==0
+
+
+def test_a_reservation_counts_as_an_operation(ready):
+    # X-19 (1.5.2): before, a worker could reserve without limit but the wei caps; now each reservation is one of the day's ops.
+    c,s,p=ready;a=c['accounts']
+    tx(c,s.functions.setSponsorOpsPerDay(a[4],1))
+    _,call,sender=reserve(ready,'only-one');tx(c,call,sender)
+    assert s.functions.sponsorOps(a[4]).call()==[1,1]
+    _,call,sender=reserve(ready,'second-today',wallet=a[6]);fails(c,call,sender)
+    c['tester'].time_travel((c['w3'].eth.get_block('latest').timestamp//86400+1)*86400+1);c['tester'].mine_blocks(1)
+    assert s.functions.sponsorOps(a[4]).call()==[1,0]
+    _,call,sender=reserve(ready,'tomorrow',wallet=a[6]);tx(c,call,sender)
+
+
+def test_unreachable_revenue_is_redirected_by_the_platform_admin_only(ready):
+    # X-57 (1.5.2): a treasury that rejects coin AND cannot call claimWorkerRevenue used to strand its revenue forever.
+    import solcx
+    c,s,p=ready;a=c['accounts']
+    source='pragma solidity ^0.8.20; contract Sink { receive() external payable { revert(); } }'
+    art=solcx.compile_source(source,output_values=['abi','bin'],solc_version='0.8.37')['<stdin>:Sink']
+    sink=tx(c,c['w3'].eth.contract(abi=art['abi'],bytecode=art['bin']).constructor()).contractAddress
+    tx(c,s.functions.configureWorker(a[2],sink))
+    key,call,sender=reserve(ready,'stranded');tx(c,call,sender)
+    tx(c,s.functions.settleWorker(key,123,Web3.keccak(text='receipt')),a[2])
+    owed=s.functions.unpaidWorkerRevenue(sink).call();assert owed>=123
+    fails(c,s.functions.redirectWorkerRevenue(sink,a[7]),a[5])                   # not the manager
+    fails(c,s.functions.redirectWorkerRevenue(sink,a[7]),a[7])                   # nor the claimant
+    fails(c,s.functions.redirectWorkerRevenue(sink,sink))                        # nor to itself
+    fails(c,s.functions.redirectWorkerRevenue(a[9],a[7]))                        # nothing owed: nothing to move
+    r=tx(c,s.functions.redirectWorkerRevenue(sink,a[7]))
+    assert s.events.WorkerRevenueRedirected().process_receipt(r,errors=DISCARD)[0]['args']['amount']==owed
+    assert s.functions.unpaidWorkerRevenue(sink).call()==0 and s.functions.unpaidWorkerRevenue(a[7]).call()==owed
+    before=c['w3'].eth.get_balance(a[9]);tx(c,s.functions.claimWorkerRevenue(a[9],owed),a[7])
+    assert c['w3'].eth.get_balance(a[9])==before+owed

@@ -1,6 +1,6 @@
 """GasSponsor 1.5.0 and 1.5.1 (ProgramGasSponsor, 2026-11-23): a program sponsor holds gas credit and nothing else (Chad: developer gas is
-"only spendable and not transferrable"). On the live path (1.1.0 at 0x…FEeD, the VERIFIED 1.3.0, then this build) with real
-EIP-7702 accounts, as test_program_sponsorship.py:
+"only spendable and not transferrable"). On THIS source's ProgramGasSponsor linked fresh at 0x…FEeD (1.5.2; the old chain's upgrade
+replay is gone) with real EIP-7702 accounts, as test_program_sponsorship.py:
 
   * depositFor to a program sponsor reverts ProgramSponsorGasOnly (from anyone, the program included);
   * withdrawSponsor from it reverts ProgramSponsorNoWithdraw;
@@ -8,7 +8,7 @@ EIP-7702 accounts, as test_program_sponsorship.py:
   * recoverGasCredit for it is the program's alone (1.5.1: NotProgram for the platform admin too), to the program alone;
   * an ineligible answer (a revoked Pass) stops spending at once, on chain, and charges nothing;
   * a sponsor the program never opened is exactly as before: refundable deposits, withdrawals, credit from anyone, recovery anywhere;
-  * the committed build and its layout proof (Releases/GasSponsor/1.5.1) are this source's, append-only, within 32 KB.
+  * this source's build (Tools/GasSponsor/build_1_5_2.py) is append-only against 1.5.1 and within 32 KB.
 
     DAKOTA_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_gas_only.py
 """
@@ -49,9 +49,9 @@ def funding(w, sponsor):
 
 # ── the version ──
 
-def test_the_version_is_1_5_1_and_every_record_survives(world):
+def test_the_version_is_1_5_2_and_the_records_read_back(world):
     w = world; s, a, b = w['sponsor'], w['a'], w['before']
-    assert s.functions.implementationVersion().call() == '1.5.1'
+    assert s.functions.implementationVersion().call() == '1.5.2'
     assert s.functions.getSponsorAccount(a[4]).call() == b['account'] and s.functions.getSponsorFunding(a[4]).call() == b['funding']
     assert s.functions.platformAdmin().call() == b['admin'] and s.functions.voucherSigner().call() == b['signer']
 
@@ -83,8 +83,8 @@ def test_depositGasCredit_for_a_program_sponsor_comes_from_the_program_alone(wor
         reverts(c, s.functions.depositGasCredit(w['dev']), 'NotProgram()', sender, value=1)
     paid(c, p.functions.fund(s.address, w['dev']), E17)                # the program
     assert funding(w, w['dev']) == [0, E17]
-    tx(c, s.functions.setProgram('0x' + '0' * 39 + '1', 10 ** 16, 10 ** 18))             # another program: the old one is refused
-    reverts(c, p.functions.fund(s.address, w['dev']), 'NotProgram()', value=1)
+    fails(c, s.functions.setProgram('0x' + '0' * 39 + '1', 10 ** 16, 10 ** 18))          # 1.5.2: the program is set once
+    paid(c, p.functions.fund(s.address, w['dev']), 1)                  # the opener still funds it
 
 
 def test_recoverGasCredit_for_a_program_sponsor_is_the_programs_alone_and_goes_to_it(world):
@@ -100,9 +100,8 @@ def test_recoverGasCredit_for_a_program_sponsor_is_the_programs_alone_and_goes_t
     tx(c, p.functions.recover(s.address, w['dev'], p.address, E17 // 4))                                 # the program, to itself
     assert w3.eth.get_balance(p.address) - before == E17 // 4 and funding(w, w['dev']) == [0, E17 - E17 // 4]
     fails(c, p.functions.recover(s.address, w['dev'], p.address, E17))                                   # never more than the credit
-    tx(c, s.functions.setProgram('0x' + '0' * 39 + '1', 10 ** 16, 10 ** 18))                            # the program changed:
-    reverts(c, p.functions.recover(s.address, w['dev'], p.address, 1), 'NotProgram()')                  # the old one can't
-    reverts(c, s.functions.recoverGasCredit(w['dev'], p.address, 1), 'NotProgram()')                    # nor the admin
+    fails(c, s.functions.setProgram('0x' + '0' * 39 + '1', 10 ** 16, 10 ** 18))                         # 1.5.2: set once
+    reverts(c, s.functions.recoverGasCredit(w['dev'], p.address, 1), 'NotProgram()')                    # the admin still can't
 
 
 def test_the_program_recovers_only_its_own_sponsors(world):
@@ -147,15 +146,18 @@ def test_a_non_program_sponsor_is_unchanged(world):
 
 # ── the committed build ──
 
-def test_the_committed_build_is_this_source_and_append_only(program_build):
-    folder = REPO / 'Releases/GasSponsor/1.5.1'
-    proof = json.loads((folder / 'layout-proof.json').read_text())
-    artifact = json.loads((folder / 'ProgramGasSponsor.json').read_text())
-    standard = json.loads((folder / 'standard-input.json').read_text())
-    assert proof['append_only'] is True and proof['problems'] == []
-    assert set(proof['predecessors']) == {'1.3.0', '1.4.0', '1.5.0'}
-    for path, entry in standard['sources'].items():
-        assert (REPO / path).read_text() == entry['content'], path                    # the committed input is this checkout
+def test_this_build_is_append_only_against_1_5_1_and_fits(program_build):
+    """1.5.2: the release build (Tools/GasSponsor/build_1_5_2.py) proves every namespaced struct and the plain slots append-only
+    against the committed 1.5.1 input, and the runtime fits Dakota's 32,768 bytes. If Releases/GasSponsor/1.5.2 is committed, it is
+    this checkout's build."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('build_1_5_2', REPO / 'Tools/GasSponsor/build_1_5_2.py')
+    tool = importlib.util.module_from_spec(spec); spec.loader.exec_module(tool)
+    standard, artifact, proof = tool.build()
+    assert proof['append_only'] is True and proof['problems'] == [] and set(proof['predecessors']) == {'1.5.1'}
+    assert artifact['runtime_bytes'] <= 32768 and artifact['version'] == '1.5.2'
     built = program_build['ProgramGasSponsor']['runtime_bytecode'].removeprefix('0x').lower()
     assert artifact['runtime_bytecode'].removeprefix('0x').lower()[:-106] == built[:-106]  # the same code (metadata aside)
-    assert artifact['runtime_bytes'] <= 32768 and artifact['version'] == '1.5.1'
+    folder = REPO / 'Releases/GasSponsor/1.5.2'
+    if (folder / 'ProgramGasSponsor.json').is_file():
+        assert json.loads((folder / 'ProgramGasSponsor.json').read_text())['runtime_keccak256'] == artifact['runtime_keccak256']

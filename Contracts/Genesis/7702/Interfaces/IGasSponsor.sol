@@ -196,7 +196,9 @@ interface IGasSponsor {
 
     function isDelegationReady(address account) external view returns (bool);
 
+    /// @notice 1.5.2: operation ids are consumed per sponsor.
     function isOperationConsumed(
+        address sponsor,
         bytes32 operationId
     ) external view returns (bool);
 
@@ -227,4 +229,10 @@ interface IGasSponsor {
     function sponsoredWalletPermission(address sponsor, address wallet) external view returns (uint8);
     function isWalletSponsored(address sponsor, address wallet) external view returns (bool);
     function costOverheadGas(address sponsor) external view returns (uint256);
+
+    /// @notice 1.5.2: the fast-pause guardian (pause sponsorship, disable a sponsor; nothing else) and ops per day.
+    function setPauser(address pauser_) external;
+    function pauser() external view returns (address);
+    function setSponsorOpsPerDay(address sponsor, uint256 opsPerDay) external;
+    function sponsorOps(address sponsor) external view returns (uint256 limit, uint256 today);
 }

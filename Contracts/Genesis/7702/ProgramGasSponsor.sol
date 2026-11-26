@@ -13,8 +13,10 @@ interface IDeveloperGasProgramLimits {
 }
 
 /// @notice A sponsor's allowance policy that also sees the calls it pays for (detected by ERC-165; V1's `reserve` otherwise).
+/// 1.5.2: it is handed the whole validated execution envelope (IDakotaDelegation.executeSponsored calldata: every call's target,
+/// value and data) instead of target and selector arrays, so a policy can check anything about the calls (the 32 KB budget).
 interface ITenantAllowancePolicyV2 {
-    function reserveCalls(bytes32 operationId, address wallet, uint256 maximumCost, address[] calldata targets, bytes4[] calldata selectors)
+    function reserveCalls(bytes32 operationId, address wallet, uint256 maximumCost, bytes calldata executionData)
         external returns (bytes4);
 }
 
@@ -45,7 +47,20 @@ interface ITenantAllowancePolicyV2 {
 ///  - C4: releaseWorker(id): a stuck worker reservation settled at its maximum, by the platform administrator or, after
 ///    RESERVATION_RELEASE_AFTER (7 days), by anyone.
 /// Every other behavior is exactly as in 1.5.0. No new plain storage; the approvals' namespace is proven apart.
-/// @dev Append-only: the base and worker storage are untouched; this version's state lives in its own slot. 1.5.0 and 1.5.1 add no state.
+///
+/// 1.5.2 (2026-11-25, the contract audit's P-1, for the fresh chain 113211):
+///  - X-18: each program sponsor remembers the program that OPENED it (`openedBy`); only that program funds it, sets its caps,
+///    recovers its credit (to itself) and answers its eligibility. `setProgram` is ONE-TIME for the address (later calls may only
+///    re-set the hard caps of the same program): the program is a proxy at a stable address, upgraded behind it, so it never
+///    needs to move, and a one-time set is smaller and stronger than tracking whether any program sponsor still holds credit.
+///  - X-20: `setProgram` reverts until the deny list holds at least one entry (the release tool seeds the platform's own
+///    non-genesis contracts first), and every reserved low address (below 2^32: the genesis system contracts 0x…1111, cafE,
+///    c0DE, FacAdE, FEeD, de1E6A7E, and the precompiles) is denied to program credit in code, seeded or not.
+///  - X-60: configureSponsor / setSponsorManager / setSponsorOpsPerDay revert for a program sponsor, and the hard caps clamp its
+///    caps at spend time (a lowered hard cap binds every open program sponsor at once).
+///  - X-19: a program sponsor always requires approved wallets; its ops/day count is the base's counter (one for every sponsor).
+/// @dev Append-only: the base and worker storage are untouched; this version's state lives in its own slot. 1.5.0 and 1.5.1 add no
+/// state; 1.5.2 appends `openedBy` and `deniedCount` (`opsDay`/`opsCount` stay, unread: the base counts every sponsor now).
 contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
     bytes32 private constant PROGRAM_SLOT = keccak256("dakota.storage.ProgramGasSponsor.v1");
     uint256 private constant _PROGRAM_READ_GAS = 100_000;
@@ -60,8 +75,9 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
         mapping(address => bool) targetsRequired;
         mapping(address => mapping(address => bool)) sponsoredTargets;
         mapping(address => bool) programDenied;          // targets no program sponsor ever pays for (the platform's own contracts)
+        mapping(address => address) openedBy;            // 1.5.2: the program that opened each program sponsor
+        uint256 deniedCount;                             // 1.5.2: entries of programDenied that are true
     }
-    uint256 private constant _MAX_CALLS = 32;
     uint256 private constant _TARGETS_BATCH_MOST = 64;
     uint256 private constant _ERC165_GAS = 30_000;
 
@@ -71,13 +87,13 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
     error ProgramCapExceeded();
     error ProgramSponsorIneligible(address sponsor);
     error ProgramFeeTooHigh(uint256 offered, uint256 maximum);
-    error ProgramDailyOpsReached(address sponsor, uint256 opsPerDay);
     error ProgramSponsorHasNoWorkers(address sponsor);
     error TargetNotSponsored(address sponsor, address target);
     error ProgramTargetDenied(address sponsor, address target);
     error ProgramSponsorGasOnly(address sponsor);
     error ProgramSponsorNoWithdraw(address sponsor);
     error ProgramSponsorRecoverToProgram(address sponsor, address program);
+    error ProgramSponsorAdminLocked(address sponsor);
 
     event ProgramConfigured(address indexed program, uint256 hardMaxCostPerOperation, uint256 hardDailyLimit);
     event ProgramSponsorOpened(address indexed sponsor, bytes32 indexed tenantId, address indexed manager,
@@ -87,18 +103,17 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
     event SponsoredTargetUpdated(address indexed sponsor, address indexed target, bool allowed);
     event ProgramTargetDeniedSet(address indexed target, bool denied);
 
-    function implementationVersion() external pure override(ApprovedGasSponsor, WorkerGasSponsor) returns (string memory) { return "1.5.1"; }
-
     modifier onlyProgram() {
         if (msg.sender != _program().program || msg.sender == address(0)) revert NotProgram();
         _;
     }
 
-    /// @notice The program and its hard caps. A zero program stops new sponsors and makes every program sponsor ineligible
-    /// (its read cannot be answered) until one is set again.
+    /// @notice The program (ONCE: a contract, after the deny list is seeded) and its hard caps (re-settable for the same program;
+    /// a lowered cap binds every open program sponsor at its next spend).
     function setProgram(address program, uint256 hardMaxCostPerOperation, uint256 hardDailyLimit) external onlyPlatformAdmin {
-        if (program == address(this) || hardMaxCostPerOperation == 0 || hardDailyLimit < hardMaxCostPerOperation) revert InvalidConfiguration();
         ProgramStorage storage p = _program();
+        if (program == address(this) || program.code.length == 0 || (p.program != address(0) && program != p.program)
+            || p.deniedCount == 0 || hardMaxCostPerOperation == 0 || hardDailyLimit < hardMaxCostPerOperation) revert InvalidConfiguration();
         p.program = program;
         p.hardMaxCostPerOperation = hardMaxCostPerOperation;
         p.hardDailyLimit = hardDailyLimit;
@@ -124,14 +139,17 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
         s.tenantEnabled = true;
         s.lastResetDay = block.timestamp / 1 days;
         p.programSponsor[sponsor] = true;
+        p.openedBy[sponsor] = msg.sender;
         emit SponsorConfigured(sponsor, tenantId, manager, maxCostPerOperation, dailyLimit, true);
         emit ProgramSponsorOpened(sponsor, tenantId, manager, maxCostPerOperation, dailyLimit);
     }
 
     /// @notice A program sponsor's caps (a tier change), within the hard caps; the manager's own caps are clamped down to them.
-    function setProgramSponsorCaps(address sponsor, uint256 maxCostPerOperation, uint256 dailyLimit) external onlyProgram {
+    /// 1.5.2: by the program that opened it.
+    function setProgramSponsorCaps(address sponsor, uint256 maxCostPerOperation, uint256 dailyLimit) external {
         ProgramStorage storage p = _program();
         if (!p.programSponsor[sponsor]) revert NotProgramSponsor(sponsor);
+        if (msg.sender != p.openedBy[sponsor]) revert NotProgram();
         _checkCaps(p, maxCostPerOperation, dailyLimit);
         SponsorState storage s = _sponsorState(sponsor);
         s.adminMaxCostPerOperation = maxCostPerOperation;
@@ -145,9 +163,13 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
     /// must never make griefing the platform's own contracts cheaper). The platform administrator's alone.
     function setProgramDeniedTargets(address[] calldata targets, bool denied) external onlyPlatformAdmin {
         if (targets.length == 0 || targets.length > _TARGETS_BATCH_MOST) revert InvalidConfiguration();
+        ProgramStorage storage p = _program();
         for (uint256 i; i < targets.length; ++i) {
             if (targets[i] == address(0)) revert InvalidConfiguration();
-            _program().programDenied[targets[i]] = denied;
+            if (p.programDenied[targets[i]] != denied) {                 // the count moves only on a change: never under/overflows
+                p.programDenied[targets[i]] = denied;
+                if (denied) ++p.deniedCount; else --p.deniedCount;
+            }
             emit ProgramTargetDeniedSet(targets[i], denied);
         }
     }
@@ -179,10 +201,10 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
 
     function isProgramSponsor(address sponsor) external view returns (bool) { return _program().programSponsor[sponsor]; }
 
-    /// @notice This UTC day's operations so far for a program sponsor (0 on a new day).
-    function programOpsToday(address sponsor) external view returns (uint256) {
+    /// @notice 1.5.2: the program that opened `sponsor` (zero for any other sponsor) and how many deny-list entries are set.
+    function programSponsorOpener(address sponsor) external view returns (address opener, uint256 deniedTargets) {
         ProgramStorage storage p = _program();
-        return p.opsDay[sponsor] == block.timestamp / 1 days ? p.opsCount[sponsor] : 0;
+        return (p.openedBy[sponsor], p.deniedCount);
     }
 
     /// @dev 1.5.1 (C3): the approval check moves here, where the sponsor is known: a developer program's sponsor is exempt.
@@ -194,42 +216,29 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
 
     function _beforeSponsoredExecution(SponsorshipVoucher calldata voucher, bytes calldata executionData) internal override {
         ProgramStorage storage p = _program();
-        if (!p.programSponsor[voucher.sponsor]) _requireApprovedCalls(executionData);       // C3: every other sponsor
-        if (p.targetsRequired[voucher.sponsor]) {                           // the manager's own choice, any sponsor
-            IDakotaDelegation.Call[] memory calls = _calls(executionData);
-            for (uint256 i; i < calls.length; ++i)
-                if (!p.sponsoredTargets[voucher.sponsor][calls[i].target]) revert TargetNotSponsored(voucher.sponsor, calls[i].target);
+        address sponsor = voucher.sponsor;
+        bool program = p.programSponsor[sponsor];
+        bool targets = p.targetsRequired[sponsor];                          // the manager's own choice, any sponsor
+        IDakotaDelegation.Call[] memory calls = _calls(executionData);      // 1.5.2: decoded once
+        if (!program) _requireApprovedCalls(calls);                         // C3: every other sponsor
+        for (uint256 i; i < calls.length; ++i) {
+            address target = calls[i].target;
+            if (targets && !p.sponsoredTargets[sponsor][target]) revert TargetNotSponsored(sponsor, target);
+            // 1.5.2 (X-20): for program credit, reserved low addresses (genesis system contracts, precompiles) are always denied
+            if (program && (p.programDenied[target] || target == address(this) || uint160(target) <= type(uint32).max))
+                revert ProgramTargetDenied(sponsor, target);
         }
-        if (!p.programSponsor[voucher.sponsor]) return;                     // every other sponsor: as 1.3.0
-        {
-            IDakotaDelegation.Call[] memory calls = _calls(executionData);
-            for (uint256 i; i < calls.length; ++i)
-                if (p.programDenied[calls[i].target] || calls[i].target == address(this)) revert ProgramTargetDenied(voucher.sponsor, calls[i].target);
-        }
-        (bool eligible, uint256 maxFee, uint256 opsPerDay) = _limits(p.program, voucher.sponsor);
+        if (!program) return super._beforeSponsoredExecution(voucher, executionData);  // ops/day as the admin set
+        (bool eligible, uint256 maxFee, uint256 opsPerDay) = _limits(p.openedBy[voucher.sponsor], voucher.sponsor);
         if (!eligible) revert ProgramSponsorIneligible(voucher.sponsor);
         if (voucher.maxFeePerGas > maxFee) revert ProgramFeeTooHigh(voucher.maxFeePerGas, maxFee);
-        uint256 today = block.timestamp / 1 days;
-        if (p.opsDay[voucher.sponsor] != today) {
-            p.opsDay[voucher.sponsor] = today;
-            p.opsCount[voucher.sponsor] = 0;
-        }
-        uint256 used = p.opsCount[voucher.sponsor];
-        if (used >= opsPerDay) revert ProgramDailyOpsReached(voucher.sponsor, opsPerDay);
-        p.opsCount[voucher.sponsor] = used + 1;                             // used < opsPerDay <= max: cannot overflow
+        _countOperation(voucher.sponsor, opsPerDay);                        // the tier's ops/day, on the base's counter
     }
 
     function _reservePolicy(address policy, SponsorshipVoucher calldata voucher, bytes calldata executionData) internal override {
         if (!_supportsV2(policy)) return super._reservePolicy(policy, voucher, executionData);
-        IDakotaDelegation.Call[] memory calls = _calls(executionData);
-        address[] memory targets = new address[](calls.length);
-        bytes4[] memory selectors = new bytes4[](calls.length);
-        for (uint256 i; i < calls.length; ++i) {
-            targets[i] = calls[i].target;
-            selectors[i] = calls[i].data.length >= 4 ? bytes4(calls[i].data) : bytes4(0);
-        }
         _callPolicy(policy, abi.encodeCall(ITenantAllowancePolicyV2.reserveCalls,
-            (voucher.operationId, voucher.account, voucher.maxCost, targets, selectors)), ITenantAllowancePolicyV2.reserveCalls.selector);
+            (voucher.operationId, voucher.account, voucher.maxCost, executionData)), ITenantAllowancePolicyV2.reserveCalls.selector);
     }
 
     /// @dev 1.5.0: a program sponsor takes no refundable deposit, from anyone (its program included).
@@ -237,10 +246,10 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
         if (_program().programSponsor[sponsor]) revert ProgramSponsorGasOnly(sponsor);
     }
 
-    /// @dev 1.5.0: a program sponsor's gas credit comes from the program alone (a zero program: from nobody).
+    /// @dev 1.5.0: a program sponsor's gas credit comes from its program alone (1.5.2: the one that opened it).
     function _beforeGasCreditDeposit(address sponsor) internal view override {
         ProgramStorage storage p = _program();
-        if (p.programSponsor[sponsor] && (msg.sender != p.program || msg.sender == address(0))) revert NotProgram();
+        if (p.programSponsor[sponsor] && msg.sender != p.openedBy[sponsor]) revert NotProgram();
     }
 
     /// @dev 1.5.0: nothing leaves a program sponsor as coin to its manager.
@@ -251,11 +260,30 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
     /// @dev 1.5.1: a program sponsor's credit is recovered by the program ALONE (its reclaim after the 90-day freeze, or a paid
     /// top-up's refund), and only to the program (its budget): the platform administrator has no path around the program's
     /// rules. Every other sponsor's, by the platform administrator to any non-zero address, as before.
+    /// 1.5.2 (X-18): the program that OPENED the sponsor, to itself; a later setProgram gives no path to it.
     function _authorizeGasCreditRecovery(address sponsor, address recipient) internal view override {
         ProgramStorage storage p = _program();
         if (!p.programSponsor[sponsor]) return super._authorizeGasCreditRecovery(sponsor, recipient);
-        if (msg.sender != p.program || msg.sender == address(0)) revert NotProgram();
-        if (recipient != p.program) revert ProgramSponsorRecoverToProgram(sponsor, p.program);
+        address opener = p.openedBy[sponsor];
+        if (msg.sender != opener) revert NotProgram();
+        if (recipient != opener) revert ProgramSponsorRecoverToProgram(sponsor, opener);
+    }
+
+    /// @dev 1.5.2 (X-60): a program sponsor is its program's alone; the platform administrator cannot reconfigure it.
+    function _beforeAdminSponsorChange(address sponsor) internal view override {
+        if (_program().programSponsor[sponsor]) revert ProgramSponsorAdminLocked(sponsor);
+    }
+
+    /// @dev 1.5.2 (X-60): the program's hard caps bind a program sponsor at every spend.
+    function _hardCaps(address sponsor) internal view override returns (uint256, uint256) {
+        ProgramStorage storage p = _program();
+        if (!p.programSponsor[sponsor]) return super._hardCaps(sponsor);
+        return (p.hardMaxCostPerOperation, p.hardDailyLimit);
+    }
+
+    /// @dev 1.5.2 (X-19): a program sponsor always pays only for wallets its manager approved.
+    function _walletApprovalRequired(address sponsor) internal view override returns (bool) {
+        return _program().programSponsor[sponsor] || super._walletApprovalRequired(sponsor);
     }
 
     function _beforeWorkerReservation(address sponsor) internal view override {
@@ -273,14 +301,6 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
         (flag, maxFee, opsPerDay) = abi.decode(answer, (uint256, uint256, uint256));
         if (flag > 1) return (false, 0, 0);
         eligible = flag == 1;
-    }
-
-    /// @dev The envelope's calls (its shape is validated before this runs): 1 to _MAX_CALLS of them.
-    function _calls(bytes calldata executionData) private pure returns (IDakotaDelegation.Call[] memory calls) {
-        (IDakotaDelegation.SponsoredExecutionRequest memory request,) =
-            abi.decode(executionData[4:], (IDakotaDelegation.SponsoredExecutionRequest, bytes));
-        calls = request.calls;
-        if (calls.length == 0 || calls.length > _MAX_CALLS) revert InvalidExecutionEnvelope();
     }
 
     /// @dev ERC-165, bounded: supports 0x01ffc9a7, not 0xffffffff, and ITenantAllowancePolicyV2.

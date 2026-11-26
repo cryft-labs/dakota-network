@@ -1,8 +1,9 @@
 """GasSponsor 1.4.0 and 1.5.0 (ProgramGasSponsor, 2026-11-22 and 2026-11-23: the developer gas program) in a real isolated EVM with real EIP-7702 accounts.
 
-The live path is reproduced: GasSponsor 1.1.0 linked at 0x…FEeD, upgraded to the VERIFIED WorkerGasSponsor 1.3.0 (what runs on the
-chain), then to ProgramGasSponsor 1.4.0 from source. A mock program stands in for DeveloperGasProgram (its one read,
-sponsorLimits). No live keys or RPC.
+GasSponsor 1.5.2 (fresh chain 113211, 2026-11-25): THIS source's ProgramGasSponsor is linked fresh at 0x…FEeD, as genesis links
+it (the old chain's 1.1.0 -> 1.3.0 -> 1.4.0 upgrade replay is gone: nothing is deployed on the new chain, and ProxyAdmin upgrades
+are now scheduled). The deny list is seeded before setProgram (X-20). A mock program stands in for DeveloperGasProgram (its one
+read, sponsorLimits). No live keys or RPC.
 
     DAKOTA_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_sponsorship.py   # on Apple Silicon without Rosetta
 """
@@ -56,9 +57,9 @@ contract Sink {                                                           // 1.5
     fallback() external payable {}
     receive() external payable {}
 }
-contract PolicyV2 {
+contract PolicyV2 {                                                       // 1.5.2: handed the whole validated envelope
     address public gasSponsor; address public sponsor; bool public v2 = true;
-    address[] public lastTargets; bytes4[] public lastSelectors; uint256 public v1Calls; uint256 public v2Calls;
+    bytes32 public lastEnvelope; uint256 public v1Calls; uint256 public v2Calls;
     constructor(address g, address s) { gasSponsor = g; sponsor = s; }
     function setV2(bool on) external { v2 = on; }
     function supportsInterface(bytes4 id) external view returns (bool) {
@@ -67,9 +68,8 @@ contract PolicyV2 {
         return v2 && id == this.reserveCalls.selector;
     }
     function reserve(bytes32, address, uint256) external returns (bytes4) { v1Calls++; return this.reserve.selector; }
-    function reserveCalls(bytes32, address, uint256, address[] calldata t, bytes4[] calldata s) external returns (bytes4) {
-        v2Calls++; delete lastTargets; delete lastSelectors;
-        for (uint256 i; i < t.length; ++i) { lastTargets.push(t[i]); lastSelectors.push(s[i]); }
+    function reserveCalls(bytes32, address, uint256, bytes calldata executionData) external returns (bytes4) {
+        v2Calls++; lastEnvelope = keccak256(executionData);
         return this.reserveCalls.selector;
     }
     function settle(bytes32, uint256) external pure returns (bytes4) { return this.settle.selector; }
@@ -100,20 +100,19 @@ def create(c, artifact, *args):
     return c['w3'].eth.contract(address=receipt.contractAddress, abi=artifact['abi'])
 
 
+PLATFORM = Web3.to_checksum_address('0x' + Web3.keccak(text='a platform card contract').hex()[-40:])
+
+
 @pytest.fixture
 def world(chain, program_build):
-    """The live upgrade path, then a program (the mock) with the plan's hard caps, and one program sponsor of manager a[6]."""
-    c = chain; account, old, _, dispatcher = setup(c); a = c['accounts']
-    admin = at(c, 'ProxyAdmin', ADMIN)
-    tx(c, admin.functions.upgrade(old.address, create(c, verified('WorkerGasSponsor')).address))
-    worker = c['w3'].eth.contract(address=old.address, abi=verified('WorkerGasSponsor')['abi'])
-    assert worker.functions.implementationVersion().call() == '1.3.0'
-    before = {'account': worker.functions.getSponsorAccount(a[4]).call(), 'funding': worker.functions.getSponsorFunding(a[4]).call(),
-              'location': worker.functions.sponsorStorageLocation().call(), 'admin': worker.functions.platformAdmin().call(),
-              'signer': worker.functions.voucherSigner().call()}
-    tx(c, admin.functions.upgrade(old.address, create(c, program_build['ProgramGasSponsor']).address))
-    sponsor = c['w3'].eth.contract(address=old.address, abi=program_build['ProgramGasSponsor']['abi'])
+    """ProgramGasSponsor linked fresh, the deny list seeded, then a program (the mock) with the plan's hard caps."""
+    c = chain; account, sponsor, _, dispatcher = setup(c, program_build['ProgramGasSponsor']); a = c['accounts']
+    before = {'account': sponsor.functions.getSponsorAccount(a[4]).call(), 'funding': sponsor.functions.getSponsorFunding(a[4]).call(),
+              'location': sponsor.functions.sponsorStorageLocation().call(), 'admin': sponsor.functions.platformAdmin().call(),
+              'signer': sponsor.functions.voucherSigner().call()}
     program = create(c, program_build['MockProgram'])
+    fails(c, sponsor.functions.setProgram(program.address, HARD_OP, HARD_DAY))      # X-20: not before the deny list is seeded
+    tx(c, sponsor.functions.setProgramDeniedTargets([PLATFORM], True))
     tx(c, sponsor.functions.setProgram(program.address, HARD_OP, HARD_DAY))
     dev = Web3.to_checksum_address('0x' + Web3.keccak(text='cryft.dev.sponsor test').hex()[-40:])
     tenant = Web3.keccak(text='dev:test')
@@ -140,6 +139,7 @@ def ping(w, i=0, value=1): return (w['sinks'][i], value, PING)
 
 def open_dev(w, op=2 * 10 ** 15, day=4 * 10 ** 15, credit=10 ** 17):
     tx(w['c'], w['program'].functions.open(w['sponsor'].address, w['dev'], w['tenant'], w['a'][6], op, day))
+    tx(w['c'], w['sponsor'].functions.setSponsoredWallet(w['dev'], w['account'].address, 1), w['a'][6])   # 1.5.2: always required
     if credit: paid(w['c'], w['program'].functions.fund(w['sponsor'].address, w['dev']), credit)
 
 
@@ -170,14 +170,14 @@ def refused(w, args, gas_price=GWEI):
     sponsor, a = w['sponsor'], w['a']
     balance = sponsor.functions.getSponsorAccount(args[0][3]).call()[2]
     assert run(w, args, gas_price)[0] == 0
-    assert sponsor.functions.getSponsorAccount(args[0][3]).call()[2] == balance and not sponsor.functions.isOperationConsumed(args[0][0]).call()
+    assert sponsor.functions.getSponsorAccount(args[0][3]).call()[2] == balance and not sponsor.functions.isOperationConsumed(args[0][3], args[0][0]).call()
 
 
 # ── the upgrade ──
 
-def test_the_upgrade_from_the_live_worker_sponsor_keeps_every_record(world):
+def test_the_fresh_link_and_the_program(world):
     w = world; s, a, b = w['sponsor'], w['a'], w['before']
-    assert s.functions.implementationVersion().call() == '1.5.1'
+    assert s.functions.implementationVersion().call() == '1.5.2'
     assert s.functions.getSponsorAccount(a[4]).call() == b['account'] and s.functions.getSponsorFunding(a[4]).call() == b['funding']
     assert s.functions.sponsorStorageLocation().call() == b['location'] and s.functions.platformAdmin().call() == b['admin']
     assert s.functions.voucherSigner().call() == b['signer'] and s.functions.isRelayer(a[2]).call()
@@ -243,10 +243,10 @@ def test_eligible_within_the_fee_and_the_day_ops_spends_and_the_counter_resets_b
     tx(c, w['program'].functions.set(True, GWEI, 2, 0))
     assert run(w, voucher_for(w, w['dev'], w['tenant'], 'one')) == (1, True)
     assert run(w, voucher_for(w, w['dev'], w['tenant'], 'two')) == (1, True)
-    assert s.functions.programOpsToday(w['dev']).call() == 2
+    assert s.functions.sponsorOps(w['dev']).call()[1] == 2
     refused(w, voucher_for(w, w['dev'], w['tenant'], 'three'))                                                    # the day's ops reached
     c['tester'].time_travel(c['w3'].eth.get_block('latest').timestamp + 86400); c['tester'].mine_blocks(1)
-    assert s.functions.programOpsToday(w['dev']).call() == 0
+    assert s.functions.sponsorOps(w['dev']).call()[1] == 0
     assert run(w, voucher_for(w, w['dev'], w['tenant'], 'next-day')) == (1, True)
 
 
@@ -258,15 +258,13 @@ def test_a_fee_above_the_tiers_is_refused(world):
     assert run(w, voucher_for(w, w['dev'], w['tenant'], 'fair', fee=GWEI)) == (1, True)
 
 
-@pytest.mark.parametrize('mode', ['ineligible', 'reverts', 'short', 'bad-flag', 'burns-gas', 'no-program', 'zero-ops'])
+@pytest.mark.parametrize('mode', ['ineligible', 'reverts', 'short', 'bad-flag', 'burns-gas', 'zero-ops'])
 def test_anything_but_a_clear_yes_from_the_program_refuses_and_charges_nothing(world, mode):
     w = world; s, c = w['sponsor'], w['c']
     open_dev(w)
     settings = {'ineligible': (False, GWEI, 10, 0), 'reverts': (True, GWEI, 10, 1), 'short': (True, GWEI, 10, 2),
-                'bad-flag': (True, GWEI, 10, 3), 'burns-gas': (True, GWEI, 10, 4), 'no-program': (True, GWEI, 10, 0),
-                'zero-ops': (True, GWEI, 0, 0)}[mode]
+                'bad-flag': (True, GWEI, 10, 3), 'burns-gas': (True, GWEI, 10, 4), 'zero-ops': (True, GWEI, 0, 0)}[mode]
     tx(c, w['program'].functions.set(*settings))
-    if mode == 'no-program': tx(c, s.functions.setProgram('0x' + '0' * 39 + '1', HARD_OP, HARD_DAY))
     refused(w, voucher_for(w, w['dev'], w['tenant'], mode))
 
 
@@ -284,7 +282,7 @@ def test_the_counter_saturates_and_never_bricks(world):
     open_dev(w)
     tx(c, w['program'].functions.set(True, GWEI, 2 ** 256 - 1, 0))
     for tag in ('a', 'b'): assert run(w, voucher_for(w, w['dev'], w['tenant'], tag)) == (1, True)
-    assert s.functions.programOpsToday(w['dev']).call() == 2
+    assert s.functions.sponsorOps(w['dev']).call()[1] == 2
 
 
 def test_storage_is_append_only(program_build):
@@ -301,7 +299,9 @@ def test_storage_is_append_only(program_build):
                       'uint256 fixedOverheadGas;', 'bool paused;', 'mapping(address => bool) relayers;', 'mapping(bytes32 => bool) consumedOperations;',
                       'mapping(address => SponsorState) sponsors;', 'bytes32 approvedDelegateCodeHash;', 'mapping(address => uint256) restrictedGasCredit;',
                       'mapping(address => address) allowancePolicies;', 'mapping(address => bool) walletApprovalRequired;',
-                      'mapping(address => mapping(address => uint8)) sponsoredWallets;']
+                      'mapping(address => mapping(address => uint8)) sponsoredWallets;',
+                      'address pauser;', 'mapping(address => uint256) opsPerDay;', 'mapping(address => uint256) opsDay;',   # 1.5.2, appended
+                      'mapping(address => uint256) opsCount;']
     runtime = len(bytes.fromhex(program_build['ProgramGasSponsor']['runtime_bytecode'].removeprefix('0x')))
     assert runtime <= 32768, runtime                                                                             # Dakota's genesis limit
 
@@ -329,16 +329,16 @@ def test_allowed_targets_are_the_managers_choice_and_every_call_is_checked(world
     assert run(w, voucher_for(w, a[4], tenant, 'off-again', calls=[ping(w)])) == (1, True)
 
 
-def test_a_v2_policy_sees_the_calls_targets_and_selectors_and_a_v1_policy_is_unchanged(world, program_build):
+def test_a_v2_policy_sees_the_whole_envelope_and_a_v1_policy_is_unchanged(world, program_build):
     w = world; s, c, a = w['sponsor'], w['c'], w['a']
     tenant = Web3.keccak(text='tenant')
     policy = create(c, program_build['PolicyV2'], s.address, a[4])
     tx(c, s.functions.setSponsorPolicy(a[4], policy.address), a[5])
     calls = [(w['sinks'][0], 1, TRANSFER + b'\0' * 32), ping(w, 1)]
-    assert run(w, voucher_for(w, a[4], tenant, 'v2', calls=calls)) == (1, True)
+    args = voucher_for(w, a[4], tenant, 'v2', calls=calls)
+    assert run(w, args) == (1, True)
     assert policy.functions.v2Calls().call() == 1 and policy.functions.v1Calls().call() == 0
-    assert [policy.functions.lastTargets(i).call() for i in range(2)] == [w['sinks'][0], w['sinks'][1]]
-    assert [policy.functions.lastSelectors(i).call() for i in range(2)] == [TRANSFER, PING]
+    assert policy.functions.lastEnvelope().call() == args[0][7]             # 1.5.2: exactly the voucher's signed execution data
     tx(c, policy.functions.setV2(False))
     assert run(w, voucher_for(w, a[4], tenant, 'v1', calls=[ping(w)])) == (1, True)
     assert policy.functions.v1Calls().call() == 1 and policy.functions.v2Calls().call() == 1

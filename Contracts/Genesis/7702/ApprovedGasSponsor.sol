@@ -55,8 +55,6 @@ contract ApprovedGasSponsor is GasSponsor {
         return data.length >= 4 && _approved(target, value, bytes4(data[:4]));
     }
 
-    function implementationVersion() external pure virtual override returns (string memory) { return "1.2.0"; }
-
     function _setApprovals(Permission[] calldata permissions) private {
         if (permissions.length == 0 || permissions.length > 64) revert InvalidApproval();
         for (uint256 i; i < permissions.length; ++i) {
@@ -77,11 +75,35 @@ contract ApprovedGasSponsor is GasSponsor {
                 if (implementation != p.approval.implementation) revert InvalidApproval();
                 if (implementation != address(0) && (implementation.code.length == 0
                     || implementation.codehash != p.approval.implementationHash)) revert InvalidApproval();
+                // 1.5.2 (X-66): nor any other upgradeable proxy. A contract that may be read as immutable (no implementation)
+                // must not carry the EIP-1967 implementation or beacon slot in its code (OZ transparent, UUPS, beacon proxies).
+                if (implementation == address(0) && _hasProxySlot(p.target)) revert InvalidApproval();
             }
             _approvals().calls[p.target][p.selector] = p.approval;
             emit CallApprovalUpdated(p.target, p.selector, p.approval.codeHash, p.approval.implementation,
                 p.approval.implementationHash, p.approval.maxValue, p.approval.canonicalManagerRequired,
                 p.approval.proxyReader, p.approval.proxyReaderHash);
+        }
+    }
+
+    /// @dev Whether `target`'s code holds PUSH32 of the EIP-1967 implementation slot or beacon slot. EVM code cannot read another
+    /// contract's storage, so the code is scanned instead: every OpenZeppelin-style proxy (and UUPS implementation) pushes its slot
+    /// constant. Bounded: at most the code size (<= 32,768 bytes on Dakota), admin-only. A false positive only refuses an approval.
+    function _hasProxySlot(address target) private view returns (bool found) {
+        bytes32 implementationSlot = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+        bytes32 beaconSlot = 0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50;
+        bytes memory code = target.code;
+        uint256 length = code.length;
+        if (length < 33) return false;
+        assembly ("memory-safe") {
+            let start := add(code, 32)
+            let last := add(start, sub(length, 33))
+            for { let at := start } iszero(gt(at, last)) { at := add(at, 1) } {
+                if eq(byte(0, mload(at)), 0x7f) {
+                    let word := mload(add(at, 1))
+                    if or(eq(word, implementationSlot), eq(word, beaconSlot)) { found := 1 break }
+                }
+            }
         }
     }
 
@@ -105,20 +127,25 @@ contract ApprovedGasSponsor is GasSponsor {
     }
 
     function _validateSponsoredTargets(bytes calldata data) internal view virtual override {
-        _requireApprovedCalls(data);
+        _requireApprovedCalls(_calls(data));
     }
 
-    /// @dev Every call of the (validated) execution envelope `data` is a platform-approved (target, selector, value). GasSponsor
+    /// @dev Every call of the (validated) execution envelope is a platform-approved (target, selector, value). GasSponsor
     /// 1.5.1 (ProgramGasSponsor) calls it for every sponsor but a developer program's.
-    function _requireApprovedCalls(bytes calldata data) internal view {
-        (IDakotaDelegation.SponsoredExecutionRequest memory request,) =
-            abi.decode(data[4:], (IDakotaDelegation.SponsoredExecutionRequest, bytes));
-        if (request.calls.length == 0 || request.calls.length > 32) revert InvalidExecutionEnvelope();
-        for (uint256 i; i < request.calls.length; ++i) {
-            IDakotaDelegation.Call memory item = request.calls[i];
+    function _requireApprovedCalls(IDakotaDelegation.Call[] memory calls) internal view {
+        for (uint256 i; i < calls.length; ++i) {
+            IDakotaDelegation.Call memory item = calls[i];
             bytes4 selector = bytes4(item.data);
             if (item.data.length < 4 || !_approved(item.target, item.value, selector)) revert CallNotApproved(item.target, selector);
         }
+    }
+
+    /// @dev The envelope's calls (its shape is validated before this runs): 1 to 32 of them. 1.5.2: decoded in one place.
+    function _calls(bytes calldata executionData) internal pure returns (IDakotaDelegation.Call[] memory calls) {
+        (IDakotaDelegation.SponsoredExecutionRequest memory request,) =
+            abi.decode(executionData[4:], (IDakotaDelegation.SponsoredExecutionRequest, bytes));
+        calls = request.calls;
+        if (calls.length == 0 || calls.length > 32) revert InvalidExecutionEnvelope();
     }
 
     function _approvals() private pure returns (ApprovalStorage storage state) {

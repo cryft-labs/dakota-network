@@ -13,7 +13,9 @@ pragma solidity >=0.8.20 <0.9.0;
   \___\__,_/__/ |___/ .__/\___/_||_/__/\___/_|
                     |_|                 By: CryftCreator
 
-  Version 1.1.0 — Native Gas Sponsor with tenant allowance policies [UPGRADEABLE]
+  Version 1.5.2 — Native Gas Sponsor with tenant allowance policies [UPGRADEABLE]
+  (1.5.2, the 2026-11-25 audit P-1: pauser role, ops/day for every sponsor, wallet approval
+   on by default, per-sponsor operation ids, best-effort bounded policy settle.)
 
   ┌──────────────── Contract Architecture ─────────────────────────────┐
   │                                                                    │
@@ -154,6 +156,11 @@ contract GasSponsor is
         mapping(address => address) allowancePolicies;
         mapping(address => bool) walletApprovalRequired;
         mapping(address => mapping(address => uint8)) sponsoredWallets;
+        // 1.5.2 (append-only): the fast-pause guardian and the operations-per-day counter of every sponsor.
+        address pauser;
+        mapping(address => uint256) opsPerDay;
+        mapping(address => uint256) opsDay;
+        mapping(address => uint256) opsCount;
     }
 
     error WalletNotSponsored(address sponsor, address wallet);
@@ -164,8 +171,16 @@ contract GasSponsor is
     event WalletApprovalRequired(address indexed sponsor, bool required);
     event SponsoredWalletUpdated(address indexed sponsor, address indexed wallet, uint8 permission);
 
+    error DailyOpsReached(address sponsor, uint256 opsPerDay);              // 1.5.2: every sponsor (was ProgramDailyOpsReached)
+    event PauserUpdated(address indexed pauser);
+    event SponsorOpsPerDaySet(address indexed sponsor, uint256 opsPerDay);
+    event AllowancePolicySettleFailed(bytes32 indexed operationId, address indexed policy);
+
     uint256 private constant _POLICY_CALL_GAS = 350_000;
     uint256 private constant _POLICY_SETTLEMENT_OVERHEAD = 150_000;
+    /// @dev 1.5.2 (X-59): settle runs with a budget below the overhead it is charged as, so a policy can never make the relayer
+    /// pay for more settle gas than it is reimbursed for; it is best-effort, so a policy that reverts cannot sink the relayer's tx.
+    uint256 private constant _POLICY_SETTLE_GAS = 120_000;
 
     bytes32 private constant _GAS_SPONSOR_STORAGE_LOCATION =
         0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100;
@@ -201,18 +216,23 @@ contract GasSponsor is
         _disableInitializers();
     }
 
+    // 1.5.2: the checks live in functions, not inlined per use (the 32 KB budget).
     modifier onlyPlatformAdmin() {
-        if (msg.sender != _sponsorStorage().platformAdmin) {
-            revert NotPlatformAdmin();
-        }
+        _onlyPlatformAdmin();
         _;
     }
 
     modifier onlySponsorManager(address sponsor) {
-        if (msg.sender != _sponsorState(sponsor).manager) {
-            revert NotSponsorManager();
-        }
+        _onlySponsorManager(sponsor);
         _;
+    }
+
+    function _onlyPlatformAdmin() private view {
+        if (msg.sender != _sponsorStorage().platformAdmin) revert NotPlatformAdmin();
+    }
+
+    function _onlySponsorManager(address sponsor) private view {
+        if (msg.sender != _sponsorState(sponsor).manager) revert NotSponsorManager();
     }
 
     /// @inheritdoc IGasSponsor
@@ -226,7 +246,7 @@ contract GasSponsor is
             revert NotInitializationAuthority(msg.sender);
         }
         _requireNonZero(platformAdmin_);
-        require(platformAdmin_ != address(this) && platformAdmin_ != _GENESIS_PROXY_ADMIN, "Invalid platform administrator");
+        if (platformAdmin_ == address(this) || platformAdmin_ == _GENESIS_PROXY_ADMIN) revert InvalidConfiguration();
         _requireNonZero(voucherSigner_);
         _requireDelegate(approvedDelegate_);
         _validateOverheadGas(fixedOverheadGas_);
@@ -255,7 +275,7 @@ contract GasSponsor is
         address pendingAdmin_
     ) external override onlyPlatformAdmin {
         _requireNonZero(pendingAdmin_);
-        require(pendingAdmin_ != address(this) && pendingAdmin_ != _GENESIS_PROXY_ADMIN, "Invalid platform administrator");
+        if (pendingAdmin_ == address(this) || pendingAdmin_ == _GENESIS_PROXY_ADMIN) revert InvalidConfiguration();
         GasSponsorStorage storage state = _sponsorStorage();
         state.pendingPlatformAdmin = pendingAdmin_;
         emit PlatformAdminTransferProposed(
@@ -317,11 +337,39 @@ contract GasSponsor is
     }
 
     /// @inheritdoc IGasSponsor
-    function setPaused(
-        bool paused_
-    ) external override onlyPlatformAdmin {
+    /// @dev 1.5.2 (X-9): the pauser may only pause; unpausing stays the platform administrator's.
+    function setPaused(bool paused_) external override {
+        _onlyAdminOrStopping(paused_);
         _sponsorStorage().paused = paused_;
         emit SponsorshipPaused(paused_);
+    }
+
+    /// @notice 1.5.2 (X-9): the fast guardian. It can pause sponsorship and disable a sponsor, nothing else: it moves no coin and
+    /// changes no role. Zero removes it. The platform administrator (intended to be a timelock) sets it.
+    function setPauser(address pauser_) external override onlyPlatformAdmin {
+        _sponsorStorage().pauser = pauser_;
+        emit PauserUpdated(pauser_);
+    }
+
+    function pauser() external view override returns (address) {
+        return _sponsorStorage().pauser;
+    }
+
+    /// @notice 1.5.2 (X-19): how many sponsored operations (vouchers and worker reservations) `sponsor` may run in one UTC day.
+    /// Zero (the default) runs none: with free gas and free addresses, a wei cap alone bounds nothing, this count does.
+    function setSponsorOpsPerDay(address sponsor, uint256 opsPerDay_) external override onlyPlatformAdmin {
+        _sponsorState(sponsor);
+        _beforeAdminSponsorChange(sponsor);
+        _sponsorStorage().opsPerDay[sponsor] = opsPerDay_;
+        emit SponsorOpsPerDaySet(sponsor, opsPerDay_);
+    }
+
+    /// @return limit the sponsor's operations per day (a program sponsor's comes from its program's tier, reported as 0 here)
+    /// @return today this UTC day's operations so far
+    function sponsorOps(address sponsor) external view override returns (uint256 limit, uint256 today) {
+        GasSponsorStorage storage state = _sponsorStorage();
+        limit = state.opsPerDay[sponsor];
+        today = state.opsDay[sponsor] == block.timestamp / 1 days ? state.opsCount[sponsor] : 0;
     }
 
     /// @inheritdoc IGasSponsor
@@ -346,6 +394,7 @@ contract GasSponsor is
     ) external override onlyPlatformAdmin {
         _requireNonZero(sponsor);
         _requireNonZero(manager);
+        _beforeAdminSponsorChange(sponsor);
         if (
             tenantId == bytes32(0) ||
             adminMaxCostPerOperation == 0 ||
@@ -387,6 +436,8 @@ contract GasSponsor is
         if (isNew) {
             sponsorState.tenantEnabled = true;
             sponsorState.lastResetDay = block.timestamp / 1 days;
+            // 1.5.2 (X-19): a new sponsor pays only for wallets its manager approved, until the manager opts out.
+            _sponsorStorage().walletApprovalRequired[sponsor] = true;
         }
 
         emit SponsorConfigured(
@@ -405,6 +456,7 @@ contract GasSponsor is
         address manager
     ) external override onlyPlatformAdmin {
         _requireNonZero(manager);
+        _beforeAdminSponsorChange(sponsor);
         SponsorState storage sponsorState = _sponsorState(sponsor);
         address previousManager = sponsorState.manager;
         sponsorState.manager = manager;
@@ -412,10 +464,12 @@ contract GasSponsor is
     }
 
     /// @inheritdoc IGasSponsor
+    /// @dev 1.5.2 (X-9): the pauser may only disable.
     function setSponsorAdminEnabled(
         address sponsor,
         bool enabled
-    ) external override onlyPlatformAdmin {
+    ) external override {
+        _onlyAdminOrStopping(!enabled);
         _sponsorState(sponsor).adminEnabled = enabled;
         emit SponsorAdminStatusUpdated(sponsor, enabled);
     }
@@ -484,12 +538,14 @@ contract GasSponsor is
     function recoverGasCredit(address sponsor, address payable recipient, uint256 amount) external nonReentrant {
         _authorizeGasCreditRecovery(sponsor, recipient);
         _requireNonZero(recipient);
-        require(amount > 0 && amount <= _sponsorStorage().restrictedGasCredit[sponsor], "Insufficient gas credit");
-        require(amount <= _sponsorState(sponsor).balance - _pendingWorkerCost(sponsor), "Funds reserved for work");
-        _sponsorStorage().restrictedGasCredit[sponsor] -= amount;
-        _sponsorState(sponsor).balance -= amount;
-        (bool sent,) = recipient.call{value: amount}("");
-        if (!sent) revert NativeTransferFailed();
+        SponsorState storage sponsorState = _sponsorState(sponsor);
+        uint256 credit = _sponsorStorage().restrictedGasCredit[sponsor];
+        if (amount == 0 || amount > credit || amount > sponsorState.balance - _pendingWorkerCost(sponsor)) {
+            revert InsufficientSponsorBalance(credit, amount);
+        }
+        _sponsorStorage().restrictedGasCredit[sponsor] = credit - amount;
+        sponsorState.balance -= amount;
+        _sendValue(recipient, amount);
         emit GasCreditRecovered(sponsor, recipient, amount);
     }
 
@@ -520,15 +576,14 @@ contract GasSponsor is
             );
         }
         sponsorState.balance -= amount;
-        (bool sent, ) = recipient.call{value: amount}("");
-        if (!sent) revert NativeTransferFailed();
+        _sendValue(recipient, amount);
         emit Withdrawn(sponsor, recipient, amount);
     }
 
     /// @notice Optional policy is scoped to exactly this tenant and sponsor engine.
     /// Removing a broken policy does not call it, so its code cannot trap account management.
     function setSponsorPolicy(address sponsor, address policy) external override onlySponsorManager(sponsor) {
-        require(_pendingWorkerCost(sponsor) == 0, "Unsettled worker operations");
+        if (_pendingWorkerCost(sponsor) != 0) revert InvalidConfiguration();
         if (policy != address(0)) {
             if (policy.code.length == 0) revert InvalidAllowancePolicy();
             if (ITenantAllowancePolicy(policy).gasSponsor() != address(this)
@@ -553,7 +608,7 @@ contract GasSponsor is
     }
 
     function getSponsorPolicy(address sponsor) external view override returns (address policy, bool approvalRequired) {
-        return (_sponsorStorage().allowancePolicies[sponsor], _sponsorStorage().walletApprovalRequired[sponsor]);
+        return (_sponsorStorage().allowancePolicies[sponsor], _walletApprovalRequired(sponsor));
     }
     function sponsoredWalletPermission(address sponsor, address wallet) external view override returns (uint8) {
         return _sponsorStorage().sponsoredWallets[sponsor][wallet];
@@ -561,7 +616,7 @@ contract GasSponsor is
     function isWalletSponsored(address sponsor, address wallet) public view override returns (bool) {
         GasSponsorStorage storage state = _sponsorStorage();
         uint8 permission = state.sponsoredWallets[sponsor][wallet];
-        return wallet != address(0) && permission != 2 && (permission == 1 || !state.walletApprovalRequired[sponsor]);
+        return wallet != address(0) && permission != 2 && (permission == 1 || !_walletApprovalRequired(sponsor));
     }
     /// @notice The documented reimbursement model includes bounded bookkeeping overhead.
     /// This is not an exact reproduction of the full transaction receipt's gas charge.
@@ -613,28 +668,23 @@ contract GasSponsor is
         PolicyContext memory context = PolicyContext(_sponsorStorage().allowancePolicies[voucher.sponsor], costOverheadGas(voucher.sponsor));
         if (context.policy != address(0)) _reservePolicy(context.policy, voucher, executionData);
 
-        GasSponsorStorage storage state = _sponsorStorage();
-        state.consumedOperations[voucher.operationId] = true;
+        _sponsorStorage().consumedOperations[_operationKey(voucher.sponsor, voucher.operationId)] = true;
 
         // Validate after optional policy callbacks, before checking the gas reserve.
         _validateSponsoredTargets(executionData);
 
+        // 1.5.2 (X-59): checked inside _boundedCall, after the calldata copy has paid its memory expansion.
         uint256 requiredGas =
             voucher.callGasLimit +
             (voucher.callGasLimit / 63) +
-            _POST_CALL_GAS_RESERVE + (context.policy == address(0) ? 0 : _POLICY_CALL_GAS + 20_000);
-        if (gasleft() < requiredGas) {
-            revert InsufficientExecutionGas(
-                gasleft(),
-                requiredGas
-            );
-        }
+            _POST_CALL_GAS_RESERVE + (context.policy == address(0) ? 0 : _POLICY_SETTLE_GAS + 20_000);
 
         uint256 returnDataSize;
         (success, boundedReturnData, returnDataSize) = _boundedCall(
             voucher.account,
             voucher.callGasLimit,
-            executionData
+            executionData,
+            requiredGas
         );
 
         reimbursement = _settleSponsoredOperation(
@@ -654,6 +704,7 @@ contract GasSponsor is
         SponsorState storage sponsorState =
             _sponsorStorage().sponsors[sponsor];
         uint256 currentDay = block.timestamp / 1 days;
+        (uint256 hardPerOperation, uint256 hardDaily) = _hardCaps(sponsor);
         uint256 spent = currentDay == sponsorState.lastResetDay
             ? sponsorState.dailySpent
             : 0;
@@ -665,16 +716,16 @@ contract GasSponsor is
                 sponsorState.adminMaxCostPerOperation,
             tenantMaxCostPerOperation:
                 sponsorState.tenantMaxCostPerOperation,
-            effectiveMaxCostPerOperation: _min(
+            effectiveMaxCostPerOperation: _min(_min(
                 sponsorState.adminMaxCostPerOperation,
                 sponsorState.tenantMaxCostPerOperation
-            ),
+            ), hardPerOperation),
             adminDailyLimit: sponsorState.adminDailyLimit,
             tenantDailyLimit: sponsorState.tenantDailyLimit,
-            effectiveDailyLimit: _min(
+            effectiveDailyLimit: _min(_min(
                 sponsorState.adminDailyLimit,
                 sponsorState.tenantDailyLimit
-            ),
+            ), hardDaily),
             dailySpent: spent,
             adminEnabled: sponsorState.adminEnabled,
             tenantEnabled: sponsorState.tenantEnabled
@@ -706,10 +757,12 @@ contract GasSponsor is
     }
 
     /// @inheritdoc IGasSponsor
+    /// @dev 1.5.2 (X-58): operation ids are per sponsor.
     function isOperationConsumed(
+        address sponsor,
         bytes32 operationId
     ) external view override returns (bool) {
-        return _sponsorStorage().consumedOperations[operationId];
+        return _sponsorStorage().consumedOperations[_operationKey(sponsor, operationId)];
     }
 
     /// @inheritdoc IGasSponsor
@@ -777,7 +830,7 @@ contract GasSponsor is
         override
         returns (string memory)
     {
-        return "1.1.0";
+        return "1.5.2";
     }
 
     receive() external payable {
@@ -837,7 +890,7 @@ contract GasSponsor is
             revert InvalidVoucher();
         }
         if (block.timestamp > voucher.deadline) revert VoucherExpired();
-        if (state.consumedOperations[voucher.operationId]) {
+        if (state.consumedOperations[_operationKey(voucher.sponsor, voucher.operationId)]) {
             revert OperationAlreadyConsumed(voucher.operationId);
         }
         if (executionData.length > _MAX_EXECUTION_DATA_BYTES) {
@@ -892,10 +945,12 @@ contract GasSponsor is
             revert WalletNotSponsored(voucher.sponsor, voucher.account);
         }
 
-        uint256 effectivePerOperation = _min(
+        // 1.5.2 (X-60): a later implementation's hard caps clamp the stored ones (a lowered program cap binds at once).
+        (uint256 hardPerOperation, uint256 hardDaily) = _hardCaps(voucher.sponsor);
+        uint256 effectivePerOperation = _min(_min(
             sponsorState.adminMaxCostPerOperation,
             sponsorState.tenantMaxCostPerOperation
-        );
+        ), hardPerOperation);
         if (voucher.maxCost > effectivePerOperation) {
             revert CostLimitExceeded(
                 effectivePerOperation,
@@ -904,10 +959,10 @@ contract GasSponsor is
         }
 
         _resetDailySpendIfNeeded(sponsorState);
-        uint256 effectiveDailyLimit = _min(
+        uint256 effectiveDailyLimit = _min(_min(
             sponsorState.adminDailyLimit,
             sponsorState.tenantDailyLimit
-        );
+        ), hardDaily);
         uint256 reservedDailySpend =
             sponsorState.dailySpent + _pendingWorkerCost(voucher.sponsor) + voucher.maxCost;
         if (reservedDailySpend > effectiveDailyLimit) {
@@ -979,19 +1034,11 @@ contract GasSponsor is
         sponsorState.balance -= reimbursement;
         sponsorState.dailySpent += reimbursement;
 
-        {
-            if (context.policy != address(0)) {
-                _callPolicy(context.policy, abi.encodeCall(ITenantAllowancePolicy.settle,
-                    (voucher.operationId, reimbursement)), ITenantAllowancePolicy.settle.selector);
-            }
+        if (context.policy != address(0)) {
+            _settlePolicy(context.policy, voucher.operationId, reimbursement);
         }
 
-        if (reimbursement != 0) {
-            (bool sent, ) = payable(msg.sender).call{
-                value: reimbursement
-            }("");
-            if (!sent) revert NativeTransferFailed();
-        }
+        if (reimbursement != 0) _sendValue(msg.sender, reimbursement);
 
         _emitOperation(voucher, success);
         emit RelayerReimbursed(
@@ -1013,6 +1060,60 @@ contract GasSponsor is
             voucher.sponsor, voucher.campaignId, success);
     }
 
+    /// @dev 1.5.2 (X-59): the policy's settle, best-effort with a fixed budget (charged inside the settlement overhead). The
+    /// caller must leave it that budget: too little gas reverts the whole transaction rather than silently skipping it.
+    function _settlePolicy(address policy, bytes32 operationId, uint256 cost) private {
+        if (!_trySettle(policy, operationId, cost, _POLICY_SETTLE_GAS)) emit AllowancePolicySettleFailed(operationId, policy);
+    }
+
+    /// @dev The policy's settle with exactly `budget` gas (or the whole call reverts for want of it); whether it took it.
+    function _trySettle(address policy, bytes32 operationId, uint256 cost, uint256 budget) internal returns (bool) {
+        if (gasleft() < budget + budget / 63 + 40_000) revert InsufficientExecutionGas(gasleft(), budget);
+        (bool ok, bytes memory answer) = policy.call{gas: budget}(
+            abi.encodeCall(ITenantAllowancePolicy.settle, (operationId, cost)));
+        return ok && answer.length == 32 && bytes4(answer) == ITenantAllowancePolicy.settle.selector;
+    }
+
+    /// @dev 1.5.2 (X-19): one more operation for `sponsor` today, at most `limit` a UTC day. Saturating by construction: the
+    /// count only grows while below `limit`, so it never overflows and stops nothing but this sponsor's extra operations.
+    function _countOperation(address sponsor, uint256 limit) internal {
+        GasSponsorStorage storage state = _sponsorStorage();
+        uint256 today = block.timestamp / 1 days;
+        uint256 used = state.opsDay[sponsor] == today ? state.opsCount[sponsor] : 0;
+        if (used >= limit) revert DailyOpsReached(sponsor, limit);
+        state.opsDay[sponsor] = today;
+        state.opsCount[sponsor] = used + 1;
+    }
+
+    /// @dev 1.5.2 (X-58): the consumed-operation key, per sponsor, so no sponsor (or its worker) can burn another's ids.
+    function _operationKey(address sponsor, bytes32 operationId) internal pure returns (bytes32) {
+        return keccak256(abi.encode(sponsor, operationId));
+    }
+
+    function _sendValue(address recipient, uint256 amount) internal {
+        (bool sent, ) = payable(recipient).call{value: amount}("");
+        if (!sent) revert NativeTransferFailed();
+    }
+
+    function _onlyAdminOrStopping(bool stopping) private view {
+        GasSponsorStorage storage state = _sponsorStorage();
+        if (msg.sender != state.platformAdmin && !(stopping && msg.sender == state.pauser && msg.sender != address(0))) {
+            revert NotPlatformAdmin();
+        }
+    }
+
+    /// @dev A later implementation's refusal of the platform administrator's configureSponsor / setSponsorManager /
+    /// setSponsorOpsPerDay for `sponsor` (ProgramGasSponsor 1.5.2: a program sponsor is its program's alone).
+    function _beforeAdminSponsorChange(address sponsor) internal view virtual {}
+    /// @dev Caps above the stored ones, applied at spend time (ProgramGasSponsor 1.5.2: the program's hard caps).
+    function _hardCaps(address) internal view virtual returns (uint256, uint256) {
+        return (type(uint256).max, type(uint256).max);
+    }
+    /// @dev Whether `sponsor` pays only for approved wallets (ProgramGasSponsor 1.5.2: always, for a program sponsor).
+    function _walletApprovalRequired(address sponsor) internal view virtual returns (bool) {
+        return _sponsorStorage().walletApprovalRequired[sponsor];
+    }
+
     function _validateSponsoredTargets(bytes calldata) internal view virtual {}
     /// @dev A later implementation's refusal of a refundable deposit (`depositFor`) to `sponsor` (ProgramGasSponsor 1.5.0: a
     /// program sponsor holds gas credit only). Reverts to refuse.
@@ -1028,9 +1129,12 @@ contract GasSponsor is
     function _authorizeGasCreditRecovery(address, address) internal view virtual {
         if (msg.sender != _sponsorStorage().platformAdmin) revert NotPlatformAdmin();
     }
-    /// @dev A later implementation's own checks on a voucher and its (validated) execution envelope, after the budget, the
-    /// delegation and both signatures, before the policy and the call (ProgramGasSponsor 1.4.0). Reverts to refuse.
-    function _beforeSponsoredExecution(SponsorshipVoucher calldata, bytes calldata) internal virtual {}
+    /// @dev Checks on a voucher and its (validated) execution envelope, after the budget, the delegation and both signatures,
+    /// before the policy and the call. 1.5.2: counts the sponsor's operation against its admin-set ops/day (ProgramGasSponsor
+    /// counts a program sponsor's against its tier instead). Reverts to refuse.
+    function _beforeSponsoredExecution(SponsorshipVoucher calldata voucher, bytes calldata) internal virtual {
+        _countOperation(voucher.sponsor, _sponsorStorage().opsPerDay[voucher.sponsor]);
+    }
     /// @dev The sponsor's allowance policy asked to reserve this operation (1.1: reserve; 1.4.0 may ask a V2 policy with the calls).
     function _reservePolicy(address policy, SponsorshipVoucher calldata voucher, bytes calldata) internal virtual {
         _callPolicy(policy, abi.encodeCall(ITenantAllowancePolicy.reserve,
@@ -1120,7 +1224,8 @@ contract GasSponsor is
     function _boundedCall(
         address account,
         uint256 callGasLimit,
-        bytes calldata executionData
+        bytes calldata executionData,
+        uint256 requiredGas
     )
         private
         returns (
@@ -1129,8 +1234,9 @@ contract GasSponsor is
             uint256 returnDataSize
         )
     {
+        uint256 inputPointer;
         assembly ("memory-safe") {
-            let inputPointer := mload(0x40)
+            inputPointer := mload(0x40)
             calldatacopy(
                 inputPointer,
                 executionData.offset,
@@ -1146,6 +1252,9 @@ contract GasSponsor is
                     not(0x1f)
                 )
             )
+        }
+        if (gasleft() < requiredGas) revert InsufficientExecutionGas(gasleft(), requiredGas);
+        assembly ("memory-safe") {
             success := call(
                 callGasLimit,
                 account,

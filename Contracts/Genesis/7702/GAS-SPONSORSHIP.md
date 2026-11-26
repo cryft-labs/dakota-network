@@ -64,7 +64,9 @@ are not byte-for-byte deployed runtime until those values are resolved.
    `acceptBeaconOwnership()` through the registry. Verify actual `owner()` and
    registry snapshots. The beacon remains controlled until acceptance succeeds.
 5. Configure the allowlisted relayer, voucher signer, sponsor tenant bindings,
-   managers, hard caps and tenant caps. Sponsorship starts paused. Unpause only
+   managers, hard caps and tenant caps, each sponsor's operations per day (1.5.2:
+   zero runs none) and the pauser. Seed the program deny list before `setProgram`
+   (1.5.2 reverts otherwise). Sponsorship starts paused. Unpause only
    after route, signature, funding and end-to-end execution checks succeed.
 
 Upgrade through `upgradeDelegation(implementation, expectedCodeHash)` on the
@@ -175,6 +177,10 @@ changes one row of the table above: `recoverGasCredit` for a program sponsor is 
 else, the platform administrator included), still only to the program (`ProgramSponsorRecoverToProgram`). The program's own rules
 (DeveloperGasProgram 1.2.0: the 90-day freeze before an ordinary reclaim, an abuse reclaim of a frozen Pass, a paid top-up's refund
 by receipt) are the only way credit leaves a developer's account. Every other sponsor is unchanged. No storage is added;
+**Correction (2026-11-25 audit, X-18):** in 1.5.1 this claim did not hold: `setProgram` was the platform administrator's at any
+time, so `setProgram(attacker)` followed by `recoverGasCredit` took every program sponsor's credit, and `configureSponsor` /
+`setSponsorManager` could reconfigure a program sponsor. 1.5.2 (below) closes all three. Likewise "governed by the program deny
+list" (C3 below) failed open on a fresh genesis, where `programDenied` is empty (X-20).
 Two more from the safe-coding review of the live contracts (Chad: "fix all of them"):
 
 - **C3, call approvals on chain again.** `ProgramGasSponsor` now inherits `ApprovedGasSponsor` (GasSponsor 1.2's mandatory
@@ -194,3 +200,26 @@ Two more from the safe-coding review of the live contracts (Chad: "fix all of th
 
 `layout-proof.json` proves the layout append-only against 1.3.0 (`0x…FEeD`), 1.4.0, 1.5.0 (the dev test sponsor since PB-2) and
 the 1.2 approvals namespace. Runtime 32,670 bytes (margin 98 to Dakota's 32,768).
+
+## GasSponsor 1.5.2: the contract audit's P-1, for the fresh chain (2026-11-25)
+
+`ProgramGasSponsor` 1.5.2 (`Tools/GasSponsor/build_1_5_2.py`; release files under `Releases/GasSponsor/1.5.2` once written with
+`--write`) is what genesis links at `0x…FEeD` on chain 113211. Nothing is deployed yet, but storage stays append-only against 1.5.1
+(the tool proves it) so later upgrades remain provable. One version string, `1.5.2`, for every layer. Runtime 32,491 bytes (margin
+277 to Dakota's 32,768).
+
+| finding | 1.5.2 |
+|---|---|
+| X-9 | A `pauser` (`setPauser`, the platform administrator's; zero removes it) may `setPaused(true)` and `setSponsorAdminEnabled(sponsor, false)`, nothing else: it moves no coin and changes no role. Resuming stays the administrator's. The administrator may be a contract (a timelock). |
+| X-18 | `openedBy[sponsor]` records the program that opened each program sponsor; only it funds the sponsor (`depositGasCredit`), sets its caps (`setProgramSponsorCaps`), recovers its credit (to itself) and answers its eligibility. `setProgram` is **one-time** for the address (later calls may only re-set the same program's hard caps): the program is a proxy at a stable address and never needs to move, and a one-time set is smaller and stronger than tracking whether any program sponsor still holds credit. |
+| X-20 | `setProgram` reverts until the deny list holds at least one entry (`deniedCount`; the release tool seeds the platform's own non-genesis contracts first). Every address below 2^32 (the genesis system contracts 0x…1111, cafE, c0DE, FacAdE, FEeD, de1E6A7E and the precompiles) is denied to program credit in code, seeded or not. The release tool still adds each new platform contract in the same step that deploys it. |
+| X-60 | `configureSponsor`, `setSponsorManager` and `setSponsorOpsPerDay` revert `ProgramSponsorAdminLocked` for a program sponsor; the program's hard caps clamp its caps at every spend (and in `getSponsorAccount`), so a lowered hard cap binds every open program sponsor at once. |
+| X-19 | Every sponsor has an operations-per-day counter (vouchers and worker reservations; `setSponsorOpsPerDay`, `sponsorOps`): zero, the default, runs none. A program sponsor's limit is its tier's, on the same counter (`ProgramDailyOpsReached` is now `DailyOpsReached(address,uint256)`). A new sponsor requires approved wallets until its manager opts out; a program sponsor always does. Per-wallet limits keyed on a card, Pass or account remain the allowance policy's job. |
+| X-57 | `releaseWorker` after the 7 days by anyone charges **nothing** (the platform administrator's release still charges the maximum); the policy's settle is given its full 200,000 gas or the call reverts. `redirectWorkerRevenue(from, to)` (administrator) moves a treasury's deferred revenue to a claimant when that treasury can neither take coin nor claim. |
+| X-58 | Consumed operation ids are per sponsor (`isOperationConsumed(sponsor, id)`), so a worker of one sponsor cannot burn another's voucher ids. Worker reservation ids remain one book among the platform's workers. |
+| X-59 | The policy's `settle` runs with 120,000 gas, inside the 150,000 charged as overhead, and best-effort (`AllowancePolicySettleFailed(operationId, policy)` on failure), so a policy can neither underpay nor sink the relayer. The execution gas reserve is checked after the calldata copy. |
+| X-66 | An approval with no implementation (an immutable target) is refused when the target's code pushes the EIP-1967 implementation or beacon slot (OZ transparent, ERC1967, UUPS and beacon proxies): EVM code cannot read another contract's storage, so the code is scanned. The release tool should still read the slots with `eth_getStorageAt`. |
+
+Size work: the access checks are functions rather than inlined modifiers, coin transfers share one helper, the execution envelope's
+calls are decoded once, revert strings became custom errors, and the V2 allowance policy's `reserveCalls` now receives the whole
+validated execution envelope (`bytes executionData`) instead of target and selector arrays (no V2 policy existed).

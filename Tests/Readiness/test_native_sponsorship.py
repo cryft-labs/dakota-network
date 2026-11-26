@@ -26,13 +26,30 @@ def authorize(c, target, data=b''):
     assert r.status==1
 
 
-def setup(c):
+def link_sponsor(c, artifact, args):
+    """`artifact` (abi + creation bytecode) linked at 0x…FEeD with initialize(args), as genesis links it: no upgrade path."""
+    made=tx(c,c['w3'].eth.contract(abi=artifact['abi'],bytecode=artifact['creation_bytecode']).constructor())
+    logic=c['w3'].eth.contract(address=made.contractAddress,abi=artifact['abi'])
+    proxy=at(c,'TransparentUpgradeableProxy',ADDRESSES['GasSponsor'])
+    data=bytes.fromhex(logic.functions.initialize(*args)._encode_transaction_data()[2:])
+    tx(c,proxy.functions.proxy_linkLogicAdmin(logic.address,data))
+    return c['w3'].eth.contract(address=proxy.address,abi=artifact['abi'])
+
+
+def setup(c, artifact=None):
+    """The delegated account a[3], and a sponsor engine at 0x…FEeD (this source's GasSponsor, or `artifact` from this source:
+    GasSponsor 1.5.2 tests link each layer fresh) with sponsor a[4] (manager a[5]) funded and relayer a[2]."""
     a=c['accounts']; logic=deploy(c,'DakotaDelegation'); beacon=deploy(c,'DakotaDelegationBeacon',logic.address)
     dispatcher=deploy(c,'DakotaDelegationBeaconDispatcher',beacon.address)
     authorize(c, dispatcher.address)
     account=at(c,'DakotaDelegation',a[3])
-    sponsor=linked(c,'GasSponsor',args=(a[0],a[1],dispatcher.address,100000))
+    sponsor=link_sponsor(c,artifact or c['builds']['GasSponsor'],(a[0],a[1],dispatcher.address,100000))
     tx(c,sponsor.functions.configureSponsor(a[4],Web3.keccak(text='tenant'),a[5],10**17,10**18,True))
+    # GasSponsor 1.5.2: a new sponsor runs no operation until the admin sets its ops/day, and requires approved wallets until its
+    # manager opts out (X-19); the legacy suites below run an open sponsor.
+    assert sponsor.functions.getSponsorPolicy(a[4]).call()[1] is True and sponsor.functions.sponsorOps(a[4]).call()==[0,0]
+    tx(c,sponsor.functions.setSponsorOpsPerDay(a[4],1000))
+    tx(c,sponsor.functions.setWalletApprovalRequired(a[4],False),a[5])
     paid(c,sponsor.functions.depositFor(a[4]),10**18)
     tx(c,sponsor.functions.setRelayer(a[2],True)); tx(c,sponsor.functions.setPaused(False))
     return account, sponsor, beacon, dispatcher
@@ -69,7 +86,7 @@ def test_direct_delegation_minimum_envelope_executes_without_account_linking(cha
     assert submit(c,sponsor,args)['success']
     assert account.functions.getNonce().call()==1
     assert c['w3'].eth.get_balance(c['accounts'][9])-before==123456789
-    assert sponsor.functions.isOperationConsumed(args[0][0]).call()
+    assert sponsor.functions.isOperationConsumed(args[0][3],args[0][0]).call()
     fails(c,sponsor.functions.executeSponsored(*args),c['accounts'][2])
 
 
@@ -92,7 +109,7 @@ def test_invalid_envelopes_do_not_consume_or_charge(chain,case):
     receipt=c['w3'].eth.wait_for_transaction_receipt(sponsor.functions.executeSponsored(voucher,data,sig).transact({'from':caller,'gas':12000000}))
     assert receipt.status==0
     assert sponsor.functions.getSponsorAccount(a[4]).call()[2]==before
-    assert not sponsor.functions.isOperationConsumed(voucher[0]).call()
+    assert not sponsor.functions.isOperationConsumed(voucher[3],voucher[0]).call()
     assert account.functions.getNonce().call()==0
 
 
@@ -101,7 +118,7 @@ def test_owner_signature_and_account_nonce_remain_required(chain):
     args=signed(c,sponsor,account,dispatcher.address,signature=b'')
     assert not submit(c,sponsor,args)['success']
     assert account.functions.getNonce().call()==0
-    assert sponsor.functions.isOperationConsumed(args[0][0]).call()  # submitted execution failure is charged, by policy
+    assert sponsor.functions.isOperationConsumed(args[0][3],args[0][0]).call()  # submitted execution failure is charged, by policy
     args=signed(c,sponsor,account,dispatcher.address,tag='valid')
     assert submit(c,sponsor,args)['success']
     args=signed(c,sponsor,account,dispatcher.address,tag='stale-owner-nonce',nonce=0)
