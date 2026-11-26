@@ -1,7 +1,11 @@
 # Cryft Network
 
-> Current sponsorship policy: **open contract calls with signed vouchers and tenant spending controls**.
-> See the [reviewed restoration](Releases/OpenSponsorship/20260914/README.md). The 1.2.0 global allowlist release below is historical.
+> **Rebuild 2026-11-25 (chain id 113211).** The 112311 chain was lost. The new genesis is built reproducibly by
+> [Tools/Genesis](Tools/Genesis/README.md) (`Contracts/Genesis/CryftGenesis.json`, 5 system proxies, EIP-2935).
+> Genesis-baked fixes: scheduled proxy upgrades with a voter-set delay, no validator `initialize()`, time-based
+> ballot windows, per-proposer ballot caps. GasManager 2.6.0, CodeManager 3.1, CryftDelegationRegistry 3.0.0 and
+> GasSponsor 1.5.2 carry the audit fixes. Sections below that describe the 112311 chain, its addresses and its
+> releases are history until the docs pass rewrites them.
 
 Smart contracts, tools, and node configuration for the **Cryft Network** — an enterprise QBFT blockchain built on Hyperledger Besu with [Paladin](https://github.com/LFDT-Paladin/paladin) privacy, designed for permissioned environments where a fully public and decentralized network is not required.
 
