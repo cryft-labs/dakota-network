@@ -23,6 +23,24 @@ SCOPE = sorted([*map(str, (REPO / "Contracts/Genesis").rglob("*.sol")),
                 *map(str, (REPO / "Contracts/CodeManagement/Interfaces").glob("*.sol")),
                 str(REPO / "Contracts/Paladin/ManagedProxyAdmin.sol")])
 SLOT_STRING = re.compile(r'keccak256\(\s*"([^"]+)"\s*\)')
+STRUCT = re.compile(r"\bstruct\s+(\w+)\s*\{([^}]*)\}", re.S)
+ENUM = re.compile(r"\benum\s+(\w+)\s*\{([^}]*)\}", re.S)
+HEX_CONSTANT = re.compile(r"\bconstant\s+\w+\s*=\s*(0x[0-9a-fA-F]{64})\b")
+
+
+def struct_bodies(source):
+    """Namespaced storage lives in structs reached by slot, which storageLayout does not show: pin their fields."""
+    clean = re.sub(r"//[^\n]*|/\*.*?\*/", "", source, flags=re.S)
+    out = {}
+    for name, body in STRUCT.findall(clean):
+        out[name] = [" ".join(f.split()) for f in body.split(";") if f.strip()]
+    return dict(sorted(out.items()))
+
+
+def enum_sizes(source):
+    """Enum values are stored as their index: the member count and order matter, the member names do not."""
+    clean = re.sub(r"//[^\n]*|/\*.*?\*/", "", source, flags=re.S)
+    return {name: len([m for m in body.split(",") if m.strip()]) for name, body in ENUM.findall(clean)}
 
 
 def version_for(source):
@@ -30,13 +48,16 @@ def version_for(source):
 
 
 def snapshot(only=()):
-    contracts, strings = {}, {}
+    contracts, strings, structs, enums, hexes = {}, {}, {}, {}, {}
     for path in SCOPE:
         if only and not any(str(Path(path).relative_to(REPO)).startswith(o) for o in only):
             continue
         rel = str(Path(path).relative_to(REPO))
         source = Path(path).read_text()
         strings[rel] = sorted(set(SLOT_STRING.findall(source)))
+        structs[rel] = struct_bodies(source)
+        enums[rel] = enum_sizes(source)
+        hexes[rel] = sorted(set(h.lower() for h in HEX_CONSTANT.findall(source)))
         version = version_for(source)
         work = compiler.prepare_source(path, compiler.IMPORT_CACHE_DIR)
         out = solcx.compile_files([str(work)], output_values=["storage-layout", "abi"], solc_version=version,
@@ -53,7 +74,8 @@ def snapshot(only=()):
                 {"label": s["label"], "slot": s["slot"], "offset": s["offset"],
                  "type": (types.get(s["type"]) or {}).get("label", s["type"]), "contract": s["contract"].rsplit(":", 1)[-1]}
                 for s in layout.get("storage", [])]
-    return {"contracts": dict(sorted(contracts.items())), "slotStrings": strings}
+    return {"contracts": dict(sorted(contracts.items())), "slotStrings": strings, "structs": structs,
+            "enumSizes": enums, "hexSlotConstants": hexes}
 
 
 if __name__ == "__main__":
@@ -67,7 +89,6 @@ if __name__ == "__main__":
         problems = []
         keep = lambda k: not a.only or any(k.startswith(o) for o in a.only)
         old["contracts"] = {k: v for k, v in old["contracts"].items() if keep(k)}
-        old["slotStrings"] = {k: v for k, v in old["slotStrings"].items() if keep(k)}
         for k, v in old["contracts"].items():
             if k not in snap["contracts"]:
                 problems.append(f"missing contract {k}")
@@ -76,8 +97,9 @@ if __name__ == "__main__":
         for k in snap["contracts"]:
             if k not in old["contracts"] and snap["contracts"][k]:
                 problems.append(f"new contract with storage {k}")
-        for k, v in old["slotStrings"].items():
-            if snap["slotStrings"].get(k) != v:
-                problems.append(f"slot strings changed: {k}")
+        for section in ("slotStrings", "structs", "enumSizes", "hexSlotConstants"):
+            for k, v in old.get(section, {}).items():
+                if keep(k) and snap[section].get(k) != v:
+                    problems.append(f"{section} changed: {k}")
         print("\n".join(problems) if problems else "IDENTICAL storage layouts and namespaced slots")
         sys.exit(1 if problems else 0)
