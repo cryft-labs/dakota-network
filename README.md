@@ -62,7 +62,7 @@ ballots. Details: [`Contracts/Genesis/GOVERNANCE.md`](Contracts/Genesis/GOVERNAN
 | [`Tools/Deployment/`](Tools/Deployment/README.md) | Stage the genesis, install Besu and the archive RPC on the hosts, tx-pool policy |
 | [`Tools/SolcCompiler/`](Tools/SolcCompiler/README.md) | Compiler wrapper (0.8.37) and the soljson runner for the validator's 0.8.19 |
 | [`Tools/Paladin/`](Tools/Paladin/README.md) | Paladin build and artifact lock |
-| [`Tests/`](Tests) | Governance, genesis, readiness and account tests (local EVM, no network) |
+| [`Tests/`](Tests) | Governance, genesis and readiness tests (local EVM, no network) |
 
 ## Checks
 

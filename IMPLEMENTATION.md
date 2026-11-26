@@ -333,18 +333,3 @@ registration and on-chain authorization before connecting it to the widget or
 direct API clients. A public profile key and an Origin header are not credentials.
 Source promotion does not resolve these integration gaps or authorize a live cutover.
 
-## 17. Token-bound accounts — review only, not deployed
-
-An ERC-6551 v0.3.1 compatible registry and `MomentCardAccount` implementation are
-in `Contracts/Accounts/` for Cryft Cards inventories. They are not on chain
-113211. Canonical registry `0x000000006551c19487814612e58FE06813775758` and
-Nick's CREATE2 factory `0x4e59b44847b379578588920cA78FbF26c0B4956C` have no
-bytecode on this genesis. Occupying the canonical registry address requires the
-factory first, then the original v0.3.1 bytecode — the 0.8.37 Osaka review build
-cannot land there. If the factory's pre-EIP-155 transaction is rejected, accept a
-non-canonical registry after review.
-
-The application salt is the implementation's `APPLICATION_SALT` constant. Bind the
-first resolved account per card; a later implementation address is a different TBA
-and must not be switched silently. Nested CARD NFTs from the parent card collection
-are rejected. See `Contracts/Accounts/README.md`.
