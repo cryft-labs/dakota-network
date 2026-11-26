@@ -1,0 +1,164 @@
+{
+ "at": "2026-11-26T18:54:46Z",
+ "commit": "98c33159728b13e4959a2869be878e74da864ad1",
+ "genesis_sha256": "af1ea7970669551b2c529d6bd16df65972286bc151d28d27d89f26d923307a68",
+ "checks": [
+  {
+   "check": "Validator-01: chain id 0x1ba3b",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Validator-01: block 0 hash pinned",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Validator-01: peers",
+   "ok": true,
+   "detail": 5
+  },
+  {
+   "check": "Validator-01: block height",
+   "ok": true,
+   "detail": 3
+  },
+  {
+   "check": "Validator-02: chain id 0x1ba3b",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Validator-02: block 0 hash pinned",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Validator-02: peers",
+   "ok": true,
+   "detail": 5
+  },
+  {
+   "check": "Validator-02: block height",
+   "ok": true,
+   "detail": 3
+  },
+  {
+   "check": "Validator-03: chain id 0x1ba3b",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Validator-03: block 0 hash pinned",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Validator-03: peers",
+   "ok": true,
+   "detail": 5
+  },
+  {
+   "check": "Validator-03: block height",
+   "ok": true,
+   "detail": 3
+  },
+  {
+   "check": "Validator-04: chain id 0x1ba3b",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Validator-04: block 0 hash pinned",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Validator-04: peers",
+   "ok": true,
+   "detail": 5
+  },
+  {
+   "check": "Validator-04: block height",
+   "ok": true,
+   "detail": 4
+  },
+  {
+   "check": "Archive-01: chain id 0x1ba3b",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Archive-01: block 0 hash pinned",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Archive-01: peers",
+   "ok": true,
+   "detail": 4
+  },
+  {
+   "check": "Archive-01: block height",
+   "ok": true,
+   "detail": 4
+  },
+  {
+   "check": "Paladin-01: chain id 0x1ba3b",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Paladin-01: block 0 hash pinned",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Paladin-01: peers",
+   "ok": true,
+   "detail": 4
+  },
+  {
+   "check": "Paladin-01: block height",
+   "ok": true,
+   "detail": 4
+  },
+  {
+   "check": "archive RPC over Nebula (Backend-01 -> 100.111.69.2:8547): eth_chainId 0x1ba3b",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "qbft_getValidatorsByBlockNumber = the 4 genesis validators",
+   "ok": true,
+   "detail": 4
+  },
+  {
+   "check": "getVoters = [0x6333]",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "getRootOverlords = [0x9247, 0x6333]",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "check": "Validator-03 stopped: the other three keep producing",
+   "ok": true,
+   "detail": [
+    4,
+    5
+   ]
+  },
+  {
+   "check": "Validator-03 restarted and caught up",
+   "ok": true,
+   "detail": [
+    5,
+    5
+   ]
+  }
+ ],
+ "passed": true
+}
