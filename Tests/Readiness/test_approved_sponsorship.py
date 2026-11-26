@@ -12,7 +12,7 @@ from web3 import Web3
 from web3.logs import DISCARD
 from test_native_sponsorship import builds, chain, setup, signed, tx, fails, linked, deploy, at, paid
 from test_tenant_allowances import mock
-from test_governance import ADMIN
+from test_governance import ADMIN, upgrade
 
 REPO=Path(__file__).resolve().parents[2]
 ZERO='0x'+'0'*40
@@ -123,7 +123,7 @@ def test_proxy_implementation_must_be_pinned_and_upgrade_invalidates_approval(ch
     tx(c,sponsor.functions.setCallApprovals([permission(c,cm.address,'registrationFee()',implementation=implementation)]))
     args=request(c,sponsor,account,entry,cm.address,cm.functions.registrationFee()._encode_transaction_data())
     assert send(c,sponsor,args)
-    tx(c,admin.functions.upgrade(cm.address,deploy(c,'CodeManager').address))
+    upgrade(c,cm.address,deploy(c,'CodeManager').address)  # scheduled on the proxy, then executed (X-1)
     fails(c,sponsor.functions.executeSponsored(*request(c,sponsor,account,entry,cm.address,cm.functions.registrationFee()._encode_transaction_data(),tag='upgraded')),c['accounts'][2])
 
 

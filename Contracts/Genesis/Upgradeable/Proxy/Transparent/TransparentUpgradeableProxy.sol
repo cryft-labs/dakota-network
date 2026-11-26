@@ -1088,7 +1088,12 @@ contract TransparentUpgradeableProxy is ERC1967Proxy {
      *      Auto-executes at 2/3 threshold.
      */
     function proxy_proposeRestoreRootOverlord() external {
-        require(_isOverlord(msg.sender), "Only a non-root overlord can propose restore");
+        // Every member of the ballot's electorate may vote: local overlords, plus the roots still active here
+        // when only some roots renounced (a global revoke leaves no active root, so only local overlords vote).
+        require(
+            (_isRootOverlordAddress(msg.sender) && !_isRootRevoked()) || _isOverlord(msg.sender),
+            "Only an overlord can propose restore"
+        );
         require(_isRootRevoked() || _rootRenounceStorage().renounced.length > 0, "Root overlord is not revoked");
         require(proxy_getOverlordCount() > 0, "No overlords to vote");
 

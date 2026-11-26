@@ -69,16 +69,15 @@ def proxy_contract(c,name,args,initializer='initialize'):
     return at(c,name,proxy.address)
 
 
-def test_gas_migration_rejects_uninitialized_and_non_voter(chain):
+def test_gas_manager_links_only_with_its_full_initializer(chain):
+    """GasManager 2.6: no V1/V2 migration path; initializeWithVoters runs only inside the proxy link."""
     c=chain; logic=deploy(c,'GasManager'); p=at(c,'TransparentUpgradeableProxy',ADDRESSES['GasManager'])
-    tx(c,p.functions.proxy_linkLogicAdmin(logic.address,b''))
-    gm=at(c,'GasManager',p.address)
-    fails(c,gm.functions.initializeV2())
-    tx(c,gm.functions.initializeWithVoter(c['accounts'][0]))
-    fails(c,gm.functions.initializeV2(),c['accounts'][1])
-    tx(c,gm.functions.initializeV2())
-    assert gm.functions.fundApprovalBlockThreshold().call()==1000
-    fails(c,gm.functions.initializeV2())
+    names={entry.get('name') for entry in logic.abi}
+    assert not {'initialize','initializeWithVoter','initializeV2'} & names
+    fails(c,p.functions.proxy_linkLogicAdmin(logic.address,b''))
+    gm=linked(c,'GasManager')
+    assert gm.functions.getVoters().call()==[c['accounts'][0]]
+    fails(c,gm.functions.initializeWithVoters([c['accounts'][1]],0,1,3600))
 
 
 def test_proxy_combined_controller_capacity_and_removal(chain):
@@ -96,7 +95,7 @@ def test_proxy_combined_controller_capacity_and_removal(chain):
 @pytest.mark.parametrize('size',[1,63,64,65,4096,65536])
 def test_proxy_forwards_exact_arbitrary_data(chain,size):
     c=chain; echo=deploy(c,'Echo'); p=at(c,'TransparentUpgradeableProxy',ADDRESSES['proxy'])
-    tx(c,p.functions.proxy_linkLogicAdmin(echo.address,b''))
+    tx(c,p.functions.proxy_linkLogicAdmin(echo.address,b'\x7a'))  # a link always carries data
     data=b'\x7a'*size
     assert bytes(c['w3'].eth.call({'to':p.address,'data':data,'gas':24000000}))==data
     with pytest.raises(Exception): c['w3'].eth.call({'to':p.address,'data':b'\xff'+data,'gas':24000000})

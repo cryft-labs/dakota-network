@@ -148,13 +148,16 @@ def test_a_non_program_sponsor_is_unchanged(world):
 
 def test_this_build_is_append_only_against_1_5_1_and_fits(program_build):
     """1.5.2: the release build (Tools/GasSponsor/build_1_5_2.py) proves every namespaced struct and the plain slots append-only
-    against the committed 1.5.1 input, and the runtime fits Cryft's 32,768 bytes. If Releases/GasSponsor/1.5.2 is committed, it is
+    against the committed 1.5.1 input (namespace constants aside: renamed for the fresh genesis), and the runtime fits Cryft's 32,768 bytes. If Releases/GasSponsor/1.5.2 is committed, it is
     this checkout's build."""
     import importlib.util
     spec = importlib.util.spec_from_file_location('build_1_5_2', REPO / 'Tools/GasSponsor/build_1_5_2.py')
     tool = importlib.util.module_from_spec(spec); spec.loader.exec_module(tool)
     standard, artifact, proof = tool.build()
-    assert proof['append_only'] is True and proof['problems'] == [] and set(proof['predecessors']) == {'1.5.1'}
+    # The 11-25 rebuild renamed the on-chain storage namespaces to cryft.storage.* (fresh genesis, nothing to migrate), so
+    # the only differences from the 1.5.1 record may be those namespace constants; every struct stays append-only.
+    renamed = [p for p in proof['problems'] if "1.5.1 has no" in p and 'keccak256("cryft.storage.' in p]
+    assert [p for p in proof['problems'] if p not in renamed] == [] and set(proof['predecessors']) == {'1.5.1'}
     assert artifact['runtime_bytes'] <= 32768 and artifact['version'] == '1.5.2'
     built = program_build['ProgramGasSponsor']['runtime_bytecode'].removeprefix('0x').lower()
     assert artifact['runtime_bytecode'].removeprefix('0x').lower()[:-106] == built[:-106]  # the same code (metadata aside)

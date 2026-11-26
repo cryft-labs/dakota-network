@@ -1,11 +1,10 @@
 """Two-phase 7702 delegation upgrades, registry-owned beacon, transient guard (audit X-2, X-54, N-6).
 
 Local EVM only (eth-tester, py-evm Prague/7702). Ephemeral keys; no RPC endpoints.
-Compiles with solc 0.8.37 only: the validator stands in from its reviewed artifact.
+Compiles with solc 0.8.37; 0x1111 is the genesis validator build (0.8.19 via soljson, Tools/Genesis/build.py).
 """
 from pathlib import Path
 import importlib.util
-import json
 import sys
 
 import pytest
@@ -15,12 +14,12 @@ from web3 import Web3
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'Readiness'))
-from test_governance import REPO, PATHS, chain, tx, fails, deploy, at, linked, ADDRESSES  # noqa: F401 (fixture)
+from test_governance import REPO, PATHS, chain, tx, fails, deploy, at, linked, ADDRESSES, validator_artifact  # noqa: F401 (fixture)
 from test_native_sponsorship import authorize  # noqa: E402
 
-SOLC = '0.8.37'  # never 0.8.19 here: the validator stands in from its reviewed artifact
+SOLC = '0.8.37'
 NEEDED = ['TransparentUpgradeableProxy', 'ProxyAdmin', 'CryftDelegationRegistry', 'CryftDelegation',
-          'CryftDelegationBeacon', 'CryftDelegationBeaconDispatcher']
+          'CryftDelegationBeacon', 'CryftBeaconDispatcher']
 MOCKS = '''pragma solidity ^0.8.24;
 contract Value { function value() external pure returns(uint) { return 42; } }
 contract SlotWriter { function poke(bytes32 slot, uint256 value) external { assembly { sstore(slot, value) } } }
@@ -38,8 +37,7 @@ def builds():
     for name in NEEDED:
         contracts = compiler.compile_contract(REPO / 'Contracts' / PATHS[name], solc_version=SOLC, evm_version='osaka')
         output[name] = next(v for k, v in contracts.items() if k.rsplit(':', 1)[-1] == name)
-    built = REPO / 'Tools/SolcCompiler/compiled_output/Genesis/ValidatorContracts/ValidatorSmartContractAllowList/ValidatorSmartContractAllowList_artifact.json'
-    output['ValidatorSmartContractAllowList'] = json.loads(built.read_text())
+    output['ValidatorSmartContractAllowList'] = validator_artifact()
     for key, artifact in solcx.compile_source(MOCKS, solc_version=SOLC, evm_version='osaka', output_values=['abi', 'bin', 'bin-runtime']).items():
         output[key.split(':')[-1]] = {'abi': artifact['abi'], 'creation_bytecode': '0x' + artifact['bin'],
                                       'runtime_bytecode': '0x' + artifact['bin-runtime']}
@@ -68,7 +66,7 @@ def stack(c, delay=DELAY, admin=None, sponsor=None):
     """Implementation + registry-owned beacon + dispatcher, registry linked WITH init data."""
     logic = deploy(c, 'CryftDelegation')
     beacon = deploy(c, 'CryftDelegationBeacon', logic.address)
-    dispatcher = deploy(c, 'CryftDelegationBeaconDispatcher', beacon.address)
+    dispatcher = deploy(c, 'CryftBeaconDispatcher', beacon.address)
     registry = linked(c, 'CryftDelegationRegistry', initializer='initializeWithAdmin',
                       args=(dispatcher.address, beacon.address, sponsor or SPONSOR,
                             admin or c['accounts'][0], delay))
@@ -93,7 +91,7 @@ def test_beacon_owner_is_registry_at_deploy_with_no_handover(chain):
     for sender in [a[0], a[7]]:  # neither the root nor the deployer can move the implementation
         fails(c, beacon.functions.upgradeTo(other.address), sender)
     # The registry links against it with no handover step.
-    dispatcher = deploy(c, 'CryftDelegationBeaconDispatcher', beacon.address)
+    dispatcher = deploy(c, 'CryftBeaconDispatcher', beacon.address)
     registry = linked(c, 'CryftDelegationRegistry', initializer='initializeWithAdmin',
                       args=(dispatcher.address, beacon.address, SPONSOR, a[0], 0))
     snapshot = registry.functions.currentSnapshot().call()
@@ -105,7 +103,7 @@ def test_registry_rejects_beacon_it_does_not_own(chain):
     c = chain; a = c['accounts']
     logic = deploy(c, 'CryftDelegation')
     fake = deploy(c, 'Value')  # no owner() at all
-    dispatcher = deploy(c, 'CryftDelegationBeaconDispatcher', deploy(c, 'CryftDelegationBeacon', logic.address).address)
+    dispatcher = deploy(c, 'CryftBeaconDispatcher', deploy(c, 'CryftDelegationBeacon', logic.address).address)
     reg_logic = deploy(c, 'CryftDelegationRegistry')
     data = bytes.fromhex(reg_logic.functions.initializeWithAdmin(dispatcher.address, fake.address, SPONSOR, a[0], 0)._encode_transaction_data()[2:])
     proxy = at(c, 'TransparentUpgradeableProxy', ENTRY)
@@ -231,7 +229,7 @@ def test_entry_initializer_cannot_be_front_run(chain):
     c = chain; a = c['accounts']
     logic = deploy(c, 'CryftDelegation')
     beacon = deploy(c, 'CryftDelegationBeacon', logic.address)
-    dispatcher = deploy(c, 'CryftDelegationBeaconDispatcher', beacon.address)
+    dispatcher = deploy(c, 'CryftBeaconDispatcher', beacon.address)
     reg_logic = deploy(c, 'CryftDelegationRegistry')
     proxy = at(c, 'TransparentUpgradeableProxy', ENTRY)
     registry = at(c, 'CryftDelegationRegistry', ENTRY)

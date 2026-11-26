@@ -25,7 +25,7 @@ Reviewed runtime sizes, with optimizer 200 runs:
 | CryftDelegationRegistry | 0.8.34 / Osaka | 13,112 |
 | CryftDelegation | 0.8.34 / Osaka | 5,341 |
 | CryftDelegationBeacon | 0.8.34 / Osaka | 1,046 |
-| CryftDelegationBeaconDispatcher | 0.8.34 / Osaka | 644 |
+| CryftBeaconDispatcher | 0.8.34 / Osaka | 644 |
 
 The documented chain limit remains **32,768 bytes**. Rebuild after any source or compiler change. These numbers do not approve existing archived artifacts, final genesis allocations, or an upgrade of populated storage. New proxy controller enumeration requires fresh-genesis state or a separately reviewed migration.
 

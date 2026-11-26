@@ -36,7 +36,7 @@ DISPATCHER = (
     CONTRACTS_DIR
     / "Genesis"
     / "7702"
-    / "CryftDelegationBeaconDispatcher.sol"
+    / "CryftBeaconDispatcher.sol"
 )
 REGISTRY = (
     CONTRACTS_DIR
@@ -102,6 +102,9 @@ RETIRED_DELEGATE_FUNCTIONS = {
 }
 
 REQUIRED_SPONSOR_FUNCTIONS = {
+    "isOperationConsumed",
+    "setPauser",
+    "setSponsorOpsPerDay",
     "proposePlatformAdmin",
     "acceptPlatformAdmin",
     "cancelPlatformAdminTransfer",
@@ -127,8 +130,6 @@ REQUIRED_DELEGATE_FUNCTIONS = {
 }
 
 REQUIRED_REGISTRY_FUNCTIONS = {
-    "acceptBeaconOwnership",
-    "cancelBeaconOwnershipTransfer",
     "acceptAdmin",
     "accountStatus",
     "cancelAdminTransfer",
@@ -139,10 +140,10 @@ REQUIRED_REGISTRY_FUNCTIONS = {
     "getAccountNonce",
     "genesisProxyAdmin",
     "initialize",
+    "initializeWithAdmin",
     "isAccountReady",
     "pendingRegistryAdmin",
     "proposeAdmin",
-    "recordCurrentImplementation",
     "registryAdmin",
     "registryImplementation",
     "registryStorageLocation",
@@ -150,24 +151,44 @@ REQUIRED_REGISTRY_FUNCTIONS = {
     "releaseAt",
     "releaseCount",
     "supportsCurrentCapability",
-    "transferBeaconOwnership",
-    "upgradeDelegation",
     "validatorRootRegistry",
+    # 3.0.0 (audit X-2): two-phase wallet-code upgrades with a configurable delay.
+    "scheduleDelegationUpgrade",
+    "executeDelegationUpgrade",
+    "cancelDelegationUpgrade",
+    "pendingDelegationUpgrade",
+    "upgradeDelay",
+    "setUpgradeDelay",
+    "pendingUpgradeDelayDecrease",
+    "executeUpgradeDelayDecrease",
+    "cancelUpgradeDelayDecrease",
+}
+
+# 3.0.0: the beacon is registry-owned from construction, so there is no handover and no one-step upgrade.
+RETIRED_REGISTRY_FUNCTIONS = {
+    "acceptBeaconOwnership",
+    "cancelBeaconOwnershipTransfer",
+    "transferBeaconOwnership",
+    "recordCurrentImplementation",
+    "upgradeDelegation",
 }
 
 REQUIRED_BEACON_FUNCTIONS = {
-    "pendingOwner",
-    "acceptOwnership",
-    "cancelOwnershipTransfer",
     "implementation",
     "upgradeTo",
     "owner",
+}
+
+RETIRED_BEACON_FUNCTIONS = {
+    "pendingOwner",
+    "acceptOwnership",
+    "cancelOwnershipTransfer",
     "transferOwnership",
-    "validatorRootRegistry",
+    "renounceOwnership",
 }
 
 REQUIRED_GAS_MANAGER_FUNCTIONS = {
-    "initializeWithVoter",
+    "initializeWithVoters",
     "getProposalSnapshot",
     "voteToSetVoterConfiguration",
     "executeFundGasV2",
@@ -178,6 +199,15 @@ REQUIRED_GAS_MANAGER_FUNCTIONS = {
     "proposeSponsorFunding",
     "sponsorFundingStorageLocation",
     "voteToFundGasV2",
+}
+
+# 2.6.0 (audit N-7): init only through the proxy link with the full voter list; V1 funding gone.
+RETIRED_GAS_MANAGER_FUNCTIONS = {
+    "initialize",
+    "initializeWithVoter",
+    "initializeV2",
+    "voteToFundGasV1",
+    "executeFundGasV1",
 }
 
 EXPECTED_SPONSOR_LINEAR_STORAGE = [
@@ -194,44 +224,39 @@ EXPECTED_REGISTRY_LINEAR_STORAGE = [
 ]
 
 EXPECTED_GAS_MANAGER_LINEAR_STORAGE = [
+    # 2.6.0: retired fields stay reserved at their slots (__reservedNN); time-based approvals reuse 65-67;
+    # the post-approval delay and outflow cap are appended from slot 72.
     {"label": "_initialized", "slot": "0", "offset": 0},
     {"label": "_initializing", "slot": "0", "offset": 1},
     {"label": "_status", "slot": "1", "offset": 0},
     {"label": "__gap", "slot": "2", "offset": 0},
     {"label": "voteTallyBlockThreshold", "slot": "51", "offset": 0},
     {"label": "totalGasFunded", "slot": "52", "offset": 0},
-    # The old fields remain reserved at their exact slots; callable getters now use snapshots.
-    {"label": "__legacyActiveVoteCount", "slot": "53", "offset": 0},
+    {"label": "__reserved53", "slot": "53", "offset": 0},
     {"label": "votersArray", "slot": "54", "offset": 0},
     {"label": "otherVoterContracts", "slot": "55", "offset": 0},
     {"label": "guardiansArray", "slot": "56", "offset": 0},
     {"label": "isGuardian", "slot": "57", "offset": 0},
-    {"label": "_voteTallies", "slot": "58", "offset": 0},
-    {"label": "__legacyHasVoted", "slot": "59", "offset": 0},
-    {"label": "approvedBurns", "slot": "60", "offset": 0},
+    {"label": "__reserved58", "slot": "58", "offset": 0},
+    {"label": "__reserved59", "slot": "59", "offset": 0},
+    {"label": "_burnApprovals", "slot": "60", "offset": 0},
     {"label": "approvedFunds", "slot": "61", "offset": 0},
-    {"label": "approvedCoinBurns", "slot": "62", "offset": 0},
+    {"label": "__reserved62", "slot": "62", "offset": 0},
     {"label": "_fundProposals", "slot": "63", "offset": 0},
     {"label": "_lastFundingNonceByFundingId", "slot": "64", "offset": 0},
-    {"label": "fundApprovalBlockThreshold", "slot": "65", "offset": 0},
-    {"label": "fundApprovalBlock", "slot": "66", "offset": 0},
-    {
-        "label": "fundApprovalThresholdAtApproval",
-        "slot": "67",
-        "offset": 0,
-    },
+    {"label": "fundApprovalWindow", "slot": "65", "offset": 0},
+    {"label": "fundExecutableAt", "slot": "66", "offset": 0},
+    {"label": "fundExpiresAt", "slot": "67", "offset": 0},
     {"label": "_activeApprovedFundKeys", "slot": "68", "offset": 0},
-    {
-        "label": "_activeApprovedFundKeyIndexPlusOne",
-        "slot": "69",
-        "offset": 0,
-    },
-    {
-        "label": "expiredFundCleanupAuthorized",
-        "slot": "70",
-        "offset": 0,
-    },
+    {"label": "_activeApprovedFundKeyIndexPlusOne", "slot": "69", "offset": 0},
+    {"label": "expiredFundCleanupAuthorized", "slot": "70", "offset": 0},
     {"label": "expiredFundCleanupCursor", "slot": "71", "offset": 0},
+    {"label": "executionDelay", "slot": "72", "offset": 0},
+    {"label": "outflowCap", "slot": "73", "offset": 0},
+    {"label": "outflowPeriod", "slot": "74", "offset": 0},
+    {"label": "outflowPeriodStart", "slot": "75", "offset": 0},
+    {"label": "outflowUsed", "slot": "76", "offset": 0},
+    {"label": "_parameterChanges", "slot": "77", "offset": 0},
 ]
 
 
@@ -297,14 +322,14 @@ def _assert_source_contract() -> None:
         "erc7201:cryft.storage.GasSponsor",
         EXPECTED_SPONSOR_NAMESPACE,
         'keccak256("1")',
-        'return "1.0.0";',
+        'return "1.5.2";',
     )
     required_delegate_fragments = (
         "erc7201:cryft.storage.CryftDelegation",
         EXPECTED_DELEGATE_NAMESPACE,
         "cryft.delegation.sponsored-execution.v1",
         'keccak256("1")',
-        'return "1.1.0";',
+        'return "1.2.0";',
         "function delegationCapabilities()",
         "function supportsInterface(",
     )
@@ -314,21 +339,21 @@ def _assert_source_contract() -> None:
         "0x000000000000000000000000000000000000FEeD",
         "function proposeSponsorFunding(",
         "function executeSponsorFunding(",
-        'return "2.5.0";',
+        'return "2.6.0";',
+        "function initializeWithVoters(",
+        "_requireLinkGuardian();",
         "IGasSponsorDepository(_GAS_SPONSOR).depositGasCredit",
         "revert SponsorFundingExecutorRequired();",
         "gasSponsorBalanceAfter - gasSponsorBalanceBefore != proposal.amount",
     )
     required_beacon_fragments = (
-        "ROOT-VALIDATED SHARED UPGRADE BEACON",
-        "error NotRootOverlord(address caller);",
-        "0x0000000000000000000000000000000000001111",
-        "UpgradeableBeacon(implementation_, msg.sender)",
-        ").isRootOverlord(caller)",
-        "function validatorRootRegistry()",
+        "0x00000000000000000000000000000000de1E6A7E",
+        "function owner() external pure returns (address)",
+        "if (msg.sender != _REGISTRY) {",
+        "revert BeaconUnauthorizedAccount(msg.sender);",
     )
     required_registry_fragments = (
-        "UPGRADEABLE CONTROL PLANE",
+        "upgradeable release control plane",
         "function initialize(",
         ") external override initializer {",
         "_disableInitializers();",
@@ -336,10 +361,12 @@ def _assert_source_contract() -> None:
         EXPECTED_REGISTRY_NAMESPACE,
         "address(this) != _DELEGATION_ENTRY",
         "0x00000000000000000000000000000000de1E6A7E",
-        "state.registryAdmin = msg.sender;",
+        "state.registryAdmin = admin_;",
         ").isRootOverlord(caller)",
         "error EmptyCodeHash();",
-        "function upgradeDelegation(",
+        "function scheduleDelegationUpgrade(",
+        "function executeDelegationUpgrade(",
+        "function cancelDelegationUpgrade(",
         "expectedCodeHash == bytes32(0)",
         "beaconControl.upgradeTo(newImplementation);",
         "_recordRelease(newImplementation, metadata);",
@@ -375,6 +402,11 @@ def _assert_source_contract() -> None:
         if fragment not in beacon_source:
             raise RuntimeError(
                 f"CryftDelegationBeacon source contract missing: {fragment}"
+            )
+    for retired in ("transferOwnership", "acceptOwnership", "pendingOwner"):
+        if retired in beacon_source:
+            raise RuntimeError(
+                f"CryftDelegationBeacon must have no ownership handover: {retired}"
             )
     if "initialOwner_" in beacon_source:
         raise RuntimeError(
@@ -476,7 +508,7 @@ def main() -> None:
     registry = _find_contract(compiled, "CryftDelegationRegistry")
     dispatcher = _find_contract(
         compiled,
-        "CryftDelegationBeaconDispatcher",
+        "CryftBeaconDispatcher",
     )
     genesis_proxy = _find_contract(
         compiled,
@@ -492,7 +524,7 @@ def main() -> None:
     _assert_function_surface(
         gas_manager,
         REQUIRED_GAS_MANAGER_FUNCTIONS,
-        set(),
+        RETIRED_GAS_MANAGER_FUNCTIONS,
         "gas manager",
     )
     _assert_function_surface(
@@ -504,16 +536,16 @@ def main() -> None:
     _assert_function_surface(
         registry,
         REQUIRED_REGISTRY_FUNCTIONS,
-        set(),
+        RETIRED_REGISTRY_FUNCTIONS,
         "delegation registry",
     )
 
-    beacon_functions = _function_names(beacon)
-    missing_beacon = REQUIRED_BEACON_FUNCTIONS - beacon_functions
-    if missing_beacon:
-        raise RuntimeError(
-            f"Required beacon functions missing: {sorted(missing_beacon)}"
-        )
+    _assert_function_surface(
+        beacon,
+        REQUIRED_BEACON_FUNCTIONS,
+        RETIRED_BEACON_FUNCTIONS,
+        "beacon",
+    )
     beacon_constructor = next(
         entry for entry in beacon["abi"] if entry["type"] == "constructor"
     )
@@ -615,7 +647,7 @@ def main() -> None:
         "CryftDelegationBeacon": len(
             bytes.fromhex(beacon["bin-runtime"])
         ),
-        "CryftDelegationBeaconDispatcher": len(
+        "CryftBeaconDispatcher": len(
             bytes.fromhex(dispatcher["bin-runtime"])
         ),
         "CryftDelegationRegistry": len(

@@ -40,7 +40,7 @@ def setup(c, artifact=None):
     """The delegated account a[3], and a sponsor engine at 0x…FEeD (this source's GasSponsor, or `artifact` from this source:
     GasSponsor 1.5.2 tests link each layer fresh) with sponsor a[4] (manager a[5]) funded and relayer a[2]."""
     a=c['accounts']; logic=deploy(c,'CryftDelegation'); beacon=deploy(c,'CryftDelegationBeacon',logic.address)
-    dispatcher=deploy(c,'CryftDelegationBeaconDispatcher',beacon.address)
+    dispatcher=deploy(c,'CryftBeaconDispatcher',beacon.address)
     authorize(c, dispatcher.address)
     account=at(c,'CryftDelegation',a[3])
     sponsor=link_sponsor(c,artifact or c['builds']['GasSponsor'],(a[0],a[1],dispatcher.address,100000))
@@ -138,12 +138,15 @@ def test_wrong_eoa_designation_and_legacy_proxy_are_not_approved(chain):
 
 def test_registry_agrees_with_sponsor_and_beacon_upgrade_preserves_nonce(chain):
     c=chain; account,sponsor,beacon,dispatcher=setup(c); a=c['accounts']
-    registry=linked(c,'CryftDelegationRegistry',args=(dispatcher.address,beacon.address,sponsor.address,a[0]),initializer='initializeWithAdmin')
+    registry=linked(c,'CryftDelegationRegistry',args=(dispatcher.address,beacon.address,sponsor.address,a[0],0),initializer='initializeWithAdmin')
     assert registry.functions.delegationEntry().call()==dispatcher.address
     assert registry.functions.isAccountReady(account.address).call()
     assert registry.functions.expectedAccountCodeHash().call()==Web3.keccak(c['w3'].eth.get_code(account.address))
     assert submit(c,sponsor,signed(c,sponsor,account,dispatcher.address))['success']
-    logic=deploy(c,'CryftDelegation'); tx(c,beacon.functions.upgradeTo(logic.address))
+    logic=deploy(c,'CryftDelegation'); code_hash=Web3.keccak(c['w3'].eth.get_code(logic.address))
+    fails(c,beacon.functions.upgradeTo(logic.address))  # the beacon answers only to the registry (3.0.0)
+    tx(c,registry.functions.scheduleDelegationUpgrade(logic.address,code_hash))  # two-phase (X-2); delay 0 here
+    tx(c,registry.functions.executeDelegationUpgrade(logic.address,code_hash))
     assert account.functions.getNonce().call()==1
     assert sponsor.functions.isDelegationReady(account.address).call()
     assert submit(c,sponsor,signed(c,sponsor,account,dispatcher.address,tag='after-upgrade'))['success']

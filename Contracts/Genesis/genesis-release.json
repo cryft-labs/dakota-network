@@ -75,17 +75,17 @@
       "solc": "0.8.37",
       "evm": "osaka",
       "optimizer_runs": 200,
-      "runtime_bytes": 22754,
-      "runtime_keccak256": "0x09bae5ae57d318836adb2f7d72e149dd725dd953ab136879e581a1fab4233404",
-      "standard_input_sha256": "b20cd8ee1a78fbf1dd44f55517749b44bb4f681d2119ccc022ba628e7c0b9ef3"
+      "runtime_bytes": 22777,
+      "runtime_keccak256": "0x0a1660b441734fe5ce31ea5af2e8e9e80e86a1aa8d8929b61522342d4e3c7220",
+      "standard_input_sha256": "330cbf2cfa8143e2a3d4066f974bca76ab7a904e600ca38197c22a3875b93111"
     },
     "ProxyAdmin": {
       "solc": "0.8.37",
       "evm": "osaka",
       "optimizer_runs": 200,
       "runtime_bytes": 3309,
-      "runtime_keccak256": "0x57f76eae2bcc64e64760acef7fbf3953fd594e94900940fcd3bc78088152476d",
-      "standard_input_sha256": "581bc1167b1f5cc861fce88a36d61d3190ea5e63c1ed068032b591a3e0298145"
+      "runtime_keccak256": "0x922374ff3784dec932674dc7be2f67080c01cd70291f28209720ae4d9d81003b",
+      "standard_input_sha256": "f38d9657599c1652778ff7e8706ff01974128baaf498267e6b06fa1971fc9c9c"
     }
   },
   "proxySelectors": {
@@ -144,6 +144,6 @@
     "validators.json": "9f2d056b35bac3386b63f955ea5df7e48bb60daa1e827068e2e567bfc94808a1"
   },
   "genesis_file": "Contracts/Genesis/CryftGenesis.json",
-  "genesis_sha256": "4878bbc634d29aee75d99954bdf834e0ff7586678f05209b09566ce797823491",
-  "genesis_bytes": 279783
+  "genesis_sha256": "902baa7809d701a0aa9a075fd647cf156a853cbbec0cb39233641df9e801d39b",
+  "genesis_bytes": 280013
 }

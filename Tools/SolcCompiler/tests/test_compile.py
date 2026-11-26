@@ -10,6 +10,18 @@ SCRIPT = Path(__file__).resolve().parents[1] / "compile.py"
 spec = importlib.util.spec_from_file_location("cryft_compiler", SCRIPT)
 compiler = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(compiler)
+soljson_spec = importlib.util.spec_from_file_location("cryft_soljson", SCRIPT.parent / "soljson.py")
+soljson = importlib.util.module_from_spec(soljson_spec)
+soljson_spec.loader.exec_module(soljson)
+
+
+def compile_standard(standard, version):
+    """Real solc, or the official soljson when ~/.solcx holds the soljson shim (it takes no --standard-json)."""
+    short = version.split("+", 1)[0]
+    executable = Path(solcx.install.get_executable(short))
+    if executable.read_bytes()[:64].startswith(b"#!") and b"soljson shim" in executable.read_bytes()[:256]:
+        return soljson.compile_standard(standard, short)
+    return solcx.compile_standard(standard, solc_version=version)
 
 
 @pytest.fixture
@@ -39,7 +51,7 @@ def test_export_reproduces_all_bytecode_without_source_callbacks(build, tmp_path
         for key, entry in standard["sources"].items():
             assert entry["content"].encode("utf-8") == (build.IMPORT_CACHE_DIR / key).read_bytes()
         assert (output / f"{contract}_metadata.json").read_bytes() == artifact["metadata"].encode("utf-8")
-        result = solcx.compile_standard(standard, solc_version=artifact["compiler_version"])
+        result = compile_standard(standard, artifact["compiler_version"])
         source, target = artifact["fully_qualified_name"].rsplit(":", 1)
         actual = result["contracts"][source][target]
         assert actual["evm"]["bytecode"]["object"] == artifact["creation_bytecode"].removeprefix("0x")

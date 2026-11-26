@@ -27,32 +27,53 @@ PATHS = {
     'CryftDelegationRegistry': 'Genesis/7702/CryftDelegationRegistry.sol',
     'CryftDelegation': 'Genesis/7702/CryftDelegation.sol',
     'CryftDelegationBeacon': 'Genesis/7702/CryftDelegationBeacon.sol',
-    'CryftDelegationBeaconDispatcher': 'Genesis/7702/CryftDelegationBeaconDispatcher.sol',
+    'CryftBeaconDispatcher': 'Genesis/7702/CryftBeaconDispatcher.sol',
 }
 ENGINES = ['ValidatorSmartContractAllowList', 'GasManager', 'CodeManager']
-# The validator's own compiler (0.8.19, London). CRYFT_TEST_LEGACY_SOLC overrides it for THESE TESTS ONLY, on a machine where 0.8.19
-# has no native build (Apple Silicon without Rosetta: solc 0.8.19 is x86-only there). Releases are never built from this harness.
+# The validator is always built exactly as the genesis builds it: solc 0.8.19 / London through the official soljson
+# (Tools/Genesis/build.py). CRYFT_TEST_LEGACY_SOLC only picks the compiler for the small 0.8.19-pragma test mocks
+# (on a machine without the soljson shim, e.g. CRYFT_TEST_LEGACY_SOLC=0.8.37).
 LEGACY_SOLC = os.environ.get('CRYFT_TEST_LEGACY_SOLC', '0.8.19')
+HOUR = 3600
+DAY = 86400
+WINDOW = 7 * DAY          # genesis default ballot window (seconds)
+GENESIS_INPUTS = json.loads((REPO / 'Tools/Genesis/inputs.json').read_text())
+
+
+def genesis_builder():
+    """Tools/Genesis/build.py as a module (its validator storage and standard input are reused, never re-typed)."""
+    spec = importlib.util.spec_from_file_location('cryft_genesis_build', REPO / 'Tools/Genesis/build.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def validator_artifact():
+    """0x1111 runtime + ABI + storage layout, compiled from the genesis standard input (0.8.19 via soljson)."""
+    builder = genesis_builder()
+    settings = GENESIS_INPUTS['compilers']['validator']
+    std = builder.standard_input(builder.VALIDATOR_SRC, settings['evm'], settings['runs'])
+    out = builder.soljson.compile_standard(std, settings['version'])
+    errors = [e['formattedMessage'] for e in out.get('errors', []) if e.get('severity') == 'error']
+    assert not errors, errors
+    unit = out['contracts'][builder.VALIDATOR_SRC]['ValidatorSmartContractAllowList']
+    return {'abi': unit['abi'], 'creation_bytecode': None,
+            'runtime_bytecode': '0x' + unit['evm']['deployedBytecode']['object'],
+            'metadata': unit['metadata'], 'storageLayout': unit['storageLayout'],
+            'methodIdentifiers': unit['evm']['methodIdentifiers']}
+
 
 @pytest.fixture(scope='session')
 def builds(tmp_path_factory):
     spec = importlib.util.spec_from_file_location('governance_compiler', REPO / 'Tools/SolcCompiler/compile.py')
     compiler = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(compiler)
-    compiler.VALIDATOR_SOLC_VERSION = LEGACY_SOLC              # this test run's copy only (CRYFT_TEST_LEGACY_SOLC)
-    output = {}
+    output = {'ValidatorSmartContractAllowList': validator_artifact()}
     for name, relative in PATHS.items():
-        validator = name == 'ValidatorSmartContractAllowList'
-        if validator and LEGACY_SOLC != '0.8.19':
-            # Its pragma is <0.8.20: the reviewed build in compiled_output stands in (built from the same commit's source, 0.8.19).
-            built = REPO / 'Tools/SolcCompiler/compiled_output/Genesis/ValidatorContracts/ValidatorSmartContractAllowList/ValidatorSmartContractAllowList_artifact.json'
-            output[name] = json.loads(built.read_text())
+        if name == 'ValidatorSmartContractAllowList':
             continue
-        contracts = compiler.compile_contract(
-            REPO / 'Contracts' / relative,
-            solc_version=LEGACY_SOLC if validator else compiler.DEFAULT_SOLC_VERSION,
-            evm_version='london' if validator else 'osaka',
-        )
+        contracts = compiler.compile_contract(REPO / 'Contracts' / relative,
+                                              solc_version=compiler.DEFAULT_SOLC_VERSION, evm_version='osaka')
         output[name] = next(value for key, value in contracts.items() if key.rsplit(':', 1)[-1] == name)
     mock = '''pragma solidity ^0.8.19;
 contract Provider {
@@ -95,43 +116,78 @@ def deploy(chain, name, *args):
 def at(chain, name, address):
     return chain['w3'].eth.contract(address=address, abi=chain['builds'][name]['abi'])
 
-@pytest.fixture
-def chain(builds, monkeypatch):
-    # Match Cryft's reviewed genesis limit; Ethereum's default is only 24 KiB.
+def now(chain):
+    return chain['w3'].eth.get_block('latest')['timestamp']
+
+def travel(chain, seconds):
+    """Advance block.timestamp (all ballot windows and upgrade delays are in seconds)."""
+    chain['tester'].time_travel(now(chain) + seconds)
+    chain['tester'].mine_blocks(1)
+
+def validator_storage(builds, validators, voters, roots, window=WINDOW, upgrade_delay=0, max_validators=None):
+    """0x1111 genesis storage, from Tools/Genesis/build.py and the compiler's storage layout (no initialize())."""
+    governance = {'roots': roots, 'voters': voters,
+                  'maxValidators': max_validators or GENESIS_INPUTS['governance']['maxValidators'],
+                  'voteWindowSeconds': window, 'upgradeDelaySeconds': upgrade_delay}
+    storage = genesis_builder().validator_storage(builds['ValidatorSmartContractAllowList']['storageLayout'],
+                                                  validators, governance)
+    return {int(slot, 16): int(value, 16) for slot, value in storage.items()}
+
+def genesis_chain(builds, monkeypatch, upgrade_delay=0, window=WINDOW):
+    """A local chain laid out like CryftGenesis.json: 0x1111 seeded by storage, ProxyAdmin, unlinked proxies.
+
+    accounts[0] is the only voter and root; the last four accounts are the validators."""
     import eth.vm.forks.spurious_dragon.computation as spurious_computation
-    release = json.loads((REPO/'Contracts/Genesis/development-release.json').read_text())
-    def find_limit(value):
-        if isinstance(value,dict):
-            if 'contractSizeLimit' in value:return value['contractSizeLimit']
-            for child in value.values():
-                limit=find_limit(child)
-                if limit is not None:return limit
-        return None
-    limit=find_limit(release)
-    assert limit==32768
+    limit = json.loads((REPO/'Contracts/Genesis/CryftGenesis.json').read_text())['config']['contractSizeLimit']
+    assert limit == 32768
     monkeypatch.setattr(spurious_computation,'EIP170_CODE_SIZE_LIMIT',limit)
     state = PyEVMBackend.generate_genesis_state()
-    accounts = list(state)
-    slots = {1:4}
-    base = int.from_bytes(Web3.keccak((1).to_bytes(32,'big')), 'big')
-    for i, address in enumerate(accounts[-4:]): slots[base+i] = int.from_bytes(address,'big')
-    for address, name, storage in [(REGISTRY,'ValidatorSmartContractAllowList',slots), (ADMIN,'ProxyAdmin',{})] + [
+    keys = [Web3.to_checksum_address(address) for address in state]
+    storage = validator_storage(builds, keys[-4:], [keys[0]], [keys[0]], window, upgrade_delay)
+    for address, name, slots in [(REGISTRY,'ValidatorSmartContractAllowList',storage), (ADMIN,'ProxyAdmin',{})] + [
         (address,'TransparentUpgradeableProxy',{}) for address in ADDRESSES.values()]:
-        state[bytes.fromhex(address[2:])] = {'balance':0,'nonce':0,'code':bytes.fromhex(builds[name]['runtime_bytecode'].removeprefix('0x')),'storage':storage}
+        state[bytes.fromhex(address[2:])] = {'balance':0,'nonce':0,'code':bytes.fromhex(builds[name]['runtime_bytecode'].removeprefix('0x')),'storage':slots}
     tester = EthereumTester(backend=PyEVMBackend(genesis_parameters={'gas_limit':64000000},genesis_state=state))
     w3 = Web3(EthereumTesterProvider(tester))
+    assert w3.eth.accounts[0] == keys[0]
     result = {'w3':w3,'tester':tester,'accounts':w3.eth.accounts,'builds':builds}
     result['registry'] = at(result, 'ValidatorSmartContractAllowList', REGISTRY)
-    tx(result, result['registry'].functions.initialize())
-    tx(result, result['registry'].functions.voteToAddRootOverlord(w3.eth.accounts[0]))
+    result['admin'] = at(result, 'ProxyAdmin', ADMIN)
     return result
 
-def linked(chain, name, initializer='initialize', args=()):
+@pytest.fixture
+def chain(builds, monkeypatch):
+    return genesis_chain(builds, monkeypatch)
+
+def init_call(chain, logic, name, initializer=None, args=()):
+    """Encoded link data. Managers initialize only through the proxy link with their full voter list."""
+    if initializer is None:
+        if name == 'GasManager':
+            initializer, args = 'initializeWithVoters', ([chain['accounts'][0]], 0, 10**30, DAY)
+        elif name == 'CodeManager':
+            initializer, args = 'initializeWithVoters', ([chain['accounts'][0]],)
+        else:
+            initializer = 'initialize'
+    return bytes.fromhex(getattr(logic.functions, initializer)(*args)._encode_transaction_data()[2:])
+
+def linked(chain, name, initializer=None, args=()):
     logic = deploy(chain, name)
     proxy = at(chain,'TransparentUpgradeableProxy',ADDRESSES[name])
-    data = bytes.fromhex(getattr(logic.functions, initializer)(*args)._encode_transaction_data()[2:])
-    tx(chain,proxy.functions.proxy_linkLogicAdmin(logic.address,data))
+    tx(chain,proxy.functions.proxy_linkLogicAdmin(logic.address,init_call(chain, logic, name, initializer, args)))
     return at(chain,name,proxy.address)
+
+def upgrade(chain, proxy_address, implementation, data=b'', sender=None):
+    """Scheduled upgrade (audit X-1): schedule on the proxy, wait the 0x1111 delay, execute via the ProxyAdmin."""
+    sender = sender or chain['accounts'][0]
+    proxy = at(chain, 'TransparentUpgradeableProxy', proxy_address)
+    tx(chain, proxy.functions.proxy_scheduleUpgrade(implementation, data), sender)
+    delay = proxy.functions.proxy_getUpgradeDelay().call()
+    if delay:
+        travel(chain, delay)
+    admin = at(chain, 'ProxyAdmin', ADMIN)
+    call = admin.functions.upgradeAndCall(proxy_address, implementation, data) if data else \
+        admin.functions.upgrade(proxy_address, implementation)
+    return tx(chain, call, sender)
 
 def engine(chain, name):
     return chain['registry'] if name == ENGINES[0] else linked(chain,name)
@@ -150,32 +206,45 @@ def configure(chain, contract, members, providers=(), voters=None, effective=Non
     operation=contract.functions.voteToSetVoterConfiguration(members,list(providers),expected)
     for voter in voters or [chain['accounts'][0]]: tx(chain,operation,voter)
 
+def add_provider(chain, c, name, provider, local, effective):
+    """Adds a voter provider. 0x1111 has only the hash-bound configuration ballot (audit X-55)."""
+    if name == ENGINES[0]:
+        configure(chain, c, local, [provider], effective=effective)
+    else:
+        tx(chain, c.functions.voteToAddOtherVoterContract(provider))
+
+def add_provider_fails(chain, c, name, provider, local, effective):
+    if name == ENGINES[0]:
+        fails(chain, c.functions.voteToSetVoterConfiguration(local, [provider], members_hash(chain, effective)))
+    else:
+        fails(chain, c.functions.voteToAddOtherVoterContract(provider))
+
 @pytest.mark.parametrize('name',ENGINES)
 def test_membership_votes_complete_and_invalidate_other_proposals(chain,name):
     c=engine(chain,name); a,b,d=chain['accounts'][:3]
     tx(chain,c.functions.voteToAddVoter(b),a)
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(400),a)
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(2*HOUR),a)
     tx(chain,c.functions.voteToAddVoter(d),a)
     assert c.functions.activeVoteCount().call()==2
     tx(chain,c.functions.voteToAddVoter(d),b)
     assert set(c.functions.getVoters().call())=={a,b,d}
     assert c.functions.activeVoteCount().call()==0
-    assert c.functions.getVoteTally(enum(name,'UPDATE_VOTE_TALLY_BLOCK_THRESHOLD'),400).call()[0]==0
-    assert not c.functions.hasVoted(enum(name,'UPDATE_VOTE_TALLY_BLOCK_THRESHOLD'),400,a).call()
-    fails(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(700),chain['accounts'][8])
+    assert c.functions.getVoteTally(enum(name,'UPDATE_VOTE_TALLY_BLOCK_THRESHOLD'),2*HOUR).call()[0]==0
+    assert not c.functions.hasVoted(enum(name,'UPDATE_VOTE_TALLY_BLOCK_THRESHOLD'),2*HOUR,a).call()
+    fails(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(3*HOUR),chain['accounts'][8])
 
 @pytest.mark.parametrize('name',ENGINES)
 def test_duplicate_provider_members_are_unique_and_failure_keeps_authority(chain,name):
     c=engine(chain,name); a,b=chain['accounts'][:2]; p=deploy(chain,'Provider')
     tx(chain,p.functions.set([a,b,a],False))
-    tx(chain,c.functions.voteToAddOtherVoterContract(p.address))
+    add_provider(chain,c,name,p.address,[a],[a,b])
     assert c.functions.getVoterCount().call()==2
     assert c.functions.getSupermajorityThreshold().call()==2
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(500),a)
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),a)
     tx(chain,p.functions.set([],True))
     assert set(c.functions.getVoters().call())=={a,b}
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(500),b)
-    assert c.functions.voteTallyBlockThreshold().call()==500
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),b)
+    assert c.functions.voteTallyBlockThreshold().call()==5*HOUR
     configure(chain,c,[a,b],[],[a,b])
     assert set(c.functions.getVoters().call())=={a,b}
 
@@ -184,17 +253,17 @@ def test_provider_failure_does_not_lower_three_of_four_quorum(chain,name):
     c=engine(chain,name); a,b,d,e=chain['accounts'][:4]; p=deploy(chain,'Provider')
     tx(chain,p.functions.set([d,e],False))
     configure(chain,c,[a,b],[p.address],effective=[a,b,d,e])
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(500),a)
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),a)
     tx(chain,p.functions.set([],True))
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(500),b)
-    assert c.functions.voteTallyBlockThreshold().call()==1000
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(500),d)
-    assert c.functions.voteTallyBlockThreshold().call()==500
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),b)
+    assert c.functions.voteTallyBlockThreshold().call()==WINDOW
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),d)
+    assert c.functions.voteTallyBlockThreshold().call()==5*HOUR
 
 @pytest.mark.parametrize('name',ENGINES)
 def test_refresh_requires_old_electorate_and_exact_new_hash(chain,name):
     c=engine(chain,name); a,b,d=chain['accounts'][:3]; p=deploy(chain,'Provider')
-    tx(chain,p.functions.set([b],False)); tx(chain,c.functions.voteToAddOtherVoterContract(p.address))
+    tx(chain,p.functions.set([b],False)); add_provider(chain,c,name,p.address,[a],[a,b])
     tx(chain,p.functions.set([d],False))
     expected=c.functions.previewVoters().call()[1]
     fails(chain,c.functions.voteToRefreshVoters(expected),d)
@@ -212,11 +281,13 @@ def test_expiry_is_frozen_and_cleanup_cannot_change_membership(chain,name):
     tx(chain,c.functions.voteToAddVoter(chain['accounts'][2]))
     vote_type=enum(name,'ADD_VOTER'); target=int(chain['accounts'][2],16)
     expires=c.functions.getVoteTally(vote_type,target).call()[2]
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5),a)
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5),b)
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(HOUR),a)
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(HOUR),b)
     assert c.functions.getVoteTally(vote_type,target).call()[2]==expires
     fails(chain,c.functions.resetExpiredTally(vote_type,target),chain['accounts'][9])
-    chain['tester'].mine_blocks(expires-chain['w3'].eth.block_number+1)
+    chain['tester'].mine_blocks(500)  # block counts never expire a ballot (audit X-14)
+    fails(chain,c.functions.resetExpiredTally(vote_type,target),chain['accounts'][9])
+    travel(chain,expires-now(chain)+1)
     tx(chain,c.functions.resetExpiredTally(vote_type,target),chain['accounts'][9])
     assert c.functions.activeVoteCount().call()==0
     assert set(c.functions.getVoters().call())=={a,b}
@@ -229,18 +300,25 @@ def test_atomic_last_voter_handover_and_zero_rejection(chain,name):
     for invalid in ['0x'+'0'*40,c.address,ADMIN]:
         fails(chain,c.functions.voteToSetVoterConfiguration([invalid],[],members_hash(chain,[invalid])))
     configure(chain,c,[b])
-    fails(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(500),a)
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(500),b)
+    fails(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),a)
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(5*HOUR),b)
 
 @pytest.mark.parametrize('name',ENGINES)
 def test_bad_providers_cannot_enter_configuration(chain,name):
-    c=engine(chain,name)
+    c=engine(chain,name); a=chain['accounts'][0]
     for provider in [c.address,chain['accounts'][8],deploy(chain,'RecursiveProvider').address,deploy(chain,'InvalidProvider').address]:
-        fails(chain,c.functions.voteToAddOtherVoterContract(provider))
+        add_provider_fails(chain,c,name,provider,[a],[a])
     p=deploy(chain,'Provider'); tx(chain,p.functions.set(['0x'+'0'*40],False))
-    fails(chain,c.functions.voteToAddOtherVoterContract(p.address))
+    add_provider_fails(chain,c,name,p.address,[a],[a,'0x'+'0'*40])
     tx(chain,p.functions.set(chain['accounts'][:2],False))
-    fails(chain,c.functions.voteToSetVoterConfiguration([chain['accounts'][0]],[p.address,p.address],members_hash(chain,chain['accounts'][:2])))
+    fails(chain,c.functions.voteToSetVoterConfiguration([a],[p.address,p.address],members_hash(chain,chain['accounts'][:2])))
+
+def test_validator_unbound_provider_ballots_removed(builds):
+    """Audit X-55: providers change only through the hash-bound configuration ballots."""
+    names={entry.get('name') for entry in builds['ValidatorSmartContractAllowList']['abi']}
+    for kind in ['Validator','Voter','Overlord']:
+        assert f'voteToAddOther{kind}Contract' not in names and f'voteToRemoveOther{kind}Contract' not in names
+    assert {'voteToSetVoterConfiguration','voteToSetValidatorConfiguration','voteToSetRootConfiguration'} <= names
 
 def test_besu_validator_abi_floor_atomic_replacement_and_provider_outage(chain):
     c=chain['registry']; a=chain['accounts']
@@ -297,29 +375,29 @@ def test_proxy_revocation_requires_recovery_controller_and_restores(chain):
 
 @pytest.mark.parametrize('name',['GasManager','CodeManager'])
 def test_explicit_initializer_works_and_implementation_stays_locked(chain,name):
-    logic=deploy(chain,name)
-    fails(chain,logic.functions.initialize())
-    c=linked(chain,name,'initializeWithVoter',(chain['accounts'][1],))
-    assert c.functions.getVoters().call()==[chain['accounts'][1]]
-    fails(chain,c.functions.initialize())
-
-def test_beacon_acceptance_cancellation_and_renunciation(chain):
-    logic=deploy(chain,'Value'); beacon=deploy(chain,'CryftDelegationBeacon',logic.address)
     a,b=chain['accounts'][:2]
-    fails(chain,beacon.functions.renounceOwnership())
-    for invalid in ['0x'+'0'*40,beacon.address,a]: fails(chain,beacon.functions.transferOwnership(invalid))
-    tx(chain,beacon.functions.transferOwnership(b)); assert beacon.functions.owner().call()==a
-    fails(chain,beacon.functions.acceptOwnership(),chain['accounts'][2])
-    tx(chain,beacon.functions.cancelOwnershipTransfer())
-    fails(chain,beacon.functions.acceptOwnership(),b)
-    tx(chain,beacon.functions.transferOwnership(b)); tx(chain,beacon.functions.acceptOwnership(),b)
-    assert beacon.functions.owner().call()==b
-    fails(chain,beacon.functions.upgradeTo(logic.address),a)
+    logic=deploy(chain,name)
+    args=([b],0,10**30,DAY) if name=='GasManager' else ([b],)
+    fails(chain,logic.functions.initializeWithVoters(*args))
+    assert not {'initialize','initializeWithVoter'} & {entry.get('name') for entry in logic.abi}
+    c=linked(chain,name,'initializeWithVoters',args)
+    assert c.functions.getVoters().call()==[b]
+    fails(chain,c.functions.initializeWithVoters(*args))
+    fails(chain,c.functions.initializeWithVoters(*args),b)
+
+def test_beacon_is_registry_owned_from_construction(chain):
+    """The beacon has no ownership handover: 0x…de1E6A7E owns it from the constructor (registry 3.0.0)."""
+    logic=deploy(chain,'Value'); beacon=deploy(chain,'CryftDelegationBeacon',logic.address)
+    assert beacon.functions.owner().call()==ADDRESSES['CryftDelegationRegistry']
+    names={entry.get('name') for entry in beacon.abi}
+    assert not {'transferOwnership','acceptOwnership','renounceOwnership','cancelOwnershipTransfer'} & names
+    for sender in chain['accounts'][:2]:
+        fails(chain,beacon.functions.upgradeTo(logic.address),sender)
 
 def test_sponsor_admin_handover_keeps_pause_recovery(chain):
     a,b=chain['accounts'][:2]
     logic=deploy(chain,'CryftDelegation'); beacon=deploy(chain,'CryftDelegationBeacon',logic.address)
-    delegate=deploy(chain,'CryftDelegationBeaconDispatcher',beacon.address)
+    delegate=deploy(chain,'CryftBeaconDispatcher',beacon.address)
     c=linked(chain,'GasSponsor',args=(a,a,delegate.address,100000))
     for invalid in ['0x'+'0'*40,c.address,ADMIN]: fails(chain,c.functions.proposePlatformAdmin(invalid))
     tx(chain,c.functions.proposePlatformAdmin(b)); assert c.functions.platformAdmin().call()==a
@@ -328,40 +406,30 @@ def test_sponsor_admin_handover_keeps_pause_recovery(chain):
     tx(chain,c.functions.setPaused(False),b)
     fails(chain,c.functions.setPaused(True),a)
 
-def test_registry_accepts_and_can_cancel_beacon_handover(chain):
+def test_registry_admin_two_step_handover(chain):
     a,b=chain['accounts'][:2]
     logic=deploy(chain,'CryftDelegation'); beacon=deploy(chain,'CryftDelegationBeacon',logic.address)
-    dispatcher=deploy(chain,'CryftDelegationBeaconDispatcher',beacon.address)
-    c=linked(chain,'CryftDelegationRegistry',args=(dispatcher.address,beacon.address,ADDRESSES['GasSponsor']))
-    tx(chain,beacon.functions.transferOwnership(c.address))
-    tx(chain,c.functions.acceptBeaconOwnership())
+    dispatcher=deploy(chain,'CryftBeaconDispatcher',beacon.address)
+    c=linked(chain,'CryftDelegationRegistry',initializer='initializeWithAdmin',
+             args=(dispatcher.address,beacon.address,ADDRESSES['GasSponsor'],a,HOUR))
     assert beacon.functions.owner().call()==c.address
-    tx(chain,c.functions.transferBeaconOwnership(b))
-    assert beacon.functions.owner().call()==c.address
-    tx(chain,c.functions.cancelBeaconOwnershipTransfer())
-    fails(chain,beacon.functions.acceptOwnership(),b)
-    tx(chain,c.functions.transferBeaconOwnership(b)); tx(chain,beacon.functions.acceptOwnership(),b)
-    assert beacon.functions.owner().call()==b
-    fails(chain,c.functions.transferBeaconOwnership(a))
-    tx(chain,beacon.functions.transferOwnership(c.address),b); tx(chain,c.functions.acceptBeaconOwnership())
     for invalid in ['0x'+'0'*40,c.address,ADMIN]: fails(chain,c.functions.proposeAdmin(invalid))
     tx(chain,c.functions.proposeAdmin(b)); tx(chain,c.functions.cancelAdminTransfer()); fails(chain,c.functions.acceptAdmin(),b)
     tx(chain,c.functions.proposeAdmin(b)); tx(chain,c.functions.acceptAdmin(),b)
-    # Re-recording the same implementation must fail even for the new admin.
-    fails(chain,c.functions.recordCurrentImplementation(),b)
-    next_logic=deploy(chain,'CryftDelegation')
-    code_hash=chain['w3'].keccak(chain['w3'].eth.get_code(next_logic.address))
-    fails(chain,c.functions.upgradeDelegation(next_logic.address,code_hash),a)
-    tx(chain,c.functions.upgradeDelegation(next_logic.address,code_hash),b)
-    assert beacon.functions.implementation().call()==next_logic.address
+    assert c.functions.registryAdmin().call()==b
+    fails(chain,c.functions.proposeAdmin(a),a)
 
 def test_runtime_limits_and_validator_compiler(builds):
     for name in PATHS:
-        # Cryft's README specifies a 32 KiB deployed contract limit.
+        # Cryft's genesis sets a 32 KiB deployed contract limit.
         assert len(bytes.fromhex(builds[name]['runtime_bytecode'].removeprefix('0x'))) <= 32768, name
     metadata=json.loads(builds['ValidatorSmartContractAllowList']['metadata'])
     assert metadata['compiler']['version'].startswith('0.8.19')
     assert metadata['settings']['evmVersion']=='london'
+    # The tested runtime IS the committed genesis runtime.
+    manifest=json.loads((REPO/'Contracts/Genesis/genesis-release.json').read_text())
+    runtime=builds['ValidatorSmartContractAllowList']['runtime_bytecode']
+    assert '0x'+Web3.keccak(hexstr=runtime).hex().removeprefix('0x')==manifest['runtimes']['ValidatorSmartContractAllowList']['runtime_keccak256']
 
 def test_besu_validator_selector_returns_standard_address_array(chain):
     selector=Web3.keccak(text='getValidators()')[:4]
@@ -377,31 +445,29 @@ def test_provider_member_and_configuration_limits(chain,name):
     tx(chain,p.functions.set(members,False))
     fails(chain,c.functions.voteToSetVoterConfiguration([a],[p.address]*17,members_hash(chain,[a])))
     # A provider may return at most 64, and the combined unique pool is also capped.
-    fails(chain,c.functions.voteToAddOtherVoterContract(p.address))
+    add_provider_fails(chain,c,name,p.address,[a],members+[a])
     configure(chain,c,[],[p.address],effective=members)
     assert c.functions.getVoterCount().call()==64
     tx(chain,p.functions.set(members+[a],False))
     fails(chain,c.functions.previewVoters())
     assert c.functions.getVoterCount().call()==64
 
-def test_gas_funding_survives_voter_rotation_and_binds_recipient(chain):
+def test_gas_funding_binds_recipient_and_runs_once(chain):
     c=linked(chain,'GasManager'); a,b,recipient,outsider=chain['accounts'][:4]
     amount=10**15
     receipt=chain['w3'].eth.wait_for_transaction_receipt(chain['w3'].eth.send_transaction({
         'from':a,'to':c.address,'value':3*amount,'gas':100000}))
     assert receipt.status==1
-    tx(chain,c.functions.voteToFundGasV1(recipient,amount))
+    names={entry.get('name') for entry in c.abi}
+    assert 'voteToFundGasV1' not in names and 'executeFundGasV1' not in names  # V1 funding removed
     configure(chain,c,[b])
-    fails(chain,c.functions.executeFundGasV1(recipient,amount),outsider)
-    tx(chain,c.functions.executeFundGasV1(recipient,amount),recipient)
-    fails(chain,c.functions.executeFundGasV1(recipient,amount),recipient)
     operation=c.functions.proposeFundGasV2('handover',recipient,amount,'same recipient after rotation')
     fund_key,_=operation.call({'from':b})
     tx(chain,operation,b)
     fails(chain,c.functions.executeFundGasV2(fund_key),outsider)
     tx(chain,c.functions.executeFundGasV2(fund_key),recipient)
     fails(chain,c.functions.executeFundGasV2(fund_key),recipient)
-    assert c.functions.totalGasFunded().call()==2*amount
+    assert c.functions.totalGasFunded().call()==amount
 
 def test_revocation_preserves_approved_lists_and_explicit_refresh(chain):
     c=chain['registry']; a,b=chain['accounts'][:2]
@@ -424,7 +490,7 @@ def test_revocation_preserves_approved_lists_and_explicit_refresh(chain):
     tx(chain,voters.functions.set([b],False))
     tx(chain,c.functions.voteToRefreshVoters(members_hash(chain,[b])))
     tx(chain,voters.functions.set([],True))
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(750),b)
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(3*HOUR),b)
     assert c.functions.getVoters().call()==[b]
     assert c.functions.getValidators().call()==sorted(validators,key=lambda value:int(value,16))
 
@@ -433,13 +499,13 @@ def test_proxy_and_application_ballots_are_independent(chain,name):
     c=linked(chain,name); a,b,guardian=chain['accounts'][:3]
     p=at(chain,'TransparentUpgradeableProxy',c.address)
     configure(chain,c,[a,b])
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(800),a)
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(8*HOUR),a)
     epoch=c.functions.governanceEpoch().call()
     tx(chain,p.functions.proxy_proposeGuardianChange(guardian,True),a)
     assert c.functions.governanceEpoch().call()==epoch
     assert c.functions.activeVoteCount().call()==1
-    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(800),b)
-    assert c.functions.voteTallyBlockThreshold().call()==800
+    tx(chain,c.functions.voteToUpdateVoteTallyBlockThreshold(8*HOUR),b)
+    assert c.functions.voteTallyBlockThreshold().call()==8*HOUR
     tx(chain,p.functions.proxy_addOverlord(b),a)
     tx(chain,p.functions.proxy_proposeGuardianChange(guardian,False),a)
     configure(chain,c,[b],voters=[a,b])
@@ -448,19 +514,24 @@ def test_proxy_and_application_ballots_are_independent(chain,name):
     assert not p.functions.proxy_isGuardian(guardian).call()
     assert c.functions.getVoters().call()==[b]
 
-def test_proxy_expiry_cannot_disable_subsequent_voting(chain):
+def test_proxy_expiry_window_is_seconds_and_cannot_disable_voting(chain):
     p=at(chain,'TransparentUpgradeableProxy',ADDRESSES['proxy'])
-    fails(chain,p.functions.proxy_proposeExpiryChange(100001))
-    fails(chain,p.functions.proxy_proposeExpiryChange(99))
-    tx(chain,p.functions.proxy_proposeExpiryChange(100000))
+    assert p.functions.proxy_getVoteExpiry().call()==WINDOW
+    fails(chain,p.functions.proxy_proposeExpiryChange(30*DAY+1))
+    fails(chain,p.functions.proxy_proposeExpiryChange(HOUR-1))
+    fails(chain,p.functions.proxy_proposeExpiryChange(WINDOW))
+    tx(chain,p.functions.proxy_proposeExpiryChange(30*DAY))
+    assert p.functions.proxy_getVoteExpiry().call()==30*DAY
     tx(chain,p.functions.proxy_proposeGuardianChange(chain['accounts'][1],True))
     assert p.functions.proxy_isGuardian(chain['accounts'][1]).call()
 
 def test_proxy_admin_keeps_dynamic_root_upgrade_authority(chain):
     p=at(chain,'TransparentUpgradeableProxy',ADDRESSES['proxy'])
-    admin=at(chain,'ProxyAdmin',ADMIN); a,b=chain['accounts'][:2]
+    admin=chain['admin']; a,b=chain['accounts'][:2]
     original=deploy(chain,'Value'); next_logic=deploy(chain,'Value')
-    tx(chain,p.functions.proxy_linkLogicAdmin(original.address,b''))
+    init=bytes.fromhex(original.functions.value()._encode_transaction_data()[2:])
+    tx(chain,p.functions.proxy_linkLogicAdmin(original.address,init))
+    tx(chain,p.functions.proxy_scheduleUpgrade(next_logic.address,b''),a)
     fails(chain,admin.functions.upgrade(p.address,next_logic.address),b)
     tx(chain,chain['registry'].functions.voteToSetRootConfiguration([b],[],members_hash(chain,[b])))
     fails(chain,admin.functions.upgrade(p.address,next_logic.address),a)
