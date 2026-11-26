@@ -150,3 +150,47 @@ Kota issuer/minter/recovery roles. Remove bootstrap authority only after replace
 controllers and recovery paths are proven. Some explicit governance revocations are
 irreversible; they are not routine handover actions. The existing initialization
 exception is retained only for the owner-approved, closed bootstrap network.
+
+## GasSponsor 1.5.0: program sponsors hold gas credit only (2026-11-23)
+
+`ProgramGasSponsor` 1.5.0 (`Releases/GasSponsor/1.5.0`, built by `Tools/GasSponsor/build_1_5_0.py`) closes every coin path into or
+out of a sponsor opened by the developer gas program (`openProgramSponsor`):
+
+| call | program sponsor | every other sponsor |
+|---|---|---|
+| `depositFor` | reverts `ProgramSponsorGasOnly` (from anyone) | unchanged: refundable deposit |
+| `withdrawSponsor` | reverts `ProgramSponsorNoWithdraw` | unchanged: the manager withdraws the refundable part |
+| `depositGasCredit` | only from the program (`NotProgram`) | unchanged: anyone |
+| `recoverGasCredit` | the platform admin or the program, to the program only (`ProgramSponsorRecoverToProgram`) | unchanged: the platform admin, any address |
+
+Spending is unchanged: a program sponsor is spent from only while the program answers eligible (its developer's Pass active, the
+program not paused), so a revoked Pass stops spending at the very next execution. No storage is added; `layout-proof.json` proves
+the layout append-only against both live predecessors (1.3.0 at `0x…FEeD`, 1.4.0 behind the dev test sponsor). Runtime 28,547 bytes
+(Dakota's limit 32,768).
+
+## GasSponsor 1.5.1: a program sponsor's credit is recovered by the program alone (2026-11-23)
+
+`ProgramGasSponsor` 1.5.1 (`Releases/GasSponsor/1.5.1`, built by `Tools/GasSponsor/build_1_5_1.py`; the independent review's P2-D)
+changes one row of the table above: `recoverGasCredit` for a program sponsor is the **program's alone** (`NotProgram` for anyone
+else, the platform administrator included), still only to the program (`ProgramSponsorRecoverToProgram`). The program's own rules
+(DeveloperGasProgram 1.2.0: the 90-day freeze before an ordinary reclaim, an abuse reclaim of a frozen Pass, a paid top-up's refund
+by receipt) are the only way credit leaves a developer's account. Every other sponsor is unchanged. No storage is added;
+Two more from the safe-coding review of the live contracts (Chad: "fix all of them"):
+
+- **C3, call approvals on chain again.** `ProgramGasSponsor` now inherits `ApprovedGasSponsor` (GasSponsor 1.2's mandatory
+  target/selector approvals: code hash, implementation, max value, CodeManager). Every sponsored execution of a sponsor that is
+  NOT a developer program's must call only approved (target, selector, value), else `CallNotApproved` (nothing charged). A
+  developer program's sponsor is exempt: its calls are governed by the program deny list, its manager's targets and the
+  router's lists. Only the platform administrator sets approvals (`setCallApprovals`, 1 to 64 at a time; a zero code hash
+  revokes); `initializeCallApprovals` is removed (the 32 KB budget). Storage: ApprovedGasSponsor's own namespace,
+  `keccak256("dakota.storage.ApprovedGasSponsor.v1")`, the one 1.2 wrote: `0x…FEeD` still holds its 7 entries from block 5171
+  (1.2 ran there for blocks 5171-5330, before the rollback and 1.3.0). `layout-proof.json` proves the struct is 1.2's and that
+  the four namespaces and the plain slots are apart.
+- **C4, stuck worker reservations.** `releaseWorker(id)`: the platform administrator at any time, or ANYONE once
+  `RESERVATION_RELEASE_AFTER` (7 days) has passed since the reservation, settles it at its maximum (the bound the tenant agreed
+  to), pays the treasury captured at reservation (or defers its revenue), and emits `WorkerReleased(id, sponsor, by, cost,
+  policySettled)`. Idempotent: an operation already settled, released or never reserved changes nothing and returns 0. The
+  policy's `settle` is asked with 200,000 gas and a refusal does not keep the reservation stuck.
+
+`layout-proof.json` proves the layout append-only against 1.3.0 (`0x…FEeD`), 1.4.0, 1.5.0 (the dev test sponsor since PB-2) and
+the 1.2 approvals namespace. Runtime 32,670 bytes (margin 98 to Dakota's 32,768).

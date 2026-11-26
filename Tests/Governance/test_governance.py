@@ -1,6 +1,7 @@
 """Local EVM governance/lockout regression tests. No RPC endpoints or real keys."""
 from pathlib import Path
 import importlib.util
+import os
 import json
 import re
 
@@ -29,18 +30,27 @@ PATHS = {
     'DakotaDelegationBeaconDispatcher': 'Genesis/7702/DakotaDelegationBeaconDispatcher.sol',
 }
 ENGINES = ['ValidatorSmartContractAllowList', 'GasManager', 'CodeManager']
+# The validator's own compiler (0.8.19, London). DAKOTA_TEST_LEGACY_SOLC overrides it for THESE TESTS ONLY, on a machine where 0.8.19
+# has no native build (Apple Silicon without Rosetta: solc 0.8.19 is x86-only there). Releases are never built from this harness.
+LEGACY_SOLC = os.environ.get('DAKOTA_TEST_LEGACY_SOLC', '0.8.19')
 
 @pytest.fixture(scope='session')
 def builds(tmp_path_factory):
     spec = importlib.util.spec_from_file_location('governance_compiler', REPO / 'Tools/SolcCompiler/compile.py')
     compiler = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(compiler)
+    compiler.VALIDATOR_SOLC_VERSION = LEGACY_SOLC              # this test run's copy only (DAKOTA_TEST_LEGACY_SOLC)
     output = {}
     for name, relative in PATHS.items():
         validator = name == 'ValidatorSmartContractAllowList'
+        if validator and LEGACY_SOLC != '0.8.19':
+            # Its pragma is <0.8.20: the reviewed build in compiled_output stands in (built from the same commit's source, 0.8.19).
+            built = REPO / 'Tools/SolcCompiler/compiled_output/Genesis/ValidatorContracts/ValidatorSmartContractAllowList/ValidatorSmartContractAllowList_artifact.json'
+            output[name] = json.loads(built.read_text())
+            continue
         contracts = compiler.compile_contract(
             REPO / 'Contracts' / relative,
-            solc_version='0.8.19' if validator else compiler.DEFAULT_SOLC_VERSION,
+            solc_version=LEGACY_SOLC if validator else compiler.DEFAULT_SOLC_VERSION,
             evm_version='london' if validator else 'osaka',
         )
         output[name] = next(value for key, value in contracts.items() if key.rsplit(':', 1)[-1] == name)
@@ -58,7 +68,7 @@ contract RecursiveProvider { function getVoters() external view returns(address[
 contract InvalidProvider { fallback() external { assembly { mstore(0,32) mstore(32,10000) return(0,64) } } }
 contract Value { function value() external pure returns(uint) { return 42; } }
 '''
-    for key, artifact in solcx.compile_source(mock, solc_version='0.8.19', output_values=['abi','bin','bin-runtime']).items():
+    for key, artifact in solcx.compile_source(mock, solc_version=LEGACY_SOLC, output_values=['abi','bin','bin-runtime']).items():
         output[key.split(':')[-1]] = {'abi':artifact['abi'], 'creation_bytecode':'0x'+artifact['bin'], 'runtime_bytecode':'0x'+artifact['bin-runtime']}
     evidence = {name:{'runtime_bytes':len(bytes.fromhex(a['runtime_bytecode'].removeprefix('0x'))),
                      'runtime_keccak256':'0x'+Web3.keccak(hexstr=a['runtime_bytecode']).hex().removeprefix('0x')}

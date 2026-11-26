@@ -38,7 +38,7 @@ contract Echo {
     }
 }
 '''
-    for key,a in solcx.compile_source(source,solc_version='0.8.19',output_values=['abi','bin','bin-runtime']).items():
+    for key,a in solcx.compile_source(source,solc_version=__import__('os').environ.get('DAKOTA_TEST_LEGACY_SOLC','0.8.19'),output_values=['abi','bin','bin-runtime']).items():
         result[key.split(':')[-1]]={'abi':a['abi'],'creation_bytecode':'0x'+a['bin'],'runtime_bytecode':'0x'+a['bin-runtime']}
     return result
 
