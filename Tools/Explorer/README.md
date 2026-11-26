@@ -1,7 +1,8 @@
 # Cryft Network explorer deployment
 
 This development deployment separates the branded Cryft frontend on Frontend-01
-from the Blockscout API/indexer, PostgreSQL and Redis on Backend-01. Its intended
+from the Blockscout API/indexer, PostgreSQL and Redis on Indexer-01 (since the 2026-11-25
+rebuild; their data on its DigitalOcean volume, `prepare-build.py --data-device`). Its intended
 entry point is `http://100.111.69.1:8080` over Nebula. Check live acceptance records
 before treating an installation as available.
 
@@ -42,10 +43,10 @@ MetaMask add-network support alone does not enable the complete wallet-write UI.
 | --- | --- | --- | --- |
 | Frontend-01 | cryft-explorer-frontend | 127.0.0.1:3001 | 4 GiB / 2 CPUs |
 | Frontend-01 | cryft-nginx | Nebula and localhost :8080 | shared 512 MiB / 2 CPUs |
-| Backend-01 | cryft-explorer-api | 127.0.0.1:4000 | 8 GiB / 3 CPUs |
-| Backend-01 | cryft-nginx | Nebula and localhost :4002 | shared 512 MiB / 2 CPUs |
-| Backend-01 | cryft-explorer-db | isolated container network :5432 | 6 GiB / 2 CPUs |
-| Backend-01 | cryft-explorer-redis | isolated container network :6379 | 512 MiB / 0.5 CPU |
+| Indexer-01 | cryft-explorer-api | 127.0.0.1:4000 | 4 GiB / 3 CPUs |
+| Indexer-01 | cryft-nginx | Nebula and localhost :4002 | shared 512 MiB / 2 CPUs |
+| Indexer-01 | cryft-explorer-db | isolated container network :5432 | 3 GiB / 2 CPUs |
+| Indexer-01 | cryft-explorer-redis | isolated container network :6379 | 512 MiB / 0.5 CPU |
 
 All containers run rootless under the non-login `cryft-explorer` host account;
 applications use non-root container users. System services start at boot with
