@@ -1,0 +1,15 @@
+{
+  "purpose": "Block-stuffing defence (audit X-14/X-15, Chad 2026-11-25: per-sender limits plus time-based windows). Applied to every validator and the RPC node by install-besu.py and to the local rehearsal by Tools/Genesis/localnet.py. Flags checked against besu 26.8.1 --help.",
+  "besu": {
+    "tx-pool": "LAYERED",
+    "tx-pool-max-future-by-sender": 16,
+    "tx-pool-max-prioritized": 2000,
+    "tx-pool-max-tx-bytes": 131072,
+    "tx-pool-no-local-priority": true
+  },
+  "prioritySenders": {
+    "note": "Governance and system senders are kept and selected first, so a stuffed pool cannot exclude a vote, a cancel or a guardian pause. Roots and voters come from the genesis inputs; add the guardian, timelock executors, Paladin settlement and FEeD relayers when they exist.",
+    "fromGenesisInputs": ["governance.roots", "governance.voters"],
+    "extra": []
+  }
+}

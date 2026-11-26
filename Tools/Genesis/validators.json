@@ -1,0 +1,33 @@
+{
+  "generated": "20261125",
+  "custody": [
+    "/Users/chadscully/Cryft/codex-outputs/cryft-wallets/private/validators-20261125",
+    "macOS login Keychain service cryft-validator-0N-20261125"
+  ],
+  "validators": [
+    {
+      "name": "Validator-01",
+      "address": "0x799b1a85866b0219FE0d9146b295076F3aEBA00F",
+      "public_key": "0xe9182fe30eec42007c6766e28916575e66f2bf02b4a3cf2ffc33cef4a50dfc01c579f1dcd9beada0924300d696a4e3214164962563e7fe528c3bb77ff304c909",
+      "enode": "enode://e9182fe30eec42007c6766e28916575e66f2bf02b4a3cf2ffc33cef4a50dfc01c579f1dcd9beada0924300d696a4e3214164962563e7fe528c3bb77ff304c909@100.111.32.101:30303"
+    },
+    {
+      "name": "Validator-02",
+      "address": "0xA0a4e22392398554e7Fd6Cf2861c7702149d9BC9",
+      "public_key": "0x31a7224d07d7df5b0afff6a7ab03d028f02f3cd6380c2d348759cddb4be3a31d9b92156723f3041c711f0944e748c98d58987fed3453956b60c8b471e90edce9",
+      "enode": "enode://31a7224d07d7df5b0afff6a7ab03d028f02f3cd6380c2d348759cddb4be3a31d9b92156723f3041c711f0944e748c98d58987fed3453956b60c8b471e90edce9@100.111.32.102:30303"
+    },
+    {
+      "name": "Validator-03",
+      "address": "0x3F57FF9cDc193Fd43C73BF4386f62a7c21Ef44BA",
+      "public_key": "0x493e19dead85aafe082b36b47150b312b2daf2cf07257b97f158c214901846cfeda57b0df3d676214a5d2655821474ae46abb65c4ba2b7f0207292da9fe167ae",
+      "enode": "enode://493e19dead85aafe082b36b47150b312b2daf2cf07257b97f158c214901846cfeda57b0df3d676214a5d2655821474ae46abb65c4ba2b7f0207292da9fe167ae@100.111.32.103:30303"
+    },
+    {
+      "name": "Validator-04",
+      "address": "0x0fe2e1364e7Cd7ee51E09D3864f39340Bf4D8C8D",
+      "public_key": "0x96b854edbd97715b1ba7930e3063c36e22fba1df3f8ff724cd48227f056646f956899e1d25f9ef0cd8210ad9bfaf22f1b8148d2b780111453398735cc1587a10",
+      "enode": "enode://96b854edbd97715b1ba7930e3063c36e22fba1df3f8ff724cd48227f056646f956899e1d25f9ef0cd8210ad9bfaf22f1b8148d2b780111453398735cc1587a10@100.111.32.104:30303"
+    }
+  ]
+}
