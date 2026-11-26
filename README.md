@@ -532,7 +532,7 @@ CodeManager (independent)
 | **PrivateMetaTxRelay** | Disabled legacy fallback; requires separate hardening if live delegation tests establish a need. |
 | **CryftDelegation**    | Initial v1 EIP-7702 execution logic. Verifies an account-owner EIP-712 signature, enforces per-account nonces/deadlines/execution gas budgets, executes bounded call batches, and supports EIP-1271 validation. It intentionally exposes no generic owner/session-key execution API.                                                                                                                                                                                                              |
 | **CryftDelegationBeacon** | Shared implementation beacon whose constructor accepts only the implementation and derives its temporary owner from the root caller validated by `0x...1111`. After bootstrap, the fixed delegation entry owns it and Registry upgrades call `upgradeTo(newImplementation)` once.                                                                                                                                                                                                                  |
-| **CryftDelegationBeaconDispatcher** | Immutable direct EIP-7702 route with beacon/protocol getters. |
+| **CryftBeaconDispatcher** | Immutable direct EIP-7702 route with beacon/protocol getters. |
 | **GasSponsor**          | Initial v1 platform-managed sponsorship treasury. Validates platform-signed vouchers, approved EIP-7702 delegation, allowlisted relayers, tenant/sponsor limits, operation replay protection, gas envelopes, and bounded reimbursement.                                                                                                                                                                                                                                                           |
 | **CryftGreetingCards**  | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase from pre-registered supply. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license.                                                                                                                                     |
 
@@ -962,7 +962,7 @@ dakota-network/
 │   │   ├── 7702/
 │   │   │   ├── CryftDelegation.sol  # Signed sponsored-execution logic for delegated EOAs
 │   │   │   ├── CryftDelegationBeacon.sol  # Shared implementation beacon
-│   │   │   ├── CryftDelegationBeaconDispatcher.sol  # Stateless per-account dispatcher
+│   │   │   ├── CryftBeaconDispatcher.sol  # Stateless per-account dispatcher
 │   │   │   ├── CryftDelegationRegistry.sol  # Fixed-entry control plane and release directory
 │   │   │   ├── GasSponsor.sol        # Platform-voucher sponsorship treasury
 │   │   │   ├── GAS-SPONSORSHIP.md    # Authoritative deployment/canary/upgrade runbook

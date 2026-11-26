@@ -18,11 +18,11 @@ The dispatcher validates beacon/implementation code and rejects direct cycles.
 
 import "../Upgradeable/Proxy/Beacon/IBeacon.sol";
 
-/// @title CryftDelegationBeaconDispatcher
+/// @title CryftBeaconDispatcher
 /// @notice Immutable route from an EIP-7702 account to its shared beacon.
 /// @dev Configuration getters read immutables; fallback resolves the shared logic
 ///      and delegates in the original account context without account linking.
-contract CryftDelegationBeaconDispatcher {
+contract CryftBeaconDispatcher {
     error InvalidBeacon(address beacon);
     error InvalidImplementation(address implementation);
 

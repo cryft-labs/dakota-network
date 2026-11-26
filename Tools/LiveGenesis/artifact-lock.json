@@ -40,7 +40,7 @@
     "source": "Contracts/Genesis/7702/CryftDelegationBeacon.sol",
     "standard_input_sha256": "11b3a195b641da1c570cf53955b61debfdea5a7b95d2fab96aea931530d6b284"
   },
-  "CryftDelegationBeaconDispatcher": {
+  "CryftBeaconDispatcher": {
     "artifact_sha256": "d9990fc4cdcf43fa4ec5a9fc0ffd4305d0b1ccd6d8593bec6e794b02ed9b1170",
     "compiler": "0.8.37",
     "evm": "osaka",
@@ -72,7 +72,7 @@
     },
     "reproduced_current_source": true,
     "runtime_bytes": 813,
-    "source": "Contracts/Genesis/7702/CryftDelegationBeaconDispatcher.sol",
+    "source": "Contracts/Genesis/7702/CryftBeaconDispatcher.sol",
     "standard_input_sha256": "fe4c468a35cfb45b32f67cff9dc2eee5feae33139448a7464d7c33e98d79a841"
   },
   "CryftDelegationRegistry": {

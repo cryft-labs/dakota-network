@@ -59,7 +59,7 @@ funding.
 | Old `CryftDelegation` `1.0.0` | `0xEfbFba9c9e9A38b5E15030511Ad15139356F39f7` | Verified, but do not retain as the active release |
 | `CryftDelegation` `1.1.0` | `<DEPLOY_AND_RECORD>` | Mandatory new deployment |
 | `CryftDelegationBeacon` | `0x69E67BF40445448ac342BBAFe6CA2922AAF56eE3` | Verified and usable |
-| `CryftDelegationBeaconDispatcher` | `0x6CfA66d263F84B6b8B9E21621562D624b51a58be` | Verified and usable; constructor beacon is `0x69E67...56eE3` |
+| `CryftBeaconDispatcher` | `0x6CfA66d263F84B6b8B9E21621562D624b51a58be` | Verified and usable; constructor beacon is `0x69E67...56eE3` |
 | First registry deployment | `0x04f05257ce82cc32F207Dc58bBe7458686a2CBda` | Unused duplicate; never reference it |
 | Selected second registry deployment | `0x8e19A0fC3c1E878F053Be9A0E6256a128169b755` | Verified; use as the fixed proxy implementation |
 | `GasSponsor` implementation | `0x7c3FB725e4dF120dA7426c96f878aF413d431ab2` | Runtime logic matches the current artifact; Blockscout verification still required |
@@ -111,7 +111,7 @@ evm = osaka
 GasSponsor runtime = 11734 bytes
 CryftDelegation runtime = 5341 bytes
 CryftDelegationBeacon runtime = 663 bytes
-CryftDelegationBeaconDispatcher runtime = 644 bytes
+CryftBeaconDispatcher runtime = 644 bytes
 CryftDelegationRegistry runtime = 12252 bytes
 ```
 

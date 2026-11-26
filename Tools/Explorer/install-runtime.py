@@ -80,7 +80,7 @@ def main():
                            '--network=cryft-explorer', '--cap-drop=ALL', '--security-opt=no-new-privileges',
                            '--log-driver=journald', '--pids-limit=2048'] + list(map(str, args))
         content = f'''[Unit]
-Description=Cryft {name}
+Description=Dakota {name}
 Wants=network-online.target
 After=network-online.target dnclient.service {after}
 StartLimitIntervalSec=300

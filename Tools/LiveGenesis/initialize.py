@@ -11,7 +11,7 @@ def initialize(d):
     d.tx('configure:registration_fee_vault', cm.functions.voteToUpdateFeeVault(gm.address))
     logic = d.deploy('CryftDelegation')
     beacon = d.deploy('CryftDelegationBeacon', logic.address)
-    dispatcher = d.deploy('CryftDelegationBeaconDispatcher', beacon.address)
+    dispatcher = d.deploy('CryftBeaconDispatcher', beacon.address)
     sponsor_logic = d.deploy('GasSponsor')
     sponsor = d.first_link('GasSponsor', sponsor_logic, 'initialize', [DEPLOYER, DEPLOYER, dispatcher.address, 100000])
     registry_logic = d.deploy('CryftDelegationRegistry')

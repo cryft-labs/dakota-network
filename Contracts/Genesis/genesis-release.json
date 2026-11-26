@@ -1,6 +1,6 @@
 {
   "network": "Cryft Network",
-  "coin": "CRYFT",
+  "coin": "Cryft Coin (CRYFT)",
   "chainId": 113211,
   "chainIdHex": "0x1ba3b",
   "validators": [
@@ -140,7 +140,7 @@
     "proxies": 5
   },
   "inputs_sha256": {
-    "inputs.json": "82e65fe1655d446a98cb0482d909e5ddedf790614e55c8ed3fff2f4adb7e7e99",
+    "inputs.json": "762b2ce8ebf666ff5d682ba31586b837bd0f917de6cee5943bf1cfe1ab435858",
     "validators.json": "9f2d056b35bac3386b63f955ea5df7e48bb60daa1e827068e2e567bfc94808a1"
   },
   "genesis_file": "Contracts/Genesis/CryftGenesis.json",

@@ -49,7 +49,7 @@ def main():
     else:args+=['--build-arg','RELEASE_VERSION=11.3.0','--build-arg','BLOCKSCOUT_VERSION=v11.3.0','--build-arg','CHAIN_TYPE=default']
     args+=[str(source)]
     unit=f'''[Unit]
-Description=Build pinned Cryft explorer {component}
+Description=Build pinned Dakota explorer {component}
 After=network-online.target
 Wants=network-online.target
 [Service]

@@ -12,7 +12,7 @@
 > `CryftDelegationRegistry` control plane (link WITH init data, by a live
 > root). `CryftDelegationBeacon` is owned by that fixed entry from its
 > constructor: anyone may deploy it and there is no ownership handover. Each
-> user account routes through `CryftDelegationBeaconDispatcher` and the beacon.
+> user account routes through `CryftBeaconDispatcher` and the beacon.
 > The `0x...FEeD` proxy is first-linked with `GasSponsor.initialize(...)`. This
 > release does not expose session-key, claim, top-off, or unrestricted
 > forwarding functions.
@@ -163,7 +163,7 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 - ✅ Prague/Pectra fork activated (`pragueTime: 0` — done)
 - ✅ Besu **26.1.0**
 - ✅ `CryftDelegationRegistry` first-linked at the fixed delegation entry
-- ✅ `CryftDelegationBeaconDispatcher`, beacon, and implementation deployed
+- ✅ `CryftBeaconDispatcher`, beacon, and implementation deployed
 - ✅ *(Optional)* `GasSponsor` contract for self-hosted gas sponsorship
 
 ---
@@ -179,7 +179,7 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 | **CryftDelegationRegistry** | `Contracts/Genesis/7702/CryftDelegationRegistry.sol` | Yes (fixed TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
 | **CryftDelegation** | `Contracts/Genesis/7702/CryftDelegation.sol` | Yes (shared beacon) | `<beacon_implementation>` |
 | **CryftDelegationBeacon** | `Contracts/Genesis/7702/CryftDelegationBeacon.sol` | Registry-owned from construction (two-phase delayed upgrades) | `<beacon_address>` |
-| **CryftDelegationBeaconDispatcher** | `Contracts/Genesis/7702/CryftDelegationBeaconDispatcher.sol` | Immutable | `<dispatcher_address>` |
+| **CryftBeaconDispatcher** | `Contracts/Genesis/7702/CryftBeaconDispatcher.sol` | Immutable | `<dispatcher_address>` |
 | **GasSponsor** | `Contracts/Genesis/7702/GasSponsor.sol` | Yes (TransparentUpgradeableProxy) | `0x...FEeD` (genesis) |
 | **CodeManager** | `Contracts/CodeManagement/CodeManager.sol` | Yes | `<proxy_address>` |
 | **CryftGreetingCards** | `Contracts/Tokens/GreetingCards.sol` | Yes | `<proxy_address>` |
