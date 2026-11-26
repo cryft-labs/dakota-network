@@ -23,6 +23,45 @@ URL = 'https://github.com/besu-eth/besu/releases/download/26.8.1/besu-26.8.1.tar
 ETC = Path('/etc/cryft/besu')
 DATA = Path('/var/lib/cryft/besu')
 RUNTIME = Path('/opt/cryft/runtimes/besu-26.8.1')
+BESU_HOSTS = {'Validator-01', 'Validator-02', 'Validator-03', 'Validator-04', 'Archive-01', 'Paladin-01'}
+DATA_ROOT = Path('/var/lib/cryft')
+
+
+def mount_data_volume(device):
+    """Mount the droplet's pre-formatted ext4 volume at /var/lib/cryft (by UUID, nofail). Never formats anything."""
+    device = Path(device)
+    assert device.is_block_device(), f'{device} is not a block device'
+    probe = dict(line.split('=', 1) for line in subprocess.check_output(
+        ['blkid', '-o', 'export', str(device)], text=True).split())
+    assert probe.get('TYPE') == 'ext4', f'{device} is not ext4; formatting is a separate, approved step'
+    uuid = probe['UUID']
+    assert re.fullmatch(r'[0-9a-f-]{36}', uuid)
+    current = subprocess.run(['findmnt', '-n', '-o', 'SOURCE,UUID', str(DATA_ROOT)], capture_output=True, text=True).stdout.split()
+    if current:
+        assert uuid in current, f'{DATA_ROOT} is already a mount of something else: {current}'
+        return uuid
+    assert not subprocess.run(['findmnt', '-n', '-S', f'UUID={uuid}'], capture_output=True, text=True).stdout.strip(), \
+        f'{device} is already mounted elsewhere'
+    DATA_ROOT.mkdir(mode=0o755, exist_ok=True)
+    assert not any(DATA_ROOT.iterdir()), f'{DATA_ROOT} already holds data; move it onto the volume by hand first'
+    fstab = Path('/etc/fstab')
+    line = f'UUID={uuid} {DATA_ROOT} ext4 defaults,nofail,noatime,discard 0 2\n'
+    if f'UUID={uuid} ' not in fstab.read_text():
+        with fstab.open('a') as stream:
+            stream.write(line)
+    run('mount', str(DATA_ROOT))
+    assert uuid in subprocess.check_output(['findmnt', '-n', '-o', 'UUID', str(DATA_ROOT)], text=True)
+    return uuid
+
+
+def memory_plan(archive):
+    """JVM heap and systemd ceilings sized from the host (16 GB droplets now, 32 GB later)."""
+    total_gb = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') // 1024 ** 3
+    cpus = os.cpu_count() or 1
+    heap = max(2, min(8 if archive else 6, total_gb * 2 // 5))
+    high = max(heap + 2, total_gb * 7 // 10)
+    maximum = max(high + 1, total_gb * 4 // 5)
+    return heap, high, maximum, cpus
 
 
 def run(*args, **kwargs):
@@ -58,6 +97,8 @@ def main():
     parser.add_argument('--commit', required=True)
     parser.add_argument('--host', required=True)
     parser.add_argument('--update-config', action='store_true')
+    # The droplet's DO volume (pre-formatted ext4). Mounted at /var/lib/cryft before any data is written; never formatted here.
+    parser.add_argument('--data-device')
     args = parser.parse_args()
     assert os.geteuid() == 0
     assert re.fullmatch(r'[0-9a-f]{40}', args.commit)
@@ -67,7 +108,7 @@ def main():
     assert not subprocess.check_output(['git','-C',str(release),'status','--porcelain'],text=True).strip()
     assert Path(__file__).read_bytes() == (release/'Tools/Deployment/install-besu.py').read_bytes()
     host = next(h for h in json.loads((release/'Tools/Deployment/hosts.json').read_text()) if h['name'] == args.host)
-    assert host['name'] != 'Backend-01', 'Backend hosts application services, not a Besu node'
+    assert host['name'] in BESU_HOSTS, f'{host["name"]} does not run Besu (Besu hosts: {", ".join(sorted(BESU_HOSTS))})'
     ip = host['nebula']
     assert ipaddress.ip_address(ip) in ipaddress.ip_network('100.111.0.0/16')
     addresses = json.loads(subprocess.check_output(['ip','-j','address']))
@@ -79,9 +120,10 @@ def main():
     inputs = json.loads((release/'Tools/Genesis/inputs.json').read_text())
     priority = inputs['governance']['roots'] + inputs['governance']['voters'] + policy['prioritySenders']['extra']
     validator = host['name'].startswith('Validator-')
-    archive = host['name'] == 'Frontend-01'
+    archive = host['name'] == 'Archive-01'
     peers = json.loads((release/'Tools/Deployment/validator-peers.json').read_text())
 
+    volume_uuid = mount_data_volume(args.data_device) if args.data_device else None
     env = dict(os.environ, DEBIAN_FRONTEND='noninteractive')
     run('apt-get','update',env=env)
     run('apt-get','install','-y','openjdk-25-jre-headless','ca-certificates','curl',env=env)
@@ -184,7 +226,7 @@ def main():
     atomic(config_path,toml,0o640,user.pw_gid)
     # Parse the actual generated settings without starting the blockchain node.
     run(str(RUNTIME/'bin/besu'),'--config-file='+str(config_path),'--version',env=java_env)
-    heap,high,maximum = (8,14,16) if archive else (6,10,12)
+    heap,high,maximum,cpus = memory_plan(archive)
     unit = f'''[Unit]
 Description=Cryft Besu {VERSION} ({host['name']})
 Requires=dnclient.service
@@ -199,7 +241,7 @@ User=cryft-besu
 Group=cryft-besu
 WorkingDirectory={DATA}
 Environment="JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64"
-Environment="JAVA_OPTS=-Xms2g -Xmx{heap}g -XX:MaxDirectMemorySize=2g -XX:ActiveProcessorCount=6 -XX:+ExitOnOutOfMemoryError"
+Environment="JAVA_OPTS=-Xms2g -Xmx{heap}g -XX:MaxDirectMemorySize=2g -XX:ActiveProcessorCount={cpus} -XX:+ExitOnOutOfMemoryError"
 ExecStart={RUNTIME}/bin/besu --config-file={ETC}/config.toml
 Restart=on-failure
 RestartSec=15
@@ -224,7 +266,7 @@ LimitNOFILE=65536
 TasksMax=2048
 MemoryHigh={high}G
 MemoryMax={maximum}G
-CPUQuota=600%
+CPUQuota={cpus * 100}%
 
 [Install]
 WantedBy=multi-user.target
@@ -239,7 +281,8 @@ WantedBy=multi-user.target
         'nebula_ip':ip,'storage_format':storage,'sync_mode':'FULL','runtime_user':'cryft-besu',
         'service':'cryft-besu.service','service_enabled':True,'start_requested':False,
         'http_origin':'127.0.0.1:8545','ws_origin':'127.0.0.1:8546','p2p':ip+':30303',
-        'key_path':str(key_path),'key_replaced':False,'chain_data_reset':False}
+        'key_path':str(key_path),'key_replaced':False,'chain_data_reset':False,
+        'data_volume_uuid':volume_uuid,'heap_gb':heap,'memory_high_gb':high,'memory_max_gb':maximum,'cpus':cpus}
     atomic(ETC/'runtime-installation.json',json.dumps(receipt,indent=2)+'\n',0o644)
     print(json.dumps(receipt))
 

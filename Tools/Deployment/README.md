@@ -54,27 +54,25 @@ All six Besu hosts use `/etc/cryft/besu/BesuGenesis.json`, private keys in
 `/var/lib/cryft/besu` for writable data. P2P listens and advertises only the host's
 Nebula IP on TCP 30303, using the four static validator peers with discovery/NAT
 disabled. HTTP/WS/metrics listen only on 127.0.0.1 at 8545/8546/9545; Nginx ingress
-is a separate stage. Backend-01 does not run Besu in this host-role assignment.
+is a separate stage. Besu runs on six hosts: Validator-01..04, Archive-01 and Paladin-01. Backend-01,
+Frontend-01 and Indexer-01 do not run Besu (install-besu.py refuses them).
 
-Frontend-01 uses FOREST/FULL for archival state; the other five use BONSAI/FULL.
-No archive history pruning is enabled. Initial JVM heaps are 8 GiB for the archive
-and 6 GiB elsewhere, with systemd memory ceilings of 16/12 GiB and six CPU cores of
-quota on the eight-vCPU hosts. These are initial capacity budgets to measure under
-real workloads. Validate genesis/validator identities, private-only listeners,
-peer mesh, block progression, archive queries and reboot recovery before application
-transactions. Record `/etc/cryft/besu/runtime-installation.json` and actual live
-acceptance separately; an installed/enabled service is not proof of a running chain.
+Archive-01 uses FOREST/FULL for archival state; the other five use BONSAI/FULL. No archive history pruning is
+enabled. JVM heap and systemd ceilings are sized from the host: on the current 2 vCPU / 16 GB droplets that is a
+6 GiB heap, MemoryHigh 10 GiB, MemoryMax 12 GiB and a CPU quota equal to the vCPU count (recorded in
+`runtime-installation.json`). Pass `--data-device /dev/sda` to mount the droplet's DO volume (pre-formatted ext4)
+at `/var/lib/cryft` by UUID with `nofail` before any chain data is written; the installer never formats a device
+and refuses a non-empty mount point. Validate genesis/validator identities, private-only listeners, peer mesh,
+block progression, archive queries and reboot recovery before application transactions.
 
-`install-nginx.py --commit <full-review-commit> --host Frontend-01` installs the
-unprivileged `cryft-nginx.service`. Both master and workers run as `cryft-proxy`.
-It prevents the distribution's default service from opening public port 80.
-Archive HTTP uses `http://100.111.69.1:8547/`; WebSocket uses
-`ws://100.111.69.1:8547/ws`. Nginx forwards to Besu on localhost, allows the listed
-operator/backend/Paladin sources, applies request and connection limits, and never
-retries a submitted transaction automatically. This is a private Nebula ingress,
-not a public Cloudflare target. Record real HTTP/WS, denial and runtime UID checks.
-The raw RPC ports 8545/8546 and metrics 9545 remain loopback-only. The explorer
-browser URL is a separate frontend service at Nebula port 8080.
+`install-nginx.py --commit <full-review-commit> --host Archive-01` installs the unprivileged
+`cryft-nginx.service` with the archive RPC. Both master and workers run as `cryft-proxy`. It prevents the
+distribution's default service from opening public port 80. Archive HTTP uses `http://100.111.69.2:8547/`;
+WebSocket uses `ws://100.111.69.2:8547/ws`. Nginx forwards to Besu on localhost, allows the listed
+operator, Backend-01, Indexer-01, Paladin-01 and Frontend-01 sources, applies request and connection limits, and
+never retries a submitted transaction automatically. This is a private Nebula ingress, not a public Cloudflare
+target. The raw RPC ports 8545/8546 and metrics 9545 remain loopback-only. The explorer browser URL is a separate
+frontend service on Frontend-01.
 
 Browser wallet RPC requests also require CORS on this proxy. The review template
 permits exact HTTP origins for Cryft Cards, the widget and dashboard on ports

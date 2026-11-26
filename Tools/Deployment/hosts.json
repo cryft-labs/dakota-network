@@ -1,9 +1,11 @@
 [
-  {"name":"Validator-01","public":"137.184.70.9","nebula":"100.111.32.101"},
-  {"name":"Validator-02","public":"134.209.124.114","nebula":"100.111.32.102"},
-  {"name":"Validator-03","public":"157.230.0.98","nebula":"100.111.32.103"},
-  {"name":"Validator-04","public":"142.93.0.157","nebula":"100.111.32.104"},
-  {"name":"Paladin-01","public":"146.190.75.149","nebula":"100.111.32.201"},
-  {"name":"Backend-01","public":"206.81.13.59","nebula":"100.111.67.1"},
-  {"name":"Frontend-01","public":"147.182.191.138","nebula":"100.111.69.1"}
+  {"name":"Validator-01","public":"142.93.12.196","region":"nyc1","nebula":"100.111.32.101","roles":["validator"]},
+  {"name":"Validator-02","public":"165.245.133.233","region":"atl1","nebula":"100.111.32.102","roles":["validator"]},
+  {"name":"Validator-03","public":"201.79.132.49","region":"ric1","nebula":"100.111.32.103","roles":["validator"]},
+  {"name":"Validator-04","public":"164.92.71.211","region":"sfo3","nebula":"100.111.32.104","roles":["validator"]},
+  {"name":"Archive-01","public":"204.48.30.178","nebula":"100.111.69.2","roles":["archive-besu","archive-rpc"]},
+  {"name":"Paladin-01","public":"134.209.64.100","nebula":"100.111.32.201","roles":["paladin","paladin-besu"]},
+  {"name":"Backend-01","public":"147.182.217.93","nebula":"100.111.67.1","roles":["services"]},
+  {"name":"Frontend-01","public":"147.182.143.44","nebula":"100.111.69.1","roles":["front-doors","explorer-ui"]},
+  {"name":"Indexer-01","public":"137.184.146.17","nebula":"100.111.67.2","roles":["blockscout-backend"]}
 ]
