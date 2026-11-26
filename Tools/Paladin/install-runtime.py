@@ -67,7 +67,8 @@ def main():
     run('install', '-d', '-o', 'root', '-g', user.pw_name, '-m', '0750', CONFIG)
     prefix = ['runuser', '-u', user.pw_name, '--', 'env', f'HOME={HOME}', f'XDG_RUNTIME_DIR=/run/user/{user.pw_uid}',
               '/usr/bin/podman', '--cgroup-manager=cgroupfs']
-    def pod(*args, **kw): return run(*prefix, *args, **kw)
+    # runuser keeps root's working directory, which cryft-paladin cannot enter: run Podman from its home.
+    def pod(*args, **kw): return run(*prefix, *args, cwd=HOME, **kw)
     for image in (POSTGRES, PALADIN): pod('pull', image)
 
     secret_path = CONFIG / 'secrets.json'
@@ -130,7 +131,7 @@ WantedBy=multi-user.target
     run('systemctl', 'daemon-reload'); run('systemctl', 'enable', 'cryft-paladin-db'); run('systemctl', 'reset-failed', 'cryft-paladin-db')
     run('systemctl', 'restart', 'cryft-paladin-db')
     for _ in range(90):
-        if subprocess.run(prefix + ['exec', 'cryft-paladin-db', 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'], capture_output=True).returncode == 0: break
+        if subprocess.run(prefix + ['exec', 'cryft-paladin-db', 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'], capture_output=True, cwd=HOME).returncode == 0: break
         time.sleep(1)
     else: raise RuntimeError('Database not ready')
     def sql(query): return pod('exec', '-i', 'cryft-paladin-db', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-At', input=query, text=True, capture_output=True).stdout.strip()
