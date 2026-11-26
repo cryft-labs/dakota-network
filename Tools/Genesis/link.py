@@ -328,7 +328,7 @@ class Linker:
             gas = None if done else self.w3.eth.estimate_gas({"from": self.root_address, "to": proxy_address, "data": data})
             self.journal["guide"][label] = {"to": proxy_address, "data": data, "logic": logic.address, "gasEstimate": gas}
             lines += [f"## Step {n}: link {label.split('@')[0]} at {proxy_address}" + (" (already done)" if done else ""), "",
-                      f"1. Open https://explore.cryft.cards/address/{proxy_address}?tab=write_contract and connect the root wallet.",
+                      f"1. Open {self.args.explorer.rstrip('/')}/address/{proxy_address}?tab=write_contract and connect the root wallet.",
                       "2. Function **proxy_linkLogicAdmin**.",
                       f"3. `{inputs[0]['name']}` (address): `{logic.address}`",
                       f"4. `{inputs[1]['name']}` (bytes): `{init_data}`",
@@ -410,6 +410,7 @@ def main():
     p.add_argument("--rehearsal", help="run folder from localnet.py --kind rehearsal (throwaway signers)")
     p.add_argument("--phase", choices=["deploy", "guide", "links", "verify"])
     p.add_argument("--guide", default=str(REPO / "Contracts/Genesis/root-link-guide.md"))
+    p.add_argument("--explorer", default="https://explore.cryft.cards", help="explorer base URL for the guide (Nebula-only for now)")
     mode = p.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true")
     mode.add_argument("--execute", action="store_true")
