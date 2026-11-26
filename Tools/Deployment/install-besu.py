@@ -40,8 +40,18 @@ def mount_data_volume(device):
     if current:
         assert uuid in current, f'{DATA_ROOT} is already a mount of something else: {current}'
         return uuid
-    assert not subprocess.run(['findmnt', '-n', '-S', f'UUID={uuid}'], capture_output=True, text=True).stdout.strip(), \
-        f'{device} is already mounted elsewhere'
+    elsewhere = subprocess.run(['findmnt', '-n', '-o', 'TARGET', '-S', f'UUID={uuid}'], capture_output=True, text=True).stdout.split()
+    if elsewhere:
+        # DigitalOcean auto-mounts a new volume at /mnt/<name> with its own systemd unit ("Mount DO Volume ...").
+        # Take it over only while it is empty (nothing but lost+found); the unit is disabled, not deleted.
+        assert len(elsewhere) == 1 and elsewhere[0].startswith('/mnt/'), f'{device} is mounted at {elsewhere}'
+        target = Path(elsewhere[0])
+        assert {p.name for p in target.iterdir()} <= {'lost+found'}, f'{target} already holds data'
+        unit = subprocess.check_output(['systemd-escape', '--path', '--suffix=mount', str(target)], text=True).strip()
+        unit_file = Path('/etc/systemd/system') / unit
+        assert unit_file.is_file() and 'DO Volume' in unit_file.read_text(), f'{target} is not a DO volume mount unit'
+        run('systemctl', 'disable', '--now', unit)
+        assert not subprocess.run(['findmnt', '-n', '-S', f'UUID={uuid}'], capture_output=True, text=True).stdout.strip()
     DATA_ROOT.mkdir(mode=0o755, exist_ok=True)
     assert not any(DATA_ROOT.iterdir()), f'{DATA_ROOT} already holds data; move it onto the volume by hand first'
     fstab = Path('/etc/fstab')
