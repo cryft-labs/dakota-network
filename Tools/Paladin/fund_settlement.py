@@ -12,6 +12,7 @@ from pathlib import Path
 
 from eth_account import Account
 from web3 import Web3
+from web3.middleware import ExtraDataToPOAMiddleware
 
 REPO = Path(__file__).resolve().parents[2]
 PLAN = json.loads((REPO / "Tools/Genesis/link-plan.json").read_text())
@@ -35,6 +36,7 @@ def main():
     a = p.parse_args()
     assert 0 < a.target_wei <= 10 ** 18, "target is 0.03 CRYFT to start; never above 1 CRYFT here"
     w3 = Web3(Web3.HTTPProvider(a.rpc))
+    w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
     assert w3.eth.chain_id == 113211
     assert "0x" + w3.eth.get_block(0)["hash"].hex().removeprefix("0x") == GENESIS_BLOCK
     recipient = settlement_address()
