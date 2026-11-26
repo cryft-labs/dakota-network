@@ -4,7 +4,7 @@
 // This software is part of a patented system. See LICENSE and PATENT NOTICE.
 // Licensed under the Apache License, Version 2.0.
 
-pragma solidity >=0.8.2 <0.9.0;
+pragma solidity 0.8.37;
 
 /**
  * @title ICodeManager
@@ -55,9 +55,6 @@ interface ICodeManager {
         external
         view
         returns (uint256);
-
-    /// @notice Returns whether an address is whitelisted.
-    function isWhitelistedAddress(address addr) external view returns (bool);
 
     /// @notice The fee (in wei) required per unique ID registration.
     function registrationFee() external view returns (uint256);

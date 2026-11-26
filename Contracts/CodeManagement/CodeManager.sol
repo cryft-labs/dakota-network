@@ -4,7 +4,7 @@
 // This software is part of a patented system. See LICENSE and PATENT NOTICE.
 // Licensed under the Apache License, Version 2.0.
 
-pragma solidity >=0.8.2 <0.9.0;
+pragma solidity 0.8.37;
 
 /*
    _____        __    __  ___
@@ -13,7 +13,7 @@ pragma solidity >=0.8.2 <0.9.0;
  \___/\___/\_,_/\__/_/  /_/\_,_/_//_/\_,_/\_, /\__/_/
                                          /___/ By: CryftCreator
 
-  Version 3.0 — Production Code Manager  [UPGRADEABLE]
+  Version 3.1 — Production Code Manager  [UPGRADEABLE]
 
   ┌──────────────── Contract Architecture ──────────────────────────┐
   │                                                                 │
@@ -25,6 +25,11 @@ pragma solidity >=0.8.2 <0.9.0;
   │  + incrementing counter.                                        │
   │                                                                 │
   │  2/3 supermajority quorum for all state changes.                │
+  │  Ballot windows in block.timestamp seconds (default 7 days).    │
+  │  Privacy groups are authorized per gift only, in a per-group    │
+  │  epoch; deauthorizing a group voids all of its grants.          │
+  │  Deliveries require MIN_DELIVERY_GAS and forward exactly        │
+  │  DELIVERY_GAS_LIMIT. Setup only through the proxy link.         │
   │  Approved voter changes invalidate pending ballots.           │
   │  Own voter set with pluggable external voter                    │
   │  contracts via otherVoterContracts[].                           │
@@ -74,14 +79,7 @@ import "./Interfaces/ICodeManager.sol";
 import "./CanonicalUid.sol";
 import "./Interfaces/IRedeemable.sol";
 
-interface IVoterChecker {
-    function isVoter(address potentialVoter) external view returns (bool);
-    function getVoters() external view returns (address[] memory);
-}
-
 contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager {
-    using StringsUpgradeable for uint256;
-
     // No explicit public override stored for this UID. This currently resolves
     // to DEFAULT_ACTIVE_STATE in CodeManager. For privacy-managed redeemables,
     // callers should interpret that absence of public state as "no public
@@ -94,8 +92,6 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     }
 
     enum VoteType {
-        ADD_WHITELISTED_ADDRESS,
-        REMOVE_WHITELISTED_ADDRESS,
         UPDATE_REGISTRATION_FEE,
         UPDATE_FEE_VAULT,
         ADD_VOTER,
@@ -103,72 +99,74 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         ADD_OTHER_VOTER_CONTRACT,
         REMOVE_OTHER_VOTER_CONTRACT,
         UPDATE_VOTE_TALLY_BLOCK_THRESHOLD,
-        AUTHORIZE_PRIVACY_GROUP,
         DEAUTHORIZE_PRIVACY_GROUP,
         REFRESH_VOTERS,
         SET_VOTER_CONFIGURATION,
         SET_PRIVACY_GROUP_GIFT
     }
 
-    struct VoteTally {
-        uint256 totalVotes;
-        uint256 startVoteBlock;
-        address[] voters;
-    }
+    struct GroupGiftChange { address group; address gift; bool allowed; uint256 epoch; }
+    struct Delivery { address recipient; bool delivered; uint256 attempts; }
+
+    error InsufficientDeliveryGas();
+    error RegistrationFeeTooHigh();
+    error InitializerNotLinkGuardian();
 
     address[] public votersArray;
     address[] public otherVoterContracts;
-    uint256 private __legacyActiveVoteCount; // Slot retained; use activeVoteCount().
+    uint256 private __reserved2;
 
     uint256 public registrationFee;
+    /// @dev Ballot window in SECONDS (name kept from the block-count era; slot unchanged).
     uint256 public voteTallyBlockThreshold;
     address public feeVault;
 
     /// @dev Default active state applied to every valid UID unless an override exists.
     bool public constant DEFAULT_ACTIVE_STATE = true;
 
-    mapping(address => bool) public isWhitelistedAddress;
     mapping(string => uint256) private _identifierCounter;
     mapping(string => ContractData) private _contractIdentifierToData;
     mapping(bytes32 => UniqueIdStatus) private _uniqueIdStatuses;
-    mapping(VoteType => mapping(uint256 => VoteTally)) private _voteTallies;
-    mapping(VoteType => mapping(uint256 => mapping(address => bool))) private __legacyHasVoted;
 
-    /// @dev Authorized Pente privacy groups that can call router functions.
+    /// @dev A group with at least one gift grant in its current epoch; access is always per gift.
     mapping(address => bool) public isAuthorizedPrivacyGroup;
-
-    // Append-only release state. Legacy explicit global group authorization
-    // remains available; new tenant groups use the scoped governance entry.
     mapping(address => mapping(address => bool)) public registrationOperators;
-    mapping(address => bool) public isScopedPrivacyGroup;
-    mapping(address => mapping(address => bool)) public privacyGroupGifts;
-    struct GroupGiftChange { address group; address gift; bool allowed; }
+    /// @notice Bumped on every deauthorization, so earlier gift grants never come back (X-21).
+    mapping(address => uint256) public privacyGroupEpoch;
+    mapping(bytes32 => bool) private _groupGiftGrants;
     mapping(uint256 => GroupGiftChange) private _groupGiftChanges;
-    struct Delivery { address recipient; bool delivered; uint256 attempts; }
     mapping(bytes32 => Delivery) private _deliveries;
+
     uint256 public constant MAX_STATUS_BATCH = 100;
     uint256 public constant DELIVERY_GAS_LIMIT = 1000000;
+    /// @notice Gas a delivery needs on entry: the forwarded limit after the 63/64 rule plus room to record it (X-22).
+    uint256 public constant MIN_DELIVERY_GAS = DELIVERY_GAS_LIMIT * 64 / 63 + 100000;
+    /// @notice Upper bound on the per-code registration fee (X-64).
+    uint256 public constant MAX_REGISTRATION_FEE = 1 ether;
+    uint256 public constant DEFAULT_VOTE_WINDOW = 7 days;
+    uint256 private constant _PROBE_GAS = 100000;
+
     event RegistrationOperatorUpdated(address indexed gift, address indexed operator, bool allowed);
-    event PrivacyGroupGiftUpdated(address indexed group, address indexed gift, bool allowed);
+    event PrivacyGroupGiftUpdated(address indexed group, address indexed gift, bool allowed, uint256 epoch);
+    event PrivacyGroupGiftChangeStale(address indexed group, address indexed gift, uint256 epoch);
+    event PrivacyGroupDeauthorized(address indexed group, uint256 newEpoch);
     event RedemptionDeliveryAttempt(string uniqueId, address indexed recipient, uint256 attempt, bool delivered);
-
-
     event RegistrationFeeUpdated(uint256 newFee);
+    event FeeVaultUpdated(address indexed newFeeVault);
     event VoteCast(address indexed voter, VoteType voteType, uint256 target);
-    event StateChanged(VoteType voteType, uint256 newValue);
     event VoteTallyReset(VoteType voteType, uint256 target);
     event UniqueIdsRegistered(address indexed giftContract, string chainId, uint256 quantity);
     event VoterUpdated(address indexed target, bool added);
+    event VotersInitialized(address[] voters);
     event OtherVoterContractUpdated(address indexed target, bool added);
-    event VoteTallyBlockThresholdUpdated(uint256 newThreshold);
-    event PrivacyGroupAuthorized(address indexed privacyGroup, bool authorized);
+    event VoterConfigurationApplied(bytes32 indexed membersHash);
+    event VoteTallyBlockThresholdUpdated(uint256 newWindowSeconds);
     event RedemptionRouted(string uniqueId, address indexed giftContract, address indexed redeemer);
     event RedemptionFailed(string uniqueId, address indexed giftContract, address indexed redeemer, string reason);
     event RedemptionRejected(string uniqueId, address indexed redeemer, string reason);
     event UniqueIdActiveStatusUpdated(string uniqueId, bool active, bool usesDefaultState);
     event UniqueIdRedeemed(string uniqueId);
     event UniqueIdActiveStatusRejected(uint256 index, string uniqueId, string reason);
-
 
     constructor() {
         _disableInitializers();
@@ -180,29 +178,40 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     }
 
     modifier onlyAuthorizedPrivacyGroup() {
-        require(
-            isAuthorizedPrivacyGroup[msg.sender],
-            "Caller is not an authorized privacy group"
-        );
+        require(isAuthorizedPrivacyGroup[msg.sender], "Caller is not an authorized privacy group");
         _;
     }
 
-    function initialize() public virtual initializer {
-        _initializeVoter(msg.sender);
-    }
+    // ── Initialization ────────────────────────────────────
 
-    /// @notice Atomic proxy/factory setup with an explicit usable governance identity.
-    function initializeWithVoter(address initialVoter) external initializer {
-        _initializeVoter(initialVoter);
-    }
-
-    function _initializeVoter(address initialVoter) private {
-        if (initialVoter == address(0) || initialVoter == address(this)
-            || initialVoter == 0x0000000000000000000000000000000000FacAdE) revert GovernanceVotes.SelfAdministration();
+    /// @notice One-time setup, passed as the proxy link's init data (X-16). Only a guardian of the
+    ///         hosting proxy may run it, so an empty-data link cannot be front-run. Takes the full
+    ///         initial voter list (1..64 distinct voters, X-5).
+    function initializeWithVoters(address[] calldata voters) external initializer {
+        _requireLinkGuardian();
         __ReentrancyGuard_init();
-        votersArray.push(initialVoter);
+        if (voters.length == 0) revert GovernanceVotes.NoVoters();
+        address[] memory members = GovernanceMembers.collect(voters, new address[](0), bytes4(keccak256("getVoters()")));
+        if (members.length != voters.length) revert GovernanceVotes.VoterAlreadyPresent();
+        votersArray = voters;
+        GovernanceVotes.approveVoters(GovernanceVotes.state(), members);
         registrationFee = 10**15;
-        voteTallyBlockThreshold = 1000;
+        voteTallyBlockThreshold = DEFAULT_VOTE_WINDOW;
+        emit VotersInitialized(voters);
+    }
+
+    /// @dev The caller must be a guardian of the proxy this code runs in.
+    function _requireLinkGuardian() private view {
+        bytes memory input = abi.encodeWithSignature("proxy_isGuardian(address)", msg.sender);
+        address host = address(this);
+        bool ok;
+        uint256 result;
+        assembly ("memory-safe") {
+            ok := staticcall(_PROBE_GAS, host, add(input, 32), mload(input), 0, 32)
+            if iszero(eq(returndatasize(), 32)) { ok := 0 }
+            result := mload(0)
+        }
+        if (!ok || result != 1) revert InitializerNotLinkGuardian();
     }
 
     // ── Voter Queries ─────────────────────────────────────
@@ -215,17 +224,20 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         if (GovernanceVotes.state().votersInitialized) return GovernanceVotes.state().approvedVoters;
         return _readVoters();
     }
-    /// @notice Returns the total number of voters (local + external).
+
     function _readVoters() private view returns (address[] memory) {
         return GovernanceMembers.collect(votersArray, otherVoterContracts, bytes4(keccak256("getVoters()")));
     }
+
     function previewVoters() external view returns (address[] memory members, bytes32 membersHash) {
         members = _readVoters();
         membersHash = keccak256(abi.encode(members));
     }
+
     function voteToRefreshVoters(bytes32 expectedHash) external {
         _castVote(VoteType.REFRESH_VOTERS, uint256(expectedHash));
     }
+
     /// @notice Atomic handover/recovery; approvals bind both configuration and resulting membership.
     function voteToSetVoterConfiguration(address[] calldata local, address[] calldata providers, bytes32 expectedHash) external {
         uint256 target = GovernanceVotes.configure(GovernanceVotes.state(), local, providers, expectedHash);
@@ -235,10 +247,11 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     function getVoterCount() public view returns (uint256) {
         return getVoters().length;
     }
+
     // ── Vote Tally & Thresholds ───────────────────────────
 
     function getVoteTally(VoteType voteType, uint256 target) public view
-        returns (uint256 totalVotes, uint256 startVoteBlock, uint256 voteExpirationBlock, address[] memory votedAddresses)
+        returns (uint256 totalVotes, uint256 startTime, uint256 expiresAt, address[] memory votedAddresses)
     {
         return GovernanceVotes.tally(GovernanceVotes.state(), _voteKey(voteType, target));
     }
@@ -251,16 +264,11 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
 
     function activeVoteCount() public view returns (uint256) { return GovernanceVotes.state().active; }
     function governanceEpoch() external view returns (uint256) { return GovernanceVotes.state().epoch; }
+    function openBallots(address proposer) external view returns (uint256 counted, uint256 exempt) {
+        return GovernanceVotes.openCount(GovernanceVotes.state(), proposer);
+    }
     function hasVoted(VoteType voteType, uint256 target, address voter) external view returns (bool) {
         return GovernanceVotes.voted(GovernanceVotes.state(), _voteKey(voteType, target), voter);
-    }
-    function _voteKey(VoteType voteType, uint256 target) private pure returns (bytes32) {
-        return keccak256(abi.encode(voteType, target));
-    }
-    function _changesVoters(VoteType voteType) private pure returns (bool) {
-        return voteType == VoteType.REFRESH_VOTERS || voteType == VoteType.SET_VOTER_CONFIGURATION
-            || voteType == VoteType.ADD_VOTER || voteType == VoteType.REMOVE_VOTER
-            || voteType == VoteType.ADD_OTHER_VOTER_CONTRACT || voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT;
     }
 
     function getSupermajorityThreshold() public view returns (uint256) {
@@ -271,103 +279,119 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
 
     // ── Internal Vote Engine ──────────────────────────────
 
+    function _voteKey(VoteType voteType, uint256 target) private pure returns (bytes32) {
+        return keccak256(abi.encode(voteType, target));
+    }
+
+    function _changesVoters(VoteType voteType) private pure returns (bool) {
+        return voteType == VoteType.REFRESH_VOTERS || voteType == VoteType.SET_VOTER_CONFIGURATION
+            || voteType == VoteType.ADD_VOTER || voteType == VoteType.REMOVE_VOTER
+            || voteType == VoteType.ADD_OTHER_VOTER_CONTRACT || voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT;
+    }
+
+    /// @dev Defensive ballots stay open-able even when one voter floods the counted caps (X-13).
+    function _isExempt(VoteType voteType) private pure returns (bool) {
+        return voteType == VoteType.REMOVE_VOTER || voteType == VoteType.SET_VOTER_CONFIGURATION
+            || voteType == VoteType.DEAUTHORIZE_PRIVACY_GROUP;
+    }
+
     function _castVote(VoteType voteType, uint256 target) internal {
         if (target == 0) revert GovernanceVotes.InvalidVoteTarget();
         bytes32 key = _voteKey(voteType, target);
+        GovernanceVotes.State storage s = GovernanceVotes.state();
         address[] memory electorate;
-        if (!GovernanceVotes.live(GovernanceVotes.state(), key)) electorate = getVoters();
-        if (GovernanceVotes.cast(GovernanceVotes.state(), key, electorate, voteTallyBlockThreshold, msg.sender)) {
-            emit StateChanged(voteType, target);
-
-            if (voteType == VoteType.ADD_WHITELISTED_ADDRESS) {
-                isWhitelistedAddress[address(uint160(target))] = true;
-            } else if (voteType == VoteType.REMOVE_WHITELISTED_ADDRESS) {
-                isWhitelistedAddress[address(uint160(target))] = false;
-            } else if (voteType == VoteType.UPDATE_REGISTRATION_FEE) {
-                registrationFee = target;
-                emit RegistrationFeeUpdated(registrationFee);
-            } else if (voteType == VoteType.UPDATE_FEE_VAULT) {
-                feeVault = address(uint160(target));
-            } else if (voteType == VoteType.ADD_VOTER) {
-                if (isVoter(address(uint160(target)))) revert GovernanceVotes.VoterAlreadyPresent();
-                votersArray.push(address(uint160(target)));
-                emit VoterUpdated(address(uint160(target)), true);
-            } else if (voteType == VoteType.REMOVE_VOTER) {
-                address targetAddress = address(uint160(target));
-                bool found = false;
-                for (uint256 i = 0; i < votersArray.length; i++) {
-                    if (votersArray[i] == targetAddress) {
-                        votersArray[i] = votersArray[votersArray.length - 1];
-                        votersArray.pop();
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) revert GovernanceVotes.VoterNotFound();
-                emit VoterUpdated(targetAddress, false);
-            } else if (voteType == VoteType.ADD_OTHER_VOTER_CONTRACT) {
-                address targetAddress = address(uint160(target));
-                for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-                    if (otherVoterContracts[i] == targetAddress) revert GovernanceVotes.ProviderAlreadyPresent();
-                }
-                otherVoterContracts.push(targetAddress);
-                emit OtherVoterContractUpdated(targetAddress, true);
-            } else if (voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT) {
-                address targetAddress = address(uint160(target));
-                if (!(votersArray.length > 0 || otherVoterContracts.length > 1)) revert GovernanceVotes.EmptyVoterSet();
-                bool found = false;
-                for (uint256 i = 0; i < otherVoterContracts.length; i++) {
-                    if (otherVoterContracts[i] == targetAddress) {
-                        otherVoterContracts[i] = otherVoterContracts[otherVoterContracts.length - 1];
-                        otherVoterContracts.pop();
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) revert GovernanceVotes.ProviderNotFound();
-                emit OtherVoterContractUpdated(targetAddress, false);
-            } else if (voteType == VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD) {
-                if (!(target > 0 && target <= 100000)) revert GovernanceVotes.InvalidExpiry();
-                voteTallyBlockThreshold = target;
-                emit VoteTallyBlockThresholdUpdated(target);
-            } else if (voteType == VoteType.AUTHORIZE_PRIVACY_GROUP) {
-                address targetAddress = address(uint160(target));
-                isAuthorizedPrivacyGroup[targetAddress] = true;
-                emit PrivacyGroupAuthorized(targetAddress, true);
-            } else if (voteType == VoteType.DEAUTHORIZE_PRIVACY_GROUP) {
-                address targetAddress = address(uint160(target));
-                isAuthorizedPrivacyGroup[targetAddress] = false;
-                emit PrivacyGroupAuthorized(targetAddress, false);
-            }
-            if (voteType == VoteType.SET_PRIVACY_GROUP_GIFT) {
-                GroupGiftChange memory change = _groupGiftChanges[target];
-                isScopedPrivacyGroup[change.group] = true;
-                privacyGroupGifts[change.group][change.gift] = change.allowed;
-                if (change.allowed) isAuthorizedPrivacyGroup[change.group] = true;
-                delete _groupGiftChanges[target];
-                emit PrivacyGroupGiftUpdated(change.group, change.gift, change.allowed);
-            }
-            if (_changesVoters(voteType)) {
-                if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
-
-                    GovernanceVotes.Configuration storage config = GovernanceVotes.state().configurations[target];
-                    votersArray = config.local;
-                    otherVoterContracts = config.providers;
-                }
-                address[] memory members = _readVoters();
-                if (members.length <= 0) revert GovernanceVotes.EmptyVoterSet();
-                bytes32 membersHash = keccak256(abi.encode(members));
-                if (voteType == VoteType.REFRESH_VOTERS) if (membersHash != bytes32(target)) revert GovernanceVotes.MembershipChanged();
-                if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
-                    if (membersHash != GovernanceVotes.state().configurations[target].membersHash) revert GovernanceVotes.MembershipChanged();
-                    delete GovernanceVotes.state().configurations[target];
-                }
-                GovernanceVotes.approveVoters(GovernanceVotes.state(), members);
-            }
-            GovernanceVotes.complete(GovernanceVotes.state(), key);
-            if (_changesVoters(voteType)) GovernanceVotes.invalidate(GovernanceVotes.state());
+        if (!GovernanceVotes.live(s, key)) electorate = getVoters();
+        if (GovernanceVotes.cast(s, key, electorate, voteTallyBlockThreshold, msg.sender, _isExempt(voteType))) {
+            if (_changesVoters(voteType)) _applyVoterVote(voteType, target);
+            else if (voteType == VoteType.SET_PRIVACY_GROUP_GIFT || voteType == VoteType.DEAUTHORIZE_PRIVACY_GROUP)
+                _applyGroupVote(voteType, target);
+            else _applyParameterVote(voteType, target);
+            GovernanceVotes.complete(s, key);
+            if (_changesVoters(voteType)) GovernanceVotes.invalidate(s);
         }
         emit VoteCast(msg.sender, voteType, target);
+    }
+
+    function _applyParameterVote(VoteType voteType, uint256 target) private {
+        if (voteType == VoteType.UPDATE_REGISTRATION_FEE) {
+            if (target > MAX_REGISTRATION_FEE) revert RegistrationFeeTooHigh();
+            registrationFee = target;
+            emit RegistrationFeeUpdated(target);
+        } else if (voteType == VoteType.UPDATE_FEE_VAULT) {
+            feeVault = address(uint160(target));
+            emit FeeVaultUpdated(feeVault);
+        } else {
+            if (!GovernanceVotes.validWindow(target)) revert GovernanceVotes.InvalidExpiry();
+            voteTallyBlockThreshold = target;
+            emit VoteTallyBlockThresholdUpdated(target);
+        }
+    }
+
+    function _applyGroupVote(VoteType voteType, uint256 target) private {
+        if (voteType == VoteType.DEAUTHORIZE_PRIVACY_GROUP) {
+            address group = address(uint160(target));
+            isAuthorizedPrivacyGroup[group] = false;
+            uint256 epoch = ++privacyGroupEpoch[group];
+            emit PrivacyGroupDeauthorized(group, epoch);
+            return;
+        }
+        GroupGiftChange memory change = _groupGiftChanges[target];
+        delete _groupGiftChanges[target];
+        if (change.epoch != privacyGroupEpoch[change.group]) {
+            // The group was deauthorized while this ballot was open: never apply it to the new epoch.
+            emit PrivacyGroupGiftChangeStale(change.group, change.gift, change.epoch);
+            return;
+        }
+        _groupGiftGrants[_grantKey(change.group, change.epoch, change.gift)] = change.allowed;
+        if (change.allowed) isAuthorizedPrivacyGroup[change.group] = true;
+        emit PrivacyGroupGiftUpdated(change.group, change.gift, change.allowed, change.epoch);
+    }
+
+    function _applyVoterVote(VoteType voteType, uint256 target) private {
+        address targetAddress = address(uint160(target));
+        if (voteType == VoteType.ADD_VOTER) {
+            if (isVoter(targetAddress)) revert GovernanceVotes.VoterAlreadyPresent();
+            votersArray.push(targetAddress);
+            emit VoterUpdated(targetAddress, true);
+        } else if (voteType == VoteType.REMOVE_VOTER) {
+            if (!_removeAddress(votersArray, targetAddress)) revert GovernanceVotes.VoterNotFound();
+            emit VoterUpdated(targetAddress, false);
+        } else if (voteType == VoteType.ADD_OTHER_VOTER_CONTRACT) {
+            if (GovernanceMembers.contains(otherVoterContracts, targetAddress)) revert GovernanceVotes.ProviderAlreadyPresent();
+            otherVoterContracts.push(targetAddress);
+            emit OtherVoterContractUpdated(targetAddress, true);
+        } else if (voteType == VoteType.REMOVE_OTHER_VOTER_CONTRACT) {
+            if (!(votersArray.length > 0 || otherVoterContracts.length > 1)) revert GovernanceVotes.EmptyVoterSet();
+            if (!_removeAddress(otherVoterContracts, targetAddress)) revert GovernanceVotes.ProviderNotFound();
+            emit OtherVoterContractUpdated(targetAddress, false);
+        } else if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
+            GovernanceVotes.Configuration storage config = GovernanceVotes.state().configurations[target];
+            votersArray = config.local;
+            otherVoterContracts = config.providers;
+        }
+        address[] memory members = _readVoters();
+        if (members.length == 0) revert GovernanceVotes.EmptyVoterSet();
+        bytes32 membersHash = keccak256(abi.encode(members));
+        if (voteType == VoteType.REFRESH_VOTERS && membersHash != bytes32(target)) revert GovernanceVotes.MembershipChanged();
+        if (voteType == VoteType.SET_VOTER_CONFIGURATION) {
+            if (membersHash != GovernanceVotes.state().configurations[target].membersHash) revert GovernanceVotes.MembershipChanged();
+            delete GovernanceVotes.state().configurations[target];
+            emit VoterConfigurationApplied(membersHash);
+        }
+        GovernanceVotes.approveVoters(GovernanceVotes.state(), members);
+    }
+
+    /// @dev Swap-and-pop removal; voter and provider arrays are bounded at 64 / 16 entries.
+    function _removeAddress(address[] storage list, address target) private returns (bool) {
+        uint256 len = list.length;
+        for (uint256 i = 0; i < len; ++i) {
+            if (list[i] == target) {
+                list[i] = list[len - 1];
+                list.pop();
+                return true;
+            }
+        }
+        return false;
     }
 
     // ── Voter Management ──────────────────────────────────
@@ -394,17 +418,9 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
 
     // ── Governance Entry Points ───────────────────────────
 
-    function voteToAddWhitelistedAddress(address newAddress) external {
-        require(newAddress != address(0), "Address should not be zero");
-        _castVote(VoteType.ADD_WHITELISTED_ADDRESS, uint256(uint160(newAddress)));
-    }
-
-    function voteToRemoveWhitelistedAddress(address removeAddress) external {
-        require(removeAddress != address(0), "Address should not be zero");
-        _castVote(VoteType.REMOVE_WHITELISTED_ADDRESS, uint256(uint160(removeAddress)));
-    }
-
+    /// @notice Per-code registration fee in wei (1 .. MAX_REGISTRATION_FEE).
     function voteToUpdateRegistrationFee(uint256 newFee) external {
+        if (newFee > MAX_REGISTRATION_FEE) revert RegistrationFeeTooHigh();
         _castVote(VoteType.UPDATE_REGISTRATION_FEE, newFee);
     }
 
@@ -413,35 +429,39 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         _castVote(VoteType.UPDATE_FEE_VAULT, uint256(uint160(newFeeVault)));
     }
 
-    function voteToUpdateVoteTallyBlockThreshold(uint256 newThreshold) external {
-        if (!(newThreshold > 0 && newThreshold <= 100000)) revert GovernanceVotes.InvalidExpiry();
-        _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, newThreshold);
+    /// @notice Ballot window in seconds (1 hour .. 30 days).
+    function voteToUpdateVoteTallyBlockThreshold(uint256 newWindowSeconds) external {
+        if (!GovernanceVotes.validWindow(newWindowSeconds)) revert GovernanceVotes.InvalidExpiry();
+        _castVote(VoteType.UPDATE_VOTE_TALLY_BLOCK_THRESHOLD, newWindowSeconds);
     }
 
-    /// @notice Vote to authorize (or de-authorize) a Pente privacy group address.
-    ///         Authorized privacy groups can call router functions.
-    function voteToAuthorizePrivacyGroup(address privacyGroup) external {
-        require(privacyGroup != address(0), "Privacy group address cannot be zero");
-        _castVote(VoteType.AUTHORIZE_PRIVACY_GROUP, uint256(uint160(privacyGroup)));
-    }
-
-    /// @notice Vote to de-authorize a Pente privacy group address.
+    /// @notice Revoke every gift grant of a group at once: its epoch advances, so a later grant
+    ///         starts from an empty scope.
     function voteToDeauthorizePrivacyGroup(address privacyGroup) external {
         require(privacyGroup != address(0), "Privacy group address cannot be zero");
         _castVote(VoteType.DEAUTHORIZE_PRIVACY_GROUP, uint256(uint160(privacyGroup)));
     }
 
-    /// @notice Authorize a tenant group for one gift, without a global-access
-    /// window. First use makes this group scoped; subsequent grants are additive.
+    /// @notice The only way to authorize a group: one gift at a time, in the group's current epoch.
     function voteToSetPrivacyGroupGift(address group, address gift, bool allowed) external {
         require(group != address(0) && gift.code.length != 0, "Invalid group or gift");
-        uint256 target = uint256(keccak256(abi.encode(group, gift, allowed)));
-        _groupGiftChanges[target] = GroupGiftChange(group, gift, allowed);
+        uint256 epoch = privacyGroupEpoch[group];
+        uint256 target = uint256(keccak256(abi.encode(group, gift, allowed, epoch)));
+        _groupGiftChanges[target] = GroupGiftChange(group, gift, allowed, epoch);
         _castVote(VoteType.SET_PRIVACY_GROUP_GIFT, target);
     }
 
+    function _grantKey(address group, uint256 epoch, address gift) private pure returns (bytes32) {
+        return keccak256(abi.encode(group, epoch, gift));
+    }
+
+    /// @notice Whether `group` holds a grant for `gift` in its current epoch.
+    function privacyGroupGifts(address group, address gift) public view returns (bool) {
+        return _groupGiftGrants[_grantKey(group, privacyGroupEpoch[group], gift)];
+    }
+
     function canPrivacyGroupAccessGift(address group, address gift) public view returns (bool) {
-        return isAuthorizedPrivacyGroup[group] && (!isScopedPrivacyGroup[group] || privacyGroupGifts[group][gift]);
+        return isAuthorizedPrivacyGroup[group] && privacyGroupGifts(group, gift);
     }
 
     /// @notice A gift explicitly authorizes separate registration payers. Paying
@@ -462,7 +482,8 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     ///         The gift contract decides how to handle the redemption — single-use,
     ///         multi-use, NFT mint, etc.
     ///
-    ///         This function NEVER reverts on precondition failures. Invalid UIDs,
+    ///         This function NEVER reverts on precondition failures (it does revert when
+    ///         gasleft() is below MIN_DELIVERY_GAS at delivery, so no code is consumed). Invalid UIDs,
     ///         unregistered identifiers, out-of-range counters, and inactive/redeemed
     ///         UIDs emit a RedemptionRejected event and return gracefully. This
     ///         preserves the legacy best-effort ABI. Private code consumption must
@@ -549,13 +570,13 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     function _attemptDelivery(string memory uniqueId, address gift) private {
         Delivery storage delivery = _deliveries[keccak256(bytes(uniqueId))];
         bytes memory input = abi.encodeCall(IRedeemable.recordRedemption, (uniqueId, delivery.recipient));
-        // Leave room to persist the outcome even if the gift exhausts its gas.
-        uint256 available = gasleft();
-        uint256 budget = available > 100000 ? available - 100000 : 0;
-        if (budget > DELIVERY_GAS_LIMIT) budget = DELIVERY_GAS_LIMIT;
+        // The caller cannot choose the gift's gas (X-22): a starved call reverts the whole transaction
+        // instead of being recorded as a failed attempt, and the gift always gets exactly the limit.
+        if (gasleft() < MIN_DELIVERY_GAS) revert InsufficientDeliveryGas();
+        uint256 limit = DELIVERY_GAS_LIMIT;
         bool success;
-        if (budget != 0 && gift.code.length != 0) {
-            assembly ("memory-safe") { success := call(budget, gift, 0, add(input, 32), mload(input), 0, 0) }
+        if (gift.code.length != 0) {
+            assembly ("memory-safe") { success := call(limit, gift, 0, add(input, 32), mload(input), 0, 0) }
         }
         ++delivery.attempts;
         delivery.delivered = success;
@@ -715,19 +736,6 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
         return CanonicalUid.split(uniqueId);
     }
 
-    function _tryParseUint(string memory s) internal pure returns (bool ok, uint256 value) {
-        return CanonicalUid.parseCounter(s);
-    }
-
-    function _substring(string memory str, uint256 startIndex, uint256 endIndex) internal pure returns (string memory) {
-        bytes memory strBytes = bytes(str);
-        bytes memory result = new bytes(endIndex - startIndex);
-        for (uint256 i = startIndex; i < endIndex; i++) {
-            result[i - startIndex] = strBytes[i];
-        }
-        return string(result);
-    }
-
     /// @notice Register a single or batch of unique IDs by incrementing the counter range.
     ///         The gift or its explicitly authorized registrar pays `registrationFee * quantity`.
     ///         Works for both direct EOA calls and calls from external contracts.
@@ -767,14 +775,6 @@ contract CodeManager is Initializable, ReentrancyGuardUpgradeable, ICodeManager 
     }
 
     // ── Utilities ─────────────────────────────────────
-
-    function _isContract(address addr) internal view returns (bool) {
-        uint32 size;
-        assembly ("memory-safe") {
-            size := extcodesize(addr)
-        }
-        return (size > 0);
-    }
 
     function _incrementCounter(address giftContract, string memory chainId, uint256 quantity) internal {
         bytes32 hash = keccak256(abi.encodePacked(address(this), giftContract, chainId));
