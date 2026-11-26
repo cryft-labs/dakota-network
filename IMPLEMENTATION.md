@@ -189,7 +189,7 @@ workstation, Backend-01 and loopback through Nginx. It is not a browser API.
 The [Paladin maintenance runbook](Tools/Paladin/README.md) is part of this manual.
 It includes exact service units, ports, images, data/secret paths, contract addresses,
 funding, receipt reconciliation, restart, recovery, IPFS, upgrade and handover steps.
-Use `Tools/Paladin/funding.py` for a fresh read-only balance snapshot. The runbook
+Use `Tools/Paladin/verify.py` for a fresh read-only balance check. The runbook
 explains direct transfers and GasManager proposal/vote/execute funding. A suggested
 development settlement reserve alerts below 0.01 CRYFT and refills toward 0.03;
 neither alert nor refill is automated. Registration currently costs 0.001 CRYFT per UID.

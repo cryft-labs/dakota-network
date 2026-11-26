@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """D.7 bootstrap: link the genesis system proxies with their first implementations (runbook D.7, audit N-11).
 
-Replaces Tools/LiveGenesis/initialize.py. Every proxy is linked WITH init data in the same transaction
+Successor of the retired LiveGenesis initializer. Every proxy is linked WITH init data in the same transaction
 (audit X-16), and after every step the tool checks that the implementation's initializer is locked, that a
 second initialization reverts, and that the proxy now reads back exactly the planned state.
 

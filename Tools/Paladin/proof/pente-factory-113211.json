@@ -1,0 +1,50 @@
+{
+ "steps": {
+  "deploy:PenteFactory": {
+   "address": "0x5191D200046a732754DFC9126e5F5A43CD45de67",
+   "tx": "0xdab5dd5c698911cebcecaafa1a77986e08725224664d9cc95fdbf58bcff6c4ed",
+   "block": 47
+  },
+  "deploy:PenteFactoryProxy": {
+   "address": "0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E",
+   "tx": "0x00a69122b52ddd7da194be049936e8418c0fb150c01eeb31fbc6334cccdc8f1d",
+   "block": 48
+  }
+ },
+ "checks": [
+  {
+   "check": "chain id is 113211",
+   "ok": true
+  },
+  {
+   "check": "block 0 is the pinned 113211 genesis",
+   "ok": true
+  },
+  {
+   "check": "deployer has gas",
+   "ok": true
+  },
+  {
+   "check": "deploy:PenteFactory: transaction succeeded",
+   "ok": true
+  },
+  {
+   "check": "deploy:PenteFactoryProxy: transaction succeeded",
+   "ok": true
+  },
+  {
+   "check": "factory owner is the deployer (set atomically)",
+   "ok": true
+  },
+  {
+   "check": "implementation cannot be initialized",
+   "ok": true
+  },
+  {
+   "check": "proxy cannot be initialized again",
+   "ok": true
+  }
+ ],
+ "factory": "0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E",
+ "fromBlock": 47
+}

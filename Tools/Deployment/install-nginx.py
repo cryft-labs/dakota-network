@@ -60,6 +60,10 @@ def main():
     run('systemd-analyze','verify','/etc/systemd/system/cryft-nginx.service')
     run('systemctl','daemon-reload')
     run('systemctl','enable','--now','cryft-nginx.service')
+    # A root-run `nginx -t` (e.g. a manual config test) recreates the spool directories as `nobody`, and the
+    # cryft-proxy workers then fail every request body over 16 KB (HTTP 500). Re-assert ownership; test configs with
+    # `runuser -u cryft-proxy -- nginx -t -c /etc/cryft/nginx/nginx.conf`, never as root.
+    run('chown','-R','cryft-proxy:cryft-proxy',str(cache))
     receipt={'source_commit':a.commit,'host':a.host,'version':subprocess.run(['nginx','-v'],capture_output=True,text=True,check=True).stderr.strip(),
         'runtime_user':'cryft-proxy','service':'cryft-nginx.service','service_enabled':True,
         'public_listener_configured':False,'archive_http':'http://100.111.69.2:8547' if a.host=='Archive-01' else None,
