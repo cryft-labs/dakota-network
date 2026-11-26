@@ -1,6 +1,6 @@
 """Install persistent, rootless Blockscout services from a published release.
 
-Secrets are generated once on Backend-01, never printed, and never committed.
+Secrets are generated once on Indexer-01 (the Blockscout backend since the 2026-11-25 rebuild), never printed, and never committed.
 Application images must already have been built by prepare-build.py.
 """
 import argparse
@@ -36,7 +36,7 @@ def quote(value):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--commit', required=True)
-    p.add_argument('--host', choices=['Backend-01', 'Frontend-01'], required=True)
+    p.add_argument('--host', choices=['Indexer-01', 'Frontend-01'], required=True)
     a = p.parse_args()
     assert os.geteuid() == 0 and re.fullmatch('[0-9a-f]{40}', a.commit)
     release = Path('/opt/cryft/releases') / a.commit
@@ -60,7 +60,7 @@ def main():
     if subprocess.run(prefix + ['network', 'exists', 'cryft-explorer'], capture_output=True).returncode != 0:
         pod('network', 'create', 'cryft-explorer')
     build = json.loads((HOME / 'build-request.json').read_text())
-    component = 'backend' if a.host == 'Backend-01' else 'frontend'
+    component = 'backend' if a.host == 'Indexer-01' else 'frontend'
     assert build['component'] == component and build['host'] == a.host
     image = (HOME / (component + '-image.id')).read_text().strip()
     assert re.fullmatch('(sha256:)?[0-9a-f]{64}', image)
@@ -125,12 +125,12 @@ UMask=0077
         rd = directory('redis', 999, 999)
         dets = directory('dets', 10001, 10001)
         service('cryft-explorer-db', ['--user=999:999', '--env-file', CONFIG / 'postgres.env', '--volume', f'{pg}:/var/lib/postgresql/data', '--shm-size=512m', POSTGRES,
-                                    'postgres', '-c', 'shared_buffers=1536MB', '-c', 'max_connections=100', '-c', 'effective_cache_size=4GB', '-c', 'work_mem=16MB'], '6G', 200)
+                                    'postgres', '-c', 'shared_buffers=1GB', '-c', 'max_connections=100', '-c', 'effective_cache_size=3GB', '-c', 'work_mem=16MB'], '3G', 200)   # Indexer-01: 8 GB
         service('cryft-explorer-redis', ['--user=999:999', '--volume', f'{rd}:/data', REDIS, 'redis-server', '--appendonly', 'yes', '--maxmemory', '384mb', '--maxmemory-policy', 'noeviction'], '512M', 50)
         envargs = ['--env-file', CONFIG / 'backend.env', '--env-file', CONFIG / 'backend-private.env', '--volume', f'{dets}:/app/dets']
         service('cryft-explorer-migrate', envargs + [image, 'bin/blockscout', 'eval', 'Explorer.ReleaseTasks.migrate([])'], '4G', 200,
                 'cryft-explorer-db.service', True)
-        service('cryft-explorer-api', ['--publish=127.0.0.1:4000:4000'] + envargs + [image, 'bin/blockscout', 'start'], '8G', 300,
+        service('cryft-explorer-api', ['--publish=127.0.0.1:4000:4000'] + envargs + [image, 'bin/blockscout', 'start'], '4G', 300,
                 'cryft-explorer-db.service cryft-explorer-redis.service')
         run('systemctl', 'daemon-reload')
         run('systemctl', 'enable', '--now', 'cryft-explorer-db', 'cryft-explorer-redis')
@@ -173,7 +173,7 @@ UMask=0077
         raise
     receipt = {'source_commit': a.commit, 'host': a.host, 'component': component, 'runtime_user': user.pw_name,
                'image_id': image, 'build': build, 'units': units, 'rootless': True, 'public_listener_configured': False,
-               'ui_url': 'http://100.111.69.1:8080', 'backend_url': 'http://100.111.67.1:4002',
+               'ui_url': 'http://100.111.69.1:8080', 'backend_url': 'http://100.111.67.2:4002',
                'env_sha256': hashlib.sha256((CONFIG / (component + '.env')).read_bytes()).hexdigest()}
     write(CONFIG / 'installation.json', json.dumps(receipt, indent=2) + '\n', user.pw_gid, 0o640)
     print(json.dumps(receipt))

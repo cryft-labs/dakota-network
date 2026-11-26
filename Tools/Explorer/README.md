@@ -1,7 +1,8 @@
 # Cryft Network explorer deployment
 
 This development deployment separates the branded Cryft frontend on Frontend-01
-from the Blockscout API/indexer, PostgreSQL and Redis on Backend-01. Its intended
+from the Blockscout API/indexer, PostgreSQL and Redis on Indexer-01 (since the 2026-11-25
+rebuild; their data on its DigitalOcean volume, `prepare-build.py --data-device`). Its intended
 entry point is `http://100.111.69.1:8080` over Nebula. Check live acceptance records
 before treating an installation as available.
 
@@ -42,10 +43,10 @@ MetaMask add-network support alone does not enable the complete wallet-write UI.
 | --- | --- | --- | --- |
 | Frontend-01 | cryft-explorer-frontend | 127.0.0.1:3001 | 4 GiB / 2 CPUs |
 | Frontend-01 | cryft-nginx | Nebula and localhost :8080 | shared 512 MiB / 2 CPUs |
-| Backend-01 | cryft-explorer-api | 127.0.0.1:4000 | 8 GiB / 3 CPUs |
-| Backend-01 | cryft-nginx | Nebula and localhost :4002 | shared 512 MiB / 2 CPUs |
-| Backend-01 | cryft-explorer-db | isolated container network :5432 | 6 GiB / 2 CPUs |
-| Backend-01 | cryft-explorer-redis | isolated container network :6379 | 512 MiB / 0.5 CPU |
+| Indexer-01 | cryft-explorer-api | 127.0.0.1:4000 | 4 GiB / 3 CPUs |
+| Indexer-01 | cryft-nginx | Nebula and localhost :4002 | shared 512 MiB / 2 CPUs |
+| Indexer-01 | cryft-explorer-db | isolated container network :5432 | 3 GiB / 2 CPUs |
+| Indexer-01 | cryft-explorer-redis | isolated container network :6379 | 512 MiB / 0.5 CPU |
 
 All containers run rootless under the non-login `cryft-explorer` host account;
 applications use non-root container users. System services start at boot with
@@ -144,3 +145,17 @@ The September 12 review configuration adds this policy and nosniff to each IPFS
 location. Only successful immutable-object responses receive long cache lifetimes;
 missing pins and gateway errors use no-store. Validate Nginx before reloading.
 These additional headers are prepared source changes until rollout is recorded.
+
+## Genesis balances (2026-11-26)
+
+`backend.env` sets `CHAIN_SPEC_PATH` to the live genesis, so Blockscout imports the genesis allocations (block-0 coin
+balances, the genesis contracts' code) at start. Blockscout does not then fill the current balance of an address that was
+funded at genesis and never appears in a transaction (Chad's root wallet showed 0), and its on-demand fetcher skips an
+address with no balance yet. After the first start, copy the block-0 balances into those addresses once (Indexer-01,
+inside `cryft-explorer-db`, database `blockscout`):
+
+    update addresses a set fetched_coin_balance = b.value, fetched_coin_balance_block_number = 0, updated_at = now()
+      from address_coin_balances b
+      where b.address_hash = a.hash and b.block_number = 0 and b.value is not null and a.fetched_coin_balance is null;
+
+An address that later transacts is refreshed by Blockscout itself.
