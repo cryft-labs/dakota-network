@@ -49,6 +49,10 @@ def main():
         os.replace(temporary,archive)
     assert sha(archive)==SHA
     version=ROOT/('v'+VERSION);version.mkdir(mode=0o755,exist_ok=True)
+    # Keep the pinned archive next to the binary: the kit's ipfs-public.py verifies the binary against it.
+    kept=version/'kubo_v0.43.0_linux-amd64.tar.gz'
+    if not kept.exists():shutil.copyfile(archive,kept);os.chmod(kept,0o644)
+    assert sha(kept)==SHA
     binary=version/'ipfs'
     if not binary.exists():
         with tarfile.open(archive) as bundle:
