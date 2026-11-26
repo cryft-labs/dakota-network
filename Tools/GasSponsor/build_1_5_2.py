@@ -12,7 +12,7 @@ Nothing is deployed on the fresh chain, but the layout stays append-only against
     python Tools/GasSponsor/build_1_5_2.py            # print the result; write nothing
     python Tools/GasSponsor/build_1_5_2.py --write    # also write Releases/GasSponsor/1.5.2/ (standard input, artifact, proof)
 
-Needs py-solc-x with solc 0.8.37. Exit 1 past Dakota's 32,768-byte code limit or on any layout problem.
+Needs py-solc-x with solc 0.8.37. Exit 1 past Cryft's 32,768-byte code limit or on any layout problem.
 """
 from __future__ import annotations
 
@@ -75,7 +75,7 @@ def build() -> tuple[dict, dict, dict]:
     if len(runtime) > base.CODE_LIMIT:
         problems.append(f"runtime {len(runtime):,} bytes, past {base.CODE_LIMIT:,}")
     added = {struct: new[struct][len(old.get(struct, [])):] for struct in new}
-    proof = {"kind": "dakota.storage-layout-proof.v1", "contract": base.NAME, "version": VERSION, "append_only": not problems,
+    proof = {"kind": "cryft.storage-layout-proof.v1", "contract": base.NAME, "version": VERSION, "append_only": not problems,
              "problems": problems,
              "predecessors": {"1.5.1": {"sources": str(PREDECESSOR.relative_to(REPO)), "sources_sha256": base.sha256(PREDECESSOR.read_bytes()),
                                         "plain": old_plain, "structs": old}},

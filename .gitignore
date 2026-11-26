@@ -15,3 +15,4 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+Tools/SolcCompiler/compiled_output/

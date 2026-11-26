@@ -13,7 +13,7 @@ interface IDeveloperGasProgramLimits {
 }
 
 /// @notice A sponsor's allowance policy that also sees the calls it pays for (detected by ERC-165; V1's `reserve` otherwise).
-/// 1.5.2: it is handed the whole validated execution envelope (IDakotaDelegation.executeSponsored calldata: every call's target,
+/// 1.5.2: it is handed the whole validated execution envelope (ICryftDelegation.executeSponsored calldata: every call's target,
 /// value and data) instead of target and selector arrays, so a policy can check anything about the calls (the 32 KB budget).
 interface ITenantAllowancePolicyV2 {
     function reserveCalls(bytes32 operationId, address wallet, uint256 maximumCost, bytes calldata executionData)
@@ -43,7 +43,7 @@ interface ITenantAllowancePolicyV2 {
 ///  - C3: the platform's CALL APPROVALS (ApprovedGasSponsor, GasSponsor 1.2: target, selector, value, code and implementation
 ///    hashes) are enforced on chain again for every sponsor but a developer program's (whose calls the program's deny list,
 ///    the manager's targets and the router's lists govern); their storage is ApprovedGasSponsor's own namespaced slot
-///    keccak256("dakota.storage.ApprovedGasSponsor.v1"), the one 1.2 wrote (0x…FEeD still holds its entries);
+///    keccak256("cryft.storage.ApprovedGasSponsor.v1"), the one 1.2 wrote (0x…FEeD still holds its entries);
 ///  - C4: releaseWorker(id): a stuck worker reservation settled at its maximum, by the platform administrator or, after
 ///    RESERVATION_RELEASE_AFTER (7 days), by anyone.
 /// Every other behavior is exactly as in 1.5.0. No new plain storage; the approvals' namespace is proven apart.
@@ -62,7 +62,7 @@ interface ITenantAllowancePolicyV2 {
 /// @dev Append-only: the base and worker storage are untouched; this version's state lives in its own slot. 1.5.0 and 1.5.1 add no
 /// state; 1.5.2 appends `openedBy` and `deniedCount` (`opsDay`/`opsCount` stay, unread: the base counts every sponsor now).
 contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
-    bytes32 private constant PROGRAM_SLOT = keccak256("dakota.storage.ProgramGasSponsor.v1");
+    bytes32 private constant PROGRAM_SLOT = keccak256("cryft.storage.ProgramGasSponsor.v1");
     uint256 private constant _PROGRAM_READ_GAS = 100_000;
 
     struct ProgramStorage {
@@ -219,7 +219,7 @@ contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
         address sponsor = voucher.sponsor;
         bool program = p.programSponsor[sponsor];
         bool targets = p.targetsRequired[sponsor];                          // the manager's own choice, any sponsor
-        IDakotaDelegation.Call[] memory calls = _calls(executionData);      // 1.5.2: decoded once
+        ICryftDelegation.Call[] memory calls = _calls(executionData);      // 1.5.2: decoded once
         if (!program) _requireApprovedCalls(calls);                         // C3: every other sponsor
         for (uint256 i; i < calls.length; ++i) {
             address target = calls[i].target;

@@ -26,7 +26,7 @@ interface CM { function registerUniqueIds(address,string calldata,uint256) exter
 contract Gift {
     bool public broken; uint public delivered; address public recipient;
     function setBroken(bool b) external { broken=b; }
-    function register(address cm,uint count) external payable { CM(cm).registerUniqueIds{value:msg.value}(address(this),"112311",count); }
+    function register(address cm,uint count) external payable { CM(cm).registerUniqueIds{value:msg.value}(address(this),"113211",count); }
     function permit(address cm,address registrar,bool allowed) external { CM(cm).setRegistrationOperator(registrar,allowed); }
     function recordRedemption(string calldata,address r) external { require(!broken,"broken"); delivered++; recipient=r; }
 }
@@ -38,7 +38,7 @@ contract Echo {
     }
 }
 '''
-    for key,a in solcx.compile_source(source,solc_version=__import__('os').environ.get('DAKOTA_TEST_LEGACY_SOLC','0.8.19'),output_values=['abi','bin','bin-runtime']).items():
+    for key,a in solcx.compile_source(source,solc_version=__import__('os').environ.get('CRYFT_TEST_LEGACY_SOLC','0.8.19'),output_values=['abi','bin','bin-runtime']).items():
         result[key.split(':')[-1]]={'abi':a['abi'],'creation_bytecode':'0x'+a['bin'],'runtime_bytecode':'0x'+a['bin-runtime']}
     return result
 
@@ -57,7 +57,7 @@ def manager(c):
 
 def registered(c,cm,gift,count=1):
     paid(c,gift.functions.register(cm.address,count),cm.functions.registrationFee().call()*count)
-    identifier,counter=cm.functions.getIdentifierCounter(gift.address,'112311').call()
+    identifier,counter=cm.functions.getIdentifierCounter(gift.address,'113211').call()
     return identifier+'-'+str(counter)
 
 
@@ -105,10 +105,10 @@ def test_proxy_forwards_exact_arbitrary_data(chain,size):
 def test_registration_authority_prevents_third_party_counter_drift(chain):
     c=chain; cm=manager(c); gift=deploy(c,'Gift'); a=c['accounts']
     registered(c,cm,gift)
-    with pytest.raises(Exception): cm.functions.registerUniqueIds(gift.address,'112311',1).call({'from':a[5],'value':cm.functions.registrationFee().call()})
+    with pytest.raises(Exception): cm.functions.registerUniqueIds(gift.address,'113211',1).call({'from':a[5],'value':cm.functions.registrationFee().call()})
     tx(c,gift.functions.permit(cm.address,a[5],True))
-    paid(c,cm.functions.registerUniqueIds(gift.address,'112311',1),cm.functions.registrationFee().call(),a[5])
-    assert cm.functions.getIdentifierCounter(gift.address,'112311').call()[1]==2
+    paid(c,cm.functions.registerUniqueIds(gift.address,'113211',1),cm.functions.registrationFee().call(),a[5])
+    assert cm.functions.getIdentifierCounter(gift.address,'113211').call()[1]==2
 
 
 def test_uid_alias_overflow_and_mixed_batch_are_safe(chain):
@@ -219,7 +219,7 @@ def test_private_batch_respects_pin_capacity(chain):
 
 def test_cards_safe_parser_owner_acceptance_and_supply_registration(chain):
     c=chain;cm=manager(c);a=c['accounts']
-    card=proxy_contract(c,'CryftGreetingCards',('Cards','CARD','ipfs://test/',cm.address,'112311',a[4]),'initializeWithOwner')
+    card=proxy_contract(c,'CryftGreetingCards',('Cards','CARD','ipfs://test/',cm.address,'113211',a[4]),'initializeWithOwner')
     assert card.functions.owner().call()==a[4]
     for uid in ['review-/','review-'+'9'*80,'review-01']:
         with pytest.raises(TransactionFailed, match='Unknown uniqueId'):
@@ -232,7 +232,7 @@ def test_cards_safe_parser_owner_acceptance_and_supply_registration(chain):
     fails(c,card.functions.setPaused(True),a[4])
     fee=cm.functions.registrationFee().call()
     paid(c,card.functions.setMaxSaleSupply(2),fee*2,a[5])
-    with pytest.raises(Exception): cm.functions.registerUniqueIds(card.address,'112311',1).call({'from':a[3],'value':fee})
+    with pytest.raises(Exception): cm.functions.registerUniqueIds(card.address,'113211',1).call({'from':a[3],'value':fee})
     paid(c,card.functions.setMaxSaleSupply(3),fee,a[5])
     assert card.functions.maxSaleSupply().call()==3
 
@@ -240,7 +240,7 @@ def test_cards_safe_parser_owner_acceptance_and_supply_registration(chain):
 def test_shared_metadata_tracks_receipt_uids_across_users_and_capacity_growth(chain):
     from web3.logs import DISCARD
     c=chain;a=c['accounts'];cm=manager(c)
-    card=proxy_contract(c,'CryftGreetingCards',('Cards','CARD','ipfs://front/',cm.address,'112311',a[4]),'initializeWithOwner')
+    card=proxy_contract(c,'CryftGreetingCards',('Cards','CARD','ipfs://front/',cm.address,'113211',a[4]),'initializeWithOwner')
     fee=cm.functions.registrationFee().call()
     paid(c,card.functions.setMaxSaleSupply(4),4*fee,a[4])
     tx(c,card.functions.buy(a[3],1,'ipfs://legacy/'),a[3])

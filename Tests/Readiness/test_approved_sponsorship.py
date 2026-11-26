@@ -100,17 +100,17 @@ def test_real_canonical_registration_pays_fee_and_manager_swap_blocks(chain):
     contract Gift { address public codeManagerAddress;
       constructor(address m){codeManagerAddress=m;}
       function setManager(address m) external {codeManagerAddress=m;}
-      function register(uint n) external payable {CM(codeManagerAddress).registerUniqueIds{value:msg.value}(address(this),"112311",n);}
+      function register(uint n) external payable {CM(codeManagerAddress).registerUniqueIds{value:msg.value}(address(this),"113211",n);}
     }''','Gift',cm.address)
     fee=cm.functions.registrationFee().call()
     tx(c,sponsor.functions.setCallApprovals([permission(c,gift.address,'register(uint256)',fee,canonical=True)]))
     data=gift.functions.register(1)._encode_transaction_data()
     balance=c['w3'].eth.get_balance(vault)
     assert not send(c,sponsor,request(c,sponsor,account,entry,gift.address,data,tag='unpaid'))
-    assert cm.functions.getIdentifierCounter(gift.address,'112311').call()[1]==0
+    assert cm.functions.getIdentifierCounter(gift.address,'113211').call()[1]==0
     assert send(c,sponsor,request(c,sponsor,account,entry,gift.address,data,fee,tag='paid'))
     assert c['w3'].eth.get_balance(vault)==balance+fee
-    assert cm.functions.getIdentifierCounter(gift.address,'112311').call()[1]==1
+    assert cm.functions.getIdentifierCounter(gift.address,'113211').call()[1]==1
     tx(c,gift.functions.setManager(c['accounts'][9]))
     fails(c,sponsor.functions.executeSponsored(*request(c,sponsor,account,entry,gift.address,data,fee,tag='wrong-manager')),c['accounts'][2])
 

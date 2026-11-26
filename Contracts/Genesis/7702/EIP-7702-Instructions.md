@@ -1,18 +1,18 @@
-# EIP-7702 Implementation Guide — Dakota Network (Chain 112311)
+# EIP-7702 Implementation Guide — Cryft Network (Chain 113211)
 
-> **Purpose:** This document is a self-contained reference for building web applications on the Dakota Network using thirdweb, EIP-7702 delegation, ERC-6551 Token Bound Accounts, and ERC-1155 trait tokens. It includes every contract address, ABI detail, function signature, and integration pattern needed to prompt-generate a full-stack app.
+> **Purpose:** This document is a self-contained reference for building web applications on the Cryft Network using thirdweb, EIP-7702 delegation, ERC-6551 Token Bound Accounts, and ERC-1155 trait tokens. It includes every contract address, ABI detail, function signature, and integration pattern needed to prompt-generate a full-stack app.
 
 > **CURRENT NATIVE INITIAL-RELEASE NOTICE**
 >
-> The older `DakotaDelegation` and `GasSponsor` function references later in
+> The older `CryftDelegation` and `GasSponsor` function references later in
 > this broad integration guide describe retired prototypes and must not be
 > used for deployment. The authoritative native sponsorship and deployment
 > runbook is [`GAS-SPONSORSHIP.md`](./GAS-SPONSORSHIP.md). The initial release
 > first-links `0x00000000000000000000000000000000de1E6A7E` to the upgradeable
-> `DakotaDelegationRegistry` control plane (link WITH init data, by a live
-> root). `DakotaDelegationBeacon` is owned by that fixed entry from its
+> `CryftDelegationRegistry` control plane (link WITH init data, by a live
+> root). `CryftDelegationBeacon` is owned by that fixed entry from its
 > constructor: anyone may deploy it and there is no ownership handover. Each
-> user account routes through `DakotaDelegationBeaconDispatcher` and the beacon.
+> user account routes through `CryftDelegationBeaconDispatcher` and the beacon.
 > The `0x...FEeD` proxy is first-linked with `GasSponsor.initialize(...)`. This
 > release does not expose session-key, claim, top-off, or unrestricted
 > forwarding functions.
@@ -31,7 +31,7 @@
 > is already scheduled. Rollback to a known-good release is the same two-phase
 > call with `releaseAt(i)`'s implementation and code hash.
 >
-> **Reentrancy (audit X-54).** `DakotaDelegation` 1.2.0 uses a transient
+> **Reentrancy (audit X-54).** `CryftDelegation` 1.2.0 uses a transient
 > (EIP-1153) guard; no storage value left by any earlier delegate can block
 > `executeSponsored`.
 
@@ -49,7 +49,7 @@
 4. [thirdweb Integration](#4-thirdweb-integration)
 5. [ERC-6551 Token Bound Accounts + ERC-1155 Traits](#5-erc-6551-token-bound-accounts--erc-1155-traits)
 6. [Gas Sponsorship](#6-gas-sponsorship)
-7. [DakotaDelegation Contract Reference](#7-dakotadelegation-contract-reference)
+7. [CryftDelegation Contract Reference](#7-cryftdelegation-contract-reference)
 8. [GasSponsor Contract Reference](#8-gassponsor-contract-reference)
 9. [Full Web App Architecture](#9-full-web-app-architecture)
 10. [Step-by-Step: Sponsored TBA Trait Redemption](#10-step-by-step-sponsored-tba-trait-redemption)
@@ -65,7 +65,7 @@
 
 | Parameter | Value |
 |---|---|
-| **Chain ID** | `112311` |
+| **Chain ID** | `113211` |
 | **Consensus** | QBFT (Proof of Authority) |
 | **Block time** | 1 second |
 | **Gas limit** | 32,000,000 |
@@ -83,10 +83,10 @@
 |---|---|---|
 | `0x0000000000000000000000000000000000001111` | ValidatorSmartContractAllowList | QBFT validator/voter/overlord governance |
 | `0x000000000000000000000000000000000000cafE` | GasManager | Block reward beneficiary, voter-governed gas funding/burns |
-| `0x000000000000000000000000000000000000c0DE` | CodeManager | Official Dakota code management service (patent-covered) |
+| `0x000000000000000000000000000000000000c0DE` | CodeManager | Official Cryft code management service (patent-covered) |
 | `0x000000000000000000000000000000000000Face` | ERC-8004 Agent Registry | Official ERC-8004 agent identity contract |
 | `0x0000000000000000000000000000000000FacAdE` | ProxyAdmin | Guardian-gated ERC1967 upgrade dispatch |
-| `0x00000000000000000000000000000000de1E6A7E` | DakotaDelegationRegistry | EIP-7702 entry and upgradeable shared control plane |
+| `0x00000000000000000000000000000000de1E6A7E` | CryftDelegationRegistry | EIP-7702 entry and upgradeable shared control plane |
 | `0x000000000000000000000000000000000000FEeD` | GasSponsor | Gas sponsorship treasury (upgradeable — TransparentUpgradeableProxy) |
 
 ### 1.3 Genesis Configuration
@@ -94,7 +94,7 @@
 ```json
 {
   "config": {
-    "chainId": 112311,
+    "chainId": 113211,
     "homesteadBlock": 0,
     "eip150Block": 0,
     "eip155Block": 0,
@@ -162,8 +162,8 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 **Required:**
 - ✅ Prague/Pectra fork activated (`pragueTime: 0` — done)
 - ✅ Besu **26.1.0**
-- ✅ `DakotaDelegationRegistry` first-linked at the fixed delegation entry
-- ✅ `DakotaDelegationBeaconDispatcher`, beacon, and implementation deployed
+- ✅ `CryftDelegationRegistry` first-linked at the fixed delegation entry
+- ✅ `CryftDelegationBeaconDispatcher`, beacon, and implementation deployed
 - ✅ *(Optional)* `GasSponsor` contract for self-hosted gas sponsorship
 
 ---
@@ -176,10 +176,10 @@ This makes the EOA *behave* like a smart contract, delegating execution to the s
 
 | Contract | Source File | Upgradeable | Proxy Address |
 |---|---|---|---|
-| **DakotaDelegationRegistry** | `Contracts/Genesis/7702/DakotaDelegationRegistry.sol` | Yes (fixed TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
-| **DakotaDelegation** | `Contracts/Genesis/7702/DakotaDelegation.sol` | Yes (shared beacon) | `<beacon_implementation>` |
-| **DakotaDelegationBeacon** | `Contracts/Genesis/7702/DakotaDelegationBeacon.sol` | Registry-owned from construction (two-phase delayed upgrades) | `<beacon_address>` |
-| **DakotaDelegationBeaconDispatcher** | `Contracts/Genesis/7702/DakotaDelegationBeaconDispatcher.sol` | Immutable | `<dispatcher_address>` |
+| **CryftDelegationRegistry** | `Contracts/Genesis/7702/CryftDelegationRegistry.sol` | Yes (fixed TransparentUpgradeableProxy) | `0x...de1E6A7E` (genesis) |
+| **CryftDelegation** | `Contracts/Genesis/7702/CryftDelegation.sol` | Yes (shared beacon) | `<beacon_implementation>` |
+| **CryftDelegationBeacon** | `Contracts/Genesis/7702/CryftDelegationBeacon.sol` | Registry-owned from construction (two-phase delayed upgrades) | `<beacon_address>` |
+| **CryftDelegationBeaconDispatcher** | `Contracts/Genesis/7702/CryftDelegationBeaconDispatcher.sol` | Immutable | `<dispatcher_address>` |
 | **GasSponsor** | `Contracts/Genesis/7702/GasSponsor.sol` | Yes (TransparentUpgradeableProxy) | `0x...FEeD` (genesis) |
 | **CodeManager** | `Contracts/CodeManagement/CodeManager.sol` | Yes | `<proxy_address>` |
 | **CryftGreetingCards** | `Contracts/Tokens/GreetingCards.sol` | Yes | `<proxy_address>` |
@@ -206,7 +206,7 @@ The canonical ERC-6551 registry is deployed at the same address on every EVM cha
 0x000000006551c19487814612e58FE06813775758
 ```
 
-If not yet deployed on chain 112311, deploy it using the standard bytecode. thirdweb also offers an ERC-6551 deployment helper.
+If not yet deployed on chain 113211, deploy it using the standard bytecode. thirdweb also offers an ERC-6551 deployment helper.
 
 ---
 
@@ -219,16 +219,16 @@ If not yet deployed on chain 112311, deploy it using the standard bytecode. thir
 3. **API Keys:**
    - `x-client-id` — public, for frontend SDKs
    - `x-secret-key` — private, for backend API calls
-4. **RPC Endpoint** — Your Dakota chain RPC must be reachable from thirdweb's infrastructure
+4. **RPC Endpoint** — Your Cryft chain RPC must be reachable from thirdweb's infrastructure
 
 ### 4.2 Define Custom Chain
 
 ```typescript
 import { defineChain } from "thirdweb";
 
-const dakotaChain = defineChain({
-  id: 112311,
-  rpc: "https://your-dakota-rpc-endpoint.com:8545",
+const cryftChain = defineChain({
+  id: 113211,
+  rpc: "https://your-cryft-rpc-endpoint.com:8545",
   nativeCurrency: {
     name: "Cryft",
     symbol: "CRYFT",
@@ -277,7 +277,7 @@ import { ThirdwebProvider, ConnectWallet } from "@thirdweb-dev/react";
 
 function App() {
   return (
-    <ThirdwebProvider clientId="<your-client-id>" activeChain={dakotaChain}>
+    <ThirdwebProvider clientId="<your-client-id>" activeChain={cryftChain}>
       <ConnectWallet />
     </ThirdwebProvider>
   );
@@ -291,7 +291,7 @@ For backend operations (deploying contracts, admin transactions):
 ```
 POST https://api.thirdweb.com/v1/wallets/server
 Headers: { x-secret-key: <secret-key> }
-Body:    { "identifier": "dakota-admin-wallet" }
+Body:    { "identifier": "cryft-admin-wallet" }
 ```
 
 ### 4.5 Contract Interaction (Write)
@@ -313,7 +313,7 @@ const response = await fetch("https://api.thirdweb.com/v1/contracts/write", {
         params: [42, "0x..."],
       },
     ],
-    chainId: 112311,
+    chainId: 113211,
     from: "<wallet-address>",
   }),
 });
@@ -339,7 +339,7 @@ body: JSON.stringify({
       params: [1, "1000000000000000000"],
     },
   ],
-  chainId: 112311,
+  chainId: 113211,
   from: userWalletAddress,
 })
 ```
@@ -394,7 +394,7 @@ This is relevant when the ERC-721 token doesn't represent a collectible or avata
 2. **Deploy ERC-6551 Registry** (if not already on chain — canonical address: `0x000000006551c19487814612e58FE06813775758`)
 3. **Deploy ERC-6551 Account Implementation** (the smart account logic TBAs use)
 4. **Deploy ERC-1155 Trait Collection** (multi-token traits)
-5. **Deploy DakotaDelegation** (EIP-7702 delegation target — already in repo)
+5. **Deploy CryftDelegation** (EIP-7702 delegation target — already in repo)
 6. **Deploy GasSponsor** via proxy (self-hosted gas sponsorship — already in repo)
 
 ### 5.3 Creating a TBA for an NFT
@@ -408,7 +408,7 @@ const ACCOUNT_IMPLEMENTATION = "<your-6551-account-impl-address>";
 
 const registry = getContract({
   client,
-  chain: dakotaChain,
+  chain: cryftChain,
   address: ERC6551_REGISTRY,
 });
 
@@ -419,7 +419,7 @@ const tx = prepareContractCall({
   params: [
     ACCOUNT_IMPLEMENTATION,
     "0x0000000000000000000000000000000000000000000000000000000000000000",
-    112311n,
+    113211n,
     "<ERC721_collection_address>",
     42n
   ],
@@ -439,7 +439,7 @@ const tbaAddress = await readContract({
   params: [
     ACCOUNT_IMPLEMENTATION,
     "0x0000000000000000000000000000000000000000000000000000000000000000",
-    112311n,
+    113211n,
     "<ERC721_collection_address>",
     42n
   ],
@@ -465,7 +465,7 @@ await fetch("https://api.thirdweb.com/v1/contracts/write", {
         params: [tbaAddress, 1, 1, "0x"],  // mint trait #1 into the TBA
       },
     ],
-    chainId: 112311,
+    chainId: 113211,
     from: serverWalletAddress,
   }),
 });
@@ -498,7 +498,7 @@ await fetch("https://api.thirdweb.com/v1/contracts/write", {
         params: [tbaAddress, 1, 1, "0x"],
       },
     ],
-    chainId: 112311,
+    chainId: 113211,
     from: userWalletAddress,  // user's in-app wallet — gas is sponsored
   }),
 });
@@ -525,13 +525,13 @@ const balances = await readContract({
 
 ### 5.7 Marketplace / Explorer Support
 
-| Platform | ERC-721 | ERC-1155 | ERC-6551 TBA | Custom Chain 112311 |
+| Platform | ERC-721 | ERC-1155 | ERC-6551 TBA | Custom Chain 113211 |
 |---|---|---|---|---|
 | **OpenSea** | ✅ | ✅ | ✅ (nested NFT display) | ❌ Not indexed (public chains only) |
 | **Blockscout** | ✅ | ✅ | ✅ (shows TBA holdings) | ✅ Self-hosted — full support |
 | **thirdweb Dashboard** | ✅ | ✅ | ✅ | ✅ Custom chain supported |
 
-> **Recommendation:** Run a self-hosted **Blockscout** instance for chain 112311. It will correctly display ERC-721 tokens, their TBA addresses, and ERC-1155 trait tokens held within each TBA.
+> **Recommendation:** Run a self-hosted **Blockscout** instance for chain 113211. It will correctly display ERC-721 tokens, their TBA addresses, and ERC-1155 trait tokens held within each TBA.
 
 ---
 
@@ -555,7 +555,7 @@ Configure in **Project → Wallets → Sponsorship Policies**:
 | Policy | Description |
 |---|---|
 | Global spend limits | Cap total gas spend per day/month |
-| Chain restrictions | Only sponsor on chain 112311 |
+| Chain restrictions | Only sponsor on chain 113211 |
 | Contract restrictions | Only sponsor calls to your deployed contracts |
 | Wallet allowlists/blocklists | Control which wallets get sponsorship |
 | Custom server verifier | Your backend decides per-transaction |
@@ -568,7 +568,7 @@ Configure your backend URL in the dashboard. thirdweb calls:
 POST https://your-backend/verify-transaction
 Body: {
   "clientId": "string",
-  "chainId": 112311,
+  "chainId": 113211,
   "userOp": {
     "sender": "0x...",
     "targets": ["0x..."],
@@ -617,11 +617,11 @@ reinitializer.
 
 ---
 
-## 7. DakotaDelegation Contract Reference
+## 7. CryftDelegation Contract Reference
 
-**Source:** `Contracts/Genesis/7702/DakotaDelegation.sol`
+**Source:** `Contracts/Genesis/7702/CryftDelegation.sol`
 **Upgradeable:** Yes (Initializable + TransparentUpgradeableProxy)
-**Storage:** ERC-7201 namespaced at `keccak256("dakota.delegation.v1")`
+**Storage:** ERC-7201 namespaced at `keccak256("cryft.delegation.v1")`
 
 ### Functions
 
@@ -640,9 +640,9 @@ reinitializer.
 ### EIP-712 Domain
 
 ```
-name:              "DakotaDelegation"
+name:              "CryftDelegation"
 version:           "1"
-chainId:           112311
+chainId:           113211
 verifyingContract: <the delegating EOA address>
 ```
 
@@ -729,11 +729,11 @@ event RelayerReimbursed(
 
 ```
 ┌─────────────────────┐     ┌────────────────────────┐     ┌───────────────────────┐
-│   Frontend App      │────▶│   thirdweb API          │────▶│  Dakota Chain 112311   │
+│   Frontend App      │────▶│   thirdweb API          │────▶│  Cryft Chain 113211   │
 │   (React / Next.js) │     │   api.thirdweb.com      │     │  (Besu QBFT)          │
 │                     │     │                          │     │                       │
 │ • ConnectWallet     │     │ • In-App Wallets (EOA)   │     │ Contracts:            │
-│ • defineChain()     │     │ • EIP-7702 Delegation    │     │ • DakotaDelegation    │
+│ • defineChain()     │     │ • EIP-7702 Delegation    │     │ • CryftDelegation    │
 │ • NFT Gallery       │     │ • Gas Sponsorship        │     │ • GasSponsor (proxy)  │
 │ • Trait Viewer      │     │ • Server Wallets         │     │ • CodeManager (proxy) │
 │ • Code Redemption   │     │ • Batch Execution        │     │ • PrivateComboStorage │
@@ -763,10 +763,10 @@ event RelayerReimbursed(
 | Contract interaction | thirdweb SDK + `POST /v1/contracts/write` |
 | Gas sponsorship | thirdweb hosted (primary), GasSponsor contract (fallback) |
 | Backend | Node.js / Python + thirdweb server wallet |
-| Blockchain | Besu 26.1.0, QBFT, chain 112311 |
+| Blockchain | Besu 26.1.0, QBFT, chain 113211 |
 | Explorer | Self-hosted Blockscout |
 | NFT metadata | IPFS (Pinata / web3.storage) |
-| EIP-7702 delegation | DakotaDelegation contract |
+| EIP-7702 delegation | CryftDelegation contract |
 
 ---
 
@@ -776,7 +776,7 @@ This is the full user flow for redeeming a code that awards ERC-1155 traits to a
 
 ### 10.1 Prerequisites
 
-- User has an in-app wallet (thirdweb) on chain 112311
+- User has an in-app wallet (thirdweb) on chain 113211
 - User owns an ERC-721 NFT (`tokenId = 42`)
 - A TBA has been created for NFT #42 (address: `0xTBA42`)
 - A redemption code exists in CodeManager (e.g. `"FIRE-SWORD-2026"`)
@@ -793,7 +793,7 @@ const pin = 9999;
 const tbaAddress = await readContract({
   contract: registryContract,
   method: "function account(address, bytes32, uint256, address, uint256) view returns (address)",
-  params: [ACCOUNT_IMPL, ZERO_SALT, 112311n, COLLECTION_ADDRESS, 42n],
+  params: [ACCOUNT_IMPL, ZERO_SALT, 113211n, COLLECTION_ADDRESS, 42n],
 });
 
 // 3. Frontend calls your backend to execute the sponsored redemption
@@ -852,7 +852,7 @@ export async function POST(req) {
     },
     body: JSON.stringify({
       calls,
-      chainId: 112311,
+      chainId: 113211,
       from: userWallet,
     }),
   });
@@ -889,7 +889,7 @@ const balance = await readContract({
 
 ### 11.1 Why Blockscout
 
-- **Self-hosted** — runs against any EVM chain, including private chain 112311
+- **Self-hosted** — runs against any EVM chain, including private chain 113211
 - **Full token support** — ERC-20, ERC-721, ERC-1155, ERC-6551 TBAs
 - **TBA display** — shows TBA addresses as contract accounts with token holdings
 - **Open source** — Docker / Kubernetes deployment
@@ -901,10 +901,10 @@ const balance = await readContract({
 git clone https://github.com/blockscout/blockscout.git
 cd blockscout/docker-compose
 
-# Configure for Dakota chain
+# Configure for Cryft chain
 export ETHEREUM_JSONRPC_HTTP_URL=http://your-besu-node:8545
 export ETHEREUM_JSONRPC_WS_URL=ws://your-besu-node:8546
-export CHAIN_ID=112311
+export CHAIN_ID=113211
 export COIN=CRYFT
 
 docker-compose up -d
@@ -926,18 +926,18 @@ docker-compose up -d
 - [ ] **Besu 26.1.0** installed on all validator/RPC nodes
 - [ ] **`pragueTime: 0`** in genesis config (done ✅)
 - [ ] **Network restarted** with updated genesis
-- [ ] **Blockscout** self-hosted and indexing chain 112311
+- [ ] **Blockscout** self-hosted and indexing chain 113211
 - [ ] **RPC endpoint** publicly accessible for thirdweb
 
 ### thirdweb Setup
 - [ ] **thirdweb account** created with project + API keys
-- [ ] **Custom chain** defined (`defineChain({ id: 112311, ... })`)
+- [ ] **Custom chain** defined (`defineChain({ id: 113211, ... })`)
 - [ ] **Sponsorship policies** configured in dashboard
 - [ ] **Server wallet** created for backend operations
 - [ ] **(Optional)** Dedicated Relayer provisioned
 
 ### Contract Deployment
-- [ ] **DakotaDelegation** deployed (note address)
+- [ ] **CryftDelegation** deployed (note address)
 - [ ] **GasSponsor** deployed via TransparentUpgradeableProxy (note proxy address)
 - [ ] **CodeManager** deployed via proxy (note address)
 - [ ] **CryftGreetingCards** deployed via proxy (note address)
@@ -948,7 +948,7 @@ docker-compose up -d
 - [ ] All contract addresses recorded in this document (§3.1)
 
 ### Integration
-- [ ] Frontend connects to chain 112311 via thirdweb SDK
+- [ ] Frontend connects to chain 113211 via thirdweb SDK
 - [ ] Users can authenticate and get in-app wallets
 - [ ] NFT minting works with gas sponsorship
 - [ ] TBA creation works for each NFT
@@ -962,7 +962,7 @@ docker-compose up -d
 
 | Feature | ERC-4337 | EIP-7702 |
 |---|---|---|
-| On-chain contracts needed | EntryPoint, Account Factory, Paymaster | DakotaDelegation only (protocol-level) |
+| On-chain contracts needed | EntryPoint, Account Factory, Paymaster | CryftDelegation only (protocol-level) |
 | Bundler required | Yes (separate service) | No |
 | User wallet type | Smart contract wallet | EOA with delegation |
 | Gas overhead | Higher (UserOp validation) | Lower (native tx type) |

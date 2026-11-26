@@ -11,11 +11,11 @@ reset genesis, regenerate its keys, recreate the group or repeat initialization.
 Paladin-01 (`100.111.32.201`) runs Paladin v1.0.0, PostgreSQL 17.11 and its connected
 Besu 26.8.1 node. Paladin and PostgreSQL use rootless Podman supervised by systemd.
 The private group has one member, `operator@paladin01`; it is a development group,
-not a tested multiparty deployment. The group name is `moment-cards-development`.
+not a tested multiparty deployment. The group name is `cryft-cards-development`.
 
 | Setting | Verified value |
 |---|---|
-| Chain ID | `112311` |
+| Chain ID | `113211` |
 | Node name / privacy domain | `paladin01` / `pente` |
 | Group ID | `0x8b4e5a042c782d363c72538b2a518679c8a6e942c1b9850e768d975af54eba79` |
 | Public EVM / compiler | Osaka / Solidity 0.8.37 |
@@ -112,9 +112,9 @@ they are not the current proxy targets. Do not install an older implementation j
 because a historical receipt names it. The [JSON record](../../docs/paladin-acceptance-20260911.json)
 includes runtime hashes, artifact aliases and metadata CIDs.
 
-## 4. Funding: exactly which addresses need KOTA
+## 4. Funding: exactly which addresses need CRYFT
 
-Use native **KOTA on chain 112311**, with 18 decimals. Public transfers on another
+Use native **CRYFT on chain 113211**, with 18 decimals. Public transfers on another
 chain do not fund this network. Confirm chain ID, destination and current balance
 before sending. Read balances with the archive RPC or the read-only command:
 
@@ -124,16 +124,16 @@ python Tools/Paladin/funding.py --workspace C:\Users\ChadS\Documents\Codex\2026-
 
 | Purpose | Public address | Balance at block 362 | When to fund |
 |---|---|---:|---|
-| Paladin automatic public settlement | `0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549` | 0.024371939 KOTA | Pays for automatic Pente deployments, maintenance and settlement |
-| Deployment account / development sponsor relayer | `0x633309d1155fD658a717e4f5E4FA853615400867` | 0.909362996 KOTA | Pays deployment, registration and outer sponsored-transaction fees |
-| Delegated test recipient | `0x991acc255761dEE0421Ccd3F436788C24425122E` | 0.997995562 KOTA | Needed for its own unsponsored transactions; sponsored redemption did not debit its native balance |
-| Final management root | `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` | 32 KOTA | Signs its own governance/acceptance operations |
-| Private operator | `0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125` | 0 KOTA | No native funding needed for this private execution role |
+| Paladin automatic public settlement | `0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549` | 0.024371939 CRYFT | Pays for automatic Pente deployments, maintenance and settlement |
+| Deployment account / development sponsor relayer | `0x633309d1155fD658a717e4f5E4FA853615400867` | 0.909362996 CRYFT | Pays deployment, registration and outer sponsored-transaction fees |
+| Delegated test recipient | `0x991acc255761dEE0421Ccd3F436788C24425122E` | 0.997995562 CRYFT | Needed for its own unsponsored transactions; sponsored redemption did not debit its native balance |
+| Final management root | `0x9247524040D91D5dd1521A25f2e7711d4a0fe921` | 32 CRYFT | Signs its own governance/acceptance operations |
+| Private operator | `0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125` | 0 CRYFT | No native funding needed for this private execution role |
 
-Balances are a dated snapshot, not minimums. Initial Paladin funding was 0.03 KOTA.
-A development operating policy is to alert below 0.01 KOTA and refill toward 0.03;
+Balances are a dated snapshot, not minimums. Initial Paladin funding was 0.03 CRYFT.
+A development operating policy is to alert below 0.01 CRYFT and refill toward 0.03;
 this alert/refill is **not automated**. At the current 1 gwei fee configuration,
-0.01 KOTA covers only ten transactions at one million gas each. Size the reserve
+0.01 CRYFT covers only ten transactions at one million gas each. Size the reserve
 from observed gas use, pending transactions and concurrency, not this small test.
 The private gas limit still bounds execution even though private computation does
 not charge a native balance. Public settlement always has a payer.
@@ -158,7 +158,7 @@ Both ledger components are zero after acceptance; sponsorship is paused, the tes
 tenant disabled and the temporary relayer disabled. The public relayer still needs
 its own native fee reserve before reimbursement. See the [sponsorship guide](../../Contracts/Genesis/7702/GAS-SPONSORSHIP.md).
 
-The current registration fee is `1000000000000000` wei (0.001 KOTA) per new UID.
+The current registration fee is `1000000000000000` wei (0.001 CRYFT) per new UID.
 Query `registrationFee()` before calculating payment. Registration fees, tenant
 sponsor deposits and a signer's native balance are three different balances.
 
@@ -279,7 +279,7 @@ Never claim the handover complete merely because a proposal or public transfer e
 
 Current aliases `CodeManagerStrict` and `PrivateComboStorageStrict` name versioned
 artifacts for the existing Solidity contract names. Both preserve the full storage
-layout of their predecessors. Public runtime is 24,784 bytes, within Dakota's
+layout of their predecessors. Public runtime is 24,784 bytes, within Cryft's
 32,768-byte limit; private runtime is 17,127 bytes, within the private 24,576-byte
 limit. Do not assume the default Ethereum public code-size limit applies here.
 
@@ -337,7 +337,7 @@ public Cloudflare/IPFS gateway; production SSH/network
 lockdown; full reboot/backup-restore/multiparty/load tests. This runbook documents
 working development settlement, not production approval.
 
-## Dakota dashboard maintenance update — September 12, 2026
+## Cryft dashboard maintenance update — September 12, 2026
 
 The website/router review branch `review/tenant-widget-production-20260912` adds
 `/dashboard/paladin`: verified node/indexing and gas diagnostics, all-tenant queue
@@ -373,7 +373,7 @@ The owner authorized source promotion to `main` on September 12, 2026, retaining
 `review/tenant-widget-production-20260912` for provenance. This does not redeploy
 Paladin, publish a new application service or deploy the account contracts.
 
-The main Dakota application currently includes `/documentation/integration` and downloadable
+The main Cryft application currently includes `/documentation/integration` and downloadable
 `/docs/kota-integration.md` plus `/docs/platform-openapi.json`, covering the full
 tenant/host integration contract. The incoming `Contracts/Accounts` sources are
 review material, not a deployed TBA release. KotaRouter rejects unsigned inventory
@@ -390,11 +390,11 @@ existing tools when separating the dashboard.
 
 See [the September 15 issuance review](ISSUANCE_REVIEW.md) for the new registration, gas and recovery behavior. Activation remains pending.
 
-## Optional encrypted Moment card contents (17 September 2026)
+## Optional encrypted Cryft card contents (17 September 2026)
 
 `PrivateCardContentRegistry` is an additive Pente transparent proxy using the
 existing group and private ProxyAdmin. It stores immutable tenant/chain/card/UID
-key bindings, never NFTs. The public Moment card contract remains unchanged;
+key bindings, never NFTs. The public Cryft card contract remains unchanged;
 its optional `private_metadata` link points to encrypted IPFS files. Roles follow
 ComboStorage ADMIN/AUTHORIZED dynamically. Source/standard JSON/metadata live in
 `Contracts/Verification/20260917`. The deployment helper is

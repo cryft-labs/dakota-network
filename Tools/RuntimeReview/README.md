@@ -1,9 +1,9 @@
 # Isolated Besu / Paladin compatibility test
 
 This directory prepares an isolated development chain on Paladin-01. It does not
-start the Dakota genesis, use its validator identities, or use funded owner keys.
+start the Cryft genesis, use its validator identities, or use funded owner keys.
 The test copies chain settings from the existing genesis, including chain ID
-112311, fork schedule, QBFT timing/rewards/contract-validator mode, gas limit and
+113211, fork schedule, QBFT timing/rewards/contract-validator mode, gas limit and
 32 KiB contract-size limit. The removed Besu `xemptyBlockPeriodSeconds` alias is
 normalized to `emptyBlockPeriodSeconds` with the same value. Four isolated test
 validators are used. Test allocations/keys are recorded separately; this is not

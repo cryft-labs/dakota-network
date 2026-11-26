@@ -36,7 +36,7 @@ class IssuanceRelease(Deployment):
         self.http=requests.Session();self.http.trust_env=False
         self.w3=Web3(Web3.HTTPProvider('http://100.111.69.1:8547/',session=self.http,request_kwargs={'timeout':25},exception_retry_configuration=None))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware,layer=0)
-        assert self.w3.eth.chain_id==112311 and hx(self.w3.eth.get_block(0)['hash'])==GENESIS_HASH
+        assert self.w3.eth.chain_id==113211 and hx(self.w3.eth.get_block(0)['hash'])==GENESIS_HASH
         self.accounts={}
         if execute:
             assert branch.startswith('review/') and git('ls-remote','origin','refs/heads/'+branch).split()[0]==self.commit
@@ -54,7 +54,7 @@ class IssuanceRelease(Deployment):
     def private(self,label,request):
         assert self.execute
         digest=hashlib.sha256(json.dumps(request,sort_keys=True).encode()).hexdigest()
-        row=self.journal['private'].setdefault(label,{'key':'dakota-issuance-20260915:'+label,'digest':digest})
+        row=self.journal['private'].setdefault(label,{'key':'cryft-issuance-20260915:'+label,'digest':digest})
         assert row['digest']==digest;self.save()
         if not row.get('id'):
             prior=self.rpc('ptx_getTransactionByIdempotencyKey',row['key'])

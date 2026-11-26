@@ -1,0 +1,149 @@
+{
+  "network": "Cryft Network",
+  "coin": "CRYFT",
+  "chainId": 113211,
+  "chainIdHex": "0x1ba3b",
+  "validators": [
+    "0x799b1a85866b0219FE0d9146b295076F3aEBA00F",
+    "0xA0a4e22392398554e7Fd6Cf2861c7702149d9BC9",
+    "0x3F57FF9cDc193Fd43C73BF4386f62a7c21Ef44BA",
+    "0x0fe2e1364e7Cd7ee51E09D3864f39340Bf4D8C8D"
+  ],
+  "roots": [
+    "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+    "0x633309d1155fD658a717e4f5E4FA853615400867"
+  ],
+  "voters": [
+    "0x633309d1155fD658a717e4f5E4FA853615400867"
+  ],
+  "voteWindowSeconds": 604800,
+  "upgradeDelaySeconds": 0,
+  "maxValidators": 11,
+  "balances": {
+    "0x9247524040D91D5dd1521A25f2e7711d4a0fe921": "32000000000000000000",
+    "0x633309d1155fD658a717e4f5E4FA853615400867": "100000000000000000000"
+  },
+  "proxies": {
+    "0x000000000000000000000000000000000000cafE": "GasManager (block reward beneficiary)",
+    "0x000000000000000000000000000000000000c0DE": "CodeManager",
+    "0x000000000000000000000000000000000000FEeD": "GasSponsor",
+    "0x00000000000000000000000000000000de1E6A7E": "CryftDelegationRegistry (7702 control plane)",
+    "0x000000000000000000000000000000000000Face": "Reserved: ERC-8004 agent registry (unlinked; reverts until linked)"
+  },
+  "proxyCountDecision": "5 system proxies. The 2026-09 genesis had 32,431 identical proxies: 32,324 '...323' greeting-card slots, 100 '...c0DE' copies and 4 repeating-pattern addresses, none referenced by any repo (searched design-kit, router-next, cryft-cards-web, explorer, factory, network on 2026-11-25), plus these 5. Every empty proxy is a root-upgradeable slot and bloated the file to 1.24 GB. Application contracts deploy with CREATE behind their own timelocked proxies. The '706' in the 11-23 notes was not found in any record.",
+  "systemContracts": {
+    "eip2935": {
+      "address": "0x0000F90827F1C53a10cb7A02335B175320002935",
+      "runtime_keccak256": "0x6e49e66782037c0555897870e29fa5e552daf4719552131a0abce779daec0a5d",
+      "source": "besu 26.8.1 besu-config-26.8.1.jar hoodi.json (archive sha256 0e0ed9cc...aaf4) (identical)"
+    },
+    "eip7002": {
+      "address": "0x00000961Ef480Eb55e80D19ad83579A64c007002",
+      "runtime_keccak256": "0x0345a365d2f4c5975b9f1599abe0a2ee76b7a3a731bc68781bd04c84e4858f50",
+      "source": "besu 26.8.1 besu-config-26.8.1.jar hoodi.json (archive sha256 0e0ed9cc...aaf4)"
+    },
+    "eip7251": {
+      "address": "0x0000BBdDc7CE488642fb579F8B00f3a590007251",
+      "runtime_keccak256": "0x78c6cb5202685228bbcbfb992b1c4e116c7ec5ef11e25b8e92716cfc628ddd60",
+      "source": "besu 26.8.1 besu-config-26.8.1.jar hoodi.json (archive sha256 0e0ed9cc...aaf4)"
+    }
+  },
+  "requestContractAddresses": {
+    "depositContractAddress": "0x0000000000000000000000000000000000000000",
+    "withdrawalRequestContractAddress": "0x00000961Ef480Eb55e80D19ad83579A64c007002",
+    "consolidationRequestContractAddress": "0x0000BBdDc7CE488642fb579F8B00f3a590007251",
+    "note": "Besu 26.8.1 (MainnetProtocolSpecs.getPraguePreExecutionProcessor) runs the EIP-2935 history call under QBFT only when all three are configured. Deposits: the zero address, where no contract can ever exist, so no deposit request is ever produced."
+  },
+  "validatorStorageSlots": {
+    "validators": 1,
+    "votersArray": 3,
+    "rootOverlords": 5,
+    "maxValidators": 7,
+    "voteTallyBlockThreshold": 8,
+    "upgradeDelay": 18
+  },
+  "runtimes": {
+    "ValidatorSmartContractAllowList": {
+      "solc": "0.8.19",
+      "evm": "london",
+      "optimizer_runs": 200,
+      "runtime_bytes": 18851,
+      "runtime_keccak256": "0x284ab5a838aa5f88c51cefc0c9811b49fee91df5c54a40771b7e42113bc9e14e",
+      "standard_input_sha256": "06977ae51441025610e586aa53847ac90a25261a00f4d928e436dc3b63834770"
+    },
+    "TransparentUpgradeableProxy": {
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "optimizer_runs": 200,
+      "runtime_bytes": 22754,
+      "runtime_keccak256": "0x09bae5ae57d318836adb2f7d72e149dd725dd953ab136879e581a1fab4233404",
+      "standard_input_sha256": "b20cd8ee1a78fbf1dd44f55517749b44bb4f681d2119ccc022ba628e7c0b9ef3"
+    },
+    "ProxyAdmin": {
+      "solc": "0.8.37",
+      "evm": "osaka",
+      "optimizer_runs": 200,
+      "runtime_bytes": 3309,
+      "runtime_keccak256": "0x57f76eae2bcc64e64760acef7fbf3953fd594e94900940fcd3bc78088152476d",
+      "standard_input_sha256": "581bc1167b1f5cc861fce88a36d61d3190ea5e63c1ed068032b591a3e0298145"
+    }
+  },
+  "proxySelectors": {
+    "proxy_addOverlord(address)": "35b654b4",
+    "proxy_cancelUpgrade(bytes32)": "604b2563",
+    "proxy_getActiveProposal()": "9b318bcd",
+    "proxy_getActiveVoteSnapshot()": "f04d8df8",
+    "proxy_getClearGuardiansProposalVotes()": "562e1c93",
+    "proxy_getExpiryProposalVotes(uint256)": "cf48bc95",
+    "proxy_getGovernanceMembers()": "c06a112d",
+    "proxy_getGuardianCount()": "57723c40",
+    "proxy_getGuardianProposalVotes(address,bool)": "b46c847f",
+    "proxy_getGuardians()": "97d88488",
+    "proxy_getIsInit()": "ab0094d0",
+    "proxy_getOverlordCount()": "547aa68a",
+    "proxy_getOverlordThreshold()": "0b1168b5",
+    "proxy_getProposalStartBlock(address,bool)": "47749e18",
+    "proxy_getProposalVotes(address,bool)": "d5480598",
+    "proxy_getRenouncedRoots()": "1f6e019c",
+    "proxy_getRestoreRootProposalVotes()": "1a394f5f",
+    "proxy_getRevokeRootProposalVotes()": "cb2e6f6b",
+    "proxy_getRootOverlords()": "638ec6a6",
+    "proxy_getScheduledUpgrade(bytes32)": "df932a31",
+    "proxy_getUpgradeDelay()": "222a4e85",
+    "proxy_getValidatorContract()": "84ee8c8d",
+    "proxy_getVoteEpoch()": "4e4197f8",
+    "proxy_getVoteExpiry()": "9486b537",
+    "proxy_hasVotedOnClearGuardians(address)": "8ee7f77b",
+    "proxy_hasVotedOnExpiryProposal(address,uint256)": "6ee31e2f",
+    "proxy_hasVotedOnGuardianProposal(address,address,bool)": "37ea46c2",
+    "proxy_hasVotedOnProposal(address,address,bool)": "6c004596",
+    "proxy_hasVotedOnRestoreRoot(address)": "bec61afa",
+    "proxy_hasVotedOnRevokeRoot(address)": "9ff1df88",
+    "proxy_isGuardian(address)": "3faf0e6d",
+    "proxy_isOverlord(address)": "a74ed1dc",
+    "proxy_isRootOverlordRevoked()": "e033e91d",
+    "proxy_isVotingSessionActive()": "f78aa826",
+    "proxy_linkLogicAdmin(address,bytes)": "4c2995f9",
+    "proxy_proposeClearGuardians()": "2e8b23f1",
+    "proxy_proposeExpiryChange(uint256)": "eb9ecd7d",
+    "proxy_proposeGuardianChange(address,bool)": "a64de442",
+    "proxy_proposeOverlordChange(address,bool)": "9be014d8",
+    "proxy_proposeRestoreRootOverlord()": "a33b6531",
+    "proxy_proposeRevokeRootOverlord()": "7b631f6b",
+    "proxy_removeOverlord(address)": "8c35711f",
+    "proxy_revokeRootOverlord()": "4c7bccfa",
+    "proxy_scheduleUpgrade(address,bytes)": "f492771e",
+    "proxy_upgradeId(address,bytes)": "6a830b66"
+  },
+  "counts": {
+    "allocations": 12,
+    "proxies": 5
+  },
+  "inputs_sha256": {
+    "inputs.json": "82e65fe1655d446a98cb0482d909e5ddedf790614e55c8ed3fff2f4adb7e7e99",
+    "validators.json": "9f2d056b35bac3386b63f955ea5df7e48bb60daa1e827068e2e567bfc94808a1"
+  },
+  "genesis_file": "Contracts/Genesis/CryftGenesis.json",
+  "genesis_sha256": "4878bbc634d29aee75d99954bdf834e0ff7586678f05209b09566ce797823491",
+  "genesis_bytes": 279783
+}

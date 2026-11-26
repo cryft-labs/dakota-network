@@ -7,7 +7,7 @@ import pytest
 import solcx
 
 SCRIPT = Path(__file__).resolve().parents[1] / "compile.py"
-spec = importlib.util.spec_from_file_location("dakota_compiler", SCRIPT)
+spec = importlib.util.spec_from_file_location("cryft_compiler", SCRIPT)
 compiler = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(compiler)
 

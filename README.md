@@ -1,9 +1,9 @@
-# Dakota Network
+# Cryft Network
 
 > Current sponsorship policy: **open contract calls with signed vouchers and tenant spending controls**.
 > See the [reviewed restoration](Releases/OpenSponsorship/20260914/README.md). The 1.2.0 global allowlist release below is historical.
 
-Smart contracts, tools, and node configuration for the **Dakota Network** — an enterprise QBFT blockchain built on Hyperledger Besu with [Paladin](https://github.com/LFDT-Paladin/paladin) privacy, designed for permissioned environments where a fully public and decentralized network is not required.
+Smart contracts, tools, and node configuration for the **Cryft Network** — an enterprise QBFT blockchain built on Hyperledger Besu with [Paladin](https://github.com/LFDT-Paladin/paladin) privacy, designed for permissioned environments where a fully public and decentralized network is not required.
 
 All project-owned contracts are licensed under **Apache 2.0**. This software is part of a patented system — see the [LICENSE](LICENSE) file and <https://cryftlabs.org/licenses> for details.
 
@@ -109,7 +109,7 @@ The genesis file (`Contracts/Genesis/besuGenesis.7z`, compressed) contains the f
 
 | Parameter               | Value                                                                      |
 | ----------------------- | -------------------------------------------------------------------------- |
-| **Chain ID**            | `112311`                                                                   |
+| **Chain ID**            | `113211`                                                                   |
 | **Consensus**           | QBFT (Istanbul BFT)                                                        |
 | **Gas limit**           | 64,000,000 (`0x3D09000`)                                                   |
 | **Block reward**        | 3.2 ETH per block (sent to `miningBeneficiary`)                            |
@@ -200,7 +200,7 @@ Sources: [26.8.1 release notes](https://github.com/besu-eth/besu/releases/tag/26
 | ------------------- | -------------------------- | ----------------------------------------------------------------------------- |
 | `0x0000...1111`     | Validator smart contract   | `ValidatorSmartContractAllowList` — QBFT validator/voter/overlord governance  |
 | `0x0000...cafE`     | GasManager smart contract  | `GasManager` — block reward beneficiary, voter-governed gas funding and burns |
-| `0x0000...c0DE`     | CodeManager smart contract | `CodeManager` — official Dakota code management service (patent-covered)      |
+| `0x0000...c0DE`     | CodeManager smart contract | `CodeManager` — official Cryft code management service (patent-covered)      |
 | `0x0000...Face`     | ERC-8004 Agent Registry    | Official ERC-8004 agent identity contract                                     |
 | `0x0000...FacAdE`   | ProxyAdmin smart contract  | `ProxyAdmin` — guardian-gated ERC1967 upgrade dispatch                        |
 | `0x0000...de1E6A7E` | EIP-7702 delegation entry  | Registry control plane; user EOAs authorize the separate immutable dispatcher directly |
@@ -212,7 +212,7 @@ Sources: [26.8.1 release notes](https://github.com/besu-eth/besu/releases/tag/26
 
 ### Upgradeability & OpenZeppelin Compatibility
 
-Dakota genesis slots use a **Cryft Labs-modified transparent proxy derived from OpenZeppelin 4.9.x**, embedded directly in the genesis file. It is not a stock OpenZeppelin proxy: it adds namespaced overlord/guardian governance, dynamic root-overlord recognition through `0x...1111`, a custom first-link initialization flag, and guardian-gated upgrade dispatch through the fixed ProxyAdmin. Vendored OZ 4.9.6 implementation helpers such as `Initializable`, `ReentrancyGuardUpgradeable`, and `AddressUpgradeable` are provided under `Contracts/Genesis/Upgradeable/` with Osaka-level `assembly ("memory-safe")` annotations.
+Cryft genesis slots use a **Cryft Labs-modified transparent proxy derived from OpenZeppelin 4.9.x**, embedded directly in the genesis file. It is not a stock OpenZeppelin proxy: it adds namespaced overlord/guardian governance, dynamic root-overlord recognition through `0x...1111`, a custom first-link initialization flag, and guardian-gated upgrade dispatch through the fixed ProxyAdmin. Vendored OZ 4.9.6 implementation helpers such as `Initializable`, `ReentrancyGuardUpgradeable`, and `AddressUpgradeable` are provided under `Contracts/Genesis/Upgradeable/` with Osaka-level `assembly ("memory-safe")` annotations.
 
 > **For clients deploying implementation contracts behind a reserved genesis proxy slot:**
 >
@@ -226,7 +226,7 @@ Dakota genesis slots use a **Cryft Labs-modified transparent proxy derived from 
 >
 > **Rule of thumb:** Pick one storage model for an implementation family and preserve it for every later upgrade. The genesis proxy shell does not constrain the implementation's import version, but every implementation upgrade must preserve its predecessor's storage contract.
 >
-> The Dakota 4.9.6 proxy uses a **compile-time constant** admin address (`_PROXY_ADMIN`) embedded directly in the bytecode — reads cost 3 gas (`PUSH20`) instead of 2,100 gas (cold `SLOAD`). The admin **cannot be changed at runtime** — it is permanent. The `_changeAdmin` / `_setAdmin` / `_getAdmin` functions and `AdminChanged` event from stock OZ 4.9.6 have been removed as dead code.
+> The Cryft 4.9.6 proxy uses a **compile-time constant** admin address (`_PROXY_ADMIN`) embedded directly in the bytecode — reads cost 3 gas (`PUSH20`) instead of 2,100 gas (cold `SLOAD`). The admin **cannot be changed at runtime** — it is permanent. The `_changeAdmin` / `_setAdmin` / `_getAdmin` functions and `AdminChanged` event from stock OZ 4.9.6 have been removed as dead code.
 
 ### Genesis Contracts (deployed at network genesis)
 
@@ -234,7 +234,7 @@ Dakota genesis slots use a **Cryft Labs-modified transparent proxy derived from 
 | ----------------------------------- | ------------------- | ------------ | -------------------------------------------------------------------------- |
 | **ValidatorSmartContractAllowList** | `0x0000...1111`     | 20,565 B     | QBFT validator, voter, and root overlord governance (solc 0.8.19 / London) |
 | **GasManager**                      | Genesis beneficiary | 24,026 B     | Voter-governed direct and sponsor-ledger funding, token burns, and native coin burns |
-| **Dakota transparent proxy**        | Per-contract        | 15,246 B     | Modified transparent proxy with namespaced overlord/guardian governance    |
+| **Cryft transparent proxy**        | Per-contract        | 15,246 B     | Modified transparent proxy with namespaced overlord/guardian governance    |
 | **ProxyAdmin**                      | `0x0000...FacAdE`   | 3,200 B      | Guardian-gated ERC1967 upgrade dispatch                                    |
 
 ---
@@ -312,7 +312,7 @@ Sponsor funding never uses the generic native-transfer executor because
 `GasSponsor.depositFor{value: amount}(sponsor)` at `0x...FEeD`.
 
 The sponsor address is stored in the
-`erc7201:dakota.storage.GasManagerSponsorFunding` namespace before voting
+`erc7201:cryft.storage.GasManagerSponsorFunding` namespace before voting
 starts. It cannot be supplied or changed at execution time. The executor also
 checks the exact `caFE` debit and `FEeD` retained-balance increase. Ordinary V2
 execution rejects sponsor-bound proposals, so an approved sponsor payment
@@ -526,9 +526,9 @@ CodeManager (independent)
 | **CodeManager**         | **Patent-covered.** Gift-authorized unique ID registry with an independent voter pool, 2/3 supermajority quorum, public mirrored UID state, and Pente routing. Charges a configurable registration fee forwarded to a fee vault. Deterministic ID generation via `keccak256(address(this), giftContract, chainId) + counter`.                                                                                                                                                                      |
 | **PrivateComboStorage** | Private hash/PIN state, bounded batches, rotatable service roles and two-step administration. |
 | **PrivateMetaTxRelay** | Disabled legacy fallback; requires separate hardening if live delegation tests establish a need. |
-| **DakotaDelegation**    | Initial v1 EIP-7702 execution logic. Verifies an account-owner EIP-712 signature, enforces per-account nonces/deadlines/execution gas budgets, executes bounded call batches, and supports EIP-1271 validation. It intentionally exposes no generic owner/session-key execution API.                                                                                                                                                                                                              |
-| **DakotaDelegationBeacon** | Shared implementation beacon whose constructor accepts only the implementation and derives its temporary owner from the root caller validated by `0x...1111`. After bootstrap, the fixed delegation entry owns it and Registry upgrades call `upgradeTo(newImplementation)` once.                                                                                                                                                                                                                  |
-| **DakotaDelegationBeaconDispatcher** | Immutable direct EIP-7702 route with beacon/protocol getters. |
+| **CryftDelegation**    | Initial v1 EIP-7702 execution logic. Verifies an account-owner EIP-712 signature, enforces per-account nonces/deadlines/execution gas budgets, executes bounded call batches, and supports EIP-1271 validation. It intentionally exposes no generic owner/session-key execution API.                                                                                                                                                                                                              |
+| **CryftDelegationBeacon** | Shared implementation beacon whose constructor accepts only the implementation and derives its temporary owner from the root caller validated by `0x...1111`. After bootstrap, the fixed delegation entry owns it and Registry upgrades call `upgradeTo(newImplementation)` once.                                                                                                                                                                                                                  |
+| **CryftDelegationBeaconDispatcher** | Immutable direct EIP-7702 route with beacon/protocol getters. |
 | **GasSponsor**          | Initial v1 platform-managed sponsorship treasury. Validates platform-signed vouchers, approved EIP-7702 delegation, allowlisted relayers, tenant/sponsor limits, operation replay protection, gas envelopes, and bounded reimbursement.                                                                                                                                                                                                                                                           |
 | **CryftGreetingCards**  | ERC-721 NFT (service client — not patent-covered). Mint-on-purchase from pre-registered supply. Per-batch `PurchaseSegment` storage for gas-efficient buyer/URI lookups (binary search). Active-state authority is externalized to the private redeemable-code system. Interfacing with the redeemable-code service is permitted with proper fees or license.                                                                                                                                     |
 
@@ -683,7 +683,7 @@ ERC-721 NFT gift card contract. Service client of the redeemable-code system —
 
 ## Tools
 
-### `Tools/KeyWizard/dakota_keywizard.py`
+### `Tools/KeyWizard/cryft_keywizard.py`
 
 Interactive wizard for generating and distributing three types of cryptographic keys across your node network. No external Python packages required (stdlib only).
 
@@ -695,25 +695,25 @@ Interactive wizard for generating and distributing three types of cryptographic 
 
 **Interactive mode (default):**
 ```bash
-python3 Tools/KeyWizard/dakota_keywizard.py
+python3 Tools/KeyWizard/cryft_keywizard.py
 ```
 
 **CLI flags for scripted/batch use:**
 ```bash
 # Generate 4 Besu node keys, no EOA, with SCP step
-python3 Tools/KeyWizard/dakota_keywizard.py \
+python3 Tools/KeyWizard/cryft_keywizard.py \
   --besu-count 4 \
   --no-eoa \
   --scp
 
 # Generate 3 EOAs with keystore JSON, output to custom directory
-python3 Tools/KeyWizard/dakota_keywizard.py \
+python3 Tools/KeyWizard/cryft_keywizard.py \
   --eoa-count 3 \
   --eoa-keystore \
   --out /home/user/my-keys
 
 # Non-interactive batch (no SCP, uses defaults)
-python3 Tools/KeyWizard/dakota_keywizard.py \
+python3 Tools/KeyWizard/cryft_keywizard.py \
   --non-interactive \
   --besu-count 4
 ```
@@ -722,7 +722,7 @@ python3 Tools/KeyWizard/dakota_keywizard.py \
 
 | Flag                  | Default         | Description                               |
 | --------------------- | --------------- | ----------------------------------------- |
-| `--out`               | `~/dakota-keys` | Base output directory                     |
+| `--out`               | `~/cryft-keys` | Base output directory                     |
 | `--non-interactive`   | off             | Run without prompts (uses flags/defaults) |
 | `--no-eoa`            | off             | Disable EOA generation                    |
 | `--eoa-count`         | 1               | Number of EOA accounts to generate        |
@@ -935,10 +935,10 @@ The compiler also exports each contract's **solc metadata JSON** (the JSON blob 
 compiled_output/
   Genesis/
     7702/
-      DakotaDelegation/
-        DakotaDelegation_abi.json
-        DakotaDelegation_artifact.json
-        DakotaDelegation_metadata.json    # solc metadata (IPFS-verifiable)
+      CryftDelegation/
+        CryftDelegation_abi.json
+        CryftDelegation_artifact.json
+        CryftDelegation_metadata.json    # solc metadata (IPFS-verifiable)
         ...
 ```
 
@@ -956,20 +956,20 @@ dakota-network/
 │   ├── Genesis/
 │   │   ├── BesuGenesis.7z             # Besu genesis file (7z-compressed; extract before use)
 │   │   ├── 7702/
-│   │   │   ├── DakotaDelegation.sol  # Signed sponsored-execution logic for delegated EOAs
-│   │   │   ├── DakotaDelegationBeacon.sol  # Shared implementation beacon
-│   │   │   ├── DakotaDelegationBeaconDispatcher.sol  # Stateless per-account dispatcher
-│   │   │   ├── DakotaDelegationRegistry.sol  # Fixed-entry control plane and release directory
+│   │   │   ├── CryftDelegation.sol  # Signed sponsored-execution logic for delegated EOAs
+│   │   │   ├── CryftDelegationBeacon.sol  # Shared implementation beacon
+│   │   │   ├── CryftDelegationBeaconDispatcher.sol  # Stateless per-account dispatcher
+│   │   │   ├── CryftDelegationRegistry.sol  # Fixed-entry control plane and release directory
 │   │   │   ├── GasSponsor.sol        # Platform-voucher sponsorship treasury
 │   │   │   ├── GAS-SPONSORSHIP.md    # Authoritative deployment/canary/upgrade runbook
 │   │   │   ├── EIP-7702-Instructions.md  # Broader EIP-7702 integration guide
 │   │   │   ├── Interfaces/
-│   │   │   │   ├── IDakotaDelegation.sol
-│   │   │   │   ├── IDakotaDelegationRegistry.sol
+│   │   │   │   ├── ICryftDelegation.sol
+│   │   │   │   ├── ICryftDelegationRegistry.sol
 │   │   │   │   └── IGasSponsor.sol
 │   │   │   └── Libraries/
-│   │   │       ├── DakotaDelegationCapabilities.sol  # Shared stable feature bitmap
-│   │   │       └── DakotaECDSA.sol   # Strict ECDSA recovery helper
+│   │   │       ├── CryftDelegationCapabilities.sol  # Shared stable feature bitmap
+│   │   │       └── CryftECDSA.sol   # Strict ECDSA recovery helper
 │   │   ├── GasManager/
 │   │   │   └── GasManager.sol        # Gas beneficiary — voter-governed funding & burns
 │   │   ├── ValidatorContracts/
@@ -1002,7 +1002,7 @@ dakota-network/
 │   │   ├── old.txt                    # Old bytecode to find (paste here)
 │   │   └── new.txt                    # New bytecode to replace with (paste here)
 │   ├── KeyWizard/
-│   │   └── dakota_keywizard.py       # EOA and Besu node key generator
+│   │   └── cryft_keywizard.py       # EOA and Besu node key generator
 │   ├── RedeemableCodeGenerator/
 │   │   ├── generate_redeemable_codes.py # PIN/code/hash generator for PrivateComboStorage
 │   │   └── results/                   # Generated redeemable code output files

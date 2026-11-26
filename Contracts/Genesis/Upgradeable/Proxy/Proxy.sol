@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 //
 // Based on OpenZeppelin Contracts (last updated v4.6.0) (proxy/Proxy.sol).
-// Modified for the Dakota Network by Cryft Labs.
+// Modified for the Cryft Network by Cryft Labs.
 //
 // WARNING: This is a modified version of the original OpenZeppelin contract.
 // Do not assume it is stock or unmodified — review all changes before use.

@@ -42,14 +42,14 @@ core network/card/private-state owner handovers remain pending. Use
 or an explicit transfer of execution; never run two signers against the same nonce.
 
 Act as Cryft Labs' implementation and operations engineer. Complete the authorized
-hardening and deploy the full Dakota/Kota development system on the seven supplied
+hardening and deploy the full Cryft/Kota development system on the seven supplied
 DigitalOcean hosts. Kota is an API-first redeemable-code platform. Its optional
 embeddable widget simplifies integration, and Cryft Cards is its initial consumer
 for redeemable greeting cards, business cards and postcards. Developers must also be able to integrate
 directly through documented endpoints without embedding the widget.
 
 Use the current private/public repositories and existing code. Discover the newer
-Dakota Cards site within the older repository, dashboard/docs/widget and dedicated
+Cryft Cards site within the older repository, dashboard/docs/widget and dedicated
 Kota Router V4 API. Review their actual source and keep a manifest of exact commits.
 Do not substitute legacy implementations or claim a scaffold is live settlement.
 
@@ -75,7 +75,7 @@ never the credentials themselves. Do not commit keys, codes, PINs or secret stat
 ```dotenv
 # Non-secret inputs; parse as configuration, never execute as shell code.
 PROJECT_NAME=cryft-kota
-EXAMPLE_HOST_SITE_DOMAIN=moment.cards
+EXAMPLE_HOST_SITE_DOMAIN=cryft.cards
 KOTA_PUBLIC_BASE_URL=
 DEPLOYMENT_MODE=resume
 GENESIS_DEPLOYMENT_APPROVED=true
@@ -86,7 +86,7 @@ NETWORK_REVIEW_BRANCH=review/compiler-standard-json
 API_SOURCE_BRANCH=main
 API_REVIEW_BRANCH=review/primary-api-lmstudio
 SITE_IMPLEMENTATION_BRANCH=main
-SITE_REVIEW_BRANCH=review/moment-dakota-tenant
+SITE_REVIEW_BRANCH=review/moment-cryft-tenant
 DOCUMENTATION_PROMOTION_APPROVED=true
 IMPLEMENTATION_PROMOTED_BY_THIS_UPDATE=true
 PUSH_BEFORE_LIVE_TESTS=true
@@ -141,9 +141,9 @@ EXPLORER_FRONTEND_REPOSITORY=cryft-labs/dakota-explorer
 EXPLORER_REFERENCE_COMMIT=818c3cef62685e52f19470573012f092c6c1c6d9
 CRYFT_SITE_REFERENCE_REPOSITORY=CryftCreator/CryftLabs.org
 CRYFT_SITE_REFERENCE_COMMIT=337bb7e66a3214b1f76bd31818695d9f7533c44d
-DAKOTA_SITE_REPOSITORY=CryftCreator/cryftcomingsoon-main
-DAKOTA_SITE_SOURCE_REF=50aab2f5b2ef17e03fcb06d2f69b75a4319a82c1
-DAKOTA_SITE_SOURCE_DIRECTORY="Dakota Cards"
+CRYFT_SITE_REPOSITORY=CryftCreator/cryftcomingsoon-main
+CRYFT_SITE_SOURCE_REF=50aab2f5b2ef17e03fcb06d2f69b75a4319a82c1
+CRYFT_SITE_SOURCE_DIRECTORY="Cryft Cards"
 DASHBOARD_REPOSITORY=CryftCreator/cryftcomingsoon-main
 DASHBOARD_SOURCE_REF=50aab2f5b2ef17e03fcb06d2f69b75a4319a82c1
 DOCS_REPOSITORY=CryftCreator/cryftcomingsoon-main
@@ -194,30 +194,30 @@ IPFS_PUBLIC_GATEWAY_HOSTNAME=
 IPFS_CLOUDFLARE_TUNNEL_ID=
 IPFS_CLOUDFLARE_CREDENTIAL_FILE=
 IPFS_SECONDARY_PIN_TARGET=
-MOMENT_SITE_REPOSITORY=CryftCreator/cryftcomingsoon-main
-MOMENT_SITE_SOURCE_DIRECTORY="Greeting Cards"
-MOMENT_ONCHAIN_TENANT_ID=moment.cards
-MOMENT_COMPANION_SLUG=moment-cards
-MOMENT_TENANT_MAPPING_VERIFIED=false
+CRYFT_SITE_REPOSITORY=CryftCreator/cryftcomingsoon-main
+CRYFT_SITE_SOURCE_DIRECTORY="Greeting Cards"
+CRYFT_ONCHAIN_TENANT_ID=cryft.cards
+CRYFT_COMPANION_SLUG=cryft-cards
+CRYFT_TENANT_MAPPING_VERIFIED=false
 INFRASTRUCTURE_REPOSITORY=
 APPROVED_NETWORK_COMMIT=
 APPROVED_EXPLORER_COMMIT=
 APPROVED_WIDGET_COMMIT=
 APPROVED_API_COMMIT=
 APPROVED_SITE_COMMIT=
-APPROVED_DAKOTA_SITE_COMMIT=
+APPROVED_CRYFT_SITE_COMMIT=
 APPROVED_DASHBOARD_COMMIT=
 APPROVED_DOCS_COMMIT=
 APPROVED_INFRASTRUCTURE_COMMIT=
 RELEASE_APPROVAL_RECORD=
 
-CHAIN_ID=112311
-CHAIN_NETWORK_ID=112311
+CHAIN_ID=113211
+CHAIN_NETWORK_ID=113211
 GENESIS_SHA256=29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217
 CONTRACT_ADDRESS_MANIFEST_FILE=docs/current-contract-addresses.json
 KOTA_ACCESS_PROXY=0xa6a1161Fc96561c5DD94Ab4082D8b867E7C102C0
 KOTA_FACTORY_PROXY=0xD99A083A2125dB1881e1D315885c7ba0FAc933d0
-MOMENT_TENANT_REGISTRY=0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340
+CRYFT_TENANT_REGISTRY=0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340
 KOTA_TENANT_HANDOVER_COMPLETE=true
 FULL_NETWORK_HANDOVER_COMPLETE=false
 GENESIS_ALLOCATION_POLICY=admin_32_deployer_1_tester_1
@@ -252,7 +252,7 @@ CLOUDFLARE_TUNNEL_ID=
 CLOUDFLARE_TUNNEL_TOKEN_FILE=
 CLOUDFLARE_API_TOKEN_FILE=
 API_PUBLIC_BASE_URL=
-DAKOTA_PORTAL_HOSTNAME=
+CRYFT_PORTAL_HOSTNAME=
 CRYFT_SITE_PUBLIC_HOSTNAME=
 DOCS_PUBLIC_HOSTNAME=
 DASHBOARD_PRIVATE_HOSTNAME=
@@ -376,7 +376,7 @@ EXPLORER_START_EARLY=true
    http://100.111.69.1:8080, with UI origin localhost:3001. Verify from the operator's
    computer that blocks and a transaction detail load, then immediately provide the
    working URL so the owner can watch. Do not announce a planned URL as running.
-   Use the pinned rootless services and recovered Dakota settings documented in
+   Use the pinned rootless services and recovered Cryft settings documented in
    Tools/Explorer/README.md. Publish configuration changes before running its installer.
 9. Preserve Backend's existing persistent nonroot IPFS service and Nebula-only peers.
    Publishing currently uses pinned-host-key Nebula SSH to its loopback API; the
@@ -406,7 +406,7 @@ EXPLORER_START_EARLY=true
     no off-server seed/database credential export is authorized. Document/monitor
     the settlement wallet balance and separate sponsor ledger funding.
 12. Use the already deployed Kota tenant contracts and reconcile the canonical
-    `moment.cards` ID with the development companion's `moment-cards` slug before
+    `cryft.cards` ID with the development companion's `cryft-cards` slug before
     registration; never silently substitute one in signed proofs. Complete Kota V4 authorization, durable PostgreSQL operations/outbox, atomic
     tenant/principal/action idempotency, job ownership, body/domain/nonce-bound admin
     signatures, real Paladin/chain adapters, account registration contracts, and
@@ -414,7 +414,7 @@ EXPLORER_START_EARLY=true
     private ingress. Validate the full lifecycle and failure recovery through real
     endpoints. A simulated/blocked private operation cannot be reported submitted.
 13. Update the existing Greeting Cards application in place as Cryft Cards, with
-    greeting, business and postcard choices. Complete the newer Dakota Cards
+    greeting, business and postcard choices. Complete the newer Cryft Cards
     dashboard/docs and retained widget. Build the local admin UI using
     the same documented service contract. Admins can generate/manage codes and inspect
     private/public lifecycle and sponsorship states through the API. Enforce tenant

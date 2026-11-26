@@ -7,18 +7,18 @@ from web3.logs import DISCARD
 from acceptance import local_fixture,logs
 from live import Live,DEPLOYER,TESTER,hx
 
-TENANT='moment-cards-pente-development-20260911'
+TENANT='cryft-cards-pente-development-20260911'
 
 def run(d):
     assert d.journal['acceptance']['redemption']
     card=d.at('CryftGreetingCards',d.journal['deployments']['CardProxy']['address']); cm=d.at('CodeManager')
-    sponsor=d.at('GasSponsor'); account=d.at('DakotaDelegation',TESTER)
+    sponsor=d.at('GasSponsor'); account=d.at('CryftDelegation',TESTER)
     group=d.w3.to_checksum_address(d.journal['group']['contractAddress']); pente=d.at('PentePrivacyGroup',group)
     uid=card.functions.getUniqueIdForToken(2).call()
     fixture=local_fixture(d)
     stored=d.rpc('ptx_getTransactionReceiptFull',d.journal['private_transactions']['codes:store_four']['id'])
     pins=[x[1] for x in logs(d,stored,'DataStoredStatus(string,string)',['string','string'])]
-    key='dakota-live-20260911:prepare-sponsored-card-two'
+    key='cryft-live-20260911:prepare-sponsored-card-two'
     prepared_record=d.journal.setdefault('prepared_redemption',{'idempotency_key':key});d.save()
     if not prepared_record.get('id'):
         existing=d.rpc('ptx_getTransactionByIdempotencyKey',key)

@@ -41,12 +41,12 @@ def test_independent_registry_allowed_but_official_registration_still_pays(chain
     gift=mock(c,'''pragma solidity ^0.8.20;
       interface CM {function registerUniqueIds(address,string memory,uint256) external payable;}
       contract Gift {address public codeManagerAddress; constructor(address m){codeManagerAddress=m;}
-        function register() external payable {CM(codeManagerAddress).registerUniqueIds{value:msg.value}(address(this),"112311",1);}}
+        function register() external payable {CM(codeManagerAddress).registerUniqueIds{value:msg.value}(address(this),"113211",1);}}
     ''','Gift',cm.address)
     data=gift.functions.register()._encode_transaction_data(); fee=cm.functions.registrationFee().call()
     assert not send(c,sponsor,operation(gift.address,data,tag='unpaid'))[0]['success']
-    assert cm.functions.getIdentifierCounter(gift.address,'112311').call()[1]==0
+    assert cm.functions.getIdentifierCounter(gift.address,'113211').call()[1]==0
     balance=c['w3'].eth.get_balance(vault)
     assert send(c,sponsor,operation(gift.address,data,fee,tag='paid'))[0]['success']
-    assert cm.functions.getIdentifierCounter(gift.address,'112311').call()[1]==1
+    assert cm.functions.getIdentifierCounter(gift.address,'113211').call()[1]==1
     assert c['w3'].eth.get_balance(vault)==balance+fee

@@ -17,7 +17,7 @@ def expected_revert(d, label, function):
         d.reject(label + ':simulation', function, sender=DEPLOYER)
         nonce = d.w3.eth.get_transaction_count(DEPLOYER)
         assert nonce == d.w3.eth.get_transaction_count(DEPLOYER, 'pending')
-        tx = function.build_transaction({'from': DEPLOYER, 'nonce': nonce, 'chainId': 112311,
+        tx = function.build_transaction({'from': DEPLOYER, 'nonce': nonce, 'chainId': 113211,
                                          'gas': 2000000, 'gasPrice': 10**9, 'value': 0})
         assert d.w3.eth.get_balance(DEPLOYER) > tx['gas'] * tx['gasPrice']
         signed = d.accounts[DEPLOYER].sign_transaction(tx)
@@ -47,7 +47,7 @@ def run(d):
         if row.get(name): print('RECORDED strict:' + name, flush=True); return
         action(); row[name] = True; d.save()
     def snapshot():
-        identifier, counter = cm.functions.getIdentifierCounter(card.address, '112311').call()
+        identifier, counter = cm.functions.getIdentifierCounter(card.address, '113211').call()
         return {'voters': cm.functions.getVoters().call(), 'fee': cm.functions.registrationFee().call(),
                 'identifier': identifier, 'counter': counter,
                 'deliveries': [cm.functions.getRedemptionDelivery(identifier+'-'+str(i)).call() for i in range(1,5)],
@@ -71,7 +71,7 @@ def run(d):
     stage('upgraded', upgrade)
 
     fixture = local_fixture(d, 5)
-    identifier, _ = cm.functions.getIdentifierCounter(card.address, '112311').call()
+    identifier, _ = cm.functions.getIdentifierCounter(card.address, '113211').call()
     uid = identifier + '-5'
     def issue():
         d.tx('strict:register_fifth_uid', card.functions.setMaxSaleSupply(5), value=cm.functions.registrationFee().call())
@@ -88,7 +88,7 @@ def run(d):
         result = call('pinToHash', [pin, fixture['hashes'][4]])
         return result['exists'] if isinstance(result,dict) else result[2]
     def prepare():
-        key = 'dakota-live-20260911:strict-fifth-prepared'
+        key = 'cryft-live-20260911:strict-fifth-prepared'
         row['idempotency_key'] = key; d.save()
         existing = d.rpc('ptx_getTransactionByIdempotencyKey', key)
         if existing: row['private_transaction_id'] = existing['id']

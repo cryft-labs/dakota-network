@@ -1,4 +1,4 @@
-# Dakota native sponsorship: development release v2 route
+# Cryft native sponsorship: development release v2 route
 
 This guide describes the current review branch. Production promotion requires
 live acceptance and owner approval. The July `LIVE-DEPLOYMENT-RUNBOOK.md` records
@@ -8,7 +8,7 @@ an older deployment and must not supply this release's addresses or bytecodes.
 
 | Role | Address or source |
 |---|---|
-| Chain | 112311, settings from the compressed genesis |
+| Chain | 113211, settings from the compressed genesis |
 | Validator/root registry | `0x0000000000000000000000000000000000001111` |
 | GasManager | `0x000000000000000000000000000000000000cafE` |
 | CodeManager | `0x000000000000000000000000000000000000c0DE` |
@@ -23,7 +23,7 @@ an older deployment and must not supply this release's addresses or bytecodes.
 Account execution follows:
 
 ```text
-EIP-7702 user EOA -> immutable dispatcher -> shared beacon -> DakotaDelegation
+EIP-7702 user EOA -> immutable dispatcher -> shared beacon -> CryftDelegation
 ```
 
 The EOA's authorization designates the dispatcher directly. Its embedded beacon
@@ -33,7 +33,7 @@ registry proxy remains an upgradeable control plane; GasSponsor also remains
 behind its fixed custom proxy. This removes the former per-account proxy workaround.
 
 The immutable dispatcher exposes `delegationBeacon()` and `dispatcherProtocolId()`
-(`keccak256("dakota.delegation.direct-beacon-dispatch.v2")`). Readiness validates
+(`keccak256("cryft.delegation.direct-beacon-dispatch.v2")`). Readiness validates
 the 23-byte `ef0100 || dispatcher` designator, deployed dispatcher code hash,
 beacon binding and account protocol. A call to an account without code can succeed
 without executing anything, so transaction success alone is insufficient evidence.
@@ -51,7 +51,7 @@ are not byte-for-byte deployed runtime until those values are resolved.
 1. Confirm the live chain ID and genesis checksum. Inspect reserved proxies:
    initialization false, implementation zero, correct facade and expected roots.
    If any differs, inspect the existing deployment; do not relink or reset it.
-2. Deploy DakotaDelegation. Deploy its beacon from the temporary root. The beacon
+2. Deploy CryftDelegation. Deploy its beacon from the temporary root. The beacon
    constructor checks the live validator registry. Deploy the immutable dispatcher
    using that beacon; verify both configuration getters and runtime code hash.
 3. Deploy GasSponsor and registry implementations. Atomically first-link the
@@ -78,7 +78,7 @@ and namespaced storage; an upgrade must not reactivate old signed operations.
 
 Submit a properly signed EIP-7702 authorization with the chain-bound authorization
 nonce, designating the verified dispatcher. Read back the account code and route.
-The account transaction nonce and Dakota execution nonce are different values.
+The account transaction nonce and Cryft execution nonce are different values.
 Sign the account's EIP-712 execution envelope with its executor, operation ID,
 nonce, expiry, calls and execution gas limit. The sponsor voucher separately binds
 tenant, campaign, sponsor, account, relayer, delegate, execution hash, maximum gas,
@@ -168,7 +168,7 @@ out of a sponsor opened by the developer gas program (`openProgramSponsor`):
 Spending is unchanged: a program sponsor is spent from only while the program answers eligible (its developer's Pass active, the
 program not paused), so a revoked Pass stops spending at the very next execution. No storage is added; `layout-proof.json` proves
 the layout append-only against both live predecessors (1.3.0 at `0x…FEeD`, 1.4.0 behind the dev test sponsor). Runtime 28,547 bytes
-(Dakota's limit 32,768).
+(Cryft's limit 32,768).
 
 ## GasSponsor 1.5.1: a program sponsor's credit is recovered by the program alone (2026-11-23)
 
@@ -189,7 +189,7 @@ Two more from the safe-coding review of the live contracts (Chad: "fix all of th
   developer program's sponsor is exempt: its calls are governed by the program deny list, its manager's targets and the
   router's lists. Only the platform administrator sets approvals (`setCallApprovals`, 1 to 64 at a time; a zero code hash
   revokes); `initializeCallApprovals` is removed (the 32 KB budget). Storage: ApprovedGasSponsor's own namespace,
-  `keccak256("dakota.storage.ApprovedGasSponsor.v1")`, the one 1.2 wrote: `0x…FEeD` still holds its 7 entries from block 5171
+  `keccak256("cryft.storage.ApprovedGasSponsor.v1")`, the one 1.2 wrote: `0x…FEeD` still holds its 7 entries from block 5171
   (1.2 ran there for blocks 5171-5330, before the rollback and 1.3.0). `layout-proof.json` proves the struct is 1.2's and that
   the four namespaces and the plain slots are apart.
 - **C4, stuck worker reservations.** `releaseWorker(id)`: the platform administrator at any time, or ANYONE once
@@ -199,14 +199,14 @@ Two more from the safe-coding review of the live contracts (Chad: "fix all of th
   policy's `settle` is asked with 200,000 gas and a refusal does not keep the reservation stuck.
 
 `layout-proof.json` proves the layout append-only against 1.3.0 (`0x…FEeD`), 1.4.0, 1.5.0 (the dev test sponsor since PB-2) and
-the 1.2 approvals namespace. Runtime 32,670 bytes (margin 98 to Dakota's 32,768).
+the 1.2 approvals namespace. Runtime 32,670 bytes (margin 98 to Cryft's 32,768).
 
 ## GasSponsor 1.5.2: the contract audit's P-1, for the fresh chain (2026-11-25)
 
 `ProgramGasSponsor` 1.5.2 (`Tools/GasSponsor/build_1_5_2.py`; release files under `Releases/GasSponsor/1.5.2` once written with
 `--write`) is what genesis links at `0x…FEeD` on chain 113211. Nothing is deployed yet, but storage stays append-only against 1.5.1
 (the tool proves it) so later upgrades remain provable. One version string, `1.5.2`, for every layer. Runtime 32,491 bytes (margin
-277 to Dakota's 32,768).
+277 to Cryft's 32,768).
 
 | finding | 1.5.2 |
 |---|---|

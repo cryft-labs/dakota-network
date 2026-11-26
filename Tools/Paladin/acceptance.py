@@ -11,7 +11,7 @@ def local_fixture(d,count=4):
         buffer=(ctypes.c_ubyte*len(raw)).from_buffer_copy(raw); source=Blob(len(raw),buffer); dest=Blob()
         library=ctypes.WinDLL('crypt32',use_last_error=True); kernel=ctypes.WinDLL('kernel32',use_last_error=True)
         kernel.LocalFree.argtypes=[ctypes.c_void_p]
-        if encrypt: ok=library.CryptProtectData(ctypes.byref(source),'Dakota local acceptance fixture',None,None,None,1,ctypes.byref(dest))
+        if encrypt: ok=library.CryptProtectData(ctypes.byref(source),'Cryft local acceptance fixture',None,None,None,1,ctypes.byref(dest))
         else: ok=library.CryptUnprotectData(ctypes.byref(source),None,None,None,None,1,ctypes.byref(dest))
         assert ok
         try:return ctypes.string_at(dest.data,dest.size)
@@ -37,7 +37,7 @@ def value(result): return next(iter(result.values())) if isinstance(result,dict)
 def run(d):
     fixture=local_fixture(d); hashes=fixture['hashes']; proxy=d.journal['private_deployments']['ComboProxy']['address']
     card=d.at('CryftGreetingCards',d.journal['deployments']['CardProxy']['address']); cm=d.at('CodeManager')
-    identifier,count=cm.functions.getIdentifierCounter(card.address,'112311').call(); uids=[identifier+'-'+str(i) for i in range(1,5)]
+    identifier,count=cm.functions.getIdentifierCounter(card.address,'113211').call(); uids=[identifier+'-'+str(i) for i in range(1,5)]
     def call(method,inputs=None):return d.private_call('PrivateComboStorage',method,proxy,inputs)
     def send(label,method,inputs):return d.private_send(label,'PrivateComboStorage',method,proxy,inputs)
     def stage(label,action):

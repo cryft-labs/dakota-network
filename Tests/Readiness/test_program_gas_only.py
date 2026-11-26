@@ -10,7 +10,7 @@ replay is gone) with real EIP-7702 accounts, as test_program_sponsorship.py:
   * a sponsor the program never opened is exactly as before: refundable deposits, withdrawals, credit from anyone, recovery anywhere;
   * this source's build (Tools/GasSponsor/build_1_5_2.py) is append-only against 1.5.1 and within 32 KB.
 
-    DAKOTA_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_gas_only.py
+    CRYFT_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_gas_only.py
 """
 import json
 
@@ -148,7 +148,7 @@ def test_a_non_program_sponsor_is_unchanged(world):
 
 def test_this_build_is_append_only_against_1_5_1_and_fits(program_build):
     """1.5.2: the release build (Tools/GasSponsor/build_1_5_2.py) proves every namespaced struct and the plain slots append-only
-    against the committed 1.5.1 input, and the runtime fits Dakota's 32,768 bytes. If Releases/GasSponsor/1.5.2 is committed, it is
+    against the committed 1.5.1 input, and the runtime fits Cryft's 32,768 bytes. If Releases/GasSponsor/1.5.2 is committed, it is
     this checkout's build."""
     import importlib.util
     spec = importlib.util.spec_from_file_location('build_1_5_2', REPO / 'Tools/GasSponsor/build_1_5_2.py')

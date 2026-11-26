@@ -17,7 +17,7 @@ Writes Releases/GasSponsor/1.5.1/:
 
     python Tools/GasSponsor/build_1_5_1.py [--check]      # --check: rebuild and compare with the committed files, write nothing
 
-Needs py-solc-x with solc 0.8.37 installed. Refuses (exit 1) past Dakota's 32,768-byte code limit or on any layout problem.
+Needs py-solc-x with solc 0.8.37 installed. Refuses (exit 1) past Cryft's 32,768-byte code limit or on any layout problem.
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ VERSION = "1.5.1"
 ENTRY = "Contracts/Genesis/7702/ProgramGasSponsor.sol"
 NAME = "ProgramGasSponsor"
 SOLC = "0.8.37"
-SETTINGS = {"optimizer": {"enabled": True, "runs": 200}, "evmVersion": "osaka", "remappings": ["@dakota/=Contracts/"],
+SETTINGS = {"optimizer": {"enabled": True, "runs": 200}, "evmVersion": "osaka", "remappings": ["@cryft/=Contracts/"],
             "outputSelection": {"*": {"*": ["abi", "storageLayout", "evm.bytecode.object", "evm.deployedBytecode.object",
                                             "evm.deployedBytecode.immutableReferences"]}}}
 CODE_LIMIT = 32_768
@@ -46,14 +46,14 @@ IMPORT = re.compile(r'^\s*import\s+(?:[^"\']*from\s+)?["\']([^"\']+)["\']\s*;', 
 STRUCTS = {"GasSponsor": "GasSponsorStorage", "WorkerGasSponsor": "WorkerStorage", "ProgramGasSponsor": "ProgramStorage",
            "ApprovedGasSponsor": "ApprovalStorage"}
 CONSTANTS = (("GasSponsor.sol", "_GAS_SPONSOR_STORAGE_LOCATION =\n        0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100;"),
-             ("WorkerGasSponsor.sol", 'WORKER_SLOT = keccak256("dakota.storage.WorkerGasSponsor.v1");'),
-             ("ProgramGasSponsor.sol", 'PROGRAM_SLOT = keccak256("dakota.storage.ProgramGasSponsor.v1");'),
-             ("ApprovedGasSponsor.sol", '_APPROVAL_SLOT = keccak256("dakota.storage.ApprovedGasSponsor.v1");'))
+             ("WorkerGasSponsor.sol", 'WORKER_SLOT = keccak256("cryft.storage.WorkerGasSponsor.v1");'),
+             ("ProgramGasSponsor.sol", 'PROGRAM_SLOT = keccak256("cryft.storage.ProgramGasSponsor.v1");'),
+             ("ApprovedGasSponsor.sol", '_APPROVAL_SLOT = keccak256("cryft.storage.ApprovedGasSponsor.v1");'))
 LIVE_STRUCTS = ["GasSponsor", "WorkerGasSponsor", "ProgramGasSponsor"]          # what 1.4.0 and 1.5.0 hold
 APPROVED_COMMIT = "7f70541"          # ApprovedGasSponsor (GasSponsor 1.2), live on 0x…FEeD blocks 5171-5330 (0x788e…9fb0): its namespace
 NAMESPACES = {"GasSponsorStorage": 0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100,
-              "WorkerStorage": "dakota.storage.WorkerGasSponsor.v1", "ProgramStorage": "dakota.storage.ProgramGasSponsor.v1",
-              "ApprovalStorage": "dakota.storage.ApprovedGasSponsor.v1"}
+              "WorkerStorage": "cryft.storage.WorkerGasSponsor.v1", "ProgramStorage": "cryft.storage.ProgramGasSponsor.v1",
+              "ApprovalStorage": "cryft.storage.ApprovedGasSponsor.v1"}
 LIVE_130 = REPO / "Contracts/Verification/20260915/WorkerGasSponsor/standard-input.json"
 LIVE_140 = REPO / "Releases/GasSponsor/1.5.0/live-1.4.0-standard-input.json"
 LIVE_150 = REPO / "Releases/GasSponsor/1.5.0/standard-input.json"
@@ -75,7 +75,7 @@ def closure(entry: str) -> dict[str, dict]:
         text = (REPO / path).read_text(encoding="utf-8")
         seen[path] = {"content": text}
         for name in IMPORT.findall(text):
-            target = ("Contracts/" + name[len("@dakota/"):]) if name.startswith("@dakota/") else str(Path(path).parent / name)
+            target = ("Contracts/" + name[len("@cryft/"):]) if name.startswith("@cryft/") else str(Path(path).parent / name)
             todo.append(normalized(target))
     return {k: seen[k] for k in sorted(seen)}
 
@@ -197,7 +197,7 @@ def build() -> tuple[dict, dict, dict]:
                 problems.append(f"{file}: {label} has no {constant!r}")
     if len(runtime) > CODE_LIMIT:
         problems.append(f"runtime {len(runtime):,} bytes, past {CODE_LIMIT:,}")
-    proof = {"kind": "dakota.storage-layout-proof.v1", "contract": NAME, "version": VERSION, "append_only": not problems,
+    proof = {"kind": "cryft.storage-layout-proof.v1", "contract": NAME, "version": VERSION, "append_only": not problems,
              "problems": problems,
              "predecessors": {"1.3.0": {"where": "0x000000000000000000000000000000000000FEeD (production, genesis proxy)",
                                         "sources": str(LIVE_130.relative_to(REPO)), "sources_sha256": sha256(LIVE_130.read_bytes()),

@@ -25,7 +25,7 @@ def registry():
     logic=deploy(artifact)
     # Only code at the admin address is needed by the managed proxy constructor;
     # production uses the established Pente ManagedProxyAdmin.
-    init=logic.functions.initialize(authority.address,112311,a[8])._encode_transaction_data()
+    init=logic.functions.initialize(authority.address,113211,a[8])._encode_transaction_data()
     proxy=deploy(json.loads((ART/'ManagedApplicationProxy/artifact.json').read_text()),[logic.address,authority.address,bytes.fromhex(init[2:])])
     return w,a,authority,logic,w.eth.contract(address=proxy.address,abi=artifact['abi'])
 
@@ -37,8 +37,8 @@ def entry(i=1):return [bytes([1])*32,bytes([i])*32,bytes([i+1])*32,bytes([i+2])*
 
 def test_atomic_initializer_and_implementation_are_locked(registry):
     w,a,auth,logic,r=registry
-    send(w,r.functions.initialize(auth.address,112311,a[8]),a[0],False)
-    send(w,logic.functions.initialize(auth.address,112311,a[8]),a[0],False)
+    send(w,r.functions.initialize(auth.address,113211,a[8]),a[0],False)
+    send(w,logic.functions.initialize(auth.address,113211,a[8]),a[0],False)
     assert r.functions.authority().call()==auth.address and r.functions.card().call()==a[8]
 
 def test_key_binding_is_immutable_scoped_and_service_only(registry):

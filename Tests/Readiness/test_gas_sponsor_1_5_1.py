@@ -6,7 +6,7 @@ VERIFIED 1.3.0, then this build) with real EIP-7702 accounts, as test_program_sp
   C4  releaseWorker(id): a stuck worker reservation settled at its maximum, by the platform administrator at any time or by anyone
       after RESERVATION_RELEASE_AFTER (7 days); idempotent; one WorkerReleased each; a refusing policy never keeps it stuck.
 
-    DAKOTA_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_gas_sponsor_1_5_1.py
+    CRYFT_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_gas_sponsor_1_5_1.py
 
 1.5.2 (X-57): ANYONE's release after the 7 days charges NOTHING (a lost worker is the platform's failure); only the platform
 administrator's release charges the maximum. The engine is linked fresh (test_program_sponsorship.world).

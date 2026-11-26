@@ -39,10 +39,10 @@ def link_sponsor(c, artifact, args):
 def setup(c, artifact=None):
     """The delegated account a[3], and a sponsor engine at 0x…FEeD (this source's GasSponsor, or `artifact` from this source:
     GasSponsor 1.5.2 tests link each layer fresh) with sponsor a[4] (manager a[5]) funded and relayer a[2]."""
-    a=c['accounts']; logic=deploy(c,'DakotaDelegation'); beacon=deploy(c,'DakotaDelegationBeacon',logic.address)
-    dispatcher=deploy(c,'DakotaDelegationBeaconDispatcher',beacon.address)
+    a=c['accounts']; logic=deploy(c,'CryftDelegation'); beacon=deploy(c,'CryftDelegationBeacon',logic.address)
+    dispatcher=deploy(c,'CryftDelegationBeaconDispatcher',beacon.address)
     authorize(c, dispatcher.address)
-    account=at(c,'DakotaDelegation',a[3])
+    account=at(c,'CryftDelegation',a[3])
     sponsor=link_sponsor(c,artifact or c['builds']['GasSponsor'],(a[0],a[1],dispatcher.address,100000))
     tx(c,sponsor.functions.configureSponsor(a[4],Web3.keccak(text='tenant'),a[5],10**17,10**18,True))
     # GasSponsor 1.5.2: a new sponsor runs no operation until the admin sets its ops/day, and requires approved wallets until its
@@ -131,19 +131,19 @@ def test_wrong_eoa_designation_and_legacy_proxy_are_not_approved(chain):
     # An EOA may set its own code designation; this does not change sponsor approval.
     other=deploy(c,'Value'); authorize(c,other.address,bytes.fromhex(other.functions.value()._encode_transaction_data()[2:]))
     assert not sponsor.functions.isDelegationReady(account.address).call()
-    fails(c,sponsor.functions.setApprovedDelegate(ADDRESSES['DakotaDelegationRegistry']))
+    fails(c,sponsor.functions.setApprovedDelegate(ADDRESSES['CryftDelegationRegistry']))
     authorize(c,dispatcher.address)
     assert sponsor.functions.isDelegationReady(account.address).call()
 
 
 def test_registry_agrees_with_sponsor_and_beacon_upgrade_preserves_nonce(chain):
     c=chain; account,sponsor,beacon,dispatcher=setup(c); a=c['accounts']
-    registry=linked(c,'DakotaDelegationRegistry',args=(dispatcher.address,beacon.address,sponsor.address,a[0]),initializer='initializeWithAdmin')
+    registry=linked(c,'CryftDelegationRegistry',args=(dispatcher.address,beacon.address,sponsor.address,a[0]),initializer='initializeWithAdmin')
     assert registry.functions.delegationEntry().call()==dispatcher.address
     assert registry.functions.isAccountReady(account.address).call()
     assert registry.functions.expectedAccountCodeHash().call()==Web3.keccak(c['w3'].eth.get_code(account.address))
     assert submit(c,sponsor,signed(c,sponsor,account,dispatcher.address))['success']
-    logic=deploy(c,'DakotaDelegation'); tx(c,beacon.functions.upgradeTo(logic.address))
+    logic=deploy(c,'CryftDelegation'); tx(c,beacon.functions.upgradeTo(logic.address))
     assert account.functions.getNonce().call()==1
     assert sponsor.functions.isDelegationReady(account.address).call()
     assert submit(c,sponsor,signed(c,sponsor,account,dispatcher.address,tag='after-upgrade'))['success']
@@ -173,7 +173,7 @@ def test_target_returndata_is_bounded_and_reverts_target_effects(chain,size,succ
     c=chain; account,sponsor,_,dispatcher=setup(c)
     code='''pragma solidity ^0.8.19; contract ReturnData { uint public calls;
     function run(uint size) external { calls++; assembly { return(0,size) } } }'''
-    art=next(iter(solcx.compile_source(code,solc_version=__import__('os').environ.get('DAKOTA_TEST_LEGACY_SOLC','0.8.19'),output_values=['abi','bin']).values()))
+    art=next(iter(solcx.compile_source(code,solc_version=__import__('os').environ.get('CRYFT_TEST_LEGACY_SOLC','0.8.19'),output_values=['abi','bin']).values()))
     r=tx(c,c['w3'].eth.contract(abi=art['abi'],bytecode=art['bin']).constructor())
     target=c['w3'].eth.contract(address=r.contractAddress,abi=art['abi'])
     calls=[(target.address,0,bytes.fromhex(target.functions.run(size)._encode_transaction_data()[2:]))]

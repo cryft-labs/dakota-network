@@ -15,7 +15,7 @@ REPO = Path(__file__).resolve().parents[2]
 ADDR = {k: Web3.to_checksum_address('0x' + v.zfill(40)) for k, v in {
     'ValidatorSmartContractAllowList': '1111', 'ProxyAdmin': 'facade',
     'GasManager': 'cafe', 'CodeManager': 'c0de', 'GasSponsor': 'feed',
-    'DakotaDelegationRegistry': 'de1e6a7e', 'ReservedAgentRegistry': 'face'}.items()}
+    'CryftDelegationRegistry': 'de1e6a7e', 'ReservedAgentRegistry': 'face'}.items()}
 ADMIN = Web3.to_checksum_address('0x9247524040D91D5dd1521A25f2e7711d4a0fe921')
 DEPLOYER = Web3.to_checksum_address('0x633309d1155fD658a717e4f5E4FA853615400867')
 TESTER = Web3.to_checksum_address('0x991acc255761dEE0421Ccd3F436788C24425122E')
@@ -68,10 +68,10 @@ class Deployment:
             self.artifacts[name] = json.loads(path.read_text())
         self.w3 = Web3(Web3.HTTPProvider('http://100.111.69.1:8547/', request_kwargs={'timeout': 35}, exception_retry_configuration=None))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
-        assert self.w3.eth.chain_id == 112311
+        assert self.w3.eth.chain_id == 113211
         assert hx(self.w3.eth.get_block(0)['hash']) == GENESIS_HASH
         self.path = self.out / 'transactions.json'
-        self.journal = json.loads(self.path.read_text()) if self.path.exists() else {'chain_id': 112311, 'genesis_hash': GENESIS_HASH, 'transactions': {}, 'deployments': {}, 'checks': {}}
+        self.journal = json.loads(self.path.read_text()) if self.path.exists() else {'chain_id': 113211, 'genesis_hash': GENESIS_HASH, 'transactions': {}, 'deployments': {}, 'checks': {}}
         self.accounts = {}
         self.execute = execute
         if execute:
@@ -121,9 +121,9 @@ class Deployment:
         assert self.w3.eth.get_transaction_count(sender, 'pending') == self.w3.eth.get_transaction_count(sender, 'latest'), 'Reconcile pending transactions first'
         if transaction is None:
             transaction = function.build_transaction({'from': sender, 'value': value, 'gas': 12000000, 'gasPrice': 10**9,
-                                                       'nonce': self.w3.eth.get_transaction_count(sender), 'chainId': 112311})
+                                                       'nonce': self.w3.eth.get_transaction_count(sender), 'chainId': 113211})
         else:
-            transaction = dict(transaction, **{'from': sender, 'nonce': self.w3.eth.get_transaction_count(sender), 'chainId': 112311})
+            transaction = dict(transaction, **{'from': sender, 'nonce': self.w3.eth.get_transaction_count(sender), 'chainId': 113211})
         if 'authorizationList' not in transaction:
             # First simulate the exact call/create, then bound the estimated gas.
             self.w3.eth.call(transaction)
@@ -187,13 +187,13 @@ class Deployment:
     def preflight(self):
         expected = json.loads((REPO / 'Contracts/Genesis/development-release.json').read_text())
         validator = self.at('ValidatorSmartContractAllowList')
-        self.check('chain_identity', self.w3.eth.chain_id == 112311 and hx(self.w3.eth.get_block(0)['hash']) == GENESIS_HASH)
+        self.check('chain_identity', self.w3.eth.chain_id == 113211 and hx(self.w3.eth.get_block(0)['hash']) == GENESIS_HASH)
         self.check('validator_membership', sorted(validator.functions.getValidators().call()) == sorted(expected['validators']))
         self.check('bootstrap_voters', validator.functions.getVoters().call() == [DEPLOYER])
         self.check('bootstrap_roots', set(validator.functions.getRootOverlords().call()) == {ADMIN, DEPLOYER})
         for name in ['ValidatorSmartContractAllowList', 'ProxyAdmin']:
             self.check(name + ':genesis_bytecode', hx(self.w3.keccak(self.w3.eth.get_code(ADDR[name]))) == expected['runtimes'][name]['runtime_keccak256'])
-        for name in ['GasManager', 'CodeManager', 'GasSponsor', 'DakotaDelegationRegistry', 'ReservedAgentRegistry']:
+        for name in ['GasManager', 'CodeManager', 'GasSponsor', 'CryftDelegationRegistry', 'ReservedAgentRegistry']:
             proxy = self.at('TransparentUpgradeableProxy', ADDR[name])
             self.check(name + ':proxy_shell', hx(self.w3.keccak(self.w3.eth.get_code(ADDR[name]))) == expected['runtimes']['TransparentUpgradeableProxy']['runtime_keccak256'])
             self.check(name + ':root_guardians', proxy.functions.proxy_isGuardian(ADMIN).call() and proxy.functions.proxy_isGuardian(DEPLOYER).call())

@@ -16,7 +16,7 @@ REGISTRY = Web3.to_checksum_address('0x' + '0' * 36 + '1111')
 ADMIN = Web3.to_checksum_address('0x' + '0' * 34 + 'facade')
 ADDRESSES = {name: Web3.to_checksum_address('0x' + value.zfill(40)) for name, value in {
     'GasManager': 'cafe', 'CodeManager': 'c0de', 'GasSponsor': 'feed',
-    'DakotaDelegationRegistry': 'de1e6a7e', 'proxy': 'face'}.items()}
+    'CryftDelegationRegistry': 'de1e6a7e', 'proxy': 'face'}.items()}
 PATHS = {
     'ValidatorSmartContractAllowList': 'Genesis/validatorContracts/ValidatorSmartContractAllowList.sol',
     'GasManager': 'Genesis/GasManager/GasManager.sol',
@@ -24,22 +24,22 @@ PATHS = {
     'TransparentUpgradeableProxy': 'Genesis/Upgradeable/Proxy/Transparent/TransparentUpgradeableProxy.sol',
     'ProxyAdmin': 'Genesis/Upgradeable/Proxy/Transparent/ProxyAdmin.sol',
     'GasSponsor': 'Genesis/7702/GasSponsor.sol',
-    'DakotaDelegationRegistry': 'Genesis/7702/DakotaDelegationRegistry.sol',
-    'DakotaDelegation': 'Genesis/7702/DakotaDelegation.sol',
-    'DakotaDelegationBeacon': 'Genesis/7702/DakotaDelegationBeacon.sol',
-    'DakotaDelegationBeaconDispatcher': 'Genesis/7702/DakotaDelegationBeaconDispatcher.sol',
+    'CryftDelegationRegistry': 'Genesis/7702/CryftDelegationRegistry.sol',
+    'CryftDelegation': 'Genesis/7702/CryftDelegation.sol',
+    'CryftDelegationBeacon': 'Genesis/7702/CryftDelegationBeacon.sol',
+    'CryftDelegationBeaconDispatcher': 'Genesis/7702/CryftDelegationBeaconDispatcher.sol',
 }
 ENGINES = ['ValidatorSmartContractAllowList', 'GasManager', 'CodeManager']
-# The validator's own compiler (0.8.19, London). DAKOTA_TEST_LEGACY_SOLC overrides it for THESE TESTS ONLY, on a machine where 0.8.19
+# The validator's own compiler (0.8.19, London). CRYFT_TEST_LEGACY_SOLC overrides it for THESE TESTS ONLY, on a machine where 0.8.19
 # has no native build (Apple Silicon without Rosetta: solc 0.8.19 is x86-only there). Releases are never built from this harness.
-LEGACY_SOLC = os.environ.get('DAKOTA_TEST_LEGACY_SOLC', '0.8.19')
+LEGACY_SOLC = os.environ.get('CRYFT_TEST_LEGACY_SOLC', '0.8.19')
 
 @pytest.fixture(scope='session')
 def builds(tmp_path_factory):
     spec = importlib.util.spec_from_file_location('governance_compiler', REPO / 'Tools/SolcCompiler/compile.py')
     compiler = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(compiler)
-    compiler.VALIDATOR_SOLC_VERSION = LEGACY_SOLC              # this test run's copy only (DAKOTA_TEST_LEGACY_SOLC)
+    compiler.VALIDATOR_SOLC_VERSION = LEGACY_SOLC              # this test run's copy only (CRYFT_TEST_LEGACY_SOLC)
     output = {}
     for name, relative in PATHS.items():
         validator = name == 'ValidatorSmartContractAllowList'
@@ -97,7 +97,7 @@ def at(chain, name, address):
 
 @pytest.fixture
 def chain(builds, monkeypatch):
-    # Match Dakota's reviewed genesis limit; Ethereum's default is only 24 KiB.
+    # Match Cryft's reviewed genesis limit; Ethereum's default is only 24 KiB.
     import eth.vm.forks.spurious_dragon.computation as spurious_computation
     release = json.loads((REPO/'Contracts/Genesis/development-release.json').read_text())
     def find_limit(value):
@@ -304,7 +304,7 @@ def test_explicit_initializer_works_and_implementation_stays_locked(chain,name):
     fails(chain,c.functions.initialize())
 
 def test_beacon_acceptance_cancellation_and_renunciation(chain):
-    logic=deploy(chain,'Value'); beacon=deploy(chain,'DakotaDelegationBeacon',logic.address)
+    logic=deploy(chain,'Value'); beacon=deploy(chain,'CryftDelegationBeacon',logic.address)
     a,b=chain['accounts'][:2]
     fails(chain,beacon.functions.renounceOwnership())
     for invalid in ['0x'+'0'*40,beacon.address,a]: fails(chain,beacon.functions.transferOwnership(invalid))
@@ -318,8 +318,8 @@ def test_beacon_acceptance_cancellation_and_renunciation(chain):
 
 def test_sponsor_admin_handover_keeps_pause_recovery(chain):
     a,b=chain['accounts'][:2]
-    logic=deploy(chain,'DakotaDelegation'); beacon=deploy(chain,'DakotaDelegationBeacon',logic.address)
-    delegate=deploy(chain,'DakotaDelegationBeaconDispatcher',beacon.address)
+    logic=deploy(chain,'CryftDelegation'); beacon=deploy(chain,'CryftDelegationBeacon',logic.address)
+    delegate=deploy(chain,'CryftDelegationBeaconDispatcher',beacon.address)
     c=linked(chain,'GasSponsor',args=(a,a,delegate.address,100000))
     for invalid in ['0x'+'0'*40,c.address,ADMIN]: fails(chain,c.functions.proposePlatformAdmin(invalid))
     tx(chain,c.functions.proposePlatformAdmin(b)); assert c.functions.platformAdmin().call()==a
@@ -330,9 +330,9 @@ def test_sponsor_admin_handover_keeps_pause_recovery(chain):
 
 def test_registry_accepts_and_can_cancel_beacon_handover(chain):
     a,b=chain['accounts'][:2]
-    logic=deploy(chain,'DakotaDelegation'); beacon=deploy(chain,'DakotaDelegationBeacon',logic.address)
-    dispatcher=deploy(chain,'DakotaDelegationBeaconDispatcher',beacon.address)
-    c=linked(chain,'DakotaDelegationRegistry',args=(dispatcher.address,beacon.address,ADDRESSES['GasSponsor']))
+    logic=deploy(chain,'CryftDelegation'); beacon=deploy(chain,'CryftDelegationBeacon',logic.address)
+    dispatcher=deploy(chain,'CryftDelegationBeaconDispatcher',beacon.address)
+    c=linked(chain,'CryftDelegationRegistry',args=(dispatcher.address,beacon.address,ADDRESSES['GasSponsor']))
     tx(chain,beacon.functions.transferOwnership(c.address))
     tx(chain,c.functions.acceptBeaconOwnership())
     assert beacon.functions.owner().call()==c.address
@@ -349,7 +349,7 @@ def test_registry_accepts_and_can_cancel_beacon_handover(chain):
     tx(chain,c.functions.proposeAdmin(b)); tx(chain,c.functions.acceptAdmin(),b)
     # Re-recording the same implementation must fail even for the new admin.
     fails(chain,c.functions.recordCurrentImplementation(),b)
-    next_logic=deploy(chain,'DakotaDelegation')
+    next_logic=deploy(chain,'CryftDelegation')
     code_hash=chain['w3'].keccak(chain['w3'].eth.get_code(next_logic.address))
     fails(chain,c.functions.upgradeDelegation(next_logic.address,code_hash),a)
     tx(chain,c.functions.upgradeDelegation(next_logic.address,code_hash),b)
@@ -357,7 +357,7 @@ def test_registry_accepts_and_can_cancel_beacon_handover(chain):
 
 def test_runtime_limits_and_validator_compiler(builds):
     for name in PATHS:
-        # Dakota's README specifies a 32 KiB deployed contract limit.
+        # Cryft's README specifies a 32 KiB deployed contract limit.
         assert len(bytes.fromhex(builds[name]['runtime_bytecode'].removeprefix('0x'))) <= 32768, name
     metadata=json.loads(builds['ValidatorSmartContractAllowList']['metadata'])
     assert metadata['compiler']['version'].startswith('0.8.19')

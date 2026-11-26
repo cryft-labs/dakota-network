@@ -1,8 +1,8 @@
-# Dakota development genesis initialization
+# Cryft development genesis initialization
 
 ## Scope and prerequisites
 
-This deployment is authorized for the existing development chain 112311, genesis
+This deployment is authorized for the existing development chain 113211, genesis
 `0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8`.
 It neither replaces genesis nor changes the four live validator identities.
 The implementation artifacts in `artifact-lock.json` preserve the initial September
@@ -79,9 +79,9 @@ governance-management revocation is submitted.
 
 The canary registers three public UIDs and tests scoped redemption, a deliberate
 delivery failure and idempotent repair. It is not a Pente privacy group. Funding
-tests send 0.000003 KOTA total to the existing test wallet, burn one dummy token
-unit and one native wei, and use 0.01 KOTA of restricted treasury gas credit plus
-a refundable 0.001 KOTA deployment-wallet deposit. The gas limit keeps room for
+tests send 0.000003 CRYFT total to the existing test wallet, burn one dummy token
+unit and one native wei, and use 0.01 CRYFT of restricted treasury gas credit plus
+a refundable 0.001 CRYFT deployment-wallet deposit. The gas limit keeps room for
 the delivery callback; a successful estimate alone can hide a caught callback failure.
 
 A real type-4 authorization delegates the test EOA directly to the dispatcher.

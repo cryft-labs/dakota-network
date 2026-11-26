@@ -5,7 +5,7 @@ it (the old chain's 1.1.0 -> 1.3.0 -> 1.4.0 upgrade replay is gone: nothing is d
 are now scheduled). The deny list is seeded before setProgram (X-20). A mock program stands in for DeveloperGasProgram (its one
 read, sponsorLimits). No live keys or RPC.
 
-    DAKOTA_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_sponsorship.py   # on Apple Silicon without Rosetta
+    CRYFT_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_sponsorship.py   # on Apple Silicon without Rosetta
 """
 import importlib.util
 import json
@@ -288,11 +288,11 @@ def test_the_counter_saturates_and_never_bricks(world):
 def test_storage_is_append_only(program_build):
     """The base namespace and the worker's slot are where 1.3.0 keeps them; 1.4.0's own slot is new."""
     source = (REPO / 'Contracts/Genesis/7702/ProgramGasSponsor.sol').read_text()
-    assert 'keccak256("dakota.storage.ProgramGasSponsor.v1")' in source
+    assert 'keccak256("cryft.storage.ProgramGasSponsor.v1")' in source
     base = (REPO / 'Contracts/Genesis/7702/GasSponsor.sol').read_text()
     assert '0x1517881409dbca238e515328317c78f643c8aa79fdd0217b0d2dee62cd1df100' in base
     worker = (REPO / 'Contracts/Genesis/7702/WorkerGasSponsor.sol').read_text()
-    assert 'keccak256("dakota.storage.WorkerGasSponsor.v1")' in worker
+    assert 'keccak256("cryft.storage.WorkerGasSponsor.v1")' in worker
     # the base struct's fields, in their order, as 1.3.0 has them (no field added, moved or removed)
     fields = [line.strip() for line in base.split('struct GasSponsorStorage {')[1].split('}')[0].splitlines() if line.strip() and not line.strip().startswith('//')]
     assert fields == ['address platformAdmin;', 'address pendingPlatformAdmin;', 'address voucherSigner;', 'address approvedDelegate;',
@@ -303,7 +303,7 @@ def test_storage_is_append_only(program_build):
                       'address pauser;', 'mapping(address => uint256) opsPerDay;', 'mapping(address => uint256) opsDay;',   # 1.5.2, appended
                       'mapping(address => uint256) opsCount;']
     runtime = len(bytes.fromhex(program_build['ProgramGasSponsor']['runtime_bytecode'].removeprefix('0x')))
-    assert runtime <= 32768, runtime                                                                             # Dakota's genesis limit
+    assert runtime <= 32768, runtime                                                                             # Cryft's genesis limit
 
 
 # ── allowed targets and the V2 policy (any sponsor; off by default) ──

@@ -1,6 +1,6 @@
-# Dakota Native Sponsorship Live Deployment Runbook
+# Cryft Native Sponsorship Live Deployment Runbook
 
-Live chain: Dakota Network (`112311`)
+Live chain: Cryft Network (`113211`)
 
 Snapshot date: 2026-07-21
 
@@ -12,18 +12,18 @@ The September governance revision introduces a two-step beacon handover:
 this behavior automatically. Rebuild and review the new contracts and addresses
 using the [current maintenance guide](../GOVERNANCE.md) before a fresh deployment.
 
-This runbook covers the fixed Dakota EIP-7702 delegation entry and native gas
+This runbook covers the fixed Cryft EIP-7702 delegation entry and native gas
 sponsorship control plane. It does not replace the tenant-access factory
-runbook. The `DakotaDelegationRegistry` below is not a tenant user registry.
+runbook. The `CryftDelegationRegistry` below is not a tenant user registry.
 
 ## Stop Gate
 
 Do not first-link `0x00000000000000000000000000000000de1E6A7E` yet.
 
-The deployed beacon currently points to `DakotaDelegation` version `1.0.0` at
+The deployed beacon currently points to `CryftDelegation` version `1.0.0` at
 `0xEfbFba9c9e9A38b5E15030511Ad15139356F39f7`. The current registry requires
 the `delegationCapabilities()` and `supportsInterface()` surfaces added by
-`DakotaDelegation` version `1.1.0`.
+`CryftDelegation` version `1.1.0`.
 
 A read-only simulation of the current registry first-link reverts with:
 
@@ -41,7 +41,7 @@ the registry.
 | --- | --- | --- |
 | Root overlord | `0x2B7361056b31D2bf201E6764e7825fd31c0D223A` | Active root, implicit overlord, and implicit guardian |
 | Validator/root registry | `0x0000000000000000000000000000000000001111` | Verified |
-| Genesis ProxyAdmin | `0x0000000000000000000000000000000000FacAdE` | Verified custom Dakota `ProxyAdmin` |
+| Genesis ProxyAdmin | `0x0000000000000000000000000000000000FacAdE` | Verified custom Cryft `ProxyAdmin` |
 | Delegation registry proxy | `0x00000000000000000000000000000000de1E6A7E` | Unlinked; implementation slot is zero; `proxy_getIsInit() == false` |
 | GasSponsor proxy | `0x000000000000000000000000000000000000FEeD` | Unlinked; implementation slot is zero; `proxy_getIsInit() == false` |
 | GasManager proxy | `0x000000000000000000000000000000000000cafE` | Already linked to `0xB2088C9E4350764ed24F0F07d290410fE978D7F8` |
@@ -56,10 +56,10 @@ funding.
 
 | Component | Address | Decision |
 | --- | --- | --- |
-| Old `DakotaDelegation` `1.0.0` | `0xEfbFba9c9e9A38b5E15030511Ad15139356F39f7` | Verified, but do not retain as the active release |
-| `DakotaDelegation` `1.1.0` | `<DEPLOY_AND_RECORD>` | Mandatory new deployment |
-| `DakotaDelegationBeacon` | `0x69E67BF40445448ac342BBAFe6CA2922AAF56eE3` | Verified and usable |
-| `DakotaDelegationBeaconDispatcher` | `0x6CfA66d263F84B6b8B9E21621562D624b51a58be` | Verified and usable; constructor beacon is `0x69E67...56eE3` |
+| Old `CryftDelegation` `1.0.0` | `0xEfbFba9c9e9A38b5E15030511Ad15139356F39f7` | Verified, but do not retain as the active release |
+| `CryftDelegation` `1.1.0` | `<DEPLOY_AND_RECORD>` | Mandatory new deployment |
+| `CryftDelegationBeacon` | `0x69E67BF40445448ac342BBAFe6CA2922AAF56eE3` | Verified and usable |
+| `CryftDelegationBeaconDispatcher` | `0x6CfA66d263F84B6b8B9E21621562D624b51a58be` | Verified and usable; constructor beacon is `0x69E67...56eE3` |
 | First registry deployment | `0x04f05257ce82cc32F207Dc58bBe7458686a2CBda` | Unused duplicate; never reference it |
 | Selected second registry deployment | `0x8e19A0fC3c1E878F053Be9A0E6256a128169b755` | Verified; use as the fixed proxy implementation |
 | `GasSponsor` implementation | `0x7c3FB725e4dF120dA7426c96f878aF413d431ab2` | Runtime logic matches the current artifact; Blockscout verification still required |
@@ -74,7 +74,7 @@ retirement transaction.
 Record these before broadcasting:
 
 ```text
-CHAIN_ID=112311
+CHAIN_ID=113211
 ROOT=0x2B7361056b31D2bf201E6764e7825fd31c0D223A
 VALIDATOR_ROOT_REGISTRY=0x0000000000000000000000000000000000001111
 PROXY_ADMIN=0x0000000000000000000000000000000000FacAdE
@@ -109,18 +109,18 @@ status = pass
 solc = 0.8.34
 evm = osaka
 GasSponsor runtime = 11734 bytes
-DakotaDelegation runtime = 5341 bytes
-DakotaDelegationBeacon runtime = 663 bytes
-DakotaDelegationBeaconDispatcher runtime = 644 bytes
-DakotaDelegationRegistry runtime = 12252 bytes
+CryftDelegation runtime = 5341 bytes
+CryftDelegationBeacon runtime = 663 bytes
+CryftDelegationBeaconDispatcher runtime = 644 bytes
+CryftDelegationRegistry runtime = 12252 bytes
 ```
 
 Stop if selector-collision, storage, namespace, runtime-size, or compilation
 checks fail.
 
-## 2. Deploy DakotaDelegation 1.1.0
+## 2. Deploy CryftDelegation 1.1.0
 
-Deploy `Contracts/Genesis/7702/DakotaDelegation.sol` using:
+Deploy `Contracts/Genesis/7702/CryftDelegation.sol` using:
 
 ```text
 compiler = 0.8.34
@@ -134,8 +134,8 @@ value = 0
 Use this exact verification input:
 
 ```text
-Tools/SolcCompiler/compiled_output/Genesis/7702/DakotaDelegation/
-DakotaDelegation.remix-build-info-6.standard-input.json
+Tools/SolcCompiler/compiled_output/Genesis/7702/CryftDelegation/
+CryftDelegation.remix-build-info-6.standard-input.json
 ```
 
 Record the new address as `DELEGATION_IMPLEMENTATION_V1_1`. Before continuing,
@@ -166,7 +166,7 @@ validatorRootRegistry() = 0x0000000000000000000000000000000000001111
 From `ROOT`, call the beacon directly:
 
 ```solidity
-DakotaDelegationBeacon(
+CryftDelegationBeacon(
     0x69E67BF40445448ac342BBAFe6CA2922AAF56eE3
 ).upgradeTo(DELEGATION_IMPLEMENTATION_V1_1)
 ```
@@ -182,7 +182,7 @@ Do not transfer beacon ownership yet.
 The registry initializer is:
 
 ```solidity
-DakotaDelegationRegistry.initialize(
+CryftDelegationRegistry.initialize(
     0x6CfA66d263F84B6b8B9E21621562D624b51a58be,
     0x69E67BF40445448ac342BBAFe6CA2922AAF56eE3,
     0x000000000000000000000000000000000000FEeD
@@ -196,7 +196,7 @@ Exact initializer calldata:
 ```
 
 First run an `eth_call` simulation from `ROOT`. It must return successfully.
-Then, from `ROOT`, call the fixed proxy itself using the custom Dakota
+Then, from `ROOT`, call the fixed proxy itself using the custom Cryft
 `TransparentUpgradeableProxy` ABI:
 
 ```solidity
@@ -242,7 +242,7 @@ currentSnapshot().matchesLatestRelease == true
 Only after the registry link succeeds, call from `ROOT`:
 
 ```solidity
-DakotaDelegationBeacon(
+CryftDelegationBeacon(
     0x69E67BF40445448ac342BBAFe6CA2922AAF56eE3
 ).transferOwnership(
     0x00000000000000000000000000000000de1E6A7E
@@ -327,7 +327,7 @@ Use `keccak256(bytes(canonicalTenantId))` as the tenant ID.
 For the existing dev tenant:
 
 ```text
-canonical tenant ID = dakota_dev_smoke_001
+canonical tenant ID = cryft_dev_smoke_001
 tenant ID hash = 0xa42d69611844a20600ec302aa0ef712caa99399caca75a4773c3abd675abc295
 ```
 
@@ -387,7 +387,7 @@ The user signs an EIP-7702 authorization only. Never request or transmit the
 user's private key.
 
 ```text
-chainId = 112311
+chainId = 113211
 contractAddress = 0x00000000000000000000000000000000de1E6A7E
 nonce = current user-account nonce
 executor = omitted because ROOT or the onboarding service submits
@@ -412,7 +412,7 @@ account EIP-1967 implementation == DELEGATION_DISPATCHER
 implementationVersion() == "1.1.0"
 delegationCapabilities() == 255
 GasSponsor.isDelegationReady(account) == true
-DakotaDelegationRegistry.isAccountReady(account) == true
+CryftDelegationRegistry.isAccountReady(account) == true
 ```
 
 An accepted EIP-7702 authorization may remain installed even if the execution
@@ -443,7 +443,7 @@ the relayer within the signed cap. Never reuse an operation ID.
 Delegation implementation:
 
 ```solidity
-DakotaDelegationRegistry(DELEGATION_ENTRY).upgradeDelegation(
+CryftDelegationRegistry(DELEGATION_ENTRY).upgradeDelegation(
     NEW_IMPLEMENTATION,
     EXPECTED_RUNTIME_CODE_HASH
 )
@@ -476,12 +476,12 @@ before unpausing.
 
 Stop before broadcasting if any of these are true:
 
-- Chain ID is not `112311`.
+- Chain ID is not `113211`.
 - The connected wallet is not the active root overlord.
 - Either fixed proxy becomes initialized or gains an implementation before its
   planned first-link transaction.
 - The beacon owner is not `ROOT` before registry linking.
-- The beacon does not point to a verified `DakotaDelegation` `1.1.0` release.
+- The beacon does not point to a verified `CryftDelegation` `1.1.0` release.
 - Capability bitmap is not `255` or either required interface check is false.
 - The registry first-link simulation reverts.
 - GasSponsor source verification is incomplete for production.

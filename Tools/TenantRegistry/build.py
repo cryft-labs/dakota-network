@@ -38,7 +38,7 @@ SOLC_LONG = "0.8.34+commit.80d5c536"
 SETTINGS = {"evmVersion": "osaka", "optimizer": {"enabled": True, "runs": 200}, "viaIR": False,
             "metadata": {"bytecodeHash": "ipfs"},
             "outputSelection": {"*": {"*": ["abi", "metadata", "storageLayout", "evm.bytecode", "evm.deployedBytecode"]}}}
-DAKOTA_CODE_LIMIT = 32_768          # Dakota's genesis contractSizeLimit
+CRYFT_CODE_LIMIT = 32_768          # Cryft's genesis contractSizeLimit
 EIP170 = 24_576
 LIVE = {"KotaAccessFactory": "0x294Cd799535bEBCd2141B07e94e6ac1A8b06e96d",
         "KotaTenantAccessSBT": "0xF9346D8a883F89b9e5DF9d22e8227bef3F9d0021"}
@@ -209,7 +209,7 @@ def build(rpc: str | None = None) -> tuple[dict, dict]:
     base = baseline_input()
     base_output = compile_standard(base)
     files, summary = {}, {"compiler": SOLC_LONG, "settings": {k: v for k, v in SETTINGS.items() if k != "outputSelection"},
-                          "dakota_code_limit": DAKOTA_CODE_LIMIT, "contracts": {}}
+                          "cryft_code_limit": CRYFT_CODE_LIMIT, "contracts": {}}
     files["standard-input.json"] = json.dumps(standard, indent=1, sort_keys=True) + "\n"
     for name in NAMES:
         art = artifact(output, name)
@@ -220,8 +220,8 @@ def build(rpc: str | None = None) -> tuple[dict, dict]:
         abi = abi_proof(old["abi"], art["abi"])
         live_size = len(bytes.fromhex(old["evm"]["deployedBytecode"]["object"]))
         summary["contracts"][name] = {
-            "runtime_bytes": len(runtime), "live_runtime_bytes": live_size, "margin_to_dakota_limit": DAKOTA_CODE_LIMIT - len(runtime),
-            "within_dakota_limit": len(runtime) <= DAKOTA_CODE_LIMIT, "within_eip170": len(runtime) <= EIP170,
+            "runtime_bytes": len(runtime), "live_runtime_bytes": live_size, "margin_to_cryft_limit": CRYFT_CODE_LIMIT - len(runtime),
+            "within_cryft_limit": len(runtime) <= CRYFT_CODE_LIMIT, "within_eip170": len(runtime) <= EIP170,
             "runtime_keccak256_immutables_zeroed": art["runtime_keccak256_immutables_zeroed"],
             "immutables": art["immutable_references"], "append_only": proof["append_only"],
             "abi_superset": abi["superset"], "abi_added": abi["added"], "abi_changed_or_missing": abi["changed_or_missing"]}
@@ -242,8 +242,8 @@ def main(argv=None) -> int:
     problems = [f"{n}: not append-only" for n, s in summary["contracts"].items() if not s["append_only"]]
     problems += [f"{n}: a live function changed: {s['abi_changed_or_missing']}" for n, s in summary["contracts"].items()
                  if not s["abi_superset"]]
-    problems += [f"{n}: {s['runtime_bytes']:,} bytes is past Dakota's {DAKOTA_CODE_LIMIT:,}" for n, s in summary["contracts"].items()
-                 if not s["within_dakota_limit"]]
+    problems += [f"{n}: {s['runtime_bytes']:,} bytes is past Cryft's {CRYFT_CODE_LIMIT:,}" for n, s in summary["contracts"].items()
+                 if not s["within_cryft_limit"]]
     problems += [f"{n}: the baseline is not the live code" for n, s in (summary.get("live_baseline") or {}).items()
                  if not s["match_ignoring_metadata_and_immutables"]]
     files["build-summary.json"] = json.dumps({k: v for k, v in summary.items() if k != "live_baseline"}, indent=1) + "\n"

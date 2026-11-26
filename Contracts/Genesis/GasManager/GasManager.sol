@@ -132,7 +132,7 @@ contract GasManager is Initializable, ReentrancyGuardUpgradeable {
     mapping(bytes32 => bool) public approvedFunds;
     uint256 private __reserved62;
 
-    /// @custom:storage-location erc7201:dakota.storage.GasManagerSponsorFunding
+    /// @custom:storage-location erc7201:cryft.storage.GasManagerSponsorFunding
     struct SponsorFundingStorage {
         mapping(bytes32 => address) sponsorByFundKey;
     }

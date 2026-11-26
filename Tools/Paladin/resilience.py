@@ -35,7 +35,7 @@ def run(d):
             requests=[];found=[]
             for i in range(2):
                 request={k:copy.deepcopy(original[k]) for k in ['type','domain','function','abiReference','from','to','data']}
-                request['idempotencyKey']='dakota-live-20260911:concurrent-fourth:'+str(i)
+                request['idempotencyKey']='cryft-live-20260911:concurrent-fourth:'+str(i)
                 request['data']['inputs']={'pins':[pins[3]],'codeHashes':[fixture['hashes'][3]],'redeemers':[TESTER]}
                 request['gas']=2000000;requests.append(request)
                 found.append(d.rpc('ptx_getTransactionByIdempotencyKey',request['idempotencyKey']))

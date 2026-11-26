@@ -1,6 +1,6 @@
-# Dakota explorer deployment
+# Cryft explorer deployment
 
-This development deployment separates the branded Dakota frontend on Frontend-01
+This development deployment separates the branded Cryft frontend on Frontend-01
 from the Blockscout API/indexer, PostgreSQL and Redis on Backend-01. Its intended
 entry point is `http://100.111.69.1:8080` over Nebula. Check live acceptance records
 before treating an installation as available.
@@ -22,7 +22,7 @@ release, so both application images are built from pinned source revisions.
 The earlier **Blockscout Deployment Setup** conversation
 (`6a37f161-6a50-83ea-99b1-a84d0afb0045`) supplied the previous deployment settings.
 The later user request in turn `4a004b91-232f-4702-ab4d-26fdf6f8ed13` changed the
-currency display from ETH to **KOTA / Dakota Coin**, retaining chain ID 112311
+currency display from ETH to **CRYFT / Cryft Coin**, retaining chain ID 113211
 and 18 decimals. This is presentation metadata and does not change genesis balances.
 Horizontal navigation, hidden market prices, no ads/marketplace, gas tracking,
 advanced filters and no public Helia peer fetching are carried forward.

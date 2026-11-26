@@ -8,7 +8,7 @@ from common import Deployment, ADDR, ADMIN, DEPLOYER, TESTER, REPO, hx, serial
 def verify(workspace):
     d = Deployment(workspace)
     assert d.journal.get('initialization_complete') and d.journal.get('validation_complete')
-    report = {'checked_at': datetime.now(timezone.utc).isoformat(), 'chain_id': 112311,
+    report = {'checked_at': datetime.now(timezone.utc).isoformat(), 'chain_id': 113211,
               'genesis_hash': d.journal['genesis_hash'], 'head': d.w3.eth.block_number,
               'checks_recorded': len(d.journal['checks']), 'receipts': {}, 'deployments': {}, 'traces': {}}
     for label, row in d.journal['transactions'].items():
@@ -26,7 +26,7 @@ def verify(workspace):
     for name in ['ValidatorSmartContractAllowList', 'ProxyAdmin']:
         assert hx(d.w3.keccak(d.w3.eth.get_code(ADDR[name]))) == expected['runtimes'][name]['runtime_keccak256']
     facade = d.at('ProxyAdmin')
-    for name in ['GasManager', 'CodeManager', 'GasSponsor', 'DakotaDelegationRegistry']:
+    for name in ['GasManager', 'CodeManager', 'GasSponsor', 'CryftDelegationRegistry']:
         proxy = d.at('TransparentUpgradeableProxy', ADDR[name])
         assert hx(d.w3.keccak(d.w3.eth.get_code(ADDR[name]))) == expected['runtimes']['TransparentUpgradeableProxy']['runtime_keccak256']
         assert facade.functions.getProxyImplementation(ADDR[name]).call() == d.journal['deployments'][name]['address']
@@ -39,7 +39,7 @@ def verify(workspace):
     for name in ['ValidatorSmartContractAllowList', 'GasManager', 'CodeManager']:
         assert d.at(name).functions.getVoters().call() == [DEPLOYER]
         assert d.at(name).functions.activeVoteCount().call() == 0
-    sponsor = d.at('GasSponsor'); registry = d.at('DakotaDelegationRegistry')
+    sponsor = d.at('GasSponsor'); registry = d.at('CryftDelegationRegistry')
     gift = d.journal['deployments']['GenesisCanary']['address']
     assert sponsor.functions.paused().call() and not sponsor.functions.isRelayer(DEPLOYER).call()
     assert sponsor.functions.getSponsorFunding(gift).call() == [0, 0]
@@ -50,7 +50,7 @@ def verify(workspace):
     assert not d.at('GasManager').functions.isGuardian(DEPLOYER).call()
     report['final_authority'] = {'roots': validator.functions.getRootOverlords().call(), 'temporary_voter': DEPLOYER,
         'platform_and_registry_admin': DEPLOYER, 'pending_platform_and_registry_admin': ADMIN,
-        'beacon_owner': ADDR['DakotaDelegationRegistry'], 'temporary_validation_roles_removed': True,
+        'beacon_owner': ADDR['CryftDelegationRegistry'], 'temporary_validation_roles_removed': True,
         'sponsorship_paused': True, 'test_tenant_funding_zero': True, 'handover_complete': False}
     report['accounts'] = {}
     for account in [DEPLOYER, TESTER]:

@@ -25,31 +25,31 @@ GAS_MANAGER = (
     / "GasManager"
     / "GasManager.sol"
 )
-DELEGATE = CONTRACTS_DIR / "Genesis" / "7702" / "DakotaDelegation.sol"
+DELEGATE = CONTRACTS_DIR / "Genesis" / "7702" / "CryftDelegation.sol"
 BEACON = (
     CONTRACTS_DIR
     / "Genesis"
     / "7702"
-    / "DakotaDelegationBeacon.sol"
+    / "CryftDelegationBeacon.sol"
 )
 DISPATCHER = (
     CONTRACTS_DIR
     / "Genesis"
     / "7702"
-    / "DakotaDelegationBeaconDispatcher.sol"
+    / "CryftDelegationBeaconDispatcher.sol"
 )
 REGISTRY = (
     CONTRACTS_DIR
     / "Genesis"
     / "7702"
-    / "DakotaDelegationRegistry.sol"
+    / "CryftDelegationRegistry.sol"
 )
 CAPABILITIES = (
     CONTRACTS_DIR
     / "Genesis"
     / "7702"
     / "Libraries"
-    / "DakotaDelegationCapabilities.sol"
+    / "CryftDelegationCapabilities.sol"
 )
 GENESIS_PROXY = (
     CONTRACTS_DIR
@@ -294,22 +294,22 @@ def _assert_source_contract() -> None:
         "function initialize(",
         ") external override initializer {",
         "_disableInitializers();",
-        "erc7201:dakota.storage.GasSponsor",
+        "erc7201:cryft.storage.GasSponsor",
         EXPECTED_SPONSOR_NAMESPACE,
         'keccak256("1")',
         'return "1.0.0";',
     )
     required_delegate_fragments = (
-        "erc7201:dakota.storage.DakotaDelegation",
+        "erc7201:cryft.storage.CryftDelegation",
         EXPECTED_DELEGATE_NAMESPACE,
-        "dakota.delegation.sponsored-execution.v1",
+        "cryft.delegation.sponsored-execution.v1",
         'keccak256("1")',
         'return "1.1.0";',
         "function delegationCapabilities()",
         "function supportsInterface(",
     )
     required_gas_manager_fragments = (
-        "erc7201:dakota.storage.GasManagerSponsorFunding",
+        "erc7201:cryft.storage.GasManagerSponsorFunding",
         EXPECTED_GAS_MANAGER_SPONSOR_FUNDING_NAMESPACE,
         "0x000000000000000000000000000000000000FEeD",
         "function proposeSponsorFunding(",
@@ -332,7 +332,7 @@ def _assert_source_contract() -> None:
         "function initialize(",
         ") external override initializer {",
         "_disableInitializers();",
-        "erc7201:dakota.storage.DakotaDelegationRegistry",
+        "erc7201:cryft.storage.CryftDelegationRegistry",
         EXPECTED_REGISTRY_NAMESPACE,
         "address(this) != _DELEGATION_ENTRY",
         "0x00000000000000000000000000000000de1E6A7E",
@@ -343,10 +343,10 @@ def _assert_source_contract() -> None:
         "expectedCodeHash == bytes32(0)",
         "beaconControl.upgradeTo(newImplementation);",
         "_recordRelease(newImplementation, metadata);",
-        "DakotaDelegationCapabilities.REQUIRED_V1",
+        "CryftDelegationCapabilities.REQUIRED_V1",
     )
     required_capability_fragments = (
-        "library DakotaDelegationCapabilities",
+        "library CryftDelegationCapabilities",
         "SPONSORED_EXECUTION = 1 << 0",
         "BATCHED_CALLS = 1 << 1",
         "EIP1271 = 1 << 2",
@@ -364,7 +364,7 @@ def _assert_source_contract() -> None:
     for fragment in required_delegate_fragments:
         if fragment not in delegate_source:
             raise RuntimeError(
-                f"DakotaDelegation source contract missing: {fragment}"
+                f"CryftDelegation source contract missing: {fragment}"
             )
     for fragment in required_gas_manager_fragments:
         if fragment not in gas_manager_source:
@@ -374,17 +374,17 @@ def _assert_source_contract() -> None:
     for fragment in required_beacon_fragments:
         if fragment not in beacon_source:
             raise RuntimeError(
-                f"DakotaDelegationBeacon source contract missing: {fragment}"
+                f"CryftDelegationBeacon source contract missing: {fragment}"
             )
     if "initialOwner_" in beacon_source:
         raise RuntimeError(
-            "DakotaDelegationBeacon must derive bootstrap ownership from "
+            "CryftDelegationBeacon must derive bootstrap ownership from "
             "the validator-approved deployment caller"
         )
     for fragment in required_registry_fragments:
         if fragment not in registry_source:
             raise RuntimeError(
-                f"DakotaDelegationRegistry source missing: {fragment}"
+                f"CryftDelegationRegistry source missing: {fragment}"
             )
     for fragment in required_capability_fragments:
         if fragment not in capabilities_source:
@@ -405,8 +405,8 @@ def _assert_source_contract() -> None:
         )
     if "GasSponsorV2" in sponsor_source:
         raise RuntimeError("GasSponsor source retains V2 naming")
-    if "DakotaDelegationV2" in delegate_source:
-        raise RuntimeError("DakotaDelegation source retains V2 naming")
+    if "CryftDelegationV2" in delegate_source:
+        raise RuntimeError("CryftDelegation source retains V2 naming")
 
 
 def _assert_function_surface(
@@ -471,12 +471,12 @@ def main() -> None:
 
     sponsor = _find_contract(compiled, "GasSponsor")
     gas_manager = _find_contract(compiled, "GasManager")
-    delegate = _find_contract(compiled, "DakotaDelegation")
-    beacon = _find_contract(compiled, "DakotaDelegationBeacon")
-    registry = _find_contract(compiled, "DakotaDelegationRegistry")
+    delegate = _find_contract(compiled, "CryftDelegation")
+    beacon = _find_contract(compiled, "CryftDelegationBeacon")
+    registry = _find_contract(compiled, "CryftDelegationRegistry")
     dispatcher = _find_contract(
         compiled,
-        "DakotaDelegationBeaconDispatcher",
+        "CryftDelegationBeaconDispatcher",
     )
     genesis_proxy = _find_contract(
         compiled,
@@ -522,7 +522,7 @@ def main() -> None:
     ]
     if beacon_constructor_types != ["address"]:
         raise RuntimeError(
-            "DakotaDelegationBeacon constructor must accept only the "
+            "CryftDelegationBeacon constructor must accept only the "
             f"delegation implementation: {beacon_constructor_types}"
         )
     dispatcher_functions = _function_names(dispatcher)
@@ -611,14 +611,14 @@ def main() -> None:
     sizes = {
         "GasSponsor": len(bytes.fromhex(sponsor["bin-runtime"])),
         "GasManager": len(bytes.fromhex(gas_manager["bin-runtime"])),
-        "DakotaDelegation": len(bytes.fromhex(delegate["bin-runtime"])),
-        "DakotaDelegationBeacon": len(
+        "CryftDelegation": len(bytes.fromhex(delegate["bin-runtime"])),
+        "CryftDelegationBeacon": len(
             bytes.fromhex(beacon["bin-runtime"])
         ),
-        "DakotaDelegationBeaconDispatcher": len(
+        "CryftDelegationBeaconDispatcher": len(
             bytes.fromhex(dispatcher["bin-runtime"])
         ),
-        "DakotaDelegationRegistry": len(
+        "CryftDelegationRegistry": len(
             bytes.fromhex(registry["bin-runtime"])
         ),
     }
@@ -626,7 +626,7 @@ def main() -> None:
         name: size for name, size in sizes.items() if size > 32_768
     }
     if oversized:
-        raise RuntimeError(f"Dakota 32 KiB runtime limit exceeded: {oversized}")
+        raise RuntimeError(f"Cryft 32 KiB runtime limit exceeded: {oversized}")
 
     print(
         json.dumps(

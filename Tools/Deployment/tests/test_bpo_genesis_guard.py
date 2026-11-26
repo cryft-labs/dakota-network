@@ -1,41 +1,57 @@
-"""Reject any allocation/header change disguised as the approved BPO insertion."""
+"""stage-genesis.py accepts only the committed Cryft genesis whose hash matches its manifest."""
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
 
-spec=importlib.util.spec_from_file_location('genesis_stage',Path(__file__).parents[1]/'stage-genesis.py')
-stage=importlib.util.module_from_spec(spec)
+spec = importlib.util.spec_from_file_location('genesis_stage', Path(__file__).parents[1] / 'stage-genesis.py')
+stage = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(stage)
 
-class BpoGenesisGuardTests(unittest.TestCase):
+
+class GenesisGuardTests(unittest.TestCase):
     def setUp(self):
-        self.directory=tempfile.TemporaryDirectory()
-        self.path=Path(self.directory.name)/'genesis.json'
-        self.old=b'{"config": {\n        "bpo2Time": 0,\n"chainId":112311},"alloc":{"account":{"balance":"1"}}}\n'
-        self.digest=hashlib.sha256(self.old).hexdigest()
-        self.new=self.old.replace(b'"chainId"',stage.BPO_INSERT+b'"chainId"',1)
+        self.directory = tempfile.TemporaryDirectory()
+        self.release = Path(self.directory.name)
+        (self.release / 'Contracts/Genesis').mkdir(parents=True)
+        self.write({'chainId': 113211, 'contractSizeLimit': 32768})
+
     def tearDown(self):
         self.directory.cleanup()
-    def verify(self,data):
-        self.path.write_bytes(data)
-        with patch.object(stage,'BPO2_GENESIS_SHA',self.digest):
-            stage.verify_bpo_only_change(self.path)
-    def test_exact_insertion(self):
-        self.verify(self.new)
-    def test_allocation_change_is_rejected(self):
-        with self.assertRaises(AssertionError):
-            self.verify(self.new.replace(b'"balance":"1"',b'"balance":"2"'))
-    def test_chain_identity_change_is_rejected(self):
-        with self.assertRaises(AssertionError):
-            self.verify(self.new.replace(b'112311',b'112312'))
-    def test_duplicate_insertions_are_rejected(self):
-        with self.assertRaises(AssertionError):
-            self.verify(self.new.replace(stage.BPO_INSERT,stage.BPO_INSERT*2))
-    def test_insertion_inside_alloc_is_rejected(self):
-        with self.assertRaises(AssertionError):
-            self.verify(self.old.replace(b'"account"',stage.BPO_INSERT+b'"account"'))
 
-if __name__=='__main__':unittest.main()
+    def write(self, config, manifest_chain=113211, manifest_hash=None):
+        data = json.dumps({'config': config, 'alloc': {}}).encode()
+        (self.release / 'Contracts/Genesis/CryftGenesis.json').write_bytes(data)
+        digest = hashlib.sha256(data).hexdigest()
+        (self.release / 'Contracts/Genesis/genesis-release.json').write_text(json.dumps(
+            {'chainId': manifest_chain, 'genesis_file': 'Contracts/Genesis/CryftGenesis.json',
+             'genesis_sha256': manifest_hash or digest}))
+        self.digest = digest
+
+    def test_committed_genesis_is_accepted(self):
+        stage.verify_release(self.release, self.digest)
+
+    def test_wrong_expected_hash_is_rejected(self):
+        with self.assertRaises(AssertionError):
+            stage.verify_release(self.release, '0' * 64)
+
+    def test_manifest_hash_mismatch_is_rejected(self):
+        self.write({'chainId': 113211, 'contractSizeLimit': 32768}, manifest_hash='1' * 64)
+        with self.assertRaises(AssertionError):
+            stage.verify_release(self.release, self.digest)
+
+    def test_other_chain_id_is_rejected(self):
+        self.write({'chainId': 112311, 'contractSizeLimit': 32768}, manifest_chain=112311)
+        with self.assertRaises(AssertionError):
+            stage.verify_release(self.release, self.digest)
+
+    def test_size_limit_is_required(self):
+        self.write({'chainId': 113211, 'contractSizeLimit': 24576})
+        with self.assertRaises(AssertionError):
+            stage.verify_release(self.release, self.digest)
+
+
+if __name__ == '__main__':
+    unittest.main()

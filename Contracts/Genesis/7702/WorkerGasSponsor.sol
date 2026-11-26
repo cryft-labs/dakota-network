@@ -13,7 +13,7 @@ interface IWorkerAllowancePolicy {
 /// sponsor engine until bounded settlement to a platform-fixed treasury. No user
 /// receives funds. Revocation prevents new reservations without trapping old ones.
 contract WorkerGasSponsor is GasSponsor {
-    bytes32 private constant WORKER_SLOT = keccak256("dakota.storage.WorkerGasSponsor.v1");
+    bytes32 private constant WORKER_SLOT = keccak256("cryft.storage.WorkerGasSponsor.v1");
     struct Reservation {
         address sponsor;
         address wallet;

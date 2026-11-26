@@ -44,7 +44,7 @@ class Live(Deployment):
         if previous: assert previous['input_sha256']==digest, 'Journal label reused with a different private request: '+label
         if previous and previous.get('id'): txid=previous['id']
         else:
-            key='dakota-live-20260911:'+label
+            key='cryft-live-20260911:'+label
             # Persist a stable idempotency key before RPC; resuming never invents a new request.
             row={'idempotency_key':key,'input_sha256':digest,'source_commit':self.commit}
             self.journal['private_transactions'][label]=row; self.save()
@@ -93,11 +93,11 @@ def group(d):
     d.journal['settlement_address']=address; d.save()
     d.tx('fund:paladin-settlement',transaction={'to':address,'value':3*10**16,'gas':21000,'gasPrice':10**9})
     if not d.journal.get('group'):
-        existing=d.rpc('pgroup_queryGroups',{'eq':[{'field':'name','value':'moment-cards-development'}],'limit':10})
+        existing=d.rpc('pgroup_queryGroups',{'eq':[{'field':'name','value':'cryft-cards-development'}],'limit':10})
         assert len(existing)<=1,'Ambiguous existing groups'
-        request={'domain':'pente','name':'moment-cards-development','members':['operator@paladin01'],
+        request={'domain':'pente','name':'cryft-cards-development','members':['operator@paladin01'],
                  'configuration':{'evmVersion':'shanghai','endorsementType':'group_scoped_identities','externalCallsEnabled':'true'},
-                 'transactionOptions':{'idempotencyKey':'dakota-live-20260911:group','gas':6000000}}
+                 'transactionOptions':{'idempotencyKey':'cryft-live-20260911:group','gas':6000000}}
         d.journal['group']=existing[0] if existing else d.rpc('pgroup_createGroup',request); d.save()
     g=d.journal['group']; receipt=d.wait_private(g['genesisTransaction'])
     g=d.rpc('pgroup_getGroupById','pente',g['id']); assert g['contractAddress']; d.journal['group']=g; d.save()
@@ -109,11 +109,11 @@ def application(d):
     base=metadata['card_metadata']['base_uri']
     logic=d.deploy('CryftGreetingCards')
     admin=d.deploy('ManagedProxyAdmin',DEPLOYER,label='CardProxyAdmin')
-    init=bytes.fromhex(logic.functions.initializeWithOwner('moment.cards Development','MOMENTDEV',base,ADDR['CodeManager'],'112311',DEPLOYER)._encode_transaction_data()[2:])
+    init=bytes.fromhex(logic.functions.initializeWithOwner('cryft.cards Development','CRYFTDEV',base,ADDR['CodeManager'],'113211',DEPLOYER)._encode_transaction_data()[2:])
     shell=d.deploy('ManagedApplicationProxy',logic.address,admin.address,init,label='CardProxy')
     card=d.at('CryftGreetingCards',shell.address)
     d.check('cards:atomic_owner',card.functions.owner().call()==DEPLOYER)
-    d.reject('cards:reinitialization_blocked',card.functions.initialize('x','x',base,ADDR['CodeManager'],'112311'))
+    d.reject('cards:reinitialization_blocked',card.functions.initialize('x','x',base,ADDR['CodeManager'],'113211'))
     cm=d.at('CodeManager')
     d.tx('cards:register_four_uids',card.functions.setMaxSaleSupply(4),value=cm.functions.registrationFee().call()*4)
     d.tx('cards:buy_four_into_vault',card.functions.buy(TESTER,4,base))
@@ -126,7 +126,7 @@ def application(d):
     private_init=bytes.fromhex(d.at('PrivateComboStorage',d.w3.to_checksum_address(private_logic)).functions.initialize(operator,operator,ZERO)._encode_transaction_data()[2:])
     private_proxy=d.private_deploy('ManagedApplicationProxy',[private_logic,private_admin,hx(private_init)],label='ComboProxy')
     d.check('private:atomic_admin',str(d.private_call('PrivateComboStorage','ADMIN',private_proxy)).lower().find(operator.lower())>=0)
-    identifier,counter=cm.functions.getIdentifierCounter(card.address,'112311').call()
+    identifier,counter=cm.functions.getIdentifierCounter(card.address,'113211').call()
     d.private_send('private:whitelist_card','PrivateComboStorage','setContractIdentifierWhitelist',private_proxy,[[identifier],[True]])
     d.private_send('private:sync_registered_count','PrivateComboStorage','syncRegisteredCodeCountBatch',private_proxy,[[identifier],[counter]])
     d.check('cards:vault_holds_unredeemed',card.functions.ownerOf(1).call()==card.address)

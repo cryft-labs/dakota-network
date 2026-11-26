@@ -50,7 +50,7 @@ pragma solidity >=0.8.20 <0.9.0;
   │                                                                    │
   │  Execution and settlement:                                         │
   │    • validates delegated-account code and dispatcher readiness     │
-  │    • binds the inner DakotaDelegation execution envelope           │
+  │    • binds the inner CryftDelegation execution envelope           │
   │    • enforces per-operation, daily, balance, and gas-price caps    │
   │    • bounds execution calldata and returned data                   │
   │    • reimburses measured gas within the signed maximum cost        │
@@ -58,9 +58,9 @@ pragma solidity >=0.8.20 <0.9.0;
   │      and reimburses the relayer within the signed cap              │
   │                                                                    │
   │  Storage and upgrades:                                             │
-  │    • ERC-7201 namespace: dakota.storage.GasSponsor                 │
+  │    • ERC-7201 namespace: cryft.storage.GasSponsor                 │
   │    • inherited initializer/reentrancy slots remain reserved        │
-  │    • later logic upgrades use the fixed Dakota ProxyAdmin          │
+  │    • later logic upgrades use the fixed Cryft ProxyAdmin          │
   └────────────────────────────────────────────────────────────────────┘
 */
 
@@ -68,10 +68,10 @@ import "./DelegationGas.sol";
 import "../Upgradeable/ReentrancyGuardUpgradeable.sol";
 import "../Upgradeable/Initializable.sol";
 
-import "./Interfaces/IDakotaDelegation.sol";
+import "./Interfaces/ICryftDelegation.sol";
 import "./Interfaces/IGasSponsor.sol";
 import "./Interfaces/ITenantAllowancePolicy.sol";
-import "./Libraries/DakotaECDSA.sol";
+import "./Libraries/CryftECDSA.sol";
 
 interface IERC1271VoucherSigner {
     function isValidSignature(
@@ -94,7 +94,7 @@ contract GasSponsor is
     ReentrancyGuardUpgradeable,
     IGasSponsor
 {
-    using DakotaECDSA for bytes32;
+    using CryftECDSA for bytes32;
 
     error NotInitializationAuthority(address caller);
     error NotPlatformAdmin();
@@ -139,7 +139,7 @@ contract GasSponsor is
         bool tenantEnabled;
     }
 
-    /// @custom:storage-location erc7201:dakota.storage.GasSponsor
+    /// @custom:storage-location erc7201:cryft.storage.GasSponsor
     struct GasSponsorStorage {
         address platformAdmin;
         address pendingPlatformAdmin;
@@ -193,7 +193,7 @@ contract GasSponsor is
     bytes32 private constant _DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
-    bytes32 private constant _NAME_HASH = keccak256("DakotaGasSponsor");
+    bytes32 private constant _NAME_HASH = keccak256("CryftGasSponsor");
     bytes32 private constant _VERSION_HASH = keccak256("1");
     bytes32 private constant _VOUCHER_TYPEHASH = keccak256(
         "SponsorshipVoucher(bytes32 operationId,bytes32 tenantId,bytes32 campaignId,address sponsor,address account,address relayer,address delegate,bytes32 executionHash,uint256 callGasLimit,uint256 maxFeePerGas,uint256 maxCost,uint256 deadline)"
@@ -201,7 +201,7 @@ contract GasSponsor is
 
     bytes4 private constant _EIP1271_MAGIC = 0x1626ba7e;
     bytes32 private constant _EXPECTED_DELEGATION_PROTOCOL_ID =
-        keccak256("dakota.delegation.sponsored-execution.v1");
+        keccak256("cryft.delegation.sponsored-execution.v1");
     uint256 private constant _MIN_CALL_GAS_LIMIT = 25_000;
     uint256 private constant _MAX_CALL_GAS_LIMIT = 5_000_000;
     uint256 private constant _MIN_OVERHEAD_GAS = 50_000;
@@ -1187,7 +1187,7 @@ contract GasSponsor is
         }
 
         if (
-            selector != IDakotaDelegation.executeSponsored.selector ||
+            selector != ICryftDelegation.executeSponsored.selector ||
             operationId != expectedOperationId ||
             address(uint160(executorWord)) != address(this) ||
             delegatedDeadline != expectedDeadline ||
@@ -1321,7 +1321,7 @@ contract GasSponsor is
         (bool protocolSuccess, bytes memory protocolResult) =
             account.staticcall{gas: _READINESS_CALL_GAS_LIMIT}(
                 abi.encodeCall(
-                    IDakotaDelegation.delegationProtocolId,
+                    ICryftDelegation.delegationProtocolId,
                     ()
                 )
             );
@@ -1336,7 +1336,7 @@ contract GasSponsor is
         (bool ok, bytes memory result) = delegate.staticcall{gas: _READINESS_CALL_GAS_LIMIT}(
             abi.encodeWithSignature("dispatcherProtocolId()"));
         if (!ok || result.length != 32 || abi.decode(result, (bytes32)) !=
-            keccak256("dakota.delegation.direct-beacon-dispatch.v2")) revert InvalidConfiguration();
+            keccak256("cryft.delegation.direct-beacon-dispatch.v2")) revert InvalidConfiguration();
     }
 
     function _requireNonZero(address value) private pure {

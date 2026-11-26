@@ -7,7 +7,7 @@ pragma solidity ^0.8.24;
 ///         TransparentUpgradeableProxy + ProxyAdmin so deployment tooling
 ///         (thirdweb/foundry) compiles them from this repo.
 ///
-/// Deployment on Dakota chain (112311, https://rpc2.dakota.cards):
+/// Deployment on Cryft chain (113211, https://rpc2.cryft.cards):
 ///   1. Deploy KotaAccessSBT() implementation. Its constructor disables all
 ///      initializers and creates no functional state.
 ///   2. Deploy KotaAccessFactory() implementation. Its constructor also

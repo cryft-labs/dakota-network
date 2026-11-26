@@ -9,7 +9,7 @@
     "source": "Contracts/CodeManagement/CodeManager.sol",
     "standard_input_sha256": "9214a25a3fc2b6018007eb650451812875d5c1ca5c11a4e88ff8e95216a0e7b6"
   },
-  "DakotaDelegation": {
+  "CryftDelegation": {
     "artifact_sha256": "95e6aca72664048e67216dcca0fd901e36e9a5d62814f942cb9f198962196648",
     "compiler": "0.8.37",
     "evm": "osaka",
@@ -27,20 +27,20 @@
     },
     "reproduced_current_source": true,
     "runtime_bytes": 5531,
-    "source": "Contracts/Genesis/7702/DakotaDelegation.sol",
+    "source": "Contracts/Genesis/7702/CryftDelegation.sol",
     "standard_input_sha256": "7aed7300d59b953c40248f7a381bafa86662fad330c1048bba6d8c6c594208ff"
   },
-  "DakotaDelegationBeacon": {
+  "CryftDelegationBeacon": {
     "artifact_sha256": "b23a3982653989ae85b1b7de46ae16d8b66eb29a4b3b1111e2f3b74f6263ffb4",
     "compiler": "0.8.37",
     "evm": "osaka",
     "immutable_references": {},
     "reproduced_current_source": true,
     "runtime_bytes": 1046,
-    "source": "Contracts/Genesis/7702/DakotaDelegationBeacon.sol",
+    "source": "Contracts/Genesis/7702/CryftDelegationBeacon.sol",
     "standard_input_sha256": "11b3a195b641da1c570cf53955b61debfdea5a7b95d2fab96aea931530d6b284"
   },
-  "DakotaDelegationBeaconDispatcher": {
+  "CryftDelegationBeaconDispatcher": {
     "artifact_sha256": "d9990fc4cdcf43fa4ec5a9fc0ffd4305d0b1ccd6d8593bec6e794b02ed9b1170",
     "compiler": "0.8.37",
     "evm": "osaka",
@@ -72,17 +72,17 @@
     },
     "reproduced_current_source": true,
     "runtime_bytes": 813,
-    "source": "Contracts/Genesis/7702/DakotaDelegationBeaconDispatcher.sol",
+    "source": "Contracts/Genesis/7702/CryftDelegationBeaconDispatcher.sol",
     "standard_input_sha256": "fe4c468a35cfb45b32f67cff9dc2eee5feae33139448a7464d7c33e98d79a841"
   },
-  "DakotaDelegationRegistry": {
+  "CryftDelegationRegistry": {
     "artifact_sha256": "83bae986838b8f8dbd36e3ce45a75db580e1d4a5818c23ae93665b3ae4837fd0",
     "compiler": "0.8.37",
     "evm": "osaka",
     "immutable_references": {},
     "reproduced_current_source": true,
     "runtime_bytes": 14089,
-    "source": "Contracts/Genesis/7702/DakotaDelegationRegistry.sol",
+    "source": "Contracts/Genesis/7702/CryftDelegationRegistry.sol",
     "standard_input_sha256": "1fdd34265c57a16a7f52e1c872872ac75a3f0ee95865f08deee54e7c9e24b218"
   },
   "GasManager": {

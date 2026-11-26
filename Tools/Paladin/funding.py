@@ -12,7 +12,7 @@ def inspect(d):
                'final_management':ADMIN,'private_operator_no_gas_needed':d.journal['operator_address']}
     block=d.w3.eth.block_number
     report={'checked_at':datetime.now(timezone.utc).isoformat(),'block':block,'chain_id':d.w3.eth.chain_id,
-            'symbol':'KOTA','decimals':18,'wallets':{},'transactions_sent':0}
+            'symbol':'CRYFT','decimals':18,'wallets':{},'transactions_sent':0}
     for role,address in addresses.items():
         address=d.w3.to_checksum_address(address); balance=d.w3.eth.get_balance(address,block)
         report['wallets'][role]={'address':address,'balance_wei':str(balance),'balance_kota':str(d.w3.from_wei(balance,'ether'))}
@@ -22,7 +22,7 @@ def inspect(d):
     report['registration_fee_wei']=str(d.at('CodeManager').functions.registrationFee().call())
     original=json.loads((d.workspace/'outputs/live-genesis-20260911/transactions.json').read_text())
     report['current_core_implementations']={}
-    for name in ['GasManager','CodeManager','GasSponsor','DakotaDelegationRegistry']:
+    for name in ['GasManager','CodeManager','GasSponsor','CryftDelegationRegistry']:
         expected=d.journal['deployments']['CodeManagerStrict'] if name=='CodeManager' else original['deployments'][name]
         current=d.at('ProxyAdmin').functions.getProxyImplementation(ADDR[name]).call()
         assert current==expected['address']

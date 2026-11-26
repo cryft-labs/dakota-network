@@ -236,9 +236,9 @@ def test_normal_compile_cli_automatically_publishes(kubo, tmp_path):
 
 
 def test_complete_review_artifact_set(kubo):
-    location = os.getenv("DAKOTA_FULL_ARTIFACTS")
+    location = os.getenv("CRYFT_FULL_ARTIFACTS")
     if not location:
-        pytest.skip("Set DAKOTA_FULL_ARTIFACTS to validate the full local review build")
+        pytest.skip("Set CRYFT_FULL_ARTIFACTS to validate the full local review build")
     folder = Path(location)
     manifest = json.loads((folder / "manifest.json").read_bytes())
     receipt = publishing.publish_manifest(folder, manifest, publishing.KuboClient(kubo))

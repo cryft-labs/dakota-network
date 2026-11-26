@@ -1,8 +1,8 @@
 """Tenant registry rename (v1.7.0) in an isolated EVM: no live keys, no RPC.
 
 The live system is rebuilt from the LIVE sources (the v1.6.0 baseline standard input: the factory behind an OpenZeppelin 5.2.0
-TransparentUpgradeableProxy, the registry behind the factory's UpgradeableBeacon), populated as Dakota is (a moment.cards
-registry with members, tiers, origins and metadata; a locked validation tenant), plus the shapes Dakota does not have yet
+TransparentUpgradeableProxy, the registry behind the factory's UpgradeableBeacon), populated as Cryft is (a cryft.cards
+registry with members, tiers, origins and metadata; a locked validation tenant), plus the shapes Cryft does not have yet
 (a tenant with a retired slot, a tenant with two active registries), then upgraded exactly as Chad's sends do:
 ProxyAdmin.upgradeAndCall(factory, v1.7.0, "") and factory.upgradeTenantRegistryBeaconImplementation(v1.7.0), and renamed.
 
@@ -23,7 +23,7 @@ _spec = importlib.util.spec_from_file_location("tenant_registry_build", REPO / "
 build = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(build)
 
-OLD, NEW = "moment.cards", "cryft.cards"
+OLD, NEW = "cryft.cards", "cryft.cards"
 NEW_NAME, NEW_SYMBOL = "Cryft Cards Members", "CRYFTM"
 ZERO = "0x" + "00" * 20
 MAX_SLOTS = 128
@@ -123,7 +123,7 @@ def factory_view(f, tenant):
 
 @pytest.fixture
 def live(arts):
-    """Dakota's shape on the live (v1.6.0) code."""
+    """Cryft's shape on the live (v1.6.0) code."""
     c = Chain(arts)
     plans = c.deploy("mock")
     c.send(plans.functions.setTier(1, True, 3, 0, 3))          # tier 1: three registries, unlimited holders, both features
@@ -138,9 +138,9 @@ def live(arts):
     c.factory, c.factory_old = f, c.at("factory_old", proxy.address)
     c.registry_impl_old = c.deploy("registry_old")
     c.send(c.factory_old.functions.deployTenantRegistryBeacon(c.registry_impl_old.address))
-    # moment.cards: the registry with members (index 0), and a second one retired (index 1) so the move carries a tombstone
-    c.send(c.factory_old.functions.deployTenantRegistry(OLD, c.operator, "Moment Cards Members", "MOMENT",
-                                                        ["https://moment.cards", "https://www.moment.cards"]))
+    # cryft.cards: the registry with members (index 0), and a second one retired (index 1) so the move carries a tombstone
+    c.send(c.factory_old.functions.deployTenantRegistry(OLD, c.operator, "Cryft Cards Members", "MOMENT",
+                                                        ["https://cryft.cards", "https://www.cryft.cards"]))
     c.A = c.at("registry_new", f.functions.registryAt(OLD, 0).call())
     c.send(f.functions.deployAdditionalRegistry(OLD, "Kota Tenant User Access", "KTUA", []), c.operator)
     c.send(f.functions.retireRegistry(OLD, 1))
@@ -308,7 +308,7 @@ def test_rename_inputs_are_validated(live, args, error):
     args[2] = names.get(args[2], args[2])
     c.reverts(c.factory.functions.renameTenant(*args), error)
     assert c.factory.functions.tenantRenamed().call() is False
-    assert identity(c.A) == ("Moment Cards Members", "MOMENT", OLD)
+    assert identity(c.A) == ("Cryft Cards Members", "MOMENT", OLD)
 
 
 def test_exactly_64_bytes_is_accepted(live):

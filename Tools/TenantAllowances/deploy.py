@@ -9,7 +9,7 @@ REPO=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(REPO/'Tools/LiveGenesis'))
 from common import Deployment,unlock,git,serial,hx,ADDR,ADMIN,DEPLOYER,GENESIS_HASH,IMPL_SLOT
 
-TENANT='moment.cards'
+TENANT='cryft.cards'
 REGISTRY=Web3.to_checksum_address('0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340')
 OLD=Web3.to_checksum_address('0x31A4ea654E4C0BFd6eFD5286decC72C2CA1cdb3E')
 RELEASE=REPO/'Releases/TenantAllowances/1.0.0'
@@ -38,7 +38,7 @@ class Release(Deployment):
         self.session=requests.Session();self.session.trust_env=False
         self.w3=Web3(Web3.HTTPProvider('http://100.111.69.1:8547/',session=self.session,request_kwargs={'timeout':25},exception_retry_configuration=None))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware,layer=0)
-        assert self.w3.eth.chain_id==112311 and hx(self.w3.eth.get_block(0)['hash'])==GENESIS_HASH
+        assert self.w3.eth.chain_id==113211 and hx(self.w3.eth.get_block(0)['hash'])==GENESIS_HASH
         self.sponsor=self.w3.eth.contract(address=ADDR['GasSponsor'],abi=self.artifacts['GasSponsor']['abi'])
         self.accounts={}
         if execute:
@@ -112,16 +112,16 @@ class Release(Deployment):
         entry=self.sponsor.functions.approvedDelegate().call()
         if self.sponsor.functions.isDelegationReady(wallet).call():return
         assert self.w3.eth.get_code(wallet)==b'', 'Do not replace an existing wallet delegation automatically'
-        authorization=self.accounts[wallet].sign_authorization({'chainId':112311,'address':entry,'nonce':self.w3.eth.get_transaction_count(wallet)})
+        authorization=self.accounts[wallet].sign_authorization({'chainId':113211,'address':entry,'nonce':self.w3.eth.get_transaction_count(wallet)})
         self.tx('delegate:'+wallet,transaction={'to':wallet,'data':'0x','value':0,'gas':1000000,'maxFeePerGas':10**9,'maxPriorityFeePerGas':10**9,'authorizationList':[authorization]},sender=DEPLOYER)
         self.check('delegation:'+wallet,self.sponsor.functions.isDelegationReady(wallet).call())
 
     def execute_case(self,label,wallet,calls):
         self.delegated(wallet)
-        # Current direct dispatcher uses the stable DakotaDelegation ABI.
-        art=json.loads((self.workspace/'outputs/live-genesis-20260911/DakotaDelegation/artifact.json').read_text())
+        # Current direct dispatcher uses the stable CryftDelegation ABI.
+        art=json.loads((self.workspace/'outputs/live-genesis-20260911/CryftDelegation/artifact.json').read_text())
         delegated=self.w3.eth.contract(address=wallet,abi=art['abi'])
-        op=Web3.keccak(text='dakota-allowances-20260913:'+label)
+        op=Web3.keccak(text='cryft-allowances-20260913:'+label)
         if 'sponsored:'+label in self.journal['transactions']:
             return self.w3.eth.get_transaction_receipt(self.journal['transactions']['sponsored:'+label]['hash'])
         deadline=self.w3.eth.get_block('latest').timestamp+1800

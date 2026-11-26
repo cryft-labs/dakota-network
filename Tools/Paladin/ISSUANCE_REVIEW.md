@@ -157,7 +157,7 @@ Backend-01 IPFS metadata/media and Blockscout indexing matched the final tokenUR
 
 Delivery transaction: `0xbd5e3b2b4e3c0c25bec4ee0e22adce0cf1d6398e248ad499ddd17fab990dd0b6`.
 Inventory registration transaction: `0x56566a2e325a8a38c688eeccdf11d43c67c0b797d5359307fff86cf51c06fff5`.
-Four additional slots were registered for **0.004 KOTA**, raising the ceiling to 12;
+Four additional slots were registered for **0.004 CRYFT**, raising the ceiling to 12;
 the completed test consumed one, leaving three for subsequent development checks.
 No genesis or contract implementation changed during this run.
 

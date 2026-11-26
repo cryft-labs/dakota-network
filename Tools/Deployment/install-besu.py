@@ -19,7 +19,6 @@ import tomllib
 
 VERSION = '26.8.1'
 ARCHIVE_SHA = '0e0ed9cc0d8fa9091081b6c5d4646f15bbf7e33a6eb1e9f7bfb2ef831fe9aaf4'
-GENESIS_SHA = '29266f981b874c9e71663397155e449caecd7b8bbc4a6390451e556832039217'
 URL = 'https://github.com/besu-eth/besu/releases/download/26.8.1/besu-26.8.1.tar.gz'
 ETC = Path('/etc/cryft/besu')
 DATA = Path('/var/lib/cryft/besu')
@@ -73,7 +72,12 @@ def main():
     assert ipaddress.ip_address(ip) in ipaddress.ip_network('100.111.0.0/16')
     addresses = json.loads(subprocess.check_output(['ip','-j','address']))
     assert any(a.get('local') == ip for link in addresses for a in link.get('addr_info',[])), 'Expected Nebula interface is absent'
-    assert sha(ETC/'BesuGenesis.json') == GENESIS_SHA
+    manifest = json.loads((release/'Contracts/Genesis/genesis-release.json').read_text())
+    GENESIS_SHA = manifest['genesis_sha256']
+    assert sha(ETC/'BesuGenesis.json') == GENESIS_SHA, 'Run stage-genesis.py for this commit first'
+    policy = json.loads((release/'Tools/Deployment/txpool-policy.json').read_text())
+    inputs = json.loads((release/'Tools/Genesis/inputs.json').read_text())
+    priority = inputs['governance']['roots'] + inputs['governance']['voters'] + policy['prioritySenders']['extra']
     validator = host['name'].startswith('Validator-')
     archive = host['name'] == 'Frontend-01'
     peers = json.loads((release/'Tools/Deployment/validator-peers.json').read_text())
@@ -140,9 +144,9 @@ def main():
     storage = 'FOREST' if archive else 'BONSAI'
     apis = ['ETH','NET','WEB3','QBFT','ADMIN'] + (['TRACE','DEBUG'] if archive else [])
     config = {
-        'identity':'dakota-'+host['name'].lower(), 'data-path':str(DATA),
+        'identity':'cryft-'+host['name'].lower(), 'data-path':str(DATA),
         'genesis-file':str(ETC/'BesuGenesis.json'), 'node-private-key-file':str(key_path),
-        'network-id':112311, 'sync-mode':'FULL', 'data-storage-format':storage,
+        'network-id':113211, 'sync-mode':'FULL', 'data-storage-format':storage,
         'p2p-interface':ip, 'p2p-host':ip, 'p2p-port':30303,
         'p2p-ipv6-outbound-enabled':False, 'nat-method':'NONE', 'discovery-enabled':False,
         'static-nodes-file':str(ETC/'static-nodes.json'),
@@ -155,6 +159,9 @@ def main():
         'metrics-enabled':True, 'metrics-host':'127.0.0.1', 'metrics-port':9545,
         'min-gas-price':1000000000, 'revert-reason-enabled':True, 'logging':'INFO',
     }
+    # Per-sender pool limits and a governance priority lane on every node (audit X-14/X-15).
+    config.update(policy['besu'])
+    config['tx-pool-priority-senders'] = priority
     if archive:
         # Fee policy for the RPC node only: eth_maxPriorityFeePerGas returns min-priority-fee
         # whenever recent blocks are empty, so wallet libraries propose fees that clear the
@@ -179,7 +186,7 @@ def main():
     run(str(RUNTIME/'bin/besu'),'--config-file='+str(config_path),'--version',env=java_env)
     heap,high,maximum = (8,14,16) if archive else (6,10,12)
     unit = f'''[Unit]
-Description=Dakota Besu {VERSION} ({host['name']})
+Description=Cryft Besu {VERSION} ({host['name']})
 Requires=dnclient.service
 After=network-online.target dnclient.service
 Wants=network-online.target

@@ -73,7 +73,7 @@ def main():
     a=artifacts['PrivateCardContentRegistry'];shell=artifacts['ManagedApplicationProxy']
     constructor=lambda a:next((item for item in a['abi'] if item['type']=='constructor'),{'type':'constructor','inputs':[]})
     logic=transact('implementation',request(constructor(a),[],code=a['creation_bytecode']))
-    init=Web3().eth.contract(abi=a['abi']).functions.initialize(Web3.to_checksum_address(COMBO),112311,Web3.to_checksum_address(CARD))._encode_transaction_data()
+    init=Web3().eth.contract(abi=a['abi']).functions.initialize(Web3.to_checksum_address(COMBO),113211,Web3.to_checksum_address(CARD))._encode_transaction_data()
     proxy=transact('proxy',request(constructor(shell),[logic,ADMIN,init],code=shell['creation_bytecode']))
     hashes={}
     for name,address,artifact in [('implementation',logic,a),('proxy',proxy,shell)]:
@@ -81,7 +81,7 @@ def main():
         expected=Web3.to_hex(Web3.keccak(hexstr=artifact['runtime_bytecode']))
         assert result['hash'].lower()==expected.lower()
         hashes[name]={'address':address,'runtime_keccak256':expected}
-    release={'deployed':True,'source_commit':commit,'chain_id':112311,'card':CARD,'group':GROUP,'authority':COMBO,'proxy_admin':ADMIN,
+    release={'deployed':True,'source_commit':commit,'chain_id':113211,'card':CARD,'group':GROUP,'authority':COMBO,'proxy_admin':ADMIN,
              **hashes,'metadata_cid':journal['publication']['PrivateCardContentRegistry']['metadata_cid']}
     journal['release']=release;save();print(json.dumps(release),flush=True)
 

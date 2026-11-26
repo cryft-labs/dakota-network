@@ -6,7 +6,7 @@ Updated 15 September 2026. This guide covers the development release, not public
 
 The public card implementation, WorkerGasSponsor 1.3.0 and private combo implementation are deployed and upgraded. The owner completed all nine activation steps; the new allowance policy is connected and worker sponsorship is active. Standard JSON, source files and metadata for all four implementations are pinned on Backend-01 IPFS and were read back through its gateway. The three public implementations are fully verified in Blockscout with Apache-2.0 licenses. Private implementation verification uses Pente bytecode, not a public-chain explorer address.
 
-The existing card contract now has a maximum supply of 64, with 54 unused slots at block 5889. The owner paid 0.052 KOTA for 52 additional registered slots. Existing tokens, UIDs and redemption state were preserved. Its direct purchase path is restricted to the configured Paladin issuer. Read live capacity before further tests.
+The existing card contract now has a maximum supply of 64, with 54 unused slots at block 5889. The owner paid 0.052 CRYFT for 52 additional registered slots. Existing tokens, UIDs and redemption state were preserved. Its direct purchase path is restricted to the configured Paladin issuer. Read live capacity before further tests.
 
 Owner activation was verified at block 5935. The development publishing API and full worker are now enabled with the existing database and session key. A live API check created and redeemed card 11, verified its 15-character artifact, confirmed NFT ownership and explorer metadata, and settled both operations against the default member allowance. Manual wallet/browser acceptance remains separate.
 
@@ -16,7 +16,7 @@ On a Nebula-connected computer with MetaMask, open:
 
 [Activate reviewed registration](http://100.111.1.4:3035/dashboard/gas#issuance-activation)
 
-1. Connect and sign in with **0x9247524040D91D5dd1521A25f2e7711d4a0fe921** on Dakota, chain ID **112311**. Login signatures are separate from the transactions below.
+1. Connect and sign in with **0x9247524040D91D5dd1521A25f2e7711d4a0fe921** on Cryft, chain ID **113211**. Login signatures are separate from the transactions below.
 2. Find **Activate reviewed registration**. Confirm the new policy is **0xEE95c61E5fcbDAc780Ecfb9Bb2F8B94E7B0b97A3**, for Cryft Cards Account **0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340**. The fixed worker treasury is **0xe7850ecede5d6f7d0b2d2ccabfc2f29d2c345125** on Paladin-01.
 3. Click the current action button and confirm its transaction in MetaMask. Wait for the receipt before clicking the next action. The page checks the connected wallet, exact release and current chain state, and simulates each transaction before asking for a signature.
 4. Continue until the panel reports **On-chain activation is complete**, then tell the operator it is complete. The operator will verify receipts and enable the worker; the page does not enable server processes.
@@ -29,7 +29,7 @@ The initial activation required nine transactions, now confirmed, in this order:
 | 2 | Preserve wallet allowance 0x9247…e921 | Copies the root wallet's existing override to the new policy. |
 | 3 | Preserve wallet allowance 0xB2a4…1fd9 | Copies the other existing wallet override. |
 | 4 | Connect the reviewed per-user gas policy | Switches this Account to the compatible policy. |
-| 5 | Set the account safety ceiling to 0.03 KOTA per operation | Sets the platform ceiling; the 0.1 KOTA daily ceiling is retained. |
+| 5 | Set the account safety ceiling to 0.03 CRYFT per operation | Sets the platform ceiling; the 0.1 CRYFT daily ceiling is retained. |
 | 6 | Allow the account to use the reviewed operation ceiling | Sets matching tenant limits. |
 | 7 | Authorize the Paladin worker and fixed treasury | Permits bounded receipt-cost settlement by this trusted worker. |
 | 8 | Enable worker sponsorship for Cryft Cards | Opts this Account into that worker. |
@@ -41,7 +41,7 @@ These transactions transfer zero native value, but your wallet pays their networ
 
 ## 3. Limits and accounting
 
-The new default member allowance is **0.01 KOTA per operation and 0.02 KOTA per UTC day**. Existing explicit wallet and tier overrides are preserved; they can be lower than these defaults. In particular, the root wallet's prior 0.005-per-operation override is retained. Use an ordinary approved member for the initial card test, or deliberately update that wallet override through the policy editor if root-wallet creation is required.
+The new default member allowance is **0.01 CRYFT per operation and 0.02 CRYFT per UTC day**. Existing explicit wallet and tier overrides are preserved; they can be lower than these defaults. In particular, the root wallet's prior 0.005-per-operation override is retained. Use an ordinary approved member for the initial card test, or deliberately update that wallet override through the policy editor if root-wallet creation is required.
 
 User gas allocation is the spending control. Member/Creator/Studio default batch limits are respectively 5/25/100 cards per batch and 2/4/6 batches per minute, subject to the tenant's own ceilings. These are throughput safeguards, not cards-per-hour entitlements. The worker reserves a conservative whole-workflow maximum before starting; a user's available allocation must cover that reservation even when the eventual cost is smaller. Unused reservation is released after verified settlement.
 
@@ -74,6 +74,6 @@ Network release evidence lives in `Contracts/Verification/20260915`: exact compi
 
 ## 7. Live default-member acceptance — 15 September
 
-The existing default member created and redeemed token **11**, UID `0x16e74ac4dd655d408aac7e5143c08d66f57db87ab1aa99bb46723858c6145163-11`. The combined on-chain policy charge was **0.002524106 KOTA**; its pending reservation returned to zero. The remaining default daily allowance was **0.017475894 KOTA** at the check. [Delivery transaction](http://100.111.69.1:8080/tx/0xdc7a46f4115e88c56c9ca828bbfd3949d561a18a35e0f98f338dc2f2b24eaf89). The code and returned numeric component are retained only in the encrypted local test recovery file, not this manual or GitHub.
+The existing default member created and redeemed token **11**, UID `0x16e74ac4dd655d408aac7e5143c08d66f57db87ab1aa99bb46723858c6145163-11`. The combined on-chain policy charge was **0.002524106 CRYFT**; its pending reservation returned to zero. The remaining default daily allowance was **0.017475894 CRYFT** at the check. [Delivery transaction](http://100.111.69.1:8080/tx/0xdc7a46f4115e88c56c9ca828bbfd3949d561a18a35e0f98f338dc2f2b24eaf89). The code and returned numeric component are retained only in the encrypted local test recovery file, not this manual or GitHub.
 
 No custom membership tier was created or needed. Higher levels are optional and need separate owner-approved tier creation, gas rules and member assignment. The root wallet retains its lower historical explicit override; use a regular Member wallet for browser acceptance unless that override is deliberately increased. Exact public evidence is recorded in `Contracts/Verification/20260915/activation-acceptance.json`.

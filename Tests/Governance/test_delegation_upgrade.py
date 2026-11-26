@@ -19,8 +19,8 @@ from test_governance import REPO, PATHS, chain, tx, fails, deploy, at, linked, A
 from test_native_sponsorship import authorize  # noqa: E402
 
 SOLC = '0.8.37'  # never 0.8.19 here: the validator stands in from its reviewed artifact
-NEEDED = ['TransparentUpgradeableProxy', 'ProxyAdmin', 'DakotaDelegationRegistry', 'DakotaDelegation',
-          'DakotaDelegationBeacon', 'DakotaDelegationBeaconDispatcher']
+NEEDED = ['TransparentUpgradeableProxy', 'ProxyAdmin', 'CryftDelegationRegistry', 'CryftDelegation',
+          'CryftDelegationBeacon', 'CryftDelegationBeaconDispatcher']
 MOCKS = '''pragma solidity ^0.8.24;
 contract Value { function value() external pure returns(uint) { return 42; } }
 contract SlotWriter { function poke(bytes32 slot, uint256 value) external { assembly { sstore(slot, value) } } }
@@ -46,7 +46,7 @@ def builds():
     return output
 
 
-ENTRY = ADDRESSES['DakotaDelegationRegistry']
+ENTRY = ADDRESSES['CryftDelegationRegistry']
 assert ENTRY == Web3.to_checksum_address('0x00000000000000000000000000000000de1E6A7E')
 DELAY = 3600
 SPONSOR = ADDRESSES['GasSponsor']  # any contract stands in (sponsor readiness is covered in Readiness tests)
@@ -66,10 +66,10 @@ def advance(c, seconds):
 
 def stack(c, delay=DELAY, admin=None, sponsor=None):
     """Implementation + registry-owned beacon + dispatcher, registry linked WITH init data."""
-    logic = deploy(c, 'DakotaDelegation')
-    beacon = deploy(c, 'DakotaDelegationBeacon', logic.address)
-    dispatcher = deploy(c, 'DakotaDelegationBeaconDispatcher', beacon.address)
-    registry = linked(c, 'DakotaDelegationRegistry', initializer='initializeWithAdmin',
+    logic = deploy(c, 'CryftDelegation')
+    beacon = deploy(c, 'CryftDelegationBeacon', logic.address)
+    dispatcher = deploy(c, 'CryftDelegationBeaconDispatcher', beacon.address)
+    registry = linked(c, 'CryftDelegationRegistry', initializer='initializeWithAdmin',
                       args=(dispatcher.address, beacon.address, sponsor or SPONSOR,
                             admin or c['accounts'][0], delay))
     return registry, beacon, dispatcher, logic
@@ -77,24 +77,24 @@ def stack(c, delay=DELAY, admin=None, sponsor=None):
 
 def test_beacon_owner_is_registry_at_deploy_with_no_handover(chain):
     c = chain; a = c['accounts']
-    logic = deploy(c, 'DakotaDelegation')
+    logic = deploy(c, 'CryftDelegation')
     # Anyone may deploy the beacon: a plain non-root account here.
     assert not c['registry'].functions.isRootOverlord(a[7]).call()
-    factory = c['w3'].eth.contract(abi=c['builds']['DakotaDelegationBeacon']['abi'],
-                                   bytecode=c['builds']['DakotaDelegationBeacon']['creation_bytecode'])
+    factory = c['w3'].eth.contract(abi=c['builds']['CryftDelegationBeacon']['abi'],
+                                   bytecode=c['builds']['CryftDelegationBeacon']['creation_bytecode'])
     receipt = tx(c, factory.constructor(logic.address), a[7])
-    beacon = at(c, 'DakotaDelegationBeacon', receipt.contractAddress)
+    beacon = at(c, 'CryftDelegationBeacon', receipt.contractAddress)
     assert beacon.functions.owner().call() == ENTRY
     assert beacon.functions.implementation().call() == logic.address
     names = {item.get('name') for item in beacon.abi}
     for gone in ['transferOwnership', 'acceptOwnership', 'cancelOwnershipTransfer', 'renounceOwnership', 'pendingOwner']:
         assert gone not in names
-    other = deploy(c, 'DakotaDelegation')
+    other = deploy(c, 'CryftDelegation')
     for sender in [a[0], a[7]]:  # neither the root nor the deployer can move the implementation
         fails(c, beacon.functions.upgradeTo(other.address), sender)
     # The registry links against it with no handover step.
-    dispatcher = deploy(c, 'DakotaDelegationBeaconDispatcher', beacon.address)
-    registry = linked(c, 'DakotaDelegationRegistry', initializer='initializeWithAdmin',
+    dispatcher = deploy(c, 'CryftDelegationBeaconDispatcher', beacon.address)
+    registry = linked(c, 'CryftDelegationRegistry', initializer='initializeWithAdmin',
                       args=(dispatcher.address, beacon.address, SPONSOR, a[0], 0))
     snapshot = registry.functions.currentSnapshot().call()
     assert snapshot[5] == ENTRY and snapshot[14]  # beaconOwner, registryControlsBeacon
@@ -103,10 +103,10 @@ def test_beacon_owner_is_registry_at_deploy_with_no_handover(chain):
 
 def test_registry_rejects_beacon_it_does_not_own(chain):
     c = chain; a = c['accounts']
-    logic = deploy(c, 'DakotaDelegation')
+    logic = deploy(c, 'CryftDelegation')
     fake = deploy(c, 'Value')  # no owner() at all
-    dispatcher = deploy(c, 'DakotaDelegationBeaconDispatcher', deploy(c, 'DakotaDelegationBeacon', logic.address).address)
-    reg_logic = deploy(c, 'DakotaDelegationRegistry')
+    dispatcher = deploy(c, 'CryftDelegationBeaconDispatcher', deploy(c, 'CryftDelegationBeacon', logic.address).address)
+    reg_logic = deploy(c, 'CryftDelegationRegistry')
     data = bytes.fromhex(reg_logic.functions.initializeWithAdmin(dispatcher.address, fake.address, SPONSOR, a[0], 0)._encode_transaction_data()[2:])
     proxy = at(c, 'TransparentUpgradeableProxy', ENTRY)
     fails(c, proxy.functions.proxy_linkLogicAdmin(reg_logic.address, data))
@@ -118,7 +118,7 @@ def test_upgrade_before_delay_reverts_and_after_delay_executes(chain):
     assert registry.functions.upgradeDelay().call() == DELAY
     assert registry.functions.MAX_UPGRADE_DELAY().call() == MAX_DELAY
     assert 'upgradeDelegation' not in {item.get('name') for item in registry.abi}
-    nxt = deploy(c, 'DakotaDelegation'); h = code_hash(c, nxt.address)
+    nxt = deploy(c, 'CryftDelegation'); h = code_hash(c, nxt.address)
     fails(c, registry.functions.executeDelegationUpgrade(nxt.address, h))          # nothing scheduled
     fails(c, registry.functions.scheduleDelegationUpgrade(nxt.address, h), a[1])  # not admin
     fails(c, registry.functions.scheduleDelegationUpgrade(nxt.address, b'\x01' * 32))  # wrong hash
@@ -128,7 +128,7 @@ def test_upgrade_before_delay_reverts_and_after_delay_executes(chain):
     assert event['implementation'] == nxt.address and event['readyAt'] == event['scheduledAt'] + DELAY
     pending = registry.functions.pendingDelegationUpgrade().call()
     assert pending[0] == nxt.address and pending[1] == h and pending[3] == event['readyAt']
-    fails(c, registry.functions.scheduleDelegationUpgrade(deploy(c, 'DakotaDelegation').address, h))  # one at a time
+    fails(c, registry.functions.scheduleDelegationUpgrade(deploy(c, 'CryftDelegation').address, h))  # one at a time
     fails(c, registry.functions.executeDelegationUpgrade(nxt.address, h))          # before the delay
     advance(c, DELAY // 2)
     fails(c, registry.functions.executeDelegationUpgrade(nxt.address, h))
@@ -152,7 +152,7 @@ def test_upgrade_before_delay_reverts_and_after_delay_executes(chain):
 def test_cancel_by_admin_and_by_genesis_guardian(chain):
     c = chain; a = c['accounts']
     registry, beacon, _, logic = stack(c, admin=a[1])  # a[0] is the root (a guardian), not the admin
-    nxt = deploy(c, 'DakotaDelegation'); h = code_hash(c, nxt.address)
+    nxt = deploy(c, 'CryftDelegation'); h = code_hash(c, nxt.address)
     fails(c, registry.functions.cancelDelegationUpgrade(), a[1])  # nothing to cancel
     tx(c, registry.functions.scheduleDelegationUpgrade(nxt.address, h), a[1])
     fails(c, registry.functions.cancelDelegationUpgrade(), a[6])   # stranger
@@ -191,7 +191,7 @@ def test_delay_raise_is_immediate_and_lowering_waits(chain):
     assert registry.functions.upgradeDelay().call() == 10
     assert not registry.functions.pendingUpgradeDelayDecrease().call()[0]
     # Raising is immediate and also holds back an upgrade scheduled under the shorter delay.
-    nxt = deploy(c, 'DakotaDelegation'); h = code_hash(c, nxt.address)
+    nxt = deploy(c, 'CryftDelegation'); h = code_hash(c, nxt.address)
     tx(c, registry.functions.scheduleDelegationUpgrade(nxt.address, h))
     tx(c, registry.functions.setUpgradeDelay(MAX_DELAY))
     assert registry.functions.upgradeDelay().call() == MAX_DELAY
@@ -205,7 +205,7 @@ def test_delay_raise_is_immediate_and_lowering_waits(chain):
 def test_zero_delay_dev_mode_still_two_phase(chain):
     c = chain
     registry, beacon, _, _ = stack(c, delay=0)
-    nxt = deploy(c, 'DakotaDelegation'); h = code_hash(c, nxt.address)
+    nxt = deploy(c, 'CryftDelegation'); h = code_hash(c, nxt.address)
     tx(c, registry.functions.scheduleDelegationUpgrade(nxt.address, h))
     tx(c, registry.functions.executeDelegationUpgrade(nxt.address, h))
     assert beacon.functions.implementation().call() == nxt.address
@@ -215,7 +215,7 @@ def test_zero_delay_dev_mode_still_two_phase(chain):
 def test_implementation_initializers_locked_and_entry_init_root_only(chain):
     c = chain; a = c['accounts']; w3 = c['w3']
     registry, beacon, dispatcher, logic = stack(c)
-    reg_logic = at(c, 'DakotaDelegationRegistry', registry.functions.registryImplementation().call())
+    reg_logic = at(c, 'CryftDelegationRegistry', registry.functions.registryImplementation().call())
     assert w3.eth.get_storage_at(reg_logic.address, 0)[-1] == 0xff  # Initializable._initialized == max
     for sender in [a[0], a[6]]:
         fails(c, reg_logic.functions.initializeWithAdmin(dispatcher.address, beacon.address, SPONSOR, sender, 0), sender)
@@ -229,12 +229,12 @@ def test_implementation_initializers_locked_and_entry_init_root_only(chain):
 
 def test_entry_initializer_cannot_be_front_run(chain):
     c = chain; a = c['accounts']
-    logic = deploy(c, 'DakotaDelegation')
-    beacon = deploy(c, 'DakotaDelegationBeacon', logic.address)
-    dispatcher = deploy(c, 'DakotaDelegationBeaconDispatcher', beacon.address)
-    reg_logic = deploy(c, 'DakotaDelegationRegistry')
+    logic = deploy(c, 'CryftDelegation')
+    beacon = deploy(c, 'CryftDelegationBeacon', logic.address)
+    dispatcher = deploy(c, 'CryftDelegationBeaconDispatcher', beacon.address)
+    reg_logic = deploy(c, 'CryftDelegationRegistry')
     proxy = at(c, 'TransparentUpgradeableProxy', ENTRY)
-    registry = at(c, 'DakotaDelegationRegistry', ENTRY)
+    registry = at(c, 'CryftDelegationRegistry', ENTRY)
     good = bytes.fromhex(reg_logic.functions.initializeWithAdmin(dispatcher.address, beacon.address, SPONSOR, a[0], DELAY)._encode_transaction_data()[2:])
     fails(c, proxy.functions.proxy_linkLogicAdmin(reg_logic.address, good), a[6])  # strangers cannot link
     receipt = c['w3'].eth.wait_for_transaction_receipt(proxy.functions.proxy_linkLogicAdmin(reg_logic.address, b'').transact({'from': a[0], 'gas': 24000000}))
@@ -267,7 +267,7 @@ def test_7702_acceptance_through_two_phase_upgrade_and_stale_slot(chain):
     c = chain; a = c['accounts']; w3 = c['w3']
     registry, beacon, dispatcher, logic = stack(c)
     authorize(c, dispatcher.address)
-    account = at(c, 'DakotaDelegation', a[3])
+    account = at(c, 'CryftDelegation', a[3])
     w3.eth.wait_for_transaction_receipt(w3.eth.send_transaction({'from': a[0], 'to': a[3], 'value': 10**18, 'gas': 100000}))
     sink = deploy(c, 'Sink')
     status = registry.functions.accountStatus(account.address).call()
@@ -286,7 +286,7 @@ def test_7702_acceptance_through_two_phase_upgrade_and_stale_slot(chain):
     tx(c, direct_execute(c, account, sink, 'stale-slot'), a[2])
     assert account.functions.getNonce().call() == 2
     # Two-phase upgrade keeps the account working and its nonce.
-    nxt = deploy(c, 'DakotaDelegation'); h = code_hash(c, nxt.address)
+    nxt = deploy(c, 'CryftDelegation'); h = code_hash(c, nxt.address)
     tx(c, registry.functions.scheduleDelegationUpgrade(nxt.address, h))
     tx(c, direct_execute(c, account, sink, 'while-pending'), a[2])  # still the old logic
     assert beacon.functions.implementation().call() == logic.address

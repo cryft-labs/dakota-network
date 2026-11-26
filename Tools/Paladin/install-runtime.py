@@ -1,4 +1,4 @@
-"""Install a persistent rootless Paladin/Pente node on the existing Dakota chain.
+"""Install a persistent rootless Paladin/Pente node on the existing Cryft chain.
 
 Run as root on Paladin-01 from a published commit. Never resets chain/database/keys.
 The root-owned secret files are created once, read by the runtime group only.
@@ -50,7 +50,7 @@ def main():
         command=['/usr/bin/podman','--cgroup-manager=cgroupfs','run','--rm','--replace','--name',name,'--cgroups=disabled',
                  '--cap-drop=ALL','--security-opt=no-new-privileges','--log-driver=journald','--pids-limit=2048']+args
         content=f'''[Unit]
-Description=Dakota {name}
+Description=Cryft {name}
 Wants=network-online.target
 After=network-online.target dnclient.service {after}
 StartLimitIntervalSec=300

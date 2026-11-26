@@ -7,7 +7,7 @@
 pragma solidity >=0.8.20 <0.9.0;
 
 /// @title IGasSponsor
-/// @notice Managed native EIP-7702 gas sponsorship for Dakota tenants.
+/// @notice Managed native EIP-7702 gas sponsorship for Cryft tenants.
 interface IGasSponsor {
     struct SponsorshipVoucher {
         bytes32 operationId;

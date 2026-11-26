@@ -1,4 +1,4 @@
-"""Initialize the approved named genesis services on Dakota development chain."""
+"""Initialize the approved named genesis services on Cryft development chain."""
 import argparse
 from common import Deployment, ADDR, ADMIN, DEPLOYER, TESTER, ZERO
 
@@ -9,13 +9,13 @@ def initialize(d):
     cm_logic = d.deploy('CodeManager')
     cm = d.first_link('CodeManager', cm_logic, 'initializeWithVoter', [DEPLOYER])
     d.tx('configure:registration_fee_vault', cm.functions.voteToUpdateFeeVault(gm.address))
-    logic = d.deploy('DakotaDelegation')
-    beacon = d.deploy('DakotaDelegationBeacon', logic.address)
-    dispatcher = d.deploy('DakotaDelegationBeaconDispatcher', beacon.address)
+    logic = d.deploy('CryftDelegation')
+    beacon = d.deploy('CryftDelegationBeacon', logic.address)
+    dispatcher = d.deploy('CryftDelegationBeaconDispatcher', beacon.address)
     sponsor_logic = d.deploy('GasSponsor')
     sponsor = d.first_link('GasSponsor', sponsor_logic, 'initialize', [DEPLOYER, DEPLOYER, dispatcher.address, 100000])
-    registry_logic = d.deploy('DakotaDelegationRegistry')
-    registry = d.first_link('DakotaDelegationRegistry', registry_logic, 'initializeWithAdmin',
+    registry_logic = d.deploy('CryftDelegationRegistry')
+    registry = d.first_link('CryftDelegationRegistry', registry_logic, 'initializeWithAdmin',
                             [dispatcher.address, beacon.address, sponsor.address, DEPLOYER])
     d.tx('handover:propose_beacon_registry', beacon.functions.transferOwnership(registry.address))
     d.tx('handover:accept_beacon_registry', registry.functions.acceptBeaconOwnership())

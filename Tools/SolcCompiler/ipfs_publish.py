@@ -152,7 +152,7 @@ class KuboClient:
     def add(self, content, only_hash=False):
         if len(content) > self.max_bytes:
             raise PublicationError("IPFS file exceeds IPFS_MAX_FILE_BYTES")
-        boundary = "dakota-" + uuid.uuid4().hex
+        boundary = "cryft-" + uuid.uuid4().hex
         body = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="artifact"\r\n'
                 'Content-Type: application/octet-stream\r\n\r\n').encode() + content + f"\r\n--{boundary}--\r\n".encode()
         response = self.request("add", {

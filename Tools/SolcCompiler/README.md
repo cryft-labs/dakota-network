@@ -1,4 +1,4 @@
-# Dakota compiler and verification inputs
+# Cryft compiler and verification inputs
 
 The compiler exports `<Contract>_standard_input.json` for every compiled contract,
 library, interface and abstract contract. Each JSON file embeds its full source
@@ -170,7 +170,7 @@ use our Cloudflare gateway explicitly; public DHT discovery is intentionally off
 
 For integration tests, set `IPFS_TEST_BINARY` to a verified Kubo executable.
 Tests launch and stop an isolated offline localhost node. Optionally set
-`DAKOTA_FULL_ARTIFACTS` to validate an existing complete review manifest. Without
+`CRYFT_FULL_ARTIFACTS` to validate an existing complete review manifest. Without
 those inputs, the corresponding integration tests are skipped explicitly.
 
 Windows artifact paths use the extended absolute path form so deep dependency

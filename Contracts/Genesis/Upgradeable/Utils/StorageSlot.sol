@@ -2,7 +2,7 @@
 //
 // Based on OpenZeppelin Contracts (last updated v4.9.0) (utils/StorageSlot.sol).
 // This file was procedurally generated from scripts/generate/templates/StorageSlot.js.
-// Modified for the Dakota Network by Cryft Labs.
+// Modified for the Cryft Network by Cryft Labs.
 //
 // WARNING: This is a modified version of the original OpenZeppelin contract.
 // Do not assume it is stock or unmodified — review all changes before use.

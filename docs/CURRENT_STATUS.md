@@ -1,4 +1,4 @@
-# Dakota / Kota system status and documentation index
+# Cryft / Kota system status and documentation index
 
 ## 1. Source promotion
 
@@ -27,7 +27,7 @@ rewriting earlier evidence to appear newer.
 | Original 32,451-address source audit | [Blockscout verification](blockscout-verification-20260911.md) |
 | Current Kota tenant artifacts/addresses/receipts | [Kota tenant manual](https://github.com/CryftCreator/KotaRouter/blob/main/router_v4/contracts/deployment/README.md) |
 | Router, widget and direct API integration gaps | [Kota current system](https://github.com/CryftCreator/KotaRouter/blob/main/router_v4/docs/CURRENT_SYSTEM.md) |
-| Cryft Cards branding, card types and retained site paths | [Site manual](https://github.com/CryftCreator/cryftcomingsoon-main/blob/main/docs/MOMENT_CARDS.md) |
+| Cryft Cards branding, card types and retained site paths | [Site manual](https://github.com/CryftCreator/cryftcomingsoon-main/blob/main/docs/CRYFT_CARDS.md) |
 
 ## 3. What is running and verified
 
@@ -37,7 +37,7 @@ Paladin/database, Frontend archive/explorer UI, and Backend explorer/database/Re
 Rust verifier and IPFS. Nginx runs on the application hosts. This is an active-service
 check, not a new reboot, backup restore or throughput test.
 
-The network is chain 112311 with genesis hash
+The network is chain 113211 with genesis hash
 `0x1285cc146ec6c166bcda2882220ea4b27f6997e4fa28b932f0cdc426a49003f8`.
 Besu 26.8.1/Java 25 uses Osaka and BPO1–BPO5 from genesis; Amsterdam remains disabled.
 The validator stays compiled for London. Public RPC is restricted to the private
@@ -87,19 +87,19 @@ recovery secrets on Paladin-01 under the owner's existing instruction.
 ## 5. Next implementation work
 
 Cryft Cards reuses the existing Greeting Cards application and adds business
-cards and postcards. Dakota Cards is the platform/dashboard/docs application.
+cards and postcards. Cryft Cards is the platform/dashboard/docs application.
 The widget is optional; direct service clients must receive equivalent API functionality.
 
 The live membership registry is
-`0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`, with exact tenant ID `moment.cards`.
+`0xA6B1dFA510B2854b8FA33ab3865535bb41CC2340`, with exact tenant ID `cryft.cards`.
 It is empty and unlocked. The local `/v1/platform` companion instead seeds the slug
-`moment-cards` and uses database membership. Reconcile that identity, registration,
+`cryft-cards` and uses database membership. Reconcile that identity, registration,
 on-chain gate, signer authorization and retained widget/API lifecycle before writes.
 The generic private module remains blocked; the optional worker is disabled and
 has not passed a retained-widget live lifecycle test. Source in main does not
 make these paths production-ready.
 
-Remaining production work includes the Dakota UI dependency migration, Grok
+Remaining production work includes the Cryft UI dependency migration, Grok
 credentials/model, private/public API integration, runtime minter policy, inventory,
 database migrations and concurrency, load/restore acceptance, backup destination,
 public Cloudflare routes, final network/SSH restrictions and the remaining authority

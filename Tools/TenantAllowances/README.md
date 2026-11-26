@@ -38,7 +38,7 @@ their selector. Customized policies must satisfy this interface and gas bound.
 
 Deployment must use committed, pushed artifacts. The operator script records a
 signed transaction hash before sending, checks nonce exclusivity, verifies chain
-112311 and the pinned genesis, and never exports signing keys. Preserve its journal
+113211 and the pinned genesis, and never exports signing keys. Preserve its journal
 on ambiguous sends; reconcile the recorded hash instead of creating another intent.
 No genesis replacement, balance migration, new root or governance bypass is needed.
 
@@ -63,7 +63,7 @@ contract rules; gas-only funding remains non-withdrawable by tenants.
 
 The policy is connected with membership integration, automatic default-member
 allowances and optional explicit wallet approval switched off. Explicit denials
-still apply. Initial allowances are **0.005 KOTA per operation and 0.01 KOTA per
+still apply. Initial allowances are **0.005 CRYFT per operation and 0.01 CRYFT per
 wallet/member per UTC day**. The owner and development admin wallet have explicit
 initial allowances. Account ceilings remain 0.005 per operation and 0.1 per day.
 Available funds are live state; do not treat a recorded balance as a current quote.

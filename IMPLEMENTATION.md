@@ -1,4 +1,4 @@
-# Kota / Dakota implementation and operations manual
+# Kota / Cryft implementation and operations manual
 
 > **Note (2026-11-23).** The consumer app is **Cryft Cards** (`cryft.cards`). On-chain strings and deployed contract names keep
 > their deployed values.
@@ -7,7 +7,7 @@
 
 Kota is the API service for issuing, managing and redeeming codes/tokens. The widget
 is an optional client; sites/apps may call the documented endpoints directly.
-Cryft Cards is the initial consumer for greeting cards, business cards and postcards. Dakota's
+Cryft Cards is the initial consumer for greeting cards, business cards and postcards. Cryft's
 Besu public ledger and Paladin privacy state supply the underlying settlement.
 
 This manual describes the development release under review. Source changes and
@@ -26,9 +26,9 @@ KotaRouter main now contains the reviewed implementation and exact artifacts.
 Review branches are retained for provenance. Resolve
 and record exact SHAs before building; main is not an automatic deployment instruction.
 Website implementation is merged into `CryftCreator/cryftcomingsoon-main/main`,
-with `review/moment-dakota-tenant` retained. Known build/integration gaps remain.
+with `review/moment-cryft-tenant` retained. Known build/integration gaps remain.
 The existing `Greeting Cards/` application becomes Cryft Cards in place,
-including greeting cards, business cards and postcards. `Dakota Cards/` is the
+including greeting cards, business cards and postcards. `Cryft Cards/` is the
 platform portal/dashboard/docs application. The widget is optional; direct
 service endpoints must offer the same authorization and lifecycle semantics.
 Never deploy a moving branch with an unchecked reset/pull. Preserve historical
@@ -144,7 +144,7 @@ The explorer UI on Frontend-01 and API/indexer/database on Backend-01 are runnin
 as persistent rootless services behind the unprivileged Nginx proxies. The browser
 home page and block 72 detail were verified; the API subsequently matched Besu at
 block 76 and reported indexing complete. Same-origin RPC, validator list, WebSocket
-subscription, runtime KOTA branding, closed raw origins and a controlled API restart
+subscription, runtime CRYFT branding, closed raw origins and a controlled API restart
 were verified. See [explorer acceptance](docs/explorer-nebula-acceptance.json) and
 [the runbook](Tools/Explorer/README.md). All genesis contract address/code records
 are indexed and the original 32,451-address public audit passed; the later Kota
@@ -165,7 +165,7 @@ network checks do not constitute production approval.
 
 ### Authoritative genesis and compatible updates
 
-The existing archive defines chain ID 112311, 64,000,000 block gas, 32,768-byte
+The existing archive defines chain ID 113211, 64,000,000 block gas, 32,768-byte
 contract limit, the fork schedule, QBFT timing and system addresses. Preserve it.
 The reviewed archive enables BPO1–BPO5 at timestamp 0 with Osaka execution rules.
 It preserves the inherited blob target/max of 6/9; no new blob capacity is implied.
@@ -231,7 +231,7 @@ a wallet transaction accepted by the archive pool at a few wei that never leaves
 
 ### Live initialization and functional acceptance: 2026-09-11
 
-The named GasManager, CodeManager, GasSponsor and DakotaDelegationRegistry proxies
+The named GasManager, CodeManager, GasSponsor and CryftDelegationRegistry proxies
 are initialized on the running development chain. The validator registry and
 ProxyAdmin retain their reviewed genesis runtime. The shared beacon is owned by
 the fixed delegation registry. Do not repeat first-link initialization.
@@ -295,15 +295,15 @@ Read the [acceptance evidence](docs/paladin-acceptance-20260911.md) and
 
 | Funding role | Address | Rule |
 |---|---|---|
-| Automatic Paladin public settlement | `0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549` | Fund native KOTA on chain 112311; 0.024371939 KOTA at block 362 |
+| Automatic Paladin public settlement | `0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549` | Fund native CRYFT on chain 113211; 0.024371939 CRYFT at block 362 |
 | Deployment/development public relayer | `0x633309d1155fD658a717e4f5E4FA853615400867` | Needs native transaction-fee reserve even when later reimbursed |
 | Private operator | `0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125` | Private execution does not require native balance |
 | GasSponsor tenant | Card `0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410` | Deposit through FEeD ledger methods; separate from wallet funding |
 
 Use `Tools/Paladin/funding.py` for a fresh read-only balance snapshot. The runbook
 explains direct transfers and GasManager proposal/vote/execute funding. A suggested
-development settlement reserve alerts below 0.01 KOTA and refills toward 0.03;
-neither alert nor refill is automated. Registration currently costs 0.001 KOTA per UID.
+development settlement reserve alerts below 0.01 CRYFT and refills toward 0.03;
+neither alert nor refill is automated. Registration currently costs 0.001 CRYFT per UID.
 
 Current private Combo proxy: `0x7a3eacca11e28712ed6e0dfc464795b2a0c2a342`.
 Public group: `0x533E526f095407490BB0089D3fc38e73484523B0`.
@@ -359,7 +359,7 @@ or rate-limit; it is not proof that value-moving requests are exactly-once. Asso
 async jobs and delivery tokens with authenticated owners. Audit without logging codes,
 PINs or private payloads. Keep deployment behind private ingress while blockers remain.
 
-Discover and review the newer Dakota Cards/dashboard/docs/widget sources before
+Discover and review the newer Cryft Cards/dashboard/docs/widget sources before
 reusing them. Publish their exact refs and integration contracts. The API owns
 business rules and supports arbitrary host sites; the widget and Cryft Cards consume
 the same authenticated endpoints. Provide local admin UI for tenant, code lifecycle,
@@ -422,7 +422,7 @@ Back up Kubo identity, pins and data; test gateway access and a restore independ
 ## 13. Resource budgets and scaling
 
 The explorer's pinned builds, runtime services, protected environment files and
-recovered historical Dakota settings are documented in [the explorer runbook](Tools/Explorer/README.md).
+recovered historical Cryft settings are documented in [the explorer runbook](Tools/Explorer/README.md).
 It separates the API/database on Backend-01 from the UI/archive on Frontend-01.
 
 Start with bounded workers and queues, not one process per shared vCPU by default.
@@ -509,8 +509,8 @@ The one-shot prompt is a resume procedure: no genesis reset, reenrollment,
 reinitialization, redundant contract deployment or duplicate IPFS/source upload.
 
 Canonical Rust routes check registry locks uncached. The optional platform
-companion currently uses database membership and the slug `moment-cards`;
-the deployed registry's ID is exactly `moment.cards`. Reconcile identities,
+companion currently uses database membership and the slug `cryft-cards`;
+the deployed registry's ID is exactly `cryft.cards`. Reconcile identities,
 registration and on-chain authorization before connecting it to the widget or
 direct API clients. A public profile key and an Origin header are not credentials.
 Source promotion does not resolve these integration gaps or authorize a live cutover.
@@ -529,7 +529,7 @@ Monitor **both** public gas accounts on Paladin-01:
 - `0x08Bb45a62993dC2BdEB0b5aebA28A191B9cC4549`: Pente public settlement.
 - `0xe7850EcEDe5d6f7d0B2d2cCaBfC2f29D2C345125`: operator for direct public mint submissions.
 
-The operator was separately funded with 0.03 KOTA for the acceptance test. Funding
+The operator was separately funded with 0.03 CRYFT for the acceptance test. Funding
 settlement alone had left its mint pending. The original Paladin transaction ID
 was resumed after funding; a second mint was not submitted. Paladin keys remain on
 Paladin-01. Public sponsorship deposits do not replace these account balances.
@@ -544,14 +544,14 @@ and sanitized acceptance reports for API operations, encryption and restore rule
 
 An ERC-6551 v0.3.1 compatible registry and `MomentCardAccount` implementation are
 in `Contracts/Accounts/` for Cryft Cards inventories. They are not on chain
-112311. Canonical registry `0x000000006551c19487814612e58FE06813775758` and
+113211. Canonical registry `0x000000006551c19487814612e58FE06813775758` and
 Nick's CREATE2 factory `0x4e59b44847b379578588920cA78FbF26c0B4956C` have no
 bytecode on this genesis. Occupying the canonical registry address requires the
 factory first, then the original v0.3.1 bytecode — the 0.8.37 Osaka review build
 cannot land there. If the factory's pre-EIP-155 transaction is rejected, accept a
 non-canonical registry after review.
 
-Application salt is `keccak256("moment.cards:tba:v1")`. Bind the first resolved
+Application salt is `keccak256("cryft.cards:tba:v1")`. Bind the first resolved
 account per card; a later implementation address is a different TBA and must not
 be switched silently. Nested CARD NFTs from the parent collection
 `0x9e8C1107e04378b9ebab4e2fB3c5b97DCf84a410` are rejected. See

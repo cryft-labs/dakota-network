@@ -3,7 +3,7 @@ finding, each a case 1.5.1 got wrong (failing before) that 1.5.2 gets right. THI
 real EIP-7702 accounts (test_program_sponsorship.world). X-57's release-without-charge is in test_gas_sponsor_1_5_1.py, its
 revenue redirect and X-19's worker count in test_worker_sponsorship.py, X-66 in test_approved_sponsorship.py.
 
-    DAKOTA_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_gas_sponsor_1_5_2.py
+    CRYFT_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_gas_sponsor_1_5_2.py
 """
 import pytest
 import solcx

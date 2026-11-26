@@ -14,7 +14,7 @@ def main():
     journal_path=Path(args.journal);journal=json.loads(journal_path.read_text())
     session=requests.Session();session.trust_env=False
     w3=Web3(Web3.HTTPProvider('http://100.111.69.1:8547/',session=session,request_kwargs={'timeout':20},exception_retry_configuration=None))
-    assert w3.eth.chain_id==112311
+    assert w3.eth.chain_id==113211
     assert w3.provider.make_request('eth_getBlockByNumber',['0x0',False])['result']['hash']==GENESIS
     base='http://100.111.69.1:8080'
     config=session.get(base+'/api/v2/smart-contracts/verification/config',timeout=20);config.raise_for_status();config=config.json()

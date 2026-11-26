@@ -96,7 +96,7 @@ the local review Router at 127.0.0.1:4251; external clients do not use that port
 For verification, send OPTIONS with Origin `http://100.111.1.4:3035`, requested
 method POST and requested header Content-Type, then a read-only `eth_chainId`
 POST with the same origin. Expect 204 and 200 respectively, matching origin
-headers and chain 112311. Confirm an unapproved origin returns 403, GET returns
+headers and chain 113211. Confirm an unapproved origin returns 403, GET returns
 405, and both POST and OPTIONS from an unapproved source return 403. Validate the
 candidate with `nginx -t` as `cryft-proxy`, save the current config, reload
 `cryft-nginx.service` gracefully and verify its active state. Keep the previous

@@ -50,7 +50,7 @@ def main():
             standard=(d.out/'artifacts'/name/'standard-input.json').read_bytes()
             report['contracts'][name]={'metadata_cid':cid,'standard_input_cid':confirm(standard),'evm':artifact['evm']}
             print('PINNED '+name+' '+cid,flush=True)
-        cardfiles={str(i)+'.json':(json.dumps({'name':'moment.cards Development Card #'+str(i),'description':'Development acceptance card for the Dakota redemption service.','attributes':[{'trait_type':'Environment','value':'Development'}]},sort_keys=True)+'\n').encode() for i in range(1,6)}
+        cardfiles={str(i)+'.json':(json.dumps({'name':'cryft.cards Development Card #'+str(i),'description':'Development acceptance card for the Cryft redemption service.','attributes':[{'trait_type':'Environment','value':'Development'}]},sort_keys=True)+'\n').encode() for i in range(1,6)}
         response=d.http.post(endpoint+'/api/v0/add',params={'wrap-with-directory':'true','pin':'true','cid-version':0,'raw-leaves':'false'},
                  files=[('file',(name,body,'application/json')) for name,body in cardfiles.items()],timeout=40); response.raise_for_status()
         entries=[json.loads(line) for line in response.text.splitlines()]; directory=entries[-1]['Hash']
