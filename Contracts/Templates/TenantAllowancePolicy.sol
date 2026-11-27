@@ -112,7 +112,7 @@ contract TenantAllowancePolicy {
         pendingOwner = address(0); emit OwnershipProposed(owner, address(0));
     }
     function acceptOwnership() external {
-        if (msg.sender != pendingOwner) revert Unauthorized();
+        if (pendingOwner == address(0) || msg.sender != pendingOwner) revert Unauthorized();
         address previous = owner; owner = msg.sender; pendingOwner = address(0);
         emit OwnershipTransferred(previous, owner);
     }

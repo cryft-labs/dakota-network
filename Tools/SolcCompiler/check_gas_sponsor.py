@@ -326,7 +326,7 @@ def _assert_source_contract() -> None:
         "erc7201:cryft.storage.GasSponsor",
         EXPECTED_SPONSOR_NAMESPACE,
         'keccak256("1")',
-        'return "1.5.2";',
+        'return "1.5.3";',
     )
     required_delegate_fragments = (
         "erc7201:cryft.storage.CryftDelegation",

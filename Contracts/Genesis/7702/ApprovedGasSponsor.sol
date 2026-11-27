@@ -10,7 +10,7 @@ import {GasSponsor} from "./GasSponsor.sol";
 /// @dev Isolated storage (cryft.storage.ApprovedGasSponsor.v1); inherited balances, limits and roles are
 ///      unchanged. Approval is not safe for arbitrary forwarding, upgrade or deployment functions: review every
 ///      allowed method and all its downstream calls before admitting it.
-/// @custom:version 1.5.2
+/// @custom:version 1.5.3
 /// @custom:security-contact security@cryft.cards
 contract ApprovedGasSponsor is GasSponsor {
     // ─── Type declarations ───────────────────────────────────────────────────────────────────────

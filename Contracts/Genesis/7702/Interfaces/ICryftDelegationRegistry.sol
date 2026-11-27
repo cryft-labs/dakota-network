@@ -6,7 +6,7 @@ import {ICryftDelegation} from "./ICryftDelegation.sol";
 
 /// @title ICryftDelegationRegistry
 /// @notice Authoritative release directory and readiness view for Cryft EIP-7702.
-/// @custom:version 3.0.0
+/// @custom:version 3.0.1
 /// @custom:security-contact security@cryft.cards
 interface ICryftDelegationRegistry {
     // ─── Type declarations ───────────────────────────────────────────────────────────────────────

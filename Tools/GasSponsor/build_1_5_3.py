@@ -1,4 +1,4 @@
-"""GasSponsor 1.5.2 (ProgramGasSponsor): the release build and its storage-layout record (2026-11-25, the contract audit's P-1 for
+"""GasSponsor 1.5.3 (ProgramGasSponsor; 1.5.2 plus the zero-pending accept fix): the release build and its storage-layout record (2026-11-25, the contract audit's P-1 for
 the fresh chain 113211: pauser, openedBy, one-time setProgram behind a seeded deny list, program sponsors locked to their program,
 ops/day for every sponsor, wallet approval by default, per-sponsor operation ids, worker release without charge and revenue
 redirect, bounded best-effort policy settle, the gas reserve checked after the calldata copy, EIP-1967 proxies refused as immutable).
@@ -10,8 +10,8 @@ build records the layout every later upgrade must stay append-only against, and 
   * every namespace constant is the one recorded here, and the four namespaces and the plain slots stay apart;
   * the runtime fits Cryft's 32,768-byte code limit.
 
-    python Tools/GasSponsor/build_1_5_2.py            # print the result; write nothing
-    python Tools/GasSponsor/build_1_5_2.py --write    # also write Releases/GasSponsor/1.5.2/ (standard input, artifact, layout)
+    python Tools/GasSponsor/build_1_5_3.py            # print the result; write nothing
+    python Tools/GasSponsor/build_1_5_3.py --write    # also write Releases/GasSponsor/1.5.3/ (standard input, artifact, layout)
 
 Needs py-solc-x with solc 0.8.37. Exit 1 past the code limit or on any layout problem.
 """
@@ -27,8 +27,8 @@ from pathlib import Path
 import solcx
 
 REPO = Path(__file__).resolve().parents[2]
-OUT = REPO / "Releases/GasSponsor/1.5.2"
-VERSION = "1.5.2"
+OUT = REPO / "Releases/GasSponsor/1.5.3"
+VERSION = "1.5.3"
 ENTRY = "Contracts/Genesis/7702/ProgramGasSponsor.sol"
 NAME = "ProgramGasSponsor"
 SOLC = "0.8.37"

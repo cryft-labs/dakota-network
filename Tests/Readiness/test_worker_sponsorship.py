@@ -34,7 +34,7 @@ def worker_build():
 @pytest.fixture
 def ready(chain, worker_build, policy_build):
     c=chain; _,s,_,_=setup(c,worker_build);a=c['accounts']
-    assert s.functions.implementationVersion().call()=='1.5.2'
+    assert s.functions.implementationVersion().call()=='1.5.3'
     p=create(c,policy_build,s.address,a[4],a[5],'0x'+'0'*40,10**15,2*10**15,[])
     tx(c,s.functions.setSponsorPolicy(a[4],p.address),a[5])
     tx(c,s.functions.configureWorker(a[2],a[8]))

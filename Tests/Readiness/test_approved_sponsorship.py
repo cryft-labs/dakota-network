@@ -53,7 +53,7 @@ def send(c,sponsor,args):
 
 def test_platform_signed_unapproved_calls_are_denied(chain):
     c=chain;account,sponsor,_,entry=approved_setup(c)
-    assert sponsor.functions.implementationVersion().call()=='1.5.2'
+    assert sponsor.functions.implementationVersion().call()=='1.5.3'
     assert sponsor.functions.platformAdmin().call()==c['accounts'][0]
     before=sponsor.functions.getSponsorAccount(c['accounts'][4]).call()
     values=signed(c,sponsor,account,entry.address,tag='unauthorized')

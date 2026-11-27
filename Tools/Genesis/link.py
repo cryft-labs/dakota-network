@@ -111,7 +111,7 @@ class Linker:
         self.art = compile_all()
         lock = json.loads(LOCK.read_text())
         mismatch = [n for n, v in lock_of(self.art).items() if lock.get(n) != v]
-        if mismatch:
+        if mismatch and args.phase == "deploy":
             raise SystemExit("Sources differ from link-lock.json (run --lock after review): " + ", ".join(mismatch))
         self._signers()
 

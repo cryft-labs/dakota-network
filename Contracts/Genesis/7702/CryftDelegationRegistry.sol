@@ -47,7 +47,7 @@ interface ICryftDelegationGenesisProxy {
 ///      scheduled upgrade to an earlier recorded release. Releases are checked for code hash, protocol,
 ///      capabilities and interfaces; account readiness checks the EIP-7702 designator, the dispatcher runtime and
 ///      the account protocol. The registry administrator changes by proposal and acceptance.
-/// @custom:version 3.0.0
+/// @custom:version 3.0.1
 /// @custom:security-contact security@cryft.cards
 contract CryftDelegationRegistry is
     Initializable,
@@ -266,7 +266,9 @@ contract CryftDelegationRegistry is
     /// @inheritdoc ICryftDelegationRegistry
     function acceptAdmin() external override {
         DelegationRegistryStorage storage state = _registryStorage();
-        if (msg.sender != state.pendingRegistryAdmin) revert NotPendingAdmin();
+        address pending = state.pendingRegistryAdmin;
+        // With no transfer pending, pending is zero: never let a zero caller (a simulation) match it.
+        if (pending == address(0) || msg.sender != pending) revert NotPendingAdmin();
         address previousAdmin = state.registryAdmin;
         state.registryAdmin = msg.sender;
         state.pendingRegistryAdmin = address(0);
@@ -504,7 +506,7 @@ contract CryftDelegationRegistry is
             beacon: state.beacon,
             beaconOwner: beaconOwner,
             registryImplementation: _registryImplementation(),
-            registryVersion: "3.0.0",
+            registryVersion: "3.0.1",
             implementation: implementation,
             implementationCodeHash: implementation.codehash,
             protocolId: metadata.protocolId,
@@ -600,7 +602,7 @@ contract CryftDelegationRegistry is
 
     /// @inheritdoc ICryftDelegationRegistry
     function registryVersion() external pure override returns (string memory) {
-        return "3.0.0";
+        return "3.0.1";
     }
 
     /// @inheritdoc ICryftDelegationRegistry

@@ -50,7 +50,7 @@ interface ITenantAllowancePolicyV2 {
 ///      Storage is append-only: the base and worker storage are untouched and this contract's state lives in its
 ///      own namespace (cryft.storage.ProgramGasSponsor.v1); its `opsDay`/`opsCount` stay, unread, because the
 ///      base counts every sponsor.
-/// @custom:version 1.5.2
+/// @custom:version 1.5.3
 /// @custom:security-contact security@cryft.cards
 contract ProgramGasSponsor is ApprovedGasSponsor, WorkerGasSponsor {
     // ─── Type declarations ───────────────────────────────────────────────────────────────────────

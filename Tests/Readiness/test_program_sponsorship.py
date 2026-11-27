@@ -172,7 +172,7 @@ def refused(w, args, gas_price=GWEI):
 
 def test_the_fresh_link_and_the_program(world):
     w = world; s, a, b = w['sponsor'], w['a'], w['before']
-    assert s.functions.implementationVersion().call() == '1.5.2'
+    assert s.functions.implementationVersion().call() == '1.5.3'
     assert s.functions.getSponsorAccount(a[4]).call() == b['account'] and s.functions.getSponsorFunding(a[4]).call() == b['funding']
     assert s.functions.sponsorStorageLocation().call() == b['location'] and s.functions.platformAdmin().call() == b['admin']
     assert s.functions.voucherSigner().call() == b['signer'] and s.functions.isRelayer(a[2]).call()

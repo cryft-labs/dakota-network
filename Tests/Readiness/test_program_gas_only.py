@@ -8,7 +8,7 @@ replay is gone) with real EIP-7702 accounts, as test_program_sponsorship.py:
   * recoverGasCredit for it is the program's alone (1.5.1: NotProgram for the platform admin too), to the program alone;
   * an ineligible answer (a revoked Pass) stops spending at once, on chain, and charges nothing;
   * a sponsor the program never opened is exactly as before: refundable deposits, withdrawals, credit from anyone, recovery anywhere;
-  * this source's build (Tools/GasSponsor/build_1_5_2.py) has a sound storage layout and fits within 32 KB.
+  * this source's build (Tools/GasSponsor/build_1_5_3.py) has a sound storage layout and fits within 32 KB.
 
     CRYFT_TEST_LEGACY_SOLC=0.8.37 python -m pytest -q Tests/Readiness/test_program_gas_only.py
 """
@@ -51,7 +51,7 @@ def funding(w, sponsor):
 
 def test_the_version_is_1_5_2_and_the_records_read_back(world):
     w = world; s, a, b = w['sponsor'], w['a'], w['before']
-    assert s.functions.implementationVersion().call() == '1.5.2'
+    assert s.functions.implementationVersion().call() == '1.5.3'
     assert s.functions.getSponsorAccount(a[4]).call() == b['account'] and s.functions.getSponsorFunding(a[4]).call() == b['funding']
     assert s.functions.platformAdmin().call() == b['admin'] and s.functions.voucherSigner().call() == b['signer']
 
@@ -147,17 +147,17 @@ def test_a_non_program_sponsor_is_unchanged(world):
 # ── the committed build ──
 
 def test_this_build_layout_is_sound_and_fits(program_build):
-    """1.5.2: the release build (Tools/GasSponsor/build_1_5_2.py) records every namespaced struct and the plain slots, finds the
-    namespaces apart and unchanged, and the runtime fits Cryft's 32,768 bytes. If Releases/GasSponsor/1.5.2 is committed, it is
+    """1.5.3: the release build (Tools/GasSponsor/build_1_5_3.py) records every namespaced struct and the plain slots, finds the
+    namespaces apart and unchanged, and the runtime fits Cryft's 32,768 bytes. If Releases/GasSponsor/1.5.3 is committed, it is
     this checkout's build."""
     import importlib.util
-    spec = importlib.util.spec_from_file_location('build_1_5_2', REPO / 'Tools/GasSponsor/build_1_5_2.py')
+    spec = importlib.util.spec_from_file_location('build_1_5_3', REPO / 'Tools/GasSponsor/build_1_5_3.py')
     tool = importlib.util.module_from_spec(spec); spec.loader.exec_module(tool)
     standard, artifact, layout = tool.build()
     assert layout['problems'] == [] and layout['ok'] and set(layout['structs']) == set(tool.STRUCTS.values())
-    assert artifact['runtime_bytes'] <= 32768 and artifact['version'] == '1.5.2'
+    assert artifact['runtime_bytes'] <= 32768 and artifact['version'] == '1.5.3'
     built = program_build['ProgramGasSponsor']['runtime_bytecode'].removeprefix('0x').lower()
     assert artifact['runtime_bytecode'].removeprefix('0x').lower()[:-106] == built[:-106]  # the same code (metadata aside)
-    folder = REPO / 'Releases/GasSponsor/1.5.2'
+    folder = REPO / 'Releases/GasSponsor/1.5.3'
     if (folder / 'ProgramGasSponsor.json').is_file():
         assert json.loads((folder / 'ProgramGasSponsor.json').read_text())['runtime_keccak256'] == artifact['runtime_keccak256']

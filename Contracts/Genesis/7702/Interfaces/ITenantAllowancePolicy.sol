@@ -4,7 +4,7 @@ pragma solidity 0.8.37;
 
 /// @title ITenantAllowancePolicy
 /// @notice Optional, tenant-scoped accounting asked by the gas sponsor. A policy never receives native coin.
-/// @custom:version 1.5.2
+/// @custom:version 1.5.3
 /// @custom:security-contact security@cryft.cards
 interface ITenantAllowancePolicy {
     // ─── External functions ──────────────────────────────────────────────────────────────────────

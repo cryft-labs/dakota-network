@@ -193,10 +193,15 @@ Two more from the safe-coding review of the live contracts (Chad: "fix all of th
   policySettled)`. Idempotent: an operation already settled, released or never reserved changes nothing and returns 0. The
   policy's `settle` is asked with 200,000 gas and a refusal does not keep the reservation stuck.
 
+## GasSponsor 1.5.3: zero-pending accept (2026-11-26, not deployed)
+
+`acceptPlatformAdmin` refuses while no transfer is pending: before, with nothing pending, `msg.sender == pendingPlatformAdmin`
+matched a simulated call from `address(0)`. No storage change (layout proof identical). Release build:
+`Tools/GasSponsor/build_1_5_3.py`. It rides along with the next upgrade behind `0x…FEeD`; the live link stays 1.5.2 until then.
+
 ## GasSponsor 1.5.2: the contract audit's P-1, for the fresh chain (2026-11-25)
 
-`ProgramGasSponsor` 1.5.2 (`Tools/GasSponsor/build_1_5_2.py`; release files under `Releases/GasSponsor/1.5.2` once written with
-`--write`) is what genesis links at `0x…FEeD` on chain 113211, the first release there. The tool records the storage layout
+`ProgramGasSponsor` 1.5.2 (the release tool is now `Tools/GasSponsor/build_1_5_3.py`) is what genesis links at `0x…FEeD` on chain 113211, the first release there. The tool records the storage layout
 (every namespaced struct and the plain slots, the namespaces apart) that later upgrades must stay append-only against. One version string, `1.5.2`, for every layer. Runtime 32,491 bytes (margin
 277 to Cryft's 32,768).
 

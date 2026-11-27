@@ -4,7 +4,7 @@ pragma solidity 0.8.37;
 
 /// @title IGasSponsor
 /// @notice Managed native EIP-7702 gas sponsorship for Cryft tenants.
-/// @custom:version 1.5.2
+/// @custom:version 1.5.3
 /// @custom:security-contact security@cryft.cards
 interface IGasSponsor {
     // ─── Type declarations ───────────────────────────────────────────────────────────────────────

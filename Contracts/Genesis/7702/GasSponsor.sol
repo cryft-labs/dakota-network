@@ -40,7 +40,7 @@ interface IRootOverlordRegistry {
 ///      within the signed maximum cost; a failed inner call still consumes the operation id and reimburses the
 ///      relayer. All sponsor state lives in one ERC-7201 namespace (cryft.storage.GasSponsor); the inherited
 ///      initializer and reentrancy slots stay reserved.
-/// @custom:version 1.5.2
+/// @custom:version 1.5.3
 /// @custom:security-contact security@cryft.cards
 contract GasSponsor is
     Initializable,
@@ -334,7 +334,9 @@ contract GasSponsor is
     /// @inheritdoc IGasSponsor
     function acceptPlatformAdmin() external override {
         GasSponsorStorage storage state = _sponsorStorage();
-        if (msg.sender != state.pendingPlatformAdmin) revert NotPendingPlatformAdmin();
+        address pending = state.pendingPlatformAdmin;
+        // With no transfer pending, pending is zero: never let a zero caller (a simulation) match it.
+        if (pending == address(0) || msg.sender != pending) revert NotPendingPlatformAdmin();
         address previousAdmin = state.platformAdmin;
         state.platformAdmin = msg.sender;
         state.pendingPlatformAdmin = address(0);
@@ -772,7 +774,7 @@ contract GasSponsor is
 
     /// @inheritdoc IGasSponsor
     function implementationVersion() external pure virtual override returns (string memory) {
-        return "1.5.2";
+        return "1.5.3";
     }
 
     // ─── Public functions ────────────────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ pragma solidity 0.8.37;
 /// @notice Gas bounds shared by the delegated account logic and the gas sponsor.
 /// @dev Conservative on purpose. Clients query `minimumCallGas` on the deployed sponsor before they sign a
 ///      voucher.
-/// @custom:version 1.5.2
+/// @custom:version 1.5.3
 /// @custom:security-contact security@cryft.cards
 library DelegationGas {
     // ─── Constants and immutables ────────────────────────────────────────────────────────────────

@@ -18,7 +18,7 @@ interface IWorkerAllowancePolicy {
 ///      must opt in. Coin stays locked in the sponsor engine until bounded settlement to a platform-fixed
 ///      treasury; no user receives coin. Revoking a worker stops new reservations without trapping old ones.
 ///      State lives in its own namespace (cryft.storage.WorkerGasSponsor.v1).
-/// @custom:version 1.5.2
+/// @custom:version 1.5.3
 /// @custom:security-contact security@cryft.cards
 contract WorkerGasSponsor is GasSponsor {
     // ─── Type declarations ───────────────────────────────────────────────────────────────────────
