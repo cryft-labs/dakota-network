@@ -1,0 +1,217 @@
+{
+ "steps": {
+  "deploy:GasManager": {
+   "tx": "0x72829442974aff9c0a6930bc7be6380d43fe040e021a96f69465de8823862ff8",
+   "address": "0x2537E8005d9f5f3eC0e843A878fb53F658FA00f3"
+  },
+  "deploy:CodeManager": {
+   "tx": "0x0d1f94a68e31ff354c9b7fb11c29b61d0f87ce86517336df810335d1ea3b4722",
+   "address": "0xD1464B247fF983C8999A7fbBd61631ceb1C613EA"
+  },
+  "deploy:CryftDelegation": {
+   "tx": "0xf0502f51e54cd4bd3c00e3c79dcbabe2a129372dbe67251110427614d583aa21",
+   "address": "0x31d95306D43E75ED1D38cAf44F4cDf6d01537bB9"
+  },
+  "deploy:CryftDelegationBeacon": {
+   "tx": "0x15773e1127bccf0bd8a03c9aedfd2627fb7dbfa3d4b3921f091dfea0c4f8cdba",
+   "address": "0x2Af1218C9dAF5d9796230133888789c89f19c938"
+  },
+  "deploy:CryftBeaconDispatcher": {
+   "tx": "0x0c58c910635e3f17e82f776e4d612789c91cfb3d2d5b479805ef8f022b3144ab",
+   "address": "0xc2f78F465E4b0c465A7173cE1230D328a9EBca37"
+  },
+  "deploy:ProgramGasSponsor": {
+   "tx": "0x1c80cd75146ff0d6ce9c2b7f26bbc40110771439663099462bfe40b31b4c78bf",
+   "address": "0x6F7d7571f7B861C6124E3ff2A2C76C013701bbca"
+  },
+  "deploy:CryftDelegationRegistry": {
+   "tx": "0x52387a5da9a22c91b93f4834461e94fc949d6164881d3940ab01731341b07415",
+   "address": "0xb15883C65f85cbc6C6d0157B31AE2089f4acc8C2"
+  },
+  "vote:CodeManager.feeVault": {
+   "tx": "0x680564468eb7bcc073866937e5afb94f2b90c3f34d93fee4758b84b03e32f39e"
+  }
+ },
+ "chain": {
+  "chainId": 113211,
+  "genesis": "0xc32d64ac046ddf4177b1e5bc51265fac2bfdd5e3b1a5f252c3788b47ba6c21cc",
+  "root": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921",
+  "deployer": "0x633309d1155fD658a717e4f5E4FA853615400867",
+  "rehearsal": false
+ },
+ "checks": [
+  {
+   "check": "chain id is 113211",
+   "ok": true,
+   "detail": 113211
+  },
+  {
+   "check": "genesis block hash is the pinned 113211 genesis",
+   "ok": true,
+   "detail": "0xc32d64ac046ddf4177b1e5bc51265fac2bfdd5e3b1a5f252c3788b47ba6c21cc"
+  },
+  {
+   "check": "link signer is a root of 0x\u20261111",
+   "ok": true,
+   "detail": "0x9247524040D91D5dd1521A25f2e7711d4a0fe921"
+  },
+  {
+   "check": "root has gas for the four links",
+   "ok": true,
+   "detail": 31998263743215251716
+  },
+  {
+   "check": "deployer is the CodeManager voter (fee-vault ballot)",
+   "ok": true
+  },
+  {
+   "check": "0x000000000000000000000000000000000000cafE carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "0x000000000000000000000000000000000000c0DE carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "0x000000000000000000000000000000000000FEeD carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "0x00000000000000000000000000000000de1E6A7E carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "0x000000000000000000000000000000000000Face carries the genesis proxy code",
+   "ok": true
+  },
+  {
+   "check": "deployer has at least 1 CRYFT for gas",
+   "ok": true,
+   "detail": 99940888232877973875
+  },
+  {
+   "check": "GasManager@cafE: linked to the deployed implementation",
+   "ok": true,
+   "detail": "0x2537E8005d9f5f3eC0e843A878fb53F658FA00f3"
+  },
+  {
+   "check": "GasManager@cafE: implementation initializer still locked",
+   "ok": true,
+   "detail": "0xff"
+  },
+  {
+   "check": "GasManager@cafE: a second initialization is refused",
+   "ok": true
+  },
+  {
+   "check": "CodeManager@c0DE: linked to the deployed implementation",
+   "ok": true,
+   "detail": "0xD1464B247fF983C8999A7fbBd61631ceb1C613EA"
+  },
+  {
+   "check": "CodeManager@c0DE: implementation initializer still locked",
+   "ok": true,
+   "detail": "0xff"
+  },
+  {
+   "check": "CodeManager@c0DE: a second initialization is refused",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor@FEeD: linked to the deployed implementation",
+   "ok": true,
+   "detail": "0x6F7d7571f7B861C6124E3ff2A2C76C013701bbca"
+  },
+  {
+   "check": "GasSponsor@FEeD: implementation initializer still locked",
+   "ok": true,
+   "detail": "0xff"
+  },
+  {
+   "check": "GasSponsor@FEeD: a second initialization is refused",
+   "ok": true
+  },
+  {
+   "check": "CryftDelegationRegistry@de1E6A7E: linked to the deployed implementation",
+   "ok": true,
+   "detail": "0xb15883C65f85cbc6C6d0157B31AE2089f4acc8C2"
+  },
+  {
+   "check": "CryftDelegationRegistry@de1E6A7E: implementation initializer still locked",
+   "ok": true,
+   "detail": "0xff"
+  },
+  {
+   "check": "CryftDelegationRegistry@de1E6A7E: a second initialization is refused",
+   "ok": true
+  },
+  {
+   "check": "GasManager: voters as planned",
+   "ok": true
+  },
+  {
+   "check": "CodeManager: voters as planned",
+   "ok": true
+  },
+  {
+   "check": "CodeManager: fee vault is GasManager",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor: starts paused",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor: platform admin is the root",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor: approved delegate is the dispatcher",
+   "ok": true
+  },
+  {
+   "check": "GasSponsor: version 1.5.2",
+   "ok": true
+  },
+  {
+   "check": "Registry: admin is the root",
+   "ok": true
+  },
+  {
+   "check": "Registry: upgrade delay as planned",
+   "ok": true
+  },
+  {
+   "check": "0x\u2026Face stays unlinked",
+   "ok": true
+  }
+ ],
+ "guide": {
+  "GasManager@cafE": {
+   "to": "0x000000000000000000000000000000000000cafE",
+   "data": "0x4c2995f90000000000000000000000002537e8005d9f5f3ec0e843a878fb53f658fa00f3000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000c49c8128e10000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003635c9adc5dea0000000000000000000000000000000000000000000000000000000000000000151800000000000000000000000000000000000000000000000000000000000000001000000000000000000000000633309d1155fd658a717e4f5e4fa85361540086700000000000000000000000000000000000000000000000000000000",
+   "logic": "0x2537E8005d9f5f3eC0e843A878fb53F658FA00f3",
+   "gasEstimate": 359203
+  },
+  "CodeManager@c0DE": {
+   "to": "0x000000000000000000000000000000000000c0DE",
+   "data": "0x4c2995f9000000000000000000000000d1464b247ff983c8999a7fbbd61631ceb1c613ea00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000064143f967800000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000633309d1155fd658a717e4f5e4fa85361540086700000000000000000000000000000000000000000000000000000000",
+   "logic": "0xD1464B247fF983C8999A7fbBd61631ceb1C613EA",
+   "gasEstimate": 305936
+  },
+  "GasSponsor@FEeD": {
+   "to": "0x000000000000000000000000000000000000FEeD",
+   "data": "0x4c2995f90000000000000000000000006f7d7571f7b861c6124e3ff2a2c76c013701bbca00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000084cf756fdf0000000000000000000000009247524040d91d5dd1521a25f2e7711d4a0fe921000000000000000000000000633309d1155fd658a717e4f5e4fa853615400867000000000000000000000000c2f78f465e4b0c465a7173ce1230d328a9ebca3700000000000000000000000000000000000000000000000000000000000186a000000000000000000000000000000000000000000000000000000000",
+   "logic": "0x6F7d7571f7B861C6124E3ff2A2C76C013701bbca",
+   "gasEstimate": 286059
+  },
+  "CryftDelegationRegistry@de1E6A7E": {
+   "to": "0x00000000000000000000000000000000de1E6A7E",
+   "data": "0x4c2995f9000000000000000000000000b15883c65f85cbc6c6d0157b31ae2089f4acc8c2000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a498bf801d000000000000000000000000c2f78f465e4b0c465a7173ce1230d328a9ebca370000000000000000000000002af1218c9daf5d9796230133888789c89f19c938000000000000000000000000000000000000000000000000000000000000feed0000000000000000000000009247524040d91d5dd1521a25f2e7711d4a0fe921000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "logic": "0xb15883C65f85cbc6C6d0157B31AE2089f4acc8C2",
+   "gasEstimate": 472863
+  }
+ },
+ "pending": [],
+ "completed": "2026-11-27T02:25:21Z"
+}
